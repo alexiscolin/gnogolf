@@ -27,7 +27,7 @@ func main(cur realm) {
 }
 
 // Storage:
-// gno.land/r/gnogolf/golf/v2: 24
+// gno.land/r/gnogolf/golf/v2: 18
 // gno.land/r/gnogolf/store: 3146
 // gno.land/r/test/storedpublish: 0
 

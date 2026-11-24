@@ -577,8 +577,27 @@ func TestLegendSlopeWay(t *testing.T) {
 		{Kind: physics.Slope, Vec: physics.V(-0.1, 0), Mark: '^', Skin: "hill"},
 		{Kind: physics.Slope, Vec: physics.V(0.1, 0), Mark: '~', Skin: "draft", Air: true},
 	}}
-	s, _ := legend(f)
+	var on [128]bool
+	on['^'], on['~'] = true, true
+	s, _ := legend(f, on)
 	urequire.Equal(t, " · `^` hill (slope), falls toward 90° · `^` hill (slope), falls toward 180° · `~` draft (slope), pushes toward 0°", s)
+}
+
+// The key names the marks its board shows only, and a tunnel past the ninth,
+// which the board does not number, by its own mark.
+func TestTheKeyNamesWhatTheBoardShows(cur realm, t *testing.T) {
+	e := mustHole(mine(cur, "keyed", flatHole("Keyed")))
+	h := flatHole("Keyed")
+	h.Course.Zones = []physics.Zone{
+		{Kind: physics.Surface, Min: physics.V(4, 4), Max: physics.V(6, 6), Scale: 1, Mark: 'M', Skin: "mill"},
+		{Kind: physics.Surface, Min: physics.V(3, 3), Max: physics.V(7, 7), Scale: 1, Mark: 'S', Skin: "sand"}, // drawn over the mill
+	}
+	for i := 0; i <= maxTunnels; i++ {
+		x := float64(2 + 2*i)
+		h.Course.Zones = append(h.Course.Zones, physics.Zone{Kind: physics.Tunnel, Min: physics.V(x, 10), Max: physics.V(x+1, 11), Vec: physics.V(x, 13)})
+	}
+	page := renderHole(e, h, "")
+	uassert.True(t, strings.Contains(page, "`S` sand (surface) · `?` tunnel") && !strings.Contains(page, "mill"), page)
 }
 
 // parHole is a Crystal Mines hole of par par: cupHole's box, holed by "0,1"

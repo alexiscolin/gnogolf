@@ -43,6 +43,6 @@ func TestTheHubPutsRecordsToBeatFirst(cur realm, t *testing.T) {
 	uassert.False(t, strings.Contains(section, top), "never the ranking's first")
 	uassert.True(t, strings.Contains(hub, "## Fair play"))
 	uassert.True(t, strings.Contains(hub, "steps of 0.01"))
-	uassert.True(t, strings.Contains(hub, "("+strings.TrimPrefix(dataRealm, "gno.land")+")"), "a link to where the records are kept")
+	uassert.True(t, strings.Contains(hub, "("+dataHub+")"), "a link to where the records are kept")
 	uassert.True(t, strings.Contains(hub, "three days after their code is on chain"), "who can change what says the rules can be replaced")
 }

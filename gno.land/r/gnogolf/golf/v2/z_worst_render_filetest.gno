@@ -23,7 +23,7 @@ import (
 // (the heaviest single shot is z_worst_shot_filetest's);
 // z_worst_render_filetest does the same, then renders each zigzag's page and
 // each corner's page and its player's. The difference of their gas is the
-// eight pages, about 2.25e9 (v1: 2.34e9, with 12-wall corners). A zigzag's page costs 0.52e9 drawn, with 2
+// eight pages, about 2.28e9 (v1: 2.34e9, with 12-wall corners). A zigzag's page costs 0.54e9 drawn, with 2
 // polygons, and 0.03e9 with 4, too detailed to draw; a corner's 0.23e9, its
 // forecast drawn once. Every page stays far under the 3e9 a query may use: a
 // page decodes the hole, draws one forecast (bounded at publish, worstGas;
@@ -137,7 +137,7 @@ func main(cur realm) {
 }
 
 // Gas:
-// 3819572295
+// 3855755260
 
 // Output:
 // zig-rev-2 true false

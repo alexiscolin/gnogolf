@@ -170,6 +170,8 @@ func TestARoundHasAStrokeLimit(cur realm, t *testing.T) {
 	}
 	testing.SetRealm(testing.NewUserRealm(player))
 	urequire.AbortsContains(t, cur, "stroke limit", func() { Launch(cross(cur), id, 180, 0.5) })
+	page := Render(id + "/" + player.String())
+	urequire.True(t, strings.Contains(page, "It is at the stroke limit: Reset (below) before the next shot."), page)
 }
 
 func TestTheTickIsClamped(t *testing.T) {

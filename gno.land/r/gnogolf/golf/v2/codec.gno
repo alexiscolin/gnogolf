@@ -7,11 +7,14 @@ import (
 
 // How golf's rows are kept in store: strings, never golf's own types (a value
 // of a realm's type kept in another realm would carry this realm's methods into
-// it, and would not outlive these rules). Each is its format's version, then
-// its fields, each as its length, ":" and itself (store's own rows are so): a
-// row reads back by its lengths, not by a scan of every byte (a scan, as
-// strings.Split, costs several times more gas), whatever its fields hold. A
-// later version of the rules reads every format ever written, row by row.
+// it, and would not outlive these rules). A version of a hole, a round and a
+// standing are each their format's version, then their fields, each as its
+// length, ":" and itself (store's own rows are so): a row reads back by its
+// lengths, not by a scan of every byte (a scan, as strings.Split, costs
+// several times more gas), whatever its fields hold. The other rows are plain
+// values: ids, players, counts, flags, a best as bestOf writes it, a hole's
+// data. A later version of the rules reads every format ever written, row by
+// row.
 const format = "1"
 
 func join(fs ...string) string {

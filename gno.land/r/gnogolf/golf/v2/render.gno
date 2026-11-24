@@ -225,15 +225,16 @@ func fairPlay() string {
 		"- **Shots go in the game's steps of 0.01**, angle and power: a finer one (a program's precision) is refused.\n" +
 		"- **A record sent again is not ranked.** A round that sends one of the hole's top records again, shot for shot within a hair, is kept (the player's round and ghost) but ranks nowhere.\n" +
 		"- **The site's boards hide suspected bots**, and say why; the chain and this page keep every record.\n" +
-		"- **The rules and the data are apart:** the records are kept in " + md("Gnogolf's data", strings.TrimPrefix(dataRealm, "gno.land")) + ", which takes writes from these rules alone. New rules take over three days after their code is on chain, so anyone can read them first; nothing is reset.\n\n"
+		"- **The rules and the data are apart:** the records are kept in " + md("Gnogolf's data", dataHub) + ", which takes writes from these rules alone. New rules take over three days after their code is on chain, so anyone can read them first; nothing is reset.\n\n"
 }
 
-// moved is the banner every page shows once these rules no longer save (the
-// data's writer is another, or saves are paused) or the course has moved.
+// moved is the banner the hub, cup, author and hole pages show once these
+// rules no longer save (the data's writer is another, or saves are paused) or
+// the course has moved.
 func moved() string {
 	switch w := store.Writer(); {
 	case w == "":
-		return "> [!WARNING] Saves are paused\n> " + md("Gnogolf's data", strings.TrimPrefix(dataRealm, "gno.land")) + " takes no save until these rules are resumed or new ones named: rounds here are refused, every record can still be read.\n\n"
+		return "> [!WARNING] Saves are paused\n> " + md("Gnogolf's data", dataHub) + " takes no save until these rules are resumed or new ones named: rounds here are refused, every record can still be read.\n\n"
 	case w != self:
 		return "> [!NOTE] New rules play this course\n> " + md(w, strings.TrimPrefix(w, "gno.land")) + " keeps its records now: play there; a round sent here is refused.\n\n"
 	case successor != "":
@@ -337,6 +338,10 @@ func weatherNote(f course.Forecast) string {
 		what, left/60, pad(int(left%60), 2))
 }
 
+// importNote is the owner's power over v1's records, said where their
+// migration is deployed (import_v1.gno sets it), "" elsewhere.
+var importNote string
+
 // noAdmin states who can change what, the owner's own powers included.
 func noAdmin() string {
 	holder := who(owner.String())
@@ -346,7 +351,7 @@ func noAdmin() string {
 	return "\n> [!INFO]- Who can change what\n" +
 		"> Anyone can play (Launch, PlayRound, PlayRoundAt, PlayRoundPro), Reset their own round, " +
 		"publish holes of their own (PublishMine) while publishing is open, and settle the ranking sooner (Drain). These rules never edit or delete a round, a record, a best, a standing or a published version, " +
-		"and nobody can change this realm's code. Its rules can be replaced, its records kept: the owner of " + md("Gnogolf's data", strings.TrimPrefix(dataRealm, "gno.land")) + " may propose new rules, which take over three days after their code is on chain (anyone can read it first: what they do to the records is in it), and may stop every save at once for a bug (the reads go on) and start these same rules again; that page says which rules are in force. Every hole is data, played by golf's own physics: no hole runs code of its own. Check it yourself: " + md("the source", hub+"$source") + ".\n>\n" +
+		"and nobody can change this realm's code. Its rules can be replaced, its records kept: the owner of " + md("Gnogolf's data", dataHub) + " may propose new rules, which take over three days after their code is on chain (anyone can read it first: what they do to the records is in it), and may stop every save at once for a bug (the reads go on) and start these same rules again; that page says which rules are in force. Every hole is data, played by golf's own physics: no hole runs code of its own. Check it yourself: " + md("the source", hub+"$source") + ".\n>\n" +
 		"> One party holds a real power: the course's owner, now " + holder + ". The owner publishes the course holes and their new versions (Publish). " +
 		"A new version takes its slot: the old one is archived, still playable, its records kept, but its bests leave the course-wide ranking, which the new version starts afresh. " +
 		"So the owner shapes the course, and through it the ranking, and a stolen owner key could archive every slot, for good. " +
@@ -356,6 +361,7 @@ func noAdmin() string {
 		"Whoever holds `" + strings.TrimPrefix(officialPrefix, "gno.land/") + "` can deploy lookalike realms under it. " +
 		"The owner can take a community hole off the lists (Hide: a scam or abuse in its name or note), and put it back; it stays playable, its page and data kept. " +
 		"The owner opens community publishing and can close it again (SetPublishing): closed, nobody adds a hole or a version, and every hole published plays on. " +
+		importNote +
 		"The owner cannot edit or remove a version, change a community hole, the weather, the physics or this code, " +
 		"and can only hand the role on (Transfer, then Accept) or give it up for good (Renounce).\n"
 }
@@ -428,9 +434,8 @@ func renderHole(e *entry, h *course.Simple, focus address) string {
 		s += "_This hole is too detailed to draw here: " + md("play it in 3D", playLink(e)) + "._\n\n"
 	} else {
 		b := board(e, h, f, mine, now)
-		leg, walls := legend(f)
 		s += "```\n" + b + "```\n\n"
-		s += key(b, walls) + leg + "\n\n"
+		s += key(b, f) + "\n\n"
 	}
 
 	s += "## Play\n\n"
@@ -492,11 +497,17 @@ func roundSummary(e *entry, p address, r *round) string {
 	}
 	s := ""
 	if r != nil {
-		over := ""
-		if r.period < Period()-1 {
-			over = " Its weather is over: Reset (below) before the next shot."
+		// what the Launch form below would refuse
+		next := ""
+		switch {
+		case r.period < Period()-1:
+			next = " Its weather is over: Reset (below) before the next shot."
+		case r.strokes >= maxRoundStrokes:
+			next = " It is at the stroke limit: Reset (below) before the next shot."
+		case r.mode != pro:
+			next = " It is an assisted round: finish it in 3D, or Reset (below) to start a pro one here."
 		}
-		s = ufmt.Sprintf("> %s's round: %s so far, not holed yet.%s\n>\n> %s\n>\n", who, count(r.strokes, "stroke"), over, shotsOf(r.shots))
+		s = ufmt.Sprintf("> %s's round: %s so far, not holed yet.%s\n>\n> %s\n>\n", who, count(r.strokes, "stroke"), next, shotsOf(r.shots))
 	}
 	for m := 0; m < modes; m++ {
 		v := bestOfPlayer(e, m, p.String())
@@ -574,13 +585,20 @@ func board(e *entry, h *course.Simple, f *physics.Field, mine *round, now course
 		}
 		g[y] = row
 	}
-	// the walls, traced once: drawn, and what the flood fill stops at
-	wall := make([][]rune, bh)
+	// the walls, traced once: all drawn, and those that stay (the hole's own,
+	// untimed: WithExtras puts the stroke's after them) are what the flood
+	// fill stops at, as the 3D client fences
+	wall, fence := make([][]rune, bh), make([][]rune, bh)
 	for y := range wall {
-		wall[y] = make([]rune, bw)
+		wall[y], fence[y] = make([]rune, bw), make([]rune, bw)
 	}
-	for _, w := range f.Walls {
-		trace(wall, w.Seg, mark(w.Mark, markWall))
+	own := len(h.Field().Walls)
+	for i, w := range f.Walls {
+		into := wall
+		if i < own && w.Every <= 0 {
+			into = fence
+		}
+		trace(into, w.Seg, mark(w.Mark, markWall))
 	}
 
 	// the last flight first, so the pieces drawn over it stay visible
@@ -607,6 +625,9 @@ func board(e *entry, h *course.Simple, f *physics.Field, mine *round, now course
 	}
 	for y := range wall {
 		for x, c := range wall[y] {
+			if c == 0 {
+				c = fence[y][x]
+			}
 			if c != 0 {
 				g[y][x] = c
 			}
@@ -627,7 +648,7 @@ func board(e *entry, h *course.Simple, f *physics.Field, mine *round, now course
 	put(g, h.Cup(), markCup)
 
 	// ground no ball can reach is not green: blank it, as the 3D client does
-	blankUnreachable(g, wall, f, h.Start(), h.Cup())
+	blankUnreachable(g, fence, wall, f, h.Start(), h.Cup())
 
 	// only your own ball: everyone's at once would bury the board
 	if mine != nil {
@@ -768,9 +789,9 @@ func fillRow(row []rune, from, to int, m rune) {
 	}
 }
 
-// span is the cells from int(lo) to int(hi), within 0..n.
+// span is the cells from int(lo) to int(hi), both in, within 0..n.
 func span(lo, hi float64, n int) (int, int) {
-	a, b := int(lo), int(hi)
+	a, b := int(lo), int(hi)+1
 	if a < 0 {
 		a = 0
 	}
@@ -810,8 +831,8 @@ func boardWork(f *physics.Field, h *course.Simple) int {
 }
 
 // key names the board's fixed marks it shows (tee and cup always), with the
-// skins of the walls drawn `#`.
-func key(b, walls string) string {
+// skins of the walls drawn `#`, then the hole's own marks it shows (legend).
+func key(b string, f *physics.Field) string {
 	// what the board shows, read once: a big board is thousands of runes
 	var on [128]bool
 	shot := false // '·', the one mark past ASCII
@@ -822,6 +843,7 @@ func key(b, walls string) string {
 			shot = true
 		}
 	}
+	leg, walls := legend(f, on)
 	s := "`*` tee · `U` cup"
 	for _, k := range []struct{ marks, what string }{
 		{"@", "the ball"}, {"·", "its last shot"}, {"#", "wall"},
@@ -852,12 +874,12 @@ func key(b, walls string) string {
 	default:
 		s += " · `" + digits + "` tunnels, each with its exit"
 	}
-	return s
+	return s + leg
 }
 
 // legend names the pieces the hole gave a skin (a slope with the way it
-// falls), and the skins of its `#` walls.
-func legend(f *physics.Field) (string, string) {
+// falls) whose mark is on the board (on), and the skins of its `#` walls.
+func legend(f *physics.Field, on [128]bool) (string, string) {
 	s, walls := "", ""
 	add := func(m rune, def rune, skin string) {
 		if skin == "" {
@@ -874,6 +896,9 @@ func legend(f *physics.Field) (string, string) {
 			}
 			return
 		}
+		if !on[r] {
+			return
+		}
 		// once each: a mark with two meanings (two slopes' ways) says both
 		item := ufmt.Sprintf(" · `%s` %s", string(r), skin)
 		if strings.Contains(s+" · ", item+" · ") {
@@ -881,8 +906,10 @@ func legend(f *physics.Field) (string, string) {
 		}
 		s += item
 	}
+	tunnel := 0
 	for _, z := range f.Zones {
-		if z.Kind == physics.Tunnel {
+		if z.Kind == physics.Tunnel && tunnel < maxTunnels {
+			tunnel++
 			continue // numbered on the board
 		}
 		name := cleanSkin(z.Skin)
@@ -1022,8 +1049,9 @@ func short(addr string) string {
 }
 
 // blankUnreachable clears the cells no ball can reach: a flood fill from the
-// tee, the cup and where tunnels and hazards put the ball, stopped by walls.
-func blankUnreachable(g, wall [][]rune, f *physics.Field, seeds ...physics.Vec2) {
+// tee, the cup and where tunnels and hazards put the ball, stopped by the
+// fence. The walls drawn, fence and wall, stay.
+func blankUnreachable(g, fence, wall [][]rune, f *physics.Field, seeds ...physics.Vec2) {
 	bh := len(g)
 	if bh == 0 {
 		return
@@ -1049,7 +1077,7 @@ func blankUnreachable(g, wall [][]rune, f *physics.Field, seeds ...physics.Vec2)
 		c := stack[len(stack)-1]
 		stack = stack[:len(stack)-1]
 		x, y := c%bw, c/bw
-		s, w := seen[y], wall[y]
+		s, w := seen[y], fence[y]
 		if s[x] || w[x] != 0 {
 			continue
 		}
@@ -1068,7 +1096,7 @@ func blankUnreachable(g, wall [][]rune, f *physics.Field, seeds ...physics.Vec2)
 			if ny < 0 || ny >= bh {
 				continue
 			}
-			ns, nw := seen[ny], wall[ny]
+			ns, nw := seen[ny], fence[ny]
 			open := false
 			for i := l; i < r; i++ {
 				o := !ns[i] && nw[i] == 0
@@ -1081,7 +1109,7 @@ func blankUnreachable(g, wall [][]rune, f *physics.Field, seeds ...physics.Vec2)
 	}
 	for y := 0; y < bh; y++ {
 		for x := 0; x < bw; x++ {
-			if !seen[y][x] && wall[y][x] == 0 {
+			if !seen[y][x] && fence[y][x] == 0 && wall[y][x] == 0 {
 				g[y][x] = ' '
 			}
 		}

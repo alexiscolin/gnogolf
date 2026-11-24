@@ -24,7 +24,6 @@ type view struct {
 var (
 	queued []string          // set/del ops, four strings each, in order
 	over   map[string]string // collection + "\x00" + key -> its value now; "\x00" for removed
-	dirty  map[string]bool   // the collections written to
 	seen   map[string]*entry // the versions found in this call that writes: one object each (find)
 )
 
@@ -68,7 +67,7 @@ func (v view) Remove(k string) bool {
 
 func queue(op, c, k, x string) {
 	if over == nil {
-		over, dirty = map[string]string{}, map[string]bool{}
+		over = map[string]string{}
 	}
 	if op == "del" {
 		queued = append(queued, op, c, k, "")
@@ -76,7 +75,6 @@ func queue(op, c, k, x string) {
 		queued = append(queued, op, c, k, x)
 	}
 	over[c+"\x00"+k] = x
-	dirty[c] = true
 }
 
 // flush sends this call's writes to store, in batches of what store takes in
@@ -90,14 +88,11 @@ func flush(cur realm) {
 		}
 		store.Batch(cross(cur), queued[i:j])
 	}
-	queued, over, dirty, seen = nil, nil, nil, nil
+	queued, over, seen = nil, nil, nil
 }
 
 // clean refuses a walk over rows this call has written to (store has not got them yet)
 func (v view) clean() {
-	if !dirty[v.c] {
-		return
-	}
 	for k := range over {
 		if strings.HasPrefix(k, v.c+"\x00"+v.p) {
 			panic("golf: a walk over " + v.c + " " + v.p + "after writing to it in the same call")

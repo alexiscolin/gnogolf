@@ -680,13 +680,18 @@ func TestGhostOnATimedHole(cur realm, t *testing.T) {
 }
 
 // TestARoundsPageSaysWhatComesNext: a round under way says its strokes right
-// for one, and once its weather is over, that it must be Reset first.
+// for one, that an assisted one goes on in 3D (Launch plays pro rounds), and
+// once its weather is over, that it must be Reset first.
 func TestARoundsPageSaysWhatComesNext(cur realm, t *testing.T) {
 	id := mine(cur, "roundpage", cupHole("garden", 1, "Page"))
 	walker := testutils.TestAddress("walker")
 	replayAs(cur, walker, id, "0,0.01")
 	page := Render(id + "/" + walker.String())
 	uassert.True(t, strings.Contains(page, "1 stroke so far") && !strings.Contains(page, "Its weather is over"), page)
+	uassert.True(t, strings.Contains(page, "It is an assisted round: finish it in 3D, or Reset (below)"), page)
+	testing.SetRealm(testing.NewUserRealm(player))
+	Launch(cross(cur), id, 180, 0.01)
+	uassert.False(t, strings.Contains(Render(id+"/"+player.String()), "assisted round"), "a pro round goes on here")
 	testing.SkipHeights(200)
 	uassert.True(t, strings.Contains(Render(id+"/"+walker.String()), "Its weather is over: Reset (below) before the next shot."))
 }

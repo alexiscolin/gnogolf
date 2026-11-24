@@ -266,6 +266,42 @@ func TestNoDryGroundOffTheBoard(t *testing.T) {
 	}
 }
 
+// The text board blanks what no ball can reach as the 3D client does, fenced
+// by the walls that stay: The Mill's three tunnel mouths, between its timed
+// sail and its wall, are drawn with their exits.
+func TestTheBoardKeepsWhatATimedWallCrosses(t *testing.T) {
+	h := courseHoleData(t, "gno.land/r/gnogolf/hole4")
+	b := board(newEntry("garden/4/v1", h.Title, h.Par(), h.World, h.Order), h, h.Field(), nil, course.Forecast{})
+	for _, d := range []string{"1", "2", "3"} {
+		if strings.Count(b, d) < 2 {
+			t.Fatalf("tunnel %s shows its exit, not its mouth:\n%s", d, b)
+		}
+	}
+}
+
+// The text board draws every course hole's zones on the cells whose centre
+// each holds, as the physics sees it (physics.Zone.Contains).
+func TestTheBoardDrawsZonesAsThePhysicsHoldsThem(t *testing.T) {
+	for _, d := range courseData {
+		h := courseHoleData(t, d[1])
+		for i := range h.Course.Zones {
+			z := &h.Course.Zones[i]
+			g := make([][]rune, h.H)
+			for y := range g {
+				g[y] = make([]rune, h.W)
+			}
+			drawZone(g, z, 'z')
+			for y := range g {
+				for x := range g[y] {
+					if p := physics.V(float64(x)+0.5, float64(y)+0.5); (g[y][x] == 'z') != z.Contains(p) {
+						t.Fatalf("%s: zone %d drawn wrong at %v", d[0], i, p)
+					}
+				}
+			}
+		}
+	}
+}
+
 // island/5's sea leaves dry ground behind the end of its right-hand rocks
 // (x above 40.5, y up to 13.6): the rocks' end is 0.5 short of the water's
 // edge. No shot from the beach near that end reaches it: round the rocks'

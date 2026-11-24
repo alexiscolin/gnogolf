@@ -116,6 +116,12 @@ func TestTheMigrationsRefusals(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "is not v1's", func() { ImportRecord(cross(cur), id, "assisted", heir) }) // published here, not imported
 }
 
+// Where the migration is deployed, the hub's "Who can change what" says what
+// it lets the owner do.
+func TestTheHubSaysTheOwnerImports(t *testing.T) {
+	uassert.True(t, strings.Contains(Render(""), "onto its boards and the standings (ImportRecord)"))
+}
+
 // jget reads v1's JSON as v1 writes it (jstr): a string unescaped, a number,
 // an array's inside; jobject finds an object of a list by its id.
 func TestJgetReadsV1sJSON(t *testing.T) {
