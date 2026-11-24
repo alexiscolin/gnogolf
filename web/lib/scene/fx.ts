@@ -1,5 +1,4 @@
 import * as THREE from "three";
-import { BALL_R } from "../terrain";
 import { C, flat, drawn, clipTo, share, disposeCourse, releaseShared } from "./materials";
 import { makeRenderer, makeScene } from "./camera";
 import { state } from "./state";
@@ -178,7 +177,7 @@ export function makeBand(): Band {
   return g;
 }
 
-export function bandTo(band: Band, from: { x: number; y: number }, angleRad: number, power: number, y = BALL_R) {
+export function bandTo(band: Band, from: { x: number; y: number }, angleRad: number, power: number, y: number) {
   const len = 0.8 + (power / 10) * 4.2;
   const { strap, grip } = band.userData;
   band.position.set(from.x, y, from.y);

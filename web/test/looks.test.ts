@@ -1,4 +1,4 @@
-// Permanence (docs/gnomes/design.md): every token of the catalogue and the
+// Permanence: every token of the catalogue and the
 // nine earned kinds is drawn from its traits exactly as the golden file
 // says (data/gnomes/looks.golden.json, scripts/gnomelooks.ts). A change to
 // the drawing that moves one vertex, one colour or one texture of a gnome

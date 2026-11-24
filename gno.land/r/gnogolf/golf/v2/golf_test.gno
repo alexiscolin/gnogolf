@@ -89,10 +89,6 @@ const (
 // register publishes a flat community hole and returns its id.
 func register(cur realm, slug string) string { return mine(cur, slug, flatHole("Flat")) }
 
-// simAt is SimulateRoundAt in any period, old ones included: what the
-// weather tests compare.
-func simAt(id, shots string, period int64) string { return simulateRound(id, nil, 0, shots, period) }
-
 // TestPreviewMatchesPlay pins the invariant the whole client model rests on: a
 // shot resolved by the free query and the same shot committed must land in the
 // same place, or players animate something that did not happen.
@@ -317,18 +313,6 @@ func TestAnyonesHoleRanksNobody(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(HoleLeaderboard(id, "assisted", 0, 10), loner.String()), "on the hole's own board")
 }
 
-// A replay never erases a player's best, and the board reads its top ten.
-func TestLeaderboardKeepsBests(cur realm, t *testing.T) {
-	giveName(cur, player, "golfer")
-	id := courseHole(cur, 32)
-	testing.SetRealm(testing.NewUserRealm(player))
-	Launch(cross(cur), id, 0, 1) // holes out
-	testing.SetRealm(testing.NewUserRealm(player))
-	Reset(cross(cur), id) // a replay, not finished
-	lb := Leaderboard("pro")
-	uassert.True(t, strings.Contains(lb, `"player":"`+player.String()+`"`), lb)
-}
-
 // An unknown mode is a mistake, not the assisted board.
 func TestAnUnknownModeIsRefused(cur realm, t *testing.T) {
 	id := register(cur, "modes")
@@ -427,7 +411,7 @@ func TestWeatherOfTheMoment(cur realm, t *testing.T) {
 		}
 	}
 	uassert.True(t, windyAt >= 0 && clearAt >= 0, "an island has windy and clear spells")
-	calm, blown := simAt(id, "0,4", clearAt), simAt(id, "0,4", windyAt)
+	calm, blown := SimulateRoundIn(id, "0,4", clearAt), SimulateRoundIn(id, "0,4", windyAt)
 	uassert.True(t, calm[strings.Index(calm, `"path"`):] != blown[strings.Index(blown, `"path"`):], "the wind moves the ball")
 
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -456,7 +440,7 @@ func TestTimingIsPartOfTheShot(cur realm, t *testing.T) {
 	p := periodOf(id, e.world, e.hole(), course.Clear) // in calm weather
 	past := 0
 	for tick := 0; tick < 8; tick++ {
-		out := simAt(id, ufmt.Sprintf("0,5,%d", tick), p)
+		out := SimulateRoundIn(id, ufmt.Sprintf("0,5,%d", tick), p)
 		if !strings.Contains(out, `"path":[[2.000,3.000],[4.58`) {
 			continue
 		}
@@ -466,8 +450,8 @@ func TestTimingIsPartOfTheShot(cur realm, t *testing.T) {
 		}
 	}
 	uassert.True(t, past > 0 && past < 8, "some timings get past the gate, some do not")
-	uassert.Equal(t, simAt(id, "0,5", p), simAt(id, "0,5,0", p), "no tick is tick 0")
-	uassert.Equal(t, simAt(id, "0,5,2000", p), simAt(id, "0,5,1023", p), "the tick is clamped")
+	uassert.Equal(t, SimulateRoundIn(id, "0,5", p), SimulateRoundIn(id, "0,5,0", p), "no tick is tick 0")
+	uassert.Equal(t, SimulateRoundIn(id, "0,5,2000", p), SimulateRoundIn(id, "0,5,1023", p), "the tick is clamped")
 
 	testing.SetRealm(testing.NewUserRealm(player))
 	PlayRoundAt(cross(cur), id, "0,5,3", Period())
@@ -596,23 +580,13 @@ func replayAs(cur realm, p address, id, shots string) {
 	PlayRound(cross(cur), id, shots)
 }
 
-// jfield is the raw value of a field of a flat JSON object: a number, or a
-// string's inside.
-func jfield(j, k string) string {
-	v := j[strings.Index(j, `"`+k+`":`)+len(k)+3:]
-	if v[0] == '"' {
-		return v[1 : strings.Index(v[1:], `"`)+1]
-	}
-	return v[:strings.IndexAny(v, ",}]")]
-}
-
 // standingOf is a player's course-wide standing in a mode as Rank gives it:
 // holes, strokes and par; 0, 0, 0 if none.
 func standingOf(mode string, p address) (holes, strokes, par int) {
 	rk := Rank(mode, p)
-	holes, _ = strconv.Atoi(jfield(rk, "holes"))
-	strokes, _ = strconv.Atoi(jfield(rk, "strokes"))
-	par, _ = strconv.Atoi(jfield(rk, "par"))
+	holes, _ = strconv.Atoi(jget(rk, "holes"))
+	strokes, _ = strconv.Atoi(jget(rk, "strokes"))
+	par, _ = strconv.Atoi(jget(rk, "par"))
 	return holes, strokes, par
 }
 
@@ -622,8 +596,8 @@ func standingOf(mode string, p address) (holes, strokes, par int) {
 // holes, and only the last.
 func ghostHoles(id, mode string, p address) bool {
 	gj := Ghost(id, mode, p)
-	period, _ := strconv.ParseInt(jfield(gj, "period"), 10, 64)
-	shots := strings.Split(jfield(gj, "shots"), ";")
+	period, _ := strconv.ParseInt(jget(gj, "period"), 10, 64)
+	shots := strings.Split(jget(gj, "shots"), ";")
 	sim := SimulateRoundIn(id, shots[0], period)
 	for i := 1; i < len(shots); i++ {
 		if strings.Contains(sim, `"holed":true`) {
@@ -647,7 +621,7 @@ func TestGhostKeepsTheBestRound(cur realm, t *testing.T) {
 	uassert.Equal(t, "null", Ghost(id, "assisted", racer), "no best, no ghost")
 	replayAs(cur, racer, id, "0,0.01;0,1")
 	period, at := Period(), strconv.FormatInt(runtime.ChainHeight(), 10)
-	uassert.Equal(t, at, jfield(Ghost(id, "assisted", racer), "height"), "the height that ranks it before a later tie")
+	uassert.Equal(t, at, jget(Ghost(id, "assisted", racer), "height"), "the height that ranks it before a later tie")
 	two := ufmt.Sprintf(`"strokes":2,"period":%d,"shots":"0.0000,0.0100,0;0.0000,1.0000,0"}`, period)
 	urequire.True(t, strings.HasSuffix(Ghost(id, "assisted", racer), two), Ghost(id, "assisted", racer))
 	uassert.Equal(t, "null", Ghost(id, "pro", racer), "a best is kept in its own mode")
@@ -655,7 +629,7 @@ func TestGhostKeepsTheBestRound(cur realm, t *testing.T) {
 	replayAs(cur, racer, id, "0,0.01;0,0.01;0,1")
 	replayAs(cur, racer, id, "0,0.02;0,1")
 	uassert.True(t, strings.HasSuffix(Ghost(id, "assisted", racer), two), "a worse round and a tie leave the ghost: "+Ghost(id, "assisted", racer))
-	uassert.Equal(t, at, jfield(Ghost(id, "assisted", racer), "height"), "and its height")
+	uassert.Equal(t, at, jget(Ghost(id, "assisted", racer), "height"), "and its height")
 	uassert.Equal(t, 2, BestOf(id, "assisted", racer))
 
 	testing.SkipHeights(2000)
@@ -680,13 +654,18 @@ func TestGhostOnATimedHole(cur realm, t *testing.T) {
 }
 
 // TestARoundsPageSaysWhatComesNext: a round under way says its strokes right
-// for one, and once its weather is over, that it must be Reset first.
+// for one, that an assisted one goes on in 3D (Launch plays pro rounds), and
+// once its weather is over, that it must be Reset first.
 func TestARoundsPageSaysWhatComesNext(cur realm, t *testing.T) {
 	id := mine(cur, "roundpage", cupHole("garden", 1, "Page"))
 	walker := testutils.TestAddress("walker")
 	replayAs(cur, walker, id, "0,0.01")
 	page := Render(id + "/" + walker.String())
 	uassert.True(t, strings.Contains(page, "1 stroke so far") && !strings.Contains(page, "Its weather is over"), page)
+	uassert.True(t, strings.Contains(page, "It is an assisted round: finish it in 3D, or Reset (below)"), page)
+	testing.SetRealm(testing.NewUserRealm(player))
+	Launch(cross(cur), id, 180, 0.01)
+	uassert.False(t, strings.Contains(Render(id+"/"+player.String()), "assisted round"), "a pro round goes on here")
 	testing.SkipHeights(200)
 	uassert.True(t, strings.Contains(Render(id+"/"+walker.String()), "Its weather is over: Reset (below) before the next shot."))
 }

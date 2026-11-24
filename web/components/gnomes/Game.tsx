@@ -26,7 +26,7 @@ export { skinOfTraits } from "@/lib/gnomes/skin";
 export { makeShop };
 
 /** What a player holds (their gnomes named from the catalogue, best first), what they wear for everyone, and their
- *  gnomes' skins known to the game (null: the wardrobe not fetched); their collector rank known on the way (ADR-011). */
+ *  gnomes' skins known to the game (null: the wardrobe not fetched); their collector rank known on the way. */
 export async function readHeld(chain: Chain, me: string) {
   const shop = makeShop(chain);
   const [rows, worn] = await Promise.all([shop.allOf(me), shop.worn(me).catch(() => null)]);

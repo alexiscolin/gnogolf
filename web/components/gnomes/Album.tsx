@@ -1,6 +1,6 @@
 "use client";
 
-// A player's album (ADR-011), in My gnomes and on a player's gnomes: how
+// A player's album, in My gnomes and on a player's gnomes: how
 // much of each world, each tier and each archetype's set they hold, a row
 // each, opening on its slots (a held gnome's face, a silhouette for each one
 // missing). Folded to one line under their team, opened by a tap: the
@@ -15,11 +15,10 @@ import type { Chain } from "@/lib/chain";
 import { ALBUM_WORDS, album, albumSummary, howRanks, rankLine, type Album as AlbumOf, type Progress } from "@/lib/gnomes/collection";
 import type { Served } from "@/lib/gnomes/served";
 import Collector from "./Rank";
-import { thumb } from "./parts";
+import { SHAPE, thumb } from "./parts";
 
 type Group = "worlds" | "tiers" | "sets";
-// an earned gnome's leaf (the tier chip's), and a gnome's outline for one missing
-const LEAF = <path d="M3 13C3 7 7 3 13 3c0 6-4 10-10 10z" />;
+// a gnome's outline, for one missing
 const SILHOUETTE = <path d="M20 3 11 19h18L20 3Zm0 14a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" />;
 
 export default function Album({ cat, owned, given = null, chain, player, mine, onOpen }: {
@@ -66,7 +65,7 @@ export default function Album({ cat, owned, given = null, chain, player, mine, o
                       <button type="button" className={`galbum__slot galbum__slot--${s.mine ? s.tier : "miss"}`} title={s.mine ? s.name : `${s.name}: ${ALBUM_WORDS.missing.toLowerCase()}`}
                         aria-label={s.mine ? s.name : `${s.name}, ${ALBUM_WORDS.missing.toLowerCase()}`} onClick={() => onOpen(s.unlock ?? String(s.id))}>
                         {!s.mine ? <svg viewBox="0 0 40 40" aria-hidden="true">{SILHOUETTE}</svg>
-                          : s.unlock ? <svg viewBox="0 0 16 16" aria-hidden="true">{LEAF}</svg>
+                          : s.unlock ? <svg viewBox="0 0 16 16" aria-hidden="true">{SHAPE.earned}</svg>
                           : <img src={thumb(s.id!)} alt="" width={40} height={40} loading="lazy" decoding="async" />}
                       </button>
                     </li>

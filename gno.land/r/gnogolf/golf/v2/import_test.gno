@@ -89,6 +89,23 @@ func TestTheMigrationCopiesV1sBoards(cur realm, t *testing.T) {
 	v1.PlayRound(cross(cur), from, "0.001,1") // finer than the game sends
 	uassert.False(t, importRecord(find(id), assisted, d.String(), as(v1.Ghost(from, "assisted", d)), 0), "left on v1")
 	uassert.Equal(t, 0, BestOf(id, "assisted", d))
+
+	// a copy sent here gives way to the player's own v1 record, worse or not
+	g, f := testutils.TestAddress("img"), testutils.TestAddress("imf")
+	giveName(cur, g, "img")
+	giveName(cur, f, "imf")
+	replayAs(cur, g, id, "0.37,0.01;0.41,0.01;0.29,1")
+	replayAs(cur, f, id, "0.40,0.02;0.38,0.01;0.31,1.01")
+	urequire.True(t, copiesOf(id, assisted).Has(f.String()), "a copy of g's record")
+	testing.SetRealm(testing.NewUserRealm(f))
+	v1.PlayRound(cross(cur), from, "0,0.01;0,0.01;0,0.01;0,1")
+	uassert.True(t, importRecord(find(id), assisted, f.String(), as(v1.Ghost(from, "assisted", f)), 0))
+	saved(cur)
+	uassert.False(t, copiesOf(id, assisted).Has(f.String()), "no longer a copy")
+	uassert.Equal(t, 4, BestOf(id, "assisted", f))
+	holes, _, _ = standingOf("assisted", f)
+	uassert.Equal(t, 1, holes, "counted once")
+	uassert.NotEqual(t, "0", holeRank(id, f), "and ranked")
 }
 
 // Only the owner imports, a hole only v1's current version of a course slot,
@@ -116,6 +133,12 @@ func TestTheMigrationsRefusals(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "is not v1's", func() { ImportRecord(cross(cur), id, "assisted", heir) }) // published here, not imported
 }
 
+// Where the migration is deployed, the hub's "Who can change what" says what
+// it lets the owner do.
+func TestTheHubSaysTheOwnerImports(t *testing.T) {
+	uassert.True(t, strings.Contains(Render(""), "onto its boards and the standings (ImportRecord)"))
+}
+
 // jget reads v1's JSON as v1 writes it (jstr): a string unescaped, a number,
 // an array's inside; jobject finds an object of a list by its id.
 func TestJgetReadsV1sJSON(t *testing.T) {
@@ -127,4 +150,3 @@ func TestJgetReadsV1sJSON(t *testing.T) {
 	uassert.Equal(t, "x", jget(jobject(j, "a/v10"), "note"))
 	uassert.Equal(t, "", jobject(j, "a/v2"))
 }
-

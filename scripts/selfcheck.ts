@@ -17,6 +17,11 @@ const { SKIES, UNLOCKS } = await import("../web/lib/card.ts");
 const { GNOMES } = await import("../web/lib/scene/gnome.ts");
 const { CLIMATES } = await import("../web/lib/sky.ts");
 const { KICK, KICKS, MAX_BOUNCE, MAX_MOVE, MAX_PAR, MIN_RAMP, MIN_SHOT_WORK, ROLL, SPEED_CAP, WEATHER } = await import("../web/lib/builder/rules.ts");
+const { MAX_NOTE, MAX_TITLE } = await import("../web/lib/builder/draft.ts");
+const { MAX_BYTES } = await import("../web/lib/builder/pipeline.ts");
+const { encode, PLAIN } = await import("../web/lib/gnomes/codec.ts");
+const { MAX_PLAYERS } = await import("../web/lib/gnomes/shop.ts");
+const { MAX_BATCH } = await import("../web/lib/gnomes/tx.ts");
 
 let failed = 0;
 function check(name: string, f: () => void) {
@@ -29,7 +34,7 @@ function check(name: string, f: () => void) {
   }
 }
 
-// ---------------------------------------------------------------- the realm
+// the realm
 const realmDir = new URL("../gno.land/r/gnogolf/golf/v2/", import.meta.url); // the rules the site plays
 const realm = (f: string) => fs.readFileSync(new URL(f, realmDir), "utf8");
 const golf = realm("golf.gno"), weather = realm("weather.gno");
@@ -70,7 +75,7 @@ check("realm calls", () => {
   const calls: [string, number, string][] = [];
   // reads: qeval(`Name(…)`) and vm(REALM, "Name(…)")
   for (const m of reads.matchAll(/(?:qeval\(`|vm\(REALM, ")([A-Z]\w*)\(/g)) calls.push([m[1], argsAt(reads, m.index + m[0].length), "chain.ts"]);
-  // and those inside an expression: qstr(REALM, `func() … BestOf(…) …`)
+  // and those inside an expression: qstr(REALM, `func() … bestOfPlayer(…) …`)
   // (a method, after a dot, is its type's; the expression's own funcs and Go's are not the realm's)
   const GO = new Set(["func", "string", "rune", "len", "int", "int64", "append", "make", "panic"]);
   for (const q of reads.matchAll(/qstr\(REALM, `([^`]*)`/g)) {
@@ -78,7 +83,7 @@ check("realm calls", () => {
     const own = new Set([...gno.matchAll(/\b(\w+(?:, \w+)*) :=/g)].flatMap((m) => m[1].split(", ")));
     for (const m of gno.matchAll(/(?<![.\w])([A-Za-z]\w*)\(/g)) if (!GO.has(m[1]) && !own.has(m[1])) calls.push([m[1], argsAt(gno, m.index + m[0].length), "chain.ts"]);
   }
-  assert.ok(calls.some(([name]) => name === "BestOf"), "bestsOf's BestOf not found: the patterns drifted");
+  assert.ok(calls.some(([name]) => name === "bestOfPlayer"), "bestsOf's bestOfPlayer not found: the patterns drifted");
   // writes: call("Name", [..]) and [realm, "Name", [..]]
   for (const m of writes.matchAll(/(?:call\("|\[realm, ")([A-Z]\w*)", \[/g)) calls.push([m[1], argsAt(writes, m.index + m[0].length), "adena.ts"]);
   assert.ok(calls.length > 20, `only ${calls.length} calls found: the patterns drifted`);
@@ -167,11 +172,11 @@ check("weather.gno period", () => {
   assert.ok(has(weather, "if period != now && period != now-1 {"), "playablePeriod: the periods a round saves in changed");
 });
 
-// ---------------------------------------------------------------- the gnomes realm
-// Every count is written once (ADR-007): the catalogue's data
-// (data/gnomes/series.json) and the realm's config.gno say the same supply,
-// prices and caps, every tier's (a Legendary is sold at a fixed price too);
-// the earned gnomes are UNLOCKS' and GNOMES'.
+// the gnomes realm
+// Every count is written once: the catalogue's data (data/gnomes/series.json)
+// and the realm's config.gno say the same supply, prices and caps, every
+// tier's (a Legendary is sold at a fixed price too); the earned gnomes are
+// UNLOCKS' and GNOMES'.
 const gnomesDir = new URL("../gno.land/r/gnogolf/gnomes/", import.meta.url);
 const gnomes = (f: string) => fs.readFileSync(new URL(f, gnomesDir), "utf8");
 /** A Go array literal of numbers, `name = [len(tiers)]int64{1, 2, 3}`, as numbers. */
@@ -196,11 +201,9 @@ interface SeriesFile {
     sale: { prices: Sale; lifetimeCaps: Sale; playerWindowCaps: Sale; playerWindowHours: number };
   }[];
 }
-const seriesFile = new URL("../data/gnomes/series.json", import.meta.url);
 check("gnomes config.gno: data/gnomes/series.json", () => {
-  if (!fs.existsSync(seriesFile)) return console.log("     (skipped: no data/gnomes/series.json in this checkout yet)");
   const config = gnomes("config.gno"), earned = gnomes("earned.gno");
-  const series = JSON.parse(fs.readFileSync(seriesFile, "utf8")) as SeriesFile;
+  const series = JSON.parse(fs.readFileSync(new URL("../data/gnomes/series.json", import.meta.url), "utf8")) as SeriesFile;
   const genesis = series.series.find((s) => s.id === "genesis");
   assert.ok(genesis, "no genesis in series.json");
   const TIERS = ["common", "rare", "epic", "legendary"] as const;
@@ -214,24 +217,23 @@ check("gnomes config.gno: data/gnomes/series.json", () => {
   assert.ok(sale.playerWindowHours <= constOf(config, "maxHours"), "maxHours");
   assert.equal(series.earned.first, constOf(earned, "firstEarned"), "earned.first: firstEarned");
 });
-// the designer's codec, once it is in this checkout
-const codecFile = new URL("../web/lib/gnomes/codec.ts", import.meta.url);
-/** What these checks use of the codec. */
-interface Codec { encode(t: object): string; PLAIN: object }
-const codec = fs.existsSync(codecFile) ? ((await import("../web/lib/gnomes/codec.ts")) as Codec) : null;
 check("gnomes earned.gno: UNLOCKS and GNOMES", () => {
   const earned = gnomes("earned.gno");
   const kinds = Object.keys(UNLOCKS);
   assert.deepEqual(stringsOf(earned, "earnedKinds"), kinds, "earnedKinds: UNLOCKS' order");
   assert.deepEqual(stringsOf(earned, "earnedNeeds"), kinds.map((k) => (UNLOCKS as Record<string, { need: string }>)[k].need), "earnedNeeds: UNLOCKS' need");
   assert.deepEqual(stringsOf(earned, "earnedNames"), kinds.map((k) => GNOMES.find((g) => g.unlock === k)?.name), "earnedNames: GNOMES' names");
-  if (!codec) return console.log("     (skipped the traits: no web/lib/gnomes/codec.ts in this checkout yet)");
   const m = /return "(010000)" \+ [^+]+\+ [^+]+\+ "([0-9a-f]+)"/.exec(earned);
   assert.ok(m, "earnedTraits not found");
   kinds.forEach((_, i) => {
     const k = (i + 1).toString(16).padStart(2, "0");
-    assert.equal(m[1] + k + m[2], codec.encode({ ...codec.PLAIN, accessories: [], tier: "earned", kind: i + 1 }), `earnedTraits(${i + 1}): codec.ts`);
+    assert.equal(m[1] + k + m[2], encode({ ...PLAIN, accessories: [], tier: "earned", kind: i + 1 }), `earnedTraits(${i + 1}): codec.ts`);
   });
+});
+// the most ids a Buy carries (tx.ts) and players a WornMany asks of (shop.ts, wear.ts)
+check("gnomes config.gno and equip.gno: the client's batches", () => {
+  assert.equal(MAX_BATCH, constOf(gnomes("config.gno"), "maxBatch"), "maxBatch: tx.ts MAX_BATCH");
+  assert.equal(MAX_PLAYERS, constOf(gnomes("equip.gno"), "maxPlayers"), "maxPlayers: shop.ts MAX_PLAYERS");
 });
 // the hole builder's palette (web/lib/builder/rules.ts): the skins that are
 // physics, and the bounce a passive piece plays at most, as step.gno has them
@@ -248,8 +250,13 @@ check("the physics the builder's palette is bound by", () => {
   for (const w of WEATHER) assert.ok(course.includes(`"${w}"`), `course: no weather skin "${w}"`);
   const data = fs.readFileSync(new URL("../gno.land/p/gnogolf/course/data.gno", import.meta.url), "utf8");
   assert.ok(has(data, `if h.Strokes > ${MAX_PAR} {`), "course.Decode: the most par changed");
-  const golf = fs.readFileSync(new URL("../gno.land/r/gnogolf/golf/golf.gno", import.meta.url), "utf8");
   assert.ok(has(golf, "const minShotWork = 4 * physics.MaxWork / 5") && MIN_SHOT_WORK === (4 * RULES.maxWork) / 5, "golf's minShotWork changed");
+});
+// the most a hole's name, its note and its data may be in the builder (draft.ts, pipeline.ts), as golf has them
+check("golf's name, note and data bounds: the builder's", () => {
+  assert.equal(MAX_TITLE, constOf(golf, "maxName"), "maxName: draft.ts MAX_TITLE");
+  assert.equal(MAX_NOTE, constOf(golf, "maxNote"), "maxNote: draft.ts MAX_NOTE");
+  assert.ok(has(realm("data.gno"), "const maxData = 32 << 10") && MAX_BYTES === 32 << 10, "maxData: pipeline.ts MAX_BYTES");
 });
 
 if (failed) {

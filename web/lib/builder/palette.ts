@@ -1,6 +1,6 @@
 // The hole builder's palette: what an author can place, world by world,
-// each piece drawn by the game's own code and bound to the physics it plays
-// (ADR-006). It is generated, not typed: an entry exists where a drawing meets
+// each piece drawn by the game's own code and bound to the physics it plays.
+// It is generated, not typed: an entry exists where a drawing meets
 // a binding. The drawings are the scene's own declarations (the shared
 // tables POSTS, BARS, MOUTHS, course.ts's and zones.ts's DRAWN, and each
 // world module's skins); the bindings are bindings.ts BINDINGS. A drawing that
@@ -13,15 +13,11 @@
 import { POSTS, BARS, MOUTHS } from "../scene/pieces";
 import { DRAWN as COURSE_DRAWN } from "../scene/course";
 import { DRAWN as ZONES_DRAWN } from "../scene/zones";
-import { WORLD_NAMES, loadWorld, worldOf, type Kind, type Skins } from "../scene/worlds";
-import { own } from "../own";
+import { loadWorld, worldOf, type Kind, type Skins } from "../scene/worlds";
 import { FIELD, notABuilderWorld } from "./rules";
-import { BINDINGS, KIND, type Binding, type Clock, type Range, type Shape } from "./bindings";
+import { BINDINGS, KIND, type Binding, type Clock, type Range } from "./bindings";
 
-export type { Kind };
-export type { Binding, Clock, Range, Shape };
-export { BINDINGS };
-export { WORLD_NAMES };
+export type { Clock, Range };
 /** Which of the scene's drawings draws it. */
 export type Draw = "POSTS" | "BARS" | "MOUTHS" | "course" | "zones" | "world";
 export interface PaletteEntry extends Binding {
@@ -108,7 +104,7 @@ function sharedDraw(kind: Kind, skin: string): Draw {
  * way kept once, as the world's; a shared one away from its HOME borrowed,
  * and the shore's left out where there is no sea.
  */
-export function paletteOf(world: string, own: Skins = {}, sea = false): PaletteEntry[] {
+function paletteOf(world: string, own: Skins = {}, sea = false): PaletteEntry[] {
   const out: PaletteEntry[] = [];
   const mine = new Set<string>();
   for (const [kind, skins] of Object.entries(own) as [Kind, readonly string[]][]) {
@@ -128,7 +124,7 @@ export function paletteOf(world: string, own: Skins = {}, sea = false): PaletteE
   return out;
 }
 
-/** The pieces a first hole needs, first in the palette and named plainly (the GUI spec's B3); the world's others under "More pieces" (a Bank among them: the green walls itself, Board's Paint, so a wall by hand is an inner bank). */
+/** The pieces a first hole needs, first in the palette and named plainly; the world's others under "More pieces" (a Bank among them: the green walls itself, Board's Paint, so a wall by hand is an inner bank). */
 export const COMMON = [["Bumper", "*/post/bumper"], ["Sand", "*/surface/sand"], ["Water", "*/hazard/water"], ["Slope", "*/slope/"]] as const;
 
 /** A palette's common pieces, in that order, each named plainly (those it has). */
@@ -145,5 +141,5 @@ export async function loadPalette(world: string): Promise<readonly PaletteEntry[
 
 /** The entry of a palette by its id ("island/post/palm"), undefined for none. */
 export function entry(id: string, palette: readonly PaletteEntry[]): PaletteEntry | undefined {
-  return own(Object.fromEntries(palette.map((e) => [e.id, e])), id);
+  return palette.find((e) => e.id === id);
 }

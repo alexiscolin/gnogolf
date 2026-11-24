@@ -35,7 +35,6 @@ export function simCalls<E extends SimExports>({ put, call: run, onStart }: Call
       data.set(id, hex);
       loaded.delete(id);
     },
-    has: (id: string) => data.has(id),
     /** SimulateFrom's answer. */
     from: (id: string, x: number, y: number, shot: string, stroke: number, period: number) =>
       onHole(id, (e) => {
@@ -54,3 +53,17 @@ export function makeHost(mod: WebAssembly.Module) {
   return calls;
 }
 export type Host = ReturnType<typeof makeHost>;
+
+/** What the page asks the worker (worker.ts): a hole's data kept, a SimulateFrom, a SimulateRoundAt, the wasm's sources. */
+export type Ask =
+  | { op: "load"; id: string; hex: string }
+  | { op: "from"; id: string; x: number; y: number; shot: string; stroke: number; period: number }
+  | { op: "round"; id: string; shots: string; period: number }
+  | { op: "sources" };
+
+/** The host's answer to an ask: the call's JSON string ("panic: …" for a refusal), "" for a load. */
+export const answer = (h: Host, m: Ask) =>
+  m.op === "load" ? (h.load(m.id, m.hex), "")
+  : m.op === "from" ? h.from(m.id, m.x, m.y, m.shot, m.stroke, m.period)
+  : m.op === "round" ? h.round(m.id, m.shots, m.period)
+  : JSON.stringify(h.sources());

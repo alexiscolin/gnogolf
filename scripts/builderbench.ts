@@ -1,7 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The 3D board's budget (the GUI spec's B3), measured in a headless Chrome
-// against a dev server with the Builder on, and enforced: it exits non-zero
-// past any of it.
+// The 3D board's budget, measured in a headless Chrome against a dev server
+// with the Builder on, and enforced: it exits non-zero past any of it.
 // - 60 fps at 1440×900 while the pointer sweeps the board (the scene drawing
 //   each frame), and 30 fps at least with the CPU four times slower
 //   (Emulation.setCPUThrottlingRate);
@@ -233,9 +232,9 @@ await settled(c, `window.__builds`, "the island's build", 800);
 const world = { ...offline, builtAgain: (await builds()) - islandBuilds - offline.built };
 
 // the player's view large (its sheet): its picture of the sheet canvas's own size, not the board's, stretched
-await c.js(`document.querySelector(".pview__pic").click()`);
 const e1 = await eyes();
-await waitFor(c, `document.querySelector(".pview__big") && (window.__eyes ?? 0) > ${e1 - 1}`, "the player's view large");
+await c.js(`document.querySelector(".pview__pic").click()`);
+await waitFor(c, `document.querySelector(".pview__big") && (window.__eyes ?? 0) > ${e1}`, "the player's view large");
 await settled(c, `window.__eyes`, "the large view painted", 600);
 const large = await c.js<{ css: number; px: number; dpr: number }>(`(() => { const e = document.querySelector(".pview__big canvas"); return { css: e.clientWidth, px: e.width, dpr: devicePixelRatio }; })()`);
 await c.js(`document.querySelector(".pview__big .sheet__close").click()`);

@@ -6,7 +6,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { host } from "./builder-fixture.ts";
-import { canPlace, ghostAt, middleOf } from "../lib/builder/edit.ts";
+import { canPlace, ghostAt } from "../lib/builder/edit.ts";
+import { middleOf } from "../lib/builder/handles.ts";
 import { loadPalette } from "../lib/builder/palette.ts";
 import { plainOf } from "../lib/builder/explain.ts";
 import { FIELD } from "../lib/builder/rules.ts";

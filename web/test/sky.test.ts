@@ -18,6 +18,7 @@ test("sky: a record's weather is the chain's, every world (the mines on the gard
 test("sky: every climate sums to 100, the unknown world falls back to the garden's", () => {
   for (const [w, t] of Object.entries(CLIMATES)) assert.equal(t.reduce((x, [p]) => x + p, 0), 100, w);
   assert.equal(skyOf("x/1/v1", "nowhere", 42), skyOf("x/1/v1", "garden", 42));
+  assert.equal(skyOf("x/1/v1", "constructor", 42), skyOf("x/1/v1", "garden", 42)); // (a world the chain allows, and a key every object has)
   // each kind of a world's climate shows up over enough periods
   for (const [w, t] of Object.entries(CLIMATES)) {
     const seen = new Set(Array.from({ length: 400 }, (_, i) => skyOf(`${w}/1/v1`, w, i)));

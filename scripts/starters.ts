@@ -10,10 +10,10 @@
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../scripts/starters.ts
 
 import fs from "node:fs";
-import type { Draft, Piece, V } from "../web/lib/builder/draft.ts";
+import type { Draft, V } from "../web/lib/builder/draft.ts";
 import type { PaletteEntry } from "../web/lib/builder/palette.ts";
 
-const { host } = await import("../web/test/builder-fixture.ts");
+const { host, PERIOD, rail } = await import("../web/test/builder-fixture.ts");
 await import("../web/test/scene-harness.ts");
 const { HOME, loadPalette } = await import("../web/lib/builder/palette.ts");
 const { placePiece } = await import("../web/lib/builder/edit.ts");
@@ -27,9 +27,8 @@ const { plan, holeRow } = await import("../web/lib/builder/testmode.ts");
 const { makeLocalChain } = await import("../web/lib/builder/localchain.ts");
 const { holing } = await import("../web/lib/builder/difficulty.ts");
 
-/** The test id's author (builder-templates.test.ts proves each starter under it) and the clock its weathers are found from. */
-const AUTHOR = "g1hvuayx9ll7dal54kr0f6t89j8867z8lf5vtxgv", NOW = 5967997;
-const rail = (id: string, a: V, b: V): Piece => ({ id, entry: "*/rail/", geometry: { t: "rail", a, b }, params: {}, clock: { k: "fixed" } });
+/** The test id's author (builder-templates.test.ts proves each starter under it). */
+const AUTHOR = "g1hvuayx9ll7dal54kr0f6t89j8867z8lf5vtxgv";
 const ring = (pts: V[]) => pts.map((p, i) => rail(`r${i + 1}`, p, pts[(i + 1) % pts.length]));
 
 function starters(world: string, palette: readonly PaletteEntry[]): Record<string, Draft> {
@@ -64,7 +63,7 @@ for (const world of Object.keys(FIELD)) {
     if (errors.length || !hex || !key) continue;
     host.load(id, hex);
     rounds[slug] = {};
-    for (const { kind, period } of plan(host, id, world, NOW)) {
+    for (const { kind, period } of plan(host, id, world, PERIOD)) {
       // a holing round by search (difficulty.ts holing: the best of a fan toward the cup each stroke, 8 strokes at most)
       const shots = await holing(host, id, d.tee, d.pin, period);
       const p = shots && (await replay(makeLocalChain(host, holeRow(id, d), hex, period), { key, id, kind, period, shots }));
@@ -85,7 +84,9 @@ import type { Draft } from "./draft";
 
 export const STARTERS: Readonly<Record<string, Readonly<Record<string, Draft>>>> = ${JSON.stringify(out, null, 1)};
 `;
-fs.writeFileSync(new URL("../web/lib/builder/starters.ts", import.meta.url), ts);
-fs.writeFileSync(new URL("../web/test/builder-starters.json", import.meta.url), JSON.stringify(rounds, null, 1) + "\n");
-console.log(`${Object.values(out).reduce((n, w) => n + Object.keys(w).length, 0)} starters, ${Object.values(rounds).reduce((n, r) => n + Object.keys(r).length, 0)} rounds${failed ? `, ${failed} failed` : ""}`);
+if (!failed) {
+  fs.writeFileSync(new URL("../web/lib/builder/starters.ts", import.meta.url), ts);
+  fs.writeFileSync(new URL("../web/test/builder-starters.json", import.meta.url), JSON.stringify(rounds, null, 1) + "\n");
+}
+console.log(`${Object.values(out).reduce((n, w) => n + Object.keys(w).length, 0)} starters, ${Object.values(rounds).reduce((n, r) => n + Object.keys(r).length, 0)} rounds${failed ? `, ${failed} failed: nothing written` : ""}`);
 process.exit(failed ? 1 : 0);

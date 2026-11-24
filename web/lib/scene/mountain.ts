@@ -7,14 +7,14 @@
 // the physics. Tall things stand behind and to the right, as in the garden.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { C, flat, drawn, rbox, lanternGlow, share, ownFade, fadeLoop, type FadeItem, geoOf, gridGeo } from "./materials";
+import { C, flat, drawn, rbox, lanternGlow, glowTex, share, ownFade, fadeLoop, type FadeItem, geoOf, gridGeo } from "./materials";
 import { animate, report, state } from "./state";
-import { inZone, mod, there, segDist, wallDist, smoothstep, boxOf, closest, terrain } from "../terrain";
+import { inZone, mod, onAt, untilOn, segDist, wallDist, smoothstep, boxOf, closest, terrain } from "../terrain";
 import { timeOf } from "./camera";
 import { hidesPlay } from "./sight";
 import { gnomelet, bunting, stone, smoke } from "./props";
 import { bakeLocal, look, weatherLooks, instances } from "./bake";
-import { seeded, lookSeed, ISLAND, GRASS, placer, onGround, tangentInto, dropOf, outlineOf, type Rand } from "./common";
+import { seeded, hashOf, lookSeed, ISLAND, GRASS, placer, onGround, tangentInto, dropOf, outlineOf, type Rand } from "./common";
 import { ud, type Hole, type Height } from "./data";
 import { GAP_Y, type Bar, type Skins } from "./worlds";
 import type { Terrain } from "../terrain";
@@ -60,8 +60,8 @@ function snowField(s: Hole) {
   const had = fields.get(s);
   if (had) return had;
   const W = s.board.w, H = s.board.h, t = terrain(s);
-  const walls = (s.walls || []).filter((w) => !w.every);
-  const open = (s.zones || []).filter((q) => q.skin === "cliff" || q.skin === "crevasse");
+  const walls = s.walls.filter((w) => !w.every);
+  const open = s.zones.filter((q) => q.skin === "cliff" || q.skin === "crevasse");
   const cracks = crevasses(s);
   // the nearest wall: its point, the way from it to (x, z), and whether
   // that side is the lane's — a probe 0.75 past it (no wall's cell reaches
@@ -127,8 +127,6 @@ function snowField(s: Hole) {
   return out;
 }
 
-// ---------------------------------------------------------------- the land
-
 /** The snow shelf, its cliff at the front, the valley far below, the peaks. */
 function base(s: Hole, box: THREE.Box3) {
   const g = new THREE.Group();
@@ -185,7 +183,7 @@ function base(s: Hole, box: THREE.Box3) {
     if (!hAt(i, j) && !hAt(i + 1, j) && !hAt(i, j + 1) && !hAt(i + 1, j + 1) && green(mx, mz)) return false;
     if (cracks.some(([a, b]) => mx > a && mx < b)) return false; // the gap
     // open wherever the board is (a cliff, a crack), so the drop is a drop
-    return !(s.zones || []).some((q) => (q.skin === "cliff" || q.skin === "crevasse") && inZone(q, mx, mz));
+    return !s.zones.some((q) => (q.skin === "cliff" || q.skin === "crevasse") && inZone(q, mx, mz));
   });
   // the chasm beyond the board, behind it and in front, down to the depth
   const ground = { height: (x: number, z: number) => GRASS + lift(x, z) };
@@ -202,15 +200,18 @@ function base(s: Hole, box: THREE.Box3) {
   // the cliff: a rock face dropping from the shelf's front edge, jagged, with
   // snow lying on its ledges
   const face: number[] = [], fi: number[] = [], steps = 60, drop = 16;
+  let last = -Infinity;
   for (let k = 0; k <= steps; k++) {
     let x = X0 + ((X1 - X0) * k) / steps;
     for (const [a, b] of cracks) if (x > a && x < b) x = x - a < b - x ? a : b; // the face stops at the crack
     const jag = Math.sin(k * 1.7) * 0.6 + Math.sin(k * 0.53) * 0.9;
     face.push(x, GRASS + 0.02, Z1, x + jag * 0.3, GRASS - drop * 0.45, Z1 + 1.2 + jag, x - jag * 0.2, GRASS - drop, Z1 + 2.5 + jag * 0.6);
-    if (k) for (let r = 0; r < 2; r++) {
+    // joined to the column before, unless the crack's mouth lies between them
+    if (k && !cracks.some(([a, b]) => last <= a && x >= b)) for (let r = 0; r < 2; r++) {
       const a = (k - 1) * 3 + r, b = k * 3 + r;
       fi.push(a, b, a + 1, a + 1, b, b + 1);
     }
+    last = x;
   }
   const fg = new THREE.BufferGeometry();
   fg.setAttribute("position", new THREE.Float32BufferAttribute(face, 3));
@@ -405,8 +406,6 @@ function edging(s: Hole) {
 function berms(s: Hole) {
   return { group: new THREE.Group(), height: snowField(s).h };
 }
-
-// ---------------------------------------------------------------- props
 
 /** A pine weighed down with snow: three tiers, snow on each. */
 function pine(rand: Rand, scale = 1) {
@@ -975,10 +974,8 @@ const FROST = share(new THREE.MeshPhongMaterial({ color: 0xf2fbff, emissive: 0xb
 
 /** Which canopy a hole gets: ice arches on some, leaning pines on others. */
 const canopyOf = (s: Hole) => {
-  if ((s.walls || []).some((w) => w.skin === "lift")) return "none"; // the lift lines are the lane's overhead
-  let h = 0;
-  for (const ch of String(s.hole)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return h % 2 ? "arches" : "pines";
+  if (s.walls.some((w) => w.skin === "lift")) return "none"; // the lift lines are the lane's overhead
+  return hashOf(String(s.hole)) % 2 ? "arches" : "pines";
 };
 
 /**
@@ -1014,7 +1011,7 @@ function canopy(s: Hole, rand: Rand) {
       }
       for (let k = 0; k < 3; k++) {
         const th = (0.2 + rand() * 0.6) * Math.PI;
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: undefined, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }));
         sp.scale.set(0.35, 0.35, 1);
         sp.position.set(Math.cos(th) * (r + 0.3), Math.sin(th) * (r + 0.3), 0.1);
         a.add(sp);
@@ -1107,8 +1104,6 @@ function archSpots(s: Hole) {
   return out;
 }
 
-// ------------------------------------------------------------------- decor
-
 function decor(s: Hole, bank: Height = () => 0) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
@@ -1119,9 +1114,10 @@ function decor(s: Hole, bank: Height = () => 0) {
 
   const { free, reserve } = placer();
   const onBoard = (x: number, z: number, r: number) => x > -0.8 - r && x < W + 0.8 + r && z > -0.8 - r && z < H + 0.8 + r;
-  const nearWall = (x: number, z: number, r: number) => (s.walls || []).some((w) => segDist(x, z, w.a, w.b) < r + 0.6);
+  const nearWall = (x: number, z: number, r: number) => s.walls.some((w) => segDist(x, z, w.a, w.b) < r + 0.6);
+  const fits = (x: number, z: number, r: number) => free(x, z, r) && !onBoard(x, z, r) && !nearWall(x, z, r) && z + r <= Z1 + CLIFF - 1; // not over the cliff
   const place = <T extends THREE.Object3D>(m: T, x: number, z: number, r: number, rot = 0) => {
-    if (!free(x, z, r) || onBoard(x, z, r) || nearWall(x, z, r) || z + r > Z1 + CLIFF - 1) return null; // not over the cliff
+    if (!fits(x, z, r)) return null;
     m.position.set(x, GRASS + bank(x, z) - 0.05, z);
     m.rotation.y = rot;
     g.add(m);
@@ -1150,8 +1146,9 @@ function decor(s: Hole, bank: Height = () => 0) {
   }
 
   // behind, big things: the chalet right of centre, the frozen fall at the
-  // back right, a forest of pines
-  place(chalet(night, true), X0 + (X1 - X0) * 0.72, -6.4, 2.8, -0.15) || place(chalet(night, true), X1 - 3.4, -6.4, 2.8);
+  // back right, a forest of pines. The chalet is built only for a spot that
+  // fits: its chimney's smoke rises wherever one was built.
+  for (const [x, rot] of [[X0 + (X1 - X0) * 0.72, -0.15], [X1 - 3.4, 0]]) if (fits(x, -6.4, 2.8)) { place(chalet(night, true), x, -6.4, 2.8, rot); break; }
   place(frozenFall(), X1 - 2.5, -8.5, 3.4, -0.3);
   for (let i = 0; i < Math.round((X1 - X0) / 2.2); i++) {
     const x = X0 + rand() * (X1 - X0), z = -3.6 - rand() * 6;
@@ -1238,7 +1235,7 @@ function decor(s: Hole, bank: Height = () => 0) {
   g.add(cableCar(W));
   g.add(bobsleigh(X0, X1, bank, reserve));
   // the ski lift (mountain8): a line of its own across the lane at each bar
-  if ((s.walls || []).some((w) => w.skin === "lift")) g.add(liftLines(s, night, reserve));
+  if (s.walls.some((w) => w.skin === "lift")) g.add(liftLines(s, night, reserve));
   g.add(eagles(W, H));
   g.add(snowfall(W, H));
   const over = canopy(s, rand);
@@ -1283,9 +1280,8 @@ const edgeInk = false;
 function extras(ex: Extras, s: Hole, t: Terrain) {
   const g = new THREE.Group();
   ud(g).live = true;
-  const height = (x: number, z: number) => (t && t.height ? t.height(x, z) : 0);
   // walls of the lane itself: the slide comes over the one nearest a bar's end
-  const walls = (s.walls || []).filter((w) => !w.every);
+  const walls = s.walls.filter((w) => !w.every);
   const toWall = (x: number, z: number) => wallDist(x, z, walls);
   // a bar (4 walls) or a box as: its centre line, the end at the lane's edge, the way out
   const pieceOf = (ends: readonly [Vec2, Vec2], thick: number): Slide => {
@@ -1295,20 +1291,14 @@ function extras(ex: Extras, s: Hole, t: Terrain) {
     return { a, b, out: [dx / l, dz / l], len: l, thick };
   };
   const bars: Slide[] = [];
-  const av = (ex.walls || []).filter((w) => w.skin === "avalanche");
+  const av = ex.walls.filter((w) => w.skin === "avalanche");
+  const len = (w: Wall) => Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]), mid = (w: Wall): Vec2 => [(w.a[0] + w.b[0]) / 2, (w.a[1] + w.b[1]) / 2];
   for (let k = 0; k + 3 < av.length; k += 4) {
-    // build.Bar: the long sides are walls 0 and 2; the centre line joins their midpoints' ends
-    const ws = av.slice(k, k + 4), pts = ws.flatMap((w) => [w.a, w.b]);
-    let best: Vec2[] = [pts[0], pts[1]], far = 0;
-    for (const p of pts) for (const q of pts) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d > far) (far = d), (best = [p, q]); }
-    const cx = pts.reduce((m, p) => m + p[0], 0) / pts.length, cz = pts.reduce((m, p) => m + p[1], 0) / pts.length;
-    // the axis: through the centre along the longest diagonal's direction
-    const dx = best[1][0] - best[0][0], dz = best[1][1] - best[0][1], l = Math.hypot(dx, dz) || 1;
-    const half = Math.max(...pts.map((p) => Math.abs((p[0] - cx) * dx / l + (p[1] - cz) * dz / l)));
-    const thick = Math.max(...pts.map((p) => Math.abs(-(p[0] - cx) * dz / l + (p[1] - cz) * dx / l))) * 2;
-    bars.push(pieceOf([[cx - (dx / l) * half, cz - (dz / l) * half], [cx + (dx / l) * half, cz + (dz / l) * half]], thick));
+    // build.Bar: its two short walls are its caps, as long as it is thick; the centre line joins their midpoints
+    const [c0, c1] = av.slice(k, k + 4).sort((p, q) => len(p) - len(q));
+    bars.push(pieceOf([mid(c0), mid(c1)], len(c0)));
   }
-  const warns = (ex.zones || []).filter((z) => z.skin === "avalanche-warn").map((z) => {
+  const warns = ex.zones.filter((z) => z.skin === "avalanche-warn").map((z) => {
     const { w, h, cx, cz } = boxOf(z);
     const along = w >= h;
     return pieceOf(along ? [[z.min[0], cz], [z.max[0], cz]] : [[cx, z.min[1]], [cx, z.max[1]]], along ? h : w);
@@ -1316,23 +1306,23 @@ function extras(ex: Extras, s: Hole, t: Terrain) {
 
   // the ground as drawn: the lane's own on the green, the world's snow off it
   const snow = snowField(s).h;
-  const ground = (x: number, z: number) => (t.onGreen && t.onGreen(x, z) ? height(x, z) : GRASS + snow(x, z));
-  const clear = (x: number, z: number, r: number) => toWall(x, z) > r && (s.posts || []).every((p) => Math.hypot(p.c[0] - x, p.c[1] - z) > p.r + r);
+  const ground = (x: number, z: number) => (t.onGreen(x, z) ? t.height(x, z) : GRASS + snow(x, z));
+  const clear = (x: number, z: number, r: number) => toWall(x, z) > r && s.posts.every((p) => Math.hypot(p.c[0] - x, p.c[1] - z) > p.r + r);
   // where the slide meets the lane: just past the kerb's outer face (its posts too)
   const offLane = (b: Slide) => {
     let d = 0;
-    while (d < 4 && t.onGreen && t.onGreen(b.a[0] + b.out[0] * d, b.a[1] + b.out[1] * d)) d += 0.1;
+    while (d < 4 && t.onGreen(b.a[0] + b.out[0] * d, b.a[1] + b.out[1] * d)) d += 0.1;
     return d + 0.75;
   };
   const downOf = (b: Slide) => {
     const cx = (b.a[0] + b.b[0]) / 2, cz = (b.a[1] + b.b[1]) / 2;
-    const sl = (s.zones || []).find((q) => q.kind === "slope" && !q.every && (q.vec[0] || q.vec[1]) && inZone(q, cx, cz));
+    const sl = s.zones.find((q) => q.kind === "slope" && !q.every && (q.vec[0] || q.vec[1]) && inZone(q, cx, cz));
     if (!sl) return 0;
     // across the bar: the normal to its axis, signed towards the push
     const nx = -b.out[1], nz = b.out[0], d = sl.vec[0] * nx + sl.vec[1] * nz;
     return Math.abs(d) < 1e-6 ? 0 : Math.sign(d);
   };
-  for (const b of bars) g.add(heap(b, height, ground, clear, offLane(b), downOf(b)));
+  for (const b of bars) g.add(heap(b, t.height, ground, clear, offLane(b), downOf(b)));
   for (const w of warns) g.add(warning(w, ground, offLane(w)));
   return { group: g, skins: new Set(["avalanche", "avalanche-warn"]) };
 }
@@ -1496,8 +1486,6 @@ function warning(w: Slide, ground: Height, start: number) {
   return g;
 }
 
-// --------------------------------------------------------- on-lane pieces
-//
 // What the mountain holes put on the lane, in the mountain's look, each on
 // its physics footprint: a post's circle, a bar's box, a zone's shape.
 // course.ts and zones.ts ask piece(kind, item, t, s) for every post, wall and
@@ -1511,13 +1499,12 @@ function warning(w: Slide, ground: Height, start: number) {
  */
 function overlay(z: Zone, t: Terrain, col: (x: number, z: number, h: number) => THREE.Color, bump: Height = () => 0, mat?: THREE.Material, lane = true, mask: ((x: number, z: number) => boolean) | null = null) {
   const [x0, z0] = z.min, [x1, z1] = z.max;
-  const onLane = (x: number, zz: number) => !t.onGreen || t.onGreen(x, zz);
   // clipped to the lane only where the zone runs past the rails (a kicker
   // across the whole board); a zone inside the lane keeps its own clean edge
   let crosses = !!mask && lane; // a masked skin (powder) is always kept to the lane
   if (lane && !crosses) for (let k = 0; k < 64 && !crosses; k++) {
     const x = x0 + ((k % 8) + 0.5) * (x1 - x0) / 8, zz = z0 + (Math.floor(k / 8) + 0.5) * (z1 - z0) / 8;
-    if (inZone(z, x, zz) && !onLane(x, zz)) crosses = true;
+    if (inZone(z, x, zz) && !t.onGreen(x, zz)) crosses = true;
   }
   const n = Math.max(8, Math.ceil((x1 - x0) / 0.35)), m = Math.max(8, Math.ceil((z1 - z0) / 0.35));
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, ax = (x1 - x0) / 2, az = (z1 - z0) / 2;
@@ -1539,7 +1526,7 @@ function overlay(z: Zone, t: Terrain, col: (x: number, z: number, h: number) => 
     if (!(keep[a] && keep[b] && keep[d] && keep[e])) return false;
     if (!crosses) return true;
     const qx = (pos[a * 3] + pos[e * 3]) / 2, qz = (pos[a * 3 + 2] + pos[e * 3 + 2]) / 2;
-    return onLane(qx, qz);
+    return t.onGreen(qx, qz);
   });
   return new THREE.Mesh(geo, mat || new THREE.MeshLambertMaterial({ vertexColors: true, emissive: 0xb8c8da, emissiveIntensity: 0.45, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
 }
@@ -1643,7 +1630,7 @@ const acrossBoard = (z: Pick<Zone, "min" | "max">, s: Hole) => z.min[1] <= 0.01 
 // (only a straight one that crosses the whole board runs on into the mountain; one inside
 // the lane, like mountain17's, stays the lane's; a round or polygon one never splits it, even from edge to edge: it is
 // drawn round its own outline, crevasseRim)
-const crevasses = (s: Hole) => (s.zones || []).filter((z) => z.skin === "crevasse" && dropOf(z) !== "rim" && acrossBoard(z, s)).map((z): [number, number] => [z.min[0], z.max[0]]);
+const crevasses = (s: Hole) => s.zones.filter((z) => z.skin === "crevasse" && dropOf(z) !== "rim" && acrossBoard(z, s)).map((z): [number, number] => [z.min[0], z.max[0]]);
 
 /** How a drop round its own outline looks (crevasseRim): its walls from the lip down, its floor, icicles under its lip. */
 type Rim = { lip: THREE.Color; foot: THREE.Color; floor: number; icicles: boolean };
@@ -1837,8 +1824,6 @@ function cliff(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ the lane lift
-//
 // mountain8: the chain has three timed bars across the lane, 4.5 apart, each
 // up 4 ticks in 12, in turn up the lane (0-4, 4-8, 8-12): one of them is
 // always up. The look is one chairlift along the lane's centre line, one way,
@@ -1867,31 +1852,31 @@ const LIFT_EASE = 0.3; // of a bar spacing: the working chair swings down over t
 const LIFT_SLOW = 0.55; // how much the pace eases over a bar (0: even, 1: a stop)
 const LIFT_SWAY = 0.08; // radians: how far a chair swings on its hanger as the pace eases and picks up
 
-/** The lift bars as lines across the lane: [{ x, z0, z1, every, on, phase }], by x. */
+/** The lift bars as lines across the lane: [{ x, z0, z1, every, phase }], by x. */
 function liftBars(walls: readonly Wall[]) {
-  const out: { x: number; z0: number; z1: number; every: number; on: number; phase: number }[] = [];
+  const out: { x: number; z0: number; z1: number; every: number; phase: number }[] = [];
   for (let i = 0; i + 3 < walls.length; i += 4) {
     const q = walls.slice(i, i + 4), xs = q.flatMap((w) => [w.a[0], w.b[0]]), zs = q.flatMap((w) => [w.a[1], w.b[1]]);
-    out.push({ x: (Math.min(...xs) + Math.max(...xs)) / 2, z0: Math.min(...zs), z1: Math.max(...zs), every: q[0].every ?? 0, on: q[0].on ?? 0, phase: q[0].phase ?? 0 });
+    out.push({ x: (Math.min(...xs) + Math.max(...xs)) / 2, z0: Math.min(...zs), z1: Math.max(...zs), every: q[0].every ?? 0, phase: q[0].phase ?? 0 });
   }
   return out.sort((a, b) => a.x - b.x);
 }
 
 /**
- * The lift's layout from the hole: the bars, their spacing D, the stations
+ * The lift's layout from the hole's bars: their spacing D, the stations
  * half a spacing outside the first and last bars (so three chairs D apart
  * fill the run), the gap between two windows P (every / bars), and the clock
  * time t0 when a working chair leaves the near station: the first bar's
  * window opening.
  */
 function liftPlan(s: Hole) {
-  const bars = liftBars((s.walls || []).filter((w) => w.skin === "lift"));
+  const bars = liftBars(s.walls.filter((w) => w.skin === "lift"));
   if (bars.length < 2) return null;
-  const n = bars.length, every = bars[0].every, on = bars[0].on, P = every / n;
+  const n = bars.length, every = bars[0].every, P = every / n;
   const D = (bars[n - 1].x - bars[0].x) / (n - 1);
   const zc = bars.reduce((a, b) => a + (b.z0 + b.z1) / 2, 0) / n, half = Math.max(...bars.map((b) => (b.z1 - b.z0) / 2));
   const t0 = mod(-bars[0].phase, every);
-  return { bars, n, every, on, P, D, zc, half, t0, xA: bars[0].x - D / 2, xB: bars[n - 1].x + D / 2, bench: 2 * half - 3 };
+  return { n, P, D, zc, half, t0, xA: bars[0].x - D / 2, xB: bars[n - 1].x + D / 2, bench: 2 * half - 3 };
 }
 
 /** The lane lift's layout (liftPlan). */
@@ -1908,12 +1893,12 @@ function liftTrain(L: LiftPlan, t: number) {
 }
 
 /**
- * The chairs out at tick t: [{ x, seat, working }], three of them. Chair j
+ * The chairs out at tick t: [{ x, seat, sway, fade }], three of them. Chair j
  * of the file is at xA + D·(g - j); it is out while that is within the run
  * (0..n spacings), and the ones with j ≡ 0 (mod n) are the working ones.
  */
 function liftChairs(L: LiftPlan, t: number) {
-  const g = liftTrain(L, t), out: { x: number; seat: number; working: boolean; j: number; sway: number; fade: number; onLane: boolean }[] = [];
+  const g = liftTrain(L, t), out: { x: number; seat: number; sway: number; fade: number }[] = [];
   // the chairs' swing on their hangers: forward as the train eases over a
   // bar, back as it picks up again (the train's deceleration, one curve)
   const sway = LIFT_SWAY * Math.sin((2 * Math.PI * (t - L.t0)) / L.P);
@@ -1926,7 +1911,7 @@ function liftChairs(L: LiftPlan, t: number) {
     // the working chair swings down inside the near shed and up inside the far one
     const down = working ? smoothstep((a + LIFT_EASE) / LIFT_EASE) * smoothstep((L.n + LIFT_EASE - a) / LIFT_EASE) : 0;
     const x = L.xA + L.D * a, high = cableY(L, x) - SEAT_HANG;
-    out.push({ x, seat: high + (SEAT_LOW - high) * down, working, j, sway, fade: smoothstep((a + Math.min(LIFT_FADE, inN)) / Math.min(LIFT_FADE, inN)) * smoothstep((L.n + Math.min(LIFT_FADE, inF) - a) / Math.min(LIFT_FADE, inF)), onLane: a >= 0 && a < L.n });
+    out.push({ x, seat: high + (SEAT_LOW - high) * down, sway, fade: smoothstep((a + Math.min(LIFT_FADE, inN)) / Math.min(LIFT_FADE, inN)) * smoothstep((L.n + Math.min(LIFT_FADE, inF) - a) / Math.min(LIFT_FADE, inF)) });
   }
   return out;
 }
@@ -2088,7 +2073,7 @@ const CANNON_FOOT: readonly (readonly [number, number])[] = Array.from({ length:
 /** Whether a thing standing at (x, z), facing to (a unit vector), keeps off the lane: no point of its footprint on
  *  the green, and its base (half-width base) on no wall. */
 function standsOff(t: Terrain, s: Hole, x: number, z: number, to: readonly [number, number], foot: readonly (readonly [number, number])[], base: number) {
-  return !s.walls.some((w) => segDist(x, z, w.a, w.b) < base) && foot.every(([a, b]) => !(!t.onGreen || t.onGreen(x + a * to[1] + b * to[0], z - a * to[0] + b * to[1])));
+  return !s.walls.some((w) => segDist(x, z, w.a, w.b) < base) && foot.every(([a, b]) => !t.onGreen(x + a * to[1] + b * to[0], z - a * to[0] + b * to[1]));
 }
 
 /**
@@ -2153,8 +2138,8 @@ function snowCannon(z: Zone, t: Terrain, s: Hole) {
   // the gust lane on the ground: where the zone crosses the lane (and no
   // drop is), chevrons pointing the push and streaks of blown snow — bright
   // while the gust is on, faint when it is off
-  const drops = (s.zones || []).filter((q) => q.kind === "hazard");
-  const safe = (x: number, zz: number) => (!t.onGreen || t.onGreen(x, zz)) && !drops.some((q) => inZone(q, x, zz));
+  const drops = s.zones.filter((q) => q.kind === "hazard");
+  const safe = (x: number, zz: number) => t.onGreen(x, zz) && !drops.some((q) => inZone(q, x, zz));
   const laneMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.2, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -6 });
   const chev = new THREE.Shape();
   chev.moveTo(-0.55, -0.25); chev.lineTo(0, 0.25); chev.lineTo(0.55, -0.25); chev.lineTo(0.55, 0.05); chev.lineTo(0, 0.55); chev.lineTo(-0.55, 0.05); chev.closePath();
@@ -2183,8 +2168,7 @@ function snowCannon(z: Zone, t: Terrain, s: Hole) {
   const streaks = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(streakPos, 3)), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.15, depthWrite: false }));
   g.add(streaks);
   let on = 0, target = 0;
-  const every = (z.every ?? 0) | 0, onFor = (z.on ?? 0) | 0, phase = (z.phase ?? 0) | 0;
-  state.timed.push({ at: (step) => (target = there(Math.floor(step), every, onFor, phase) ? 1 : 0.08) });
+  state.timed.push({ at: (step) => (target = onAt(z, Math.floor(step)) ? 1 : 0.08) });
   let last: number | null = null;
   animate((tt) => {
     const dt = last === null ? 0 : Math.min(0.1, tt - last);
@@ -2209,8 +2193,6 @@ function snowCannon(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------- the ice rink
-//
 // mountain13: gnomes on skates (posts that come and go stroke by stroke: the
 // pulse's pieces), the goalie padded out, and a goal net round the cup.
 
@@ -2272,15 +2254,13 @@ function goalNet(len: number, thick: number) {
   return g;
 }
 
-// ------------------------------------------------------------- the col
-//
 // mountain12: at the saddle, a cairn each side of the pass and prayer flags
 // strung over it, off the lane.
 function colCrest(z: Zone, t: Terrain) {
   const g = new THREE.Group();
   // the top edge of the climb (against its push), and the lane's two sides along it
   const x = z.vec[0] < 0 ? z.max[0] : z.min[0], mid = (z.min[1] + z.max[1]) / 2;
-  const on = (zz: number) => !t.onGreen || t.onGreen(x, zz);
+  const on = (zz: number) => t.onGreen(x, zz);
   let lo = mid, hi = mid;
   while (lo > z.min[1] && on(lo - 0.25)) lo -= 0.25;
   while (hi < z.max[1] && on(hi + 0.25)) hi += 0.25;
@@ -2309,8 +2289,6 @@ function colCrest(z: Zone, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------- the seracs
-//
 // mountain15: a serac leans over the traverse above each timed hazard, and
 // its ice comes down on the lane in the hazard's window of substeps — driven
 // by the timed pieces' clock (state.timed), so the blocks fall on screen when
@@ -2320,12 +2298,11 @@ function serac(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group();
   const [x0, z0] = z.min, [x1, z1] = z.max, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, ax = (x1 - x0) / 2, az = (z1 - z0) / 2;
   const rand = seeded("serac" + z.min.join());
-  const lane = (x: number, zz: number) => !t.onGreen || t.onGreen(x, zz);
   // the rubble, where the ice lands: always there, so the spot reads
   g.add(overlay(z, t, (x, zz) => new THREE.Color(0xdfeaf3).lerp(new THREE.Color(0xa9c4dc), 0.35 + 0.25 * Math.sin(x * 2.1 + zz * 1.7)), () => 0.01));
   for (let k = 0; k < 7; k++) {
     const x = cx + (rand() - 0.5) * ax * 1.4, zz = cz + (rand() - 0.5) * az * 1.4;
-    if (!inZone(z, x, zz) || !lane(x, zz)) continue;
+    if (!inZone(z, x, zz) || !t.onGreen(x, zz)) continue;
     const chip = new THREE.Mesh(new THREE.TetrahedronGeometry(0.12 + rand() * 0.08), ICE_SOLID);
     chip.position.set(x, t.height(x, zz) + 0.05, zz);
     chip.rotation.set(rand() * 3, rand() * 3, rand() * 3);
@@ -2381,22 +2358,19 @@ function serac(z: Zone, t: Terrain, s: Hole) {
   const blocks: { b: THREE.Group; x: number; zz: number; y: number; s: number; d: number; spin: number }[] = [];
   for (let k = 0; k < 9 && blocks.length < 6; k++) {
     const x = cx + (rand() - 0.5) * ax * 1.3, zz = cz + (rand() - 0.5) * az * 1.3, s = 0.45 + rand() * 0.35;
-    if (!inZone(z, x, zz) || !lane(x, zz)) continue;
+    if (!inZone(z, x, zz) || !t.onGreen(x, zz)) continue;
     const b = drawn(rbox(s, s * 0.8, s, 0.08), ICE_SOLID);
     ud(b).live = true;
     b.visible = false;
     g.add(b);
     blocks.push({ b, x, zz, y: t.height(x, zz) + s * 0.4, s, d: rand() * 0.05, spin: rand() * 3 });
   }
-  const every = (z.every ?? 0) | 0, onFor = (z.on ?? 0) | 0, phase = (z.phase ?? 0) | 0;
   let on = false, warn = 0, t0 = -1e9, t1 = -1e9, now = 0;
   state.timed.push({
     at: (step) => {
-      const k = mod(Math.floor(step) + phase, every);
-      const was = on;
-      on = !every || k < onFor;
-      // substeps to go before the next fall
-      const until = on ? 0 : every - k;
+      const tk = Math.floor(step), was = on;
+      on = onAt(z, tk);
+      const until = untilOn(z, tk); // substeps to go before the next fall
       warn = on ? 1 : until <= 3 ? 1 - (until - 1) / 3 : 0;
       if (on && !was) t0 = now;
       if (!on && was) t1 = now;
@@ -2469,25 +2443,24 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
       }
       return Math.min(1, Math.min(x - x0, x1 - x, zz - z0, z1 - zz) / 1.2);
     };
-    // scratches and cracks only where the ice is on the lane (a zone may reach past the rails)
-    const onLane = (x: number, zz: number) => !t.onGreen || t.onGreen(x, zz);
     const edge = new THREE.Color(0xeef8fd), mid = new THREE.Color(0x9fd6ee), deep = new THREE.Color(0x7cc3e4);
     g.add(overlay(zone, t, (x, zz) => edge.clone().lerp(mid, ex(x, zz)).lerp(deep, 0.35 * (0.5 + 0.5 * Math.sin(x * 0.6 + zz * 0.9)) * ex(x, zz)), () => 0.01,
       new THREE.MeshPhongMaterial({ vertexColors: true, emissive: 0x5aa8cc, emissiveIntensity: 0.28, shininess: 120, specular: 0xffffff, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 })));
+    // scratches and cracks only where the ice is on the lane (a zone may reach past the rails)
     const scratch: THREE.Vector3[] = [], crack: THREE.Vector3[] = [];
     const add = (arr: THREE.Vector3[], p: Vec2, q: Vec2, lift: number) => { for (const [a2, b2] of [p, q]) arr.push(new THREE.Vector3(a2, t.height(a2, b2) + lift, b2)); };
     for (let k = 0; k < Math.ceil(((x1 - x0) * (z1 - z0)) / 5); k++) {
       const x = x0 + rand() * (x1 - x0), zz = z0 + rand() * (z1 - z0), a = rand() * Math.PI, l = 0.6 + rand() * 1.4;
       const p: MutVec2 = [x - Math.cos(a) * l, zz - Math.sin(a) * l], q: MutVec2 = [x + Math.cos(a) * l, zz + Math.sin(a) * l];
-      if (inZone(zone, ...p) && inZone(zone, ...q) && ex(...p) > 0.3 && ex(...q) > 0.3 && onLane(...p) && onLane(...q)) add(scratch, p, q, 0.06);
+      if (inZone(zone, ...p) && inZone(zone, ...q) && ex(...p) > 0.3 && ex(...q) > 0.3 && t.onGreen(...p) && t.onGreen(...q)) add(scratch, p, q, 0.06);
     }
     // cracks: a few branching zigzags from a point
     for (let k = 0; k < Math.max(2, Math.round(((x1 - x0) * (z1 - z0)) / 30)); k++) {
       let x = x0 + (0.2 + rand() * 0.6) * (x1 - x0), zz = z0 + (0.2 + rand() * 0.6) * (z1 - z0), a = rand() * Math.PI * 2;
-      if (!onLane(x, zz)) continue;
+      if (!t.onGreen(x, zz)) continue;
       for (let m = 0; m < 5; m++) {
         const l = 0.4 + rand() * 0.6, nx = x + Math.cos(a) * l, nz = zz + Math.sin(a) * l;
-        if (!inZone(zone, nx, nz) || ex(nx, nz) < 0.2 || !onLane(nx, nz)) break;
+        if (!inZone(zone, nx, nz) || ex(nx, nz) < 0.2 || !t.onGreen(nx, nz)) break;
         add(crack, [x, zz], [nx, nz], 0.065);
         if (rand() < 0.4) add(crack, [nx, nz], [nx + Math.cos(a + 1.2) * 0.4, nz + Math.sin(a + 1.2) * 0.4], 0.065);
         (x = nx), (zz = nz), (a += (rand() - 0.5) * 1.4);
@@ -2496,7 +2469,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
     g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(scratch), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.75 })));
     g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(crack), new THREE.LineBasicMaterial({ color: 0x4f8fb4, transparent: true, opacity: 0.8 })));
     // a rink (a goal net on it): its markings, the red centre line and the circles
-    if ((s.walls || []).some((w) => w.skin === "net")) {
+    if (s.walls.some((w) => w.skin === "net")) {
       const y = t.height(cx, cz) + 0.07, mark = (pts: readonly Vec2[], color: number) => g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(([a, b]) => new THREE.Vector3(a, y, b))), new THREE.LineBasicMaterial({ color })));
       const ring = (x: number, zz: number, r: number) => Array.from({ length: 33 }, (_, k): Vec2 => [x + Math.cos((k / 32) * Math.PI * 2) * r, zz + Math.sin((k / 32) * Math.PI * 2) * r]);
       const H = (z1 - z0) / 2;
@@ -2556,7 +2529,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
         pos.push(x, t.height(x, zz) + hgt, zz);
         const c = col(x, zz).lerp(piste, 0.25 * (1 - k)).lerp(shade, 0.35 * Math.exp(-(((1 - rr) - 0.06) ** 2) / 0.002));
         cols.push(c.r, c.g, c.b);
-        keep.push(!t.onGreen || t.onGreen(x, zz));
+        keep.push(t.onGreen(x, zz));
       }
     const id = (r: number, q: number) => r * NT + (q % NT);
     for (let r = 0; r < NR; r++)
@@ -2578,7 +2551,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
     let m = 0;
     for (let k = 0; k < N * 3 && m < N; k++) {
       const x = x0 + rand() * (x1 - x0), zz = z0 + rand() * (z1 - z0);
-      if (Math.hypot((x - cx) / ax, (zz - cz) / az) > 0.6 || (t.onGreen && !t.onGreen(x, zz))) continue;
+      if (Math.hypot((x - cx) / ax, (zz - cz) / az) > 0.6 || !t.onGreen(x, zz)) continue;
       sp.set([x, hAt(x, zz) + 0.05, zz], m++ * 3);
     }
     const sparkle = new THREE.Points(new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(sp.subarray(0, m * 3), 3)), new THREE.PointsMaterial({ color: 0xffffff, size: 0.08, transparent: true, opacity: 0.4, depthWrite: false }));
@@ -2599,11 +2572,10 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
     if (skin === "kicker" || skin === "terrace") {
       // the lane's width along the lip, from its green cells: the lip and the
       // flags stay between the rails
-      const green = (x: number, zz: number) => !t.onGreen || t.onGreen(x, zz);
       let lo = Infinity, hi = -Infinity;
       for (let k = 0; k <= 80; k++) {
         const u = k / 80, x = along ? ex - ux * 0.3 : x0 + (x1 - x0) * u, zz = along ? z0 + (z1 - z0) * u : ez - uz * 0.3;
-        if (green(x, zz)) (lo = Math.min(lo, along ? zz : x)), (hi = Math.max(hi, along ? zz : x));
+        if (t.onGreen(x, zz)) (lo = Math.min(lo, along ? zz : x)), (hi = Math.max(hi, along ? zz : x));
       }
       if (!(hi > lo)) return g;
       const len = hi - lo - 0.8, mid = (lo + hi) / 2;
@@ -2655,7 +2627,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
     // the spine it blows over is snow like the rest of the lane (the shared
     // drawing would colour a slope green), and the cannon beside it
     const g = snowCannon(zone, t, s);
-    const drops = (s.zones || []).filter((q) => q.kind === "hazard");
+    const drops = s.zones.filter((q) => q.kind === "hazard");
     g.add(overlay(zone, t, (x) => new THREE.Color(Math.floor(x * 1.2) % 2 ? green[0] : green[1]), () => 0, undefined, true, (x, zz) => !drops.some((q) => inZone(q, x, zz))));
     return g;
   }
@@ -2665,4 +2637,4 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
 // (a piece's own fade gathered with the canopy's: the serac's tower)
 const pieceFade = true;
 
-export { base, edging, berms, decor, rough, kerb, green, edgeInk, extras, piece, skins, pieceFade, liftPlan, liftChairs };
+export { base, edging, berms, decor, rough, kerb, green, edgeInk, extras, piece, skins, pieceFade };

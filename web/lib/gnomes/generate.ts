@@ -2,7 +2,7 @@
 // Rares made from archetypes and their palettes, the Epics and Legendaries as
 // designed by hand, laid out on the series' plan. The same data and seed
 // give the same gnomes, id for id (scripts/gnomes.ts writes them out).
-import { seeded } from "../scene/common";
+import { seeded, shuffled } from "../scene/common";
 import { GNOMES } from "../scene/gnome";
 import { ACCESSORIES, ARCHETYPES, BEARDS, COLOURS, HATS, HOLINGS, HOMES, MATERIALS, PATTERNS, PIECES, PROPS, TIERS, TRAILS, colour,
   type Accessory, type Archetype, type Beard, type Hat, type Home, type Pattern, type Piece } from "./vocab";
@@ -41,15 +41,6 @@ export interface Design {
 }
 
 const c = (name: string | undefined) => (name ? colour(name) : null);
-/** The items in a random order of this seed. */
-function shuffled<T>(xs: readonly T[], rand: () => number) {
-  const a = [...xs];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
 /** Every way to pick at most one of each group. */
 const picks = (groups: Accessory[][]): Accessory[][] =>
   groups.reduce<Accessory[][]>((acc, g) => acc.flatMap((p) => [p, ...g.map((x) => [...p, x])]), [[]]);
@@ -153,7 +144,7 @@ function liner(rand: () => number, used: Set<string>) {
  */
 export function generateSeries(s: SeriesConfig, recipe: Recipe, epics: readonly Design[], legendaries: readonly Design[], gnomes: readonly Traits[], tris?: Triangles): Entry[] {
   const rand = seeded(s.seed), out: Entry[] = [], taken: Traits[] = [];
-  const name = namer(recipe, rand, new Set([...epics, ...legendaries].map((d) => d.name))), line = liner(rand, new Set());
+  const name = namer(recipe, rand, new Set([...epics, ...legendaries].map((d) => d.name))), line = liner(rand, new Set([...epics, ...legendaries].map((d) => d.line)));
   const designs = { epic: epics, legendary: legendaries };
   // the hand designs first: the generated ones keep away from them
   const hand = new Map<string, Traits[]>();

@@ -44,6 +44,7 @@ void test("withClock, withTiming: a clock its entry allows; a pulse made for the
   const pulsed = withClock(d, "b", "stroke", entry("*/bar/plank"));
   assert.deepEqual([pulsed.pieces[0].clock, pulsed.pulses], [{ k: "stroke", pulse: 0 }, [{ every: 3, on: 1, phase: 0 }]]);
   assert.equal(withClock(d, "b", "stroke", { ...entry("*/bar/plank"), clocks: ["fixed"] }), d, "a clock its entry does not take: nothing");
+  assert.deepEqual(withClock(pulsed, "b", "fixed", entry("*/bar/plank")).pulses, [], "always there again: the pulse it leaves empty gone");
   const t = withTiming(timed, "b", { every: 500, on: 900, phase: -3 });
   assert.deepEqual(t.pieces[0].clock, { k: "substep", every: TIMING.every.max, on: TIMING.every.max - 1, phase: 0 });
   const p = withTiming(pulsed, "b", { every: 4, on: 2, phase: 1 });

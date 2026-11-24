@@ -1,31 +1,28 @@
 "use client";
 
-// The shop's small pieces, one of each (the GUI spec's "Shared pieces"): a
-// tier's chip, a gnome's tile (his 3D portrait, or the chain's; an earned
-// one's leaf), his card in a grid (and a Legendary's to come, to look at), the
-// switch between the two looks, the closing date, the one share button. On
-// the game's own tokens (app/gnomes.css).
+// The shop's small pieces, one of each: a tier's chip, a gnome's tile (his 3D
+// portrait, or the chain's; an earned one's leaf), his card in a grid (and a
+// Legendary's to come, to look at), the switch between the two looks, the
+// closing date, the one share button. On the game's own tokens (app/gnomes.css).
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Chip, Segmented } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import { useCopied } from "@/components/common";
 import { retryIn } from "@/lib/retry";
 import { siteURL } from "@/lib/site";
-import { shareOrCopy } from "@/components/Share";
-import { TIER_LOOK, type Listed } from "@/lib/gnomes/catalogue";
+import { shareOrCopy, STROKE } from "@/components/Share";
+import type { Listed } from "@/lib/gnomes/catalogue";
 import type { Look, Portraits } from "@/lib/gnomes/onchain";
-import { gnot, utcDate, localDate, type SaleCard, type TierShare } from "@/lib/gnomes/shop";
-import type { Tier } from "@/lib/gnomes/vocab";
+import { gnot, tierName, utcDate, localDate, type SaleCard, type TierShare } from "@/lib/gnomes/shop";
 
-// a tier's shape, read in grey too: a disc, a diamond, a gem, a crown; a leaf for an earned one
-const SHAPE: Record<string, ReactNode> = {
+/** A tier's shape, read in grey too: a disc, a diamond, a gem, a crown; a leaf for an earned one (a collector's rank and the album draw them too). */
+export const SHAPE: Record<string, ReactNode> = {
   common: <circle cx="8" cy="8" r="5" />,
   rare: <path d="M8 2 14 8 8 14 2 8z" />,
   epic: <path d="M4 3h8l3 4-7 7-7-7z" />,
   legendary: <path d="M2 12 3 5l3 3 2-5 2 5 3-3 1 7z" />,
   earned: <path d="M3 13C3 7 7 3 13 3c0 6-4 10-10 10z" />,
 };
-export const tierName = (t: string) => (TIER_LOOK[t as Tier] || { label: t }).label;
 
 /** A tier's chip: its shape and its name, on its colour. */
 export const TierChip = ({ tier }: { tier: string }) => (
@@ -182,7 +179,7 @@ export function ShareOne({ text, link, label = "Share" }: { text: string; link: 
   const go = () => shareOrCopy(text, siteURL(link), copy);
   return (
     <Button size="s" type="button" className="gshare" onClick={go} aria-label={copied ? "Link copied" : label}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">{copied ? <path d="M5 12l5 5 9-10" /> : <path d="M12 3v12M7 8l5-5 5 5M5 13v6h14v-6" />}</svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">{copied ? <path d={STROKE.copied} /> : <path d={STROKE.share} />}</svg>
       <span aria-live="polite">{copied ? "Copied" : label}</span>
     </Button>
   );

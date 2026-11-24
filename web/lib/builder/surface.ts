@@ -13,7 +13,7 @@
 // narrowed too: no way of the green narrower than MIN_WIDE.
 import type { Issue } from "./checks";
 import { nextId, type Draft, type Piece, type Surface, type V } from "./draft";
-import { frame } from "./gg1";
+import { frame, r6 } from "./gg1";
 
 export type { Surface };
 /** The rail a painted side is walled with. */
@@ -49,8 +49,6 @@ export interface Green {
   sides: Side[];
 }
 
-/** To a millionth (a lattice's float noise kept out of the draft: every lattice point is made through it, add too). */
-export const r6 = (x: number) => +x.toFixed(6) + 0;
 const key = (v: V) => `${v[0]} ${v[1]}`;
 const add = (a: V, b: V, k = 1): V => [r6(a[0] + b[0] * k), r6(a[1] + b[1] * k)];
 const STEPS: readonly V[] = [[1, 0], [-1, 0], [0, 1], [0, -1]];

@@ -117,6 +117,12 @@ export function forgetBadges() {
   } catch {}
 }
 
+declare global {
+  interface Navigator {
+    // the Network Information API (Chromium): not in the DOM types
+    connection?: { saveData?: boolean; effectiveType?: string };
+  }
+}
 /** Stills and no clips on the cup cards: reduced motion, a data saver or a
  *  slow link, the Low graphics tier. */
 export function stillsOnly() {

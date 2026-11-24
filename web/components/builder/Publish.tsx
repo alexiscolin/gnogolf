@@ -1,33 +1,27 @@
 "use client";
 
-// The publish step (the GUI spec's B4; the hole-builder design's "The
-// publish flow"): the hole as players will see it (the editor's board), and the form (its right column): its name
-// (edited in the header, the one place) and its note as the chain will keep
-// them (builder.wasm's check, PublishMine's own cleaning, its link check
-// live), its address, the permanence said before anything else, the total
-// on the button and the bill under "What publishing costs" before any signature, then
-// Adena (or the gnokey command behind a tap), and the chain read until it
-// names the new version; published, the author's own score is the hole's
-// "Beat the builder" line (proof.ts builderScore). Before it opens, the chain is read (publishing open,
-// the Builder's checks the realm's own, no successor, the alias's versions)
-// and the hole judged once more as it will be published: the Builder's rules
-// and the census, the proofs replayed in their strokes, the par (publish.ts
-// holeHolds, publishSteps).
+// The publish step: the hole as players will see it (Preview.tsx) and the
+// form: its name and note as the chain will keep them, its address, the
+// permanence said before anything else, the bill before any signature, then
+// Adena (or the gnokey command behind a tap) and the chain read until it
+// names the new version. The chain is read first, and the hole judged once
+// more as it will be published (publish.ts holeHolds, publishSteps).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { shortAddr, useCopied } from "@/components/common";
+import { messageOf, shortAddr, useCopied } from "@/components/common";
 import { Button, InfoTip } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import Share from "@/components/Share";
 import { aboutGnot, connect, hasAdena, publishHole, PRICE } from "@/lib/adena";
-import { BYTE_PRICE, makeChain, wait } from "@/lib/chain";
+import { BYTE_PRICE, landed, makeChain } from "@/lib/chain";
 import { keepOwn } from "@/lib/community";
 import { explain } from "@/lib/builder/explain";
 import { endpoints, playLink } from "@/lib/builder/holes";
 import { bill, finalHex, gasFor, gnokeyPublish, holeHolds, parLine, publishSteps, type Readings } from "@/lib/builder/publish";
 import { census } from "@/lib/builder/drawn";
+import { reducedMotion } from "@/lib/device";
 import { loadPalette } from "@/lib/builder/palette";
 import { builderScore, proofKey, provedAt, shaOf } from "@/lib/builder/proof";
-import { holeId, holeRow, slugOf } from "@/lib/builder/testmode";
+import { holeId, holeRow, slugOf, versionOf } from "@/lib/builder/testmode";
 import { ISSUES } from "@/lib/site";
 import { loadTakedown, takenDown } from "@/lib/takedown";
 import { sameSources } from "@/lib/sim/sources";
@@ -36,17 +30,14 @@ import type { BuilderHost, Cost } from "@/lib/builder/wasm";
 import type { Hole } from "@/lib/scene/data";
 import Preview from "./Preview";
 import { beatLine, cardLines, holeShare, saveFile as download, shareCard } from "./share";
-import { MAX_NOTE } from "@/lib/builder/draft";
+import { MAX_NOTE, MAX_TITLE } from "@/lib/builder/draft";
 import { worldName } from "@/lib/builder/rules";
-
-/** How long the chain is read for the new version after a signature (it lands within a few blocks). */
-const LAND_MS = 90_000;
 
 export default function Publish({ host, draft, author, next, onDraft, onRetest, onReaddress, onBuild, onDone }: {
   host: BuilderHost;
   draft: Draft;
   author: string;
-  /** the id the editor found it proved under (testmode.ts nextId: the alias's next version as it read it) */
+  /** the id the editor found it proved under (testmode.ts nextHoleId: the alias's next version as it read it) */
   next: string;
   /** the name or the note changed: kept in the draft (neither moves a ball) */
   onDraft: (d: Draft) => void;
@@ -113,16 +104,21 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
       : "The rounds that proved it no longer play out the same on its final data: play it again.";
     if (!hex || !key || !proved) return setReadings((r) => ({ ...r, hole: key && !proved ? untested : undefined }));
     setReadings((r) => ({ ...r, hole: undefined }));
-    const judged = loadPalette(draft.world).then((palette) => holeHolds({ ...draft, title: name }, hex, key, proved, { host, palette, census }));
-    void Promise.all([judged, shaOf(hex)]).then(([hole, s]) => {
-      if (!live.current) return;
-      setReadings((r) => ({ ...r, hole }));
-      setSha(s);
-    }, (e: unknown) => live.current && setReadings((r) => ({ ...r, hole: e instanceof Error ? e.message : String(e) })));
+    // (judged once the typing stops, each judging replaying every round; one overtaken by a newer dropped)
+    let stale = false;
+    const t = setTimeout(() => {
+      const judged = loadPalette(draft.world).then((palette) => holeHolds({ ...draft, title: name }, hex, key, proved, { host, palette, census }));
+      void Promise.all([judged, shaOf(hex)]).then(([hole, s]) => {
+        if (stale) return;
+        setReadings((r) => ({ ...r, hole }));
+        setSha(s);
+      }, (e: unknown) => !stale && setReadings((r) => ({ ...r, hole: messageOf(e) })));
+    }, 300);
+    return () => ((stale = true), clearTimeout(t));
   }, [hex, key, proved, draft, host, name]);
 
   const id = readings.versions ? holeId(author, draft.slug, readings.versions) : "";
-  const v = Number(id.slice(id.lastIndexOf("/v") + 2)) || 1;
+  const v = versionOf(id) || 1;
   const sizes = { bytes: cost?.bytes ?? hex.length / 2, name, note, v, newAuthor: true };
   const b = bill({ ...sizes, gasPrice: prices.gas, bytePrice: prices.byte });
   const gas = gasFor(sizes), deposit = b.deposit;
@@ -133,11 +129,10 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
     setSent("landing");
     // (sent: Adena's answer, or gnokey's "I ran it": this browser may play its version before its author holds a best on
     // it, lib/community.ts keepOwn; its alias, the link it is shared by, only once the chain names it: never one a
-    // transaction that failed would let this browser play before its author holds it)
-    await keepOwn(chain, id);
-    for (const t0 = Date.now(); Date.now() - t0 < LAND_MS && live.current; await wait(3000)) {
-      if ((await chain.current(alias).catch(() => "")) === id) return (await keepOwn(chain, id, true), setSent("done"), onDone(id));
-    }
+    // transaction that failed would let this browser play before its author holds it. A node not answering marks
+    // nothing: the transaction is sent all the same)
+    await keepOwn(chain, id).catch(() => {});
+    if (await landed(async () => (await chain.current(alias).catch(() => "")) === id, () => live.current)) return (await keepOwn(chain, id, true).catch(() => {}), setSent("done"), onDone(id));
     if (live.current) (setSent(""), setWhy("The chain does not show it yet. If you signed, give it a minute and look again."));
   };
   const adena = async () => {
@@ -150,7 +145,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
       await land();
     } catch (e) {
       setSent("");
-      setWhy(e instanceof Error ? e.message : String(e));
+      setWhy(messageOf(e));
     }
   };
   const command = gnokeyPublish({ realm: chain.realm, slug: draft.slug, hex, note, gas, price: prices.gas, deposit, chainId, rpc, author });
@@ -172,7 +167,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
     return (
       <main className="pub pub--done">
         <section className="pub__hole" aria-label="Your hole">
-          <Preview state={state} fresh capture={capture} />
+          <Preview state={state} capture={capture} />
           <div className="pub__card"><b>{lines[0]}</b><small>{lines[1]}</small></div>
         </section>
         <section className="col pub__doneform">
@@ -190,12 +185,12 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
   // no Adena: the footer's way to gnokey, its section (above it, in the form's scroll) opened and brought into view
   const toGnokey = () => {
     const d = gnokey.current;
-    if (d) (d.open = true, d.scrollIntoView({ block: "nearest", behavior: "smooth" }), d.querySelector("summary")?.focus({ preventScroll: true }));
+    if (d) (d.open = true, d.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" }), d.querySelector("summary")?.focus({ preventScroll: true }));
   };
   return (
     <main className="pub">
       <section className="pub__hole" aria-label="The hole as players will see it">
-        <Preview state={state} fresh />
+        <Preview state={state} />
       </section>
       <section className="col pub__form" aria-labelledby="pub-head">
         <h2 className="col__head" id="pub-head">Publish on gno.land</h2>
@@ -205,7 +200,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
           <label className="pub__field">
             <span className="h-sub">Name</span>
             <small>{name !== draft.title ? `Kept as: ${name || "–"}` : "Shown on the course and in the holes' lists."}</small>
-            <input value={draft.title} maxLength={40} placeholder="Name your hole" aria-invalid={step.at === "name"} disabled={!!sent} onChange={(e) => onDraft({ ...draft, title: e.target.value })} />
+            <input value={draft.title} maxLength={MAX_TITLE} placeholder="Name your hole" aria-invalid={step.at === "name"} disabled={!!sent} onChange={(e) => onDraft({ ...draft, title: e.target.value })} />
           </label>
           {/* what is read, not typed: its world, the par explained by the rounds that proved it, its address */}
           <div className="pub__field">
@@ -247,7 +242,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
                 <p className="pub__small">Run it where gnokey holds the key of {author}: the hole was proved under that address.</p>
                 <pre>{command}</pre>
                 <div className="pub__row">
-                  <Button onClick={() => void copy(command)}>{copied ? "Copied" : "Copy the command"}</Button>
+                  <Button onClick={() => void copy(command)}><span aria-live="polite">{copied ? "Copied" : "Copy the command"}</span></Button>
                   <Button onClick={() => void land()} disabled={!!sent}>I ran it</Button>
                 </div>
               </>

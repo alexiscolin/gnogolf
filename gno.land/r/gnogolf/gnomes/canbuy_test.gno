@@ -65,7 +65,7 @@ func TestCanBuyAndBuyNeverDisagree(cur realm, t *testing.T) {
 			func() { mintTo(bob, mustGnome(1)) }},
 		{"closed", "the genesis sale closed on " + dateOf(now()), alice, func() string { return "1" },
 			func() { closeAt = now() }},
-		{"players-only", "players only until " + itoa(now()+48*3600) + ": finish a hole first", bob,
+		{"players-only", "players only until " + dateOf(now()+48*3600) + ": finish a hole first", bob,
 			func() string { return "1" }, func() { windowOf(now(), 48) }},
 		{"window-cap", "the player window takes 3 common a wallet", player,
 			func() string { return idsOf(0, 4) }, func() { windowOf(now(), 48) }},

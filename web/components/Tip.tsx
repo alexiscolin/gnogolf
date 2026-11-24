@@ -85,7 +85,7 @@ export default function Tip({ chain, me, chainId, price, onConnect, bare = false
             web={<>A send has no form on gno.land: any wallet can send to <a href={chain.userURL(owner)} target="_blank" rel="noopener noreferrer">the owner&apos;s address ↗</a>.</>} />
         </>
       )}
-      {said && <p className={"note " + (said.good ? "note--good" : "note--bad")}>{said.text}</p>}
+      {said && <p className={"note " + (said.good ? "note--good" : "note--bad")} role={said.good ? "status" : "alert"}>{said.text}</p>}
     </section>
   );
 }

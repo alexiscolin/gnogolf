@@ -1,10 +1,12 @@
-// The game's name on what leaves the page (ADR-003): the shared picture and
+// The game's name on what leaves the page: the shared picture and
 // the shot clip carry the badge, the name and the site's address on a card at
 // the bottom, and the clip ends on a card of its own that asks for a go. Drawn
 // on a 2D canvas in the page's own colours and font (Fredoka, once loaded).
 import { siteHost } from "./site";
 
-const INK = "#144134", INK_SOFT = "#4f7a6c", GREEN = "#226c57", PAPER = "#fdf6e9", HAT = "#e0524b";
+/** The page's ink, green and paper, for what is drawn on a canvas (the cards, the clip, the Builder's card). */
+export const INK = "#144134", GREEN = "#226c57", PAPER = "#fdf6e9";
+const INK_SOFT = "#4f7a6c", HAT = "#e0524b";
 /** The site's font stack, for text drawn on a canvas (the cards, the clip, the mines' signs). */
 export const FONT = "Fredoka, ui-rounded, system-ui, sans-serif";
 
@@ -58,9 +60,11 @@ export function drawCard(x: CanvasRenderingContext2D, W: number, H: number, { ey
   x.fillStyle = INK;
   x.font = `700 44px ${FONT}`;
   x.fillText("Gnogolf", left, -84);
+  const name = x.measureText("Gnogolf").width, host = siteHost();
   x.font = `600 26px ${FONT}`;
   x.fillStyle = HAT;
-  x.fillText(siteHost(), left, -50);
+  x.fillText(host, left, -50);
+  const end = left + Math.max(name, x.measureText(host).width) + 24;
   x.textAlign = "right";
   x.fillStyle = INK_SOFT;
   x.font = `700 22px ${FONT}`;
@@ -70,7 +74,7 @@ export function drawCard(x: CanvasRenderingContext2D, W: number, H: number, { ey
   x.fillText(score, w - 64, -52);
   const room = x.measureText(score).width + 24;
   x.fillStyle = INK;
-  x.fillText(title, w - 64 - room, -52);
+  x.fillText(title, w - 64 - room, -52, w - 64 - room - end); // (a long name squeezed, short of the left block)
   x.restore();
 }
 

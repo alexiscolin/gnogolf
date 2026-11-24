@@ -64,7 +64,6 @@ export function makeBuilderHost(mod: WebAssembly.Module) {
   const onHole = sim.onHole;
   return {
     load: sim.load,
-    has: sim.has,
     from: sim.from,
     round: sim.round,
     /** The clock the realm's Period reads: a test is played in that period's weather and none past it. */

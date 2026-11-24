@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # try-local.sh: the whole game on this machine, to try by hand, from this
 # machine or another one on the tailnet: a local chain with the game, the
-# gnome shop and the Builder on it, throwaway wallets, and the site's dev
-# server. Ctrl+C stops everything. docs/try-local.md says what to try.
+# gnome shop and the Builder on it, throwaway wallets, and the site built as
+# the real one is. Ctrl+C stops everything.
 #
 #   scripts/try-local.sh          start it all (a new chain each time)
 #   scripts/try-local.sh close [days]  set the genesis's closing date, or bring it forward, to days
@@ -150,7 +150,7 @@ fi
 RPC_PORT=${RPC_PORT:-26667} GNOWEB_PORT=${GNOWEB_PORT:-8868}
 CHAINID=${CHAINID:-gnogolf-local}
 NS=${NS:-nym-trylocal000}
-[ -x "$GNOKEY" ] && [ -x "$toolchain/gnodev" ] || die "no onyx toolchain in $toolchain (the README, \"Running it locally\"), or set GNO_TOOLCHAIN"
+[ -x "$GNOKEY" ] && [ -x "$toolchain/gnodev" ] || die "no onyx toolchain in $toolchain (the README, \"Run it\"), or set GNO_TOOLCHAIN"
 [ -d "$root/web/node_modules" ] || die "the client's packages are not installed: (cd web && npm ci)"
 for p in "$APP_PORT" "$RPC_PORT" "$GNOWEB_PORT"; do
 	! taken "$p" || die "port $p is taken (another gnodev or dev server?): stop it, or set APP_PORT, RPC_PORT, GNOWEB_PORT"
@@ -168,6 +168,7 @@ WORK=${WORK:-$(mktemp -d "$cache/run.XXXXXX")}
 # Ctrl+C (or any end): the Serve entries, the site, then the chain, each with what it started
 DEV_PID="" APP_PID="" SERVED=""
 stop() {
+	local rc=$?
 	trap - INT TERM EXIT
 	log ""
 	log "try-local: stopping"
@@ -176,12 +177,13 @@ stop() {
 	wait 2>/dev/null
 	rm -f "$last" "$WORK/app.pid" "$WORK/dev.pid"
 	log "try-local: stopped (its files stay in $WORK)"
-	exit 0
+	exit "$rc"
 }
-trap stop INT TERM EXIT
+trap stop EXIT
+trap 'exit 130' INT TERM
 echo "$WORK" >"$last"
 
-# ------------------------------------------------------------------ the chain
+# the chain
 # the two wallets a person imports: made here, handed to the seed in its
 # environment, never written down (the others stay the seed's own)
 MNEMONIC_p1=$("$GNOKEY" generate 2>/dev/null | tail -1) MNEMONIC_p0=$("$GNOKEY" generate 2>/dev/null | tail -1)
@@ -191,12 +193,12 @@ MNEMONIC_p1=$MNEMONIC_p1 MNEMONIC_p0=$MNEMONIC_p0 \
 	SEED=1 SEED_WORLDS="garden island town mountain mines" SEED_PUBLISHING=1 SEED_TREASURY=1 NS=$NS CHAINID=$CHAINID WORK=$WORK \
 	RPC_ADDR=127.0.0.1:$RPC_PORT WEB_ADDR=127.0.0.1:$GNOWEB_PORT \
 	bash "$root/scripts/e2e-gnomes.sh" >"$WORK/seed.out" 2>"$WORK/seed.log" ||
-	{ DEV_PID=$(sed -n 's/^DEV_PID=//p' "$WORK/seed.env" 2>/dev/null); tail -5 "$WORK/seed.log" >&2; die "the seed failed (its steps: $WORK/e2e.md)"; }
+	{ tail -5 "$WORK/seed.log" >&2; die "the seed failed (its steps: $WORK/e2e.md)"; }
 # shellcheck disable=SC1091
 . "$WORK/seed.env"
 echo "$DEV_PID" >"$WORK/dev.pid"
 
-# ------------------------------------------------------------------ the site
+# the site
 WALLET_RPC=http://127.0.0.1:$RPC_PORT WEB_URL=http://127.0.0.1:$GNOWEB_PORT
 # the site as the real one is built, the playground's settings in it; served from WORK
 start_app() {
@@ -210,7 +212,7 @@ start_app() {
 # the Serve entries first (the wallet's RPC and gnoweb are the client's settings), then the site
 APP_HTTPS="" APP_TCP=""
 if [ -n "$TS_NAME" ]; then
-	SERVED=1 # (before: what a failing `up` opened is recorded, and removed on exit all the same)
+	SERVED=1 # (set first: what a failing `up` opened is removed on exit all the same)
 	out=$("$PREVIEW" up "$NAME" "$APP_PORT" "$RPC_PORT:-" "$GNOWEB_PORT:-") || die "tailnet-preview refused: $out"
 	APP_HTTPS=$(printf '%s\n' "$out" | sed -n "s#^ *\(https://[^ ]*\) *-> *127.0.0.1:$APP_PORT\$#\1#p")
 	APP_TCP=$(printf '%s\n' "$out" | sed -n "s#^ *\(http://[^ ]*\) *-> *127.0.0.1:$APP_PORT .*#\1#p")
@@ -234,7 +236,7 @@ for u in "http://127.0.0.1:$APP_PORT" ${APP_TCP:+"$APP_TCP"} ${APP_HTTPS:+"$APP_
 done
 [ -z "$TS_NAME" ] || [ "$(check "$WALLET_RPC/status")" = 200 ] || log "try-local: warning: the wallet's RPC $WALLET_RPC does not answer"
 
-# ------------------------------------------------------------------ the guide
+# the guide
 cat <<EOF
 
 ================================================================ Gnogolf, local
@@ -278,7 +280,7 @@ else printf '  Open  http://127.0.0.1:%s/   (this machine)' "$APP_PORT"; fi)
        Duel: race a player's ghost, their gnome on the boards and as the ghost.
     4. The region gate: add ?geo=blocked to the gnomes' page (/g/?geo=blocked).
     5. The Builder: the "Builder" card on a computer (a phone gets the
-       community holes to play): the three hints (again with "?"), make a hole,
+       community holes to play): the four hints (again with "?"), make a hole,
        Play it (hole it in each weather), Publish.
     6. Find it: Solo, the cups screen's "Community holes", under the cups.
   A closing date for the genesis (or a nearer one):  scripts/try-local.sh close [days]

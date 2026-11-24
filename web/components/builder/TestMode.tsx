@@ -1,39 +1,17 @@
 "use client";
 
-// Play (the GUI spec's B3; the hole-builder design's "Test mode and par"),
-// over the editor: the game itself (lib/engine, as the page plays a hole) on
-// the draft's hole, served by builder.wasm at one clock (localchain.ts), in
-// one period of each weather that moves the ball. With the author's address
-// known, every round is a try at the next weather not holed: when the ball
-// drops, the round is replayed as its save would be cut (proof.ts replay):
-// that, not the live play, is the proof. The hole's id is fixed first (the
-// author's address, the slug, the next version): its weather hangs on it.
-// It opens on the first weather not holed (the others holed already, their
-// rounds replayed by the editor: carry.ts), named by a title card a moment
-// ("Round 1 of 3: Clear"); each one holed, its shots are replayed in the
-// weathers left (carry.ts holdsToo: one it holes in is proved by that
-// replay, not played), its chip stamped and the next starts on its own
-// under its title card; a chip pressed plays that weather next. The last
-// ends on one card, the game's hole-finished card, with each weather's
-// strokes and time and Publish (testmode.ts summary); a round that does not
-// count gets that card with why (finished). Without an address, it is asked
-// once on the start card as Play opens (Adena's, or one pasted), or put by
-// for a try: a round in calm weather under an id of its own (TRY_HOLE), the
-// address asked once it is holed, then replayed under the author's id in each
-// weather (carry.ts holdsIn), proved in each it holes in (tried): practice
-// counts. Its HUD is the game's own
-// (Golf.tsx): the strokes card with the par and the time in play, the
-// weather card, the weathers to hole beside them. In play R or Backspace
-// plays again from the tee, V swaps the overview camera, Escape goes back
-// to Build. With it, the hole's address is checked before round 1: one
-// another hole of the author's holds already (one this draft did not come
-// from: testmode.ts cameFrom), or one Publish could not use (taken down,
-// refused), is changed on the start card first (the next free one a click
-// away), its rounds under the old one said not to count; a real new version
-// is said so.
+// Play, over the editor: the game itself (lib/engine) on the draft's hole,
+// served by builder.wasm at one clock (localchain.ts), in one period of each
+// weather that moves the ball. With the author's address known, each round
+// is a try at the next weather not holed; once the ball drops, the round is
+// replayed as its save would be cut (proof.ts replay), and that replay, not
+// the live play, is the proof. The hole's id (address, slug, next version)
+// is settled before round 1, since its weather hangs on it. With no address
+// yet, a practice round in calm weather counts once the address is given,
+// replayed under the author's id in each weather. Its HUD is the game's own.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button, Dialog } from "@/components/ui";
-import { useFlash } from "@/components/common";
+import { messageOf, useFlash } from "@/components/common";
 import { CamButton } from "@/components/CamButton";
 import Weather, { SkyIcon } from "@/components/Weather";
 import { connect, hasAdena } from "@/lib/adena";
@@ -44,7 +22,7 @@ import { endpoints, keepAuthor } from "@/lib/builder/holes";
 import { makeLocalChain } from "@/lib/builder/localchain";
 import { holdsIn, holdsToo } from "@/lib/builder/carry";
 import { FIND_BACK, replay, suggestPar, unproven, type Proof } from "@/lib/builder/proof";
-import { askSaid, cameFrom, clock, finished, heldSaid, toGo, holeRow, nowSaid, parSaid, plan, slugOf, summary, testChain, TRY_HOLE, tryPlan, type Act } from "@/lib/builder/testmode";
+import { askSaid, cameFrom, clock, finished, heldSaid, toGo, holeRow, nowSaid, parSaid, plan, slugOf, summary, testChain, TRY_HOLE, tryPlan, versionOf, type Act } from "@/lib/builder/testmode";
 import { nextSlug, typedSlug } from "@/lib/builder/templates";
 import { playKey } from "@/lib/builder/keys";
 import { NO_GL } from "@/lib/builder/editor";
@@ -126,7 +104,7 @@ function AddressLine({ start, title, head, line, note, onAddress, children }: { 
       const { rpc } = endpoints(window.location.search);
       onAddress((await connect({ rpc })).address);
     } catch (e) {
-      setWhy(e instanceof Error ? e.message : String(e));
+      setWhy(messageOf(e));
     }
   };
   return (
@@ -191,7 +169,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
   /** proof.ts proofKey of the draft */
   proofKey: string;
   author: string | null;
-  /** the author's id: the alias's next version as the editor read it (testmode.ts nextId; read: false, unread: v1); null
+  /** the author's id: the alias's next version as the editor read it (testmode.ts nextHoleId; read: false, unread: v1); null
    *  while it is read */
   next: { id: string; read: boolean } | null;
   /** the difficulty meter's par (0: none): shown, as a guess, until the rounds set it */
@@ -263,7 +241,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
   const [asked, setAsked] = useState(readdress);
   const clash = !!author && !!next?.read && !cameFrom(draft, next.id), choosing = !!author && !!next && (asked || clash);
   const id = !author ? TRY_HOLE : choosing ? null : next?.id ?? null, unread = !!author && next?.read === false;
-  const v = Number(/\/v(\d+)$/.exec(next?.id ?? "")?.[1] ?? 0);
+  const v = versionOf(next?.id ?? "");
   useEffect(() => {
     if (unread) setAside("The chain could not be read: played as a new hole (v1). If it has versions already, play it again once it can be.");
     else if (id && !trying && v > 1) setAside(`A new version of ${draft.title || "your hole"}: v${v}, with weather of its own.`);
@@ -363,10 +341,11 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
 
   // the game on the current weather's period; a new one for the next weather
   useEffect(() => {
+    since.current = 0; // (no time shown until this game has started)
     if (!id || !now || !canvas) return;
     if (now.period < 0) return setNote(`No ${weatherName(now.kind).toLowerCase()} came in the last ${FIND_DAYS} days of this hole's weather: it cannot be proved in it.`);
     const renderer = stageRenderer();
-    if (!renderer) return setNote(NO_GL); // (the Editor turns Test off then: a page opened on it still says why)
+    if (!renderer) return setNote(NO_GL); // (the Editor turns Play off then: opened anyway, it still says why)
     const { rpc, web } = endpoints(window.location.search);
     const local = makeLocalChain(host, holeRow(id, draft), hex, now.period);
     const g = (game.current = createGame(canvas, {
@@ -392,7 +371,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
       },
     }));
     if (camlog()) window.__g = g; // (the rigs' hook, as the game's: ?camlog in a dev or test build only)
-    void g.start(id).then(() => ((since.current = performance.now()), g.play(true)), (e: unknown) => setNote(e instanceof Error ? e.message : String(e)));
+    void g.start(id).then(() => ((since.current = performance.now()), g.play(true)), (e: unknown) => setNote(messageOf(e)));
     return () => {
       if (window.__g === g) delete window.__g;
       game.current = null;
@@ -429,7 +408,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
 
   const mineProofs = draft.proofs.filter((p) => p.key === proofKey && p.id === id);
   const par = proved ? suggestPar(mineProofs) : 0;
-  const time = took ?? (now && tick ? Math.max(0, tick - since.current) : null);
+  const time = took ?? (now && tick && since.current ? Math.max(0, tick - since.current) : null);
   const rows = proved || provedNow ? summary(kinds.map(({ kind }) => ({ kind, strokes: mineProofs.find((p) => p.kind === kind)?.strokes ?? 0, ms: times[kind] })), par) : null;
   // every weather holed as it opened: the summary at once
   const card = proved && !now ? rows
@@ -445,9 +424,9 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
       <div ref={stage} />
       {/* the game's own HUD (Golf.tsx's hud--top): the strokes and the time, the weather now, the weathers to hole beside; Back to Build */}
       <header className="hud hud--top">
-        <div className="card card--score tmode__score" aria-live="polite" aria-atomic="true">
+        <div className="card card--score tmode__score">
           <span className="eyebrow">Strokes</span>
-          <strong>{snap ? snap.strokes : 0}</strong>
+          <strong aria-live="polite" aria-atomic="true">{snap ? snap.strokes : 0}</strong>
           <span className="card__par">{said_ || (time == null && "\u00a0")}{said_ && time != null && " · "}{time != null && <Clock text={clock(time)} />}</span>
         </div>
         <Weather w={snap?.weather ?? CALM} flash={snap?.flash ?? 0} night={snap?.time === "night"} world={snap?.look ?? draft.world} />

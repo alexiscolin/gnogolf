@@ -4,8 +4,6 @@ package worstshot
 import (
 	"encoding/hex"
 	"math"
-	"strconv"
-	"strings"
 
 	"gno.land/p/gnogolf/course"
 	"gno.land/p/gnogolf/physics"
@@ -17,12 +15,11 @@ import (
 // each probe is a 96×96 board at the format's limits, published, then played
 // with one Launch, in the weather its slug gets at this test's period (a2 is
 // clear, a0, a14, a23 and a24 rainy in the garden, a31 and a60 stormy on the
-// island; a new probe takes the first slug with the weather it names). Rain
-// doubles a hole's ice (its wet copy), a storm adds four board-wide zones on
-// top. Each shot is played with the work its commit has left (golf's cap,
-// MaxWork at the most), and one that reaches a cap under MaxWork is refused.
-// The Launch of each, decode, forecast and shot, measured end to end on a
-// local chain (the qeval filler method), in its weather:
+// island). Rain doubles a hole's ice (its wet copy), a storm adds four
+// board-wide zones on top. Each shot is played with the work its commit has
+// left (golf's cap, MaxWork at the most), and one that reaches a cap under
+// MaxWork is refused. The Launch of each, decode, forecast and shot, measured
+// end to end in its weather:
 //
 //	a2       160 bumper walls across the board, the steepest hill, 31
 //	         ice zones, 8 of them 64-point circles                0.87e9
@@ -55,13 +52,13 @@ import (
 //	         cap ("commit the first 11"): its 11 taps, then the
 //	         full shot alone                                      0.80e9
 //
-// All are under 1.6e9, and the 2e9 Adena simulates. Since a hole's dearest
-// weather is bounded at publish (golf's worstGas: a commit's first shot has
-// minShotWork in any weather), all but a60, a31 and posts are refused at
-// publish, as the output says: each forecast tests their walls and polygon
-// edges on every puddle try. Their measures are kept as the record of what
-// the cap held before; the heaviest a published hole can do is now what a60,
-// a31 and posts do.
+// All are under 1.6e9, and the 2e9 Adena simulates. A hole's dearest weather
+// is bounded at publish (golf's worstGas: a commit's first shot has
+// minShotWork in any weather), so all but a60, a31 and posts are refused
+// there, as the output says: each forecast tests their walls and polygon
+// edges on every puddle try. The refused ones' measures are what the shot cap
+// alone would hold; the heaviest a published hole can do is what a60, a31 and
+// posts do.
 
 type spec struct {
 	slug, world, walls string
@@ -71,7 +68,6 @@ type spec struct {
 	loops, tunnels     int
 	tee                physics.Vec2
 	angle, power       float64
-	kind               string // a new probe's weather: its slug is the first with it
 }
 
 var probes = []spec{
@@ -85,8 +81,8 @@ var probes = []spec{
 	{slug: "endcap", walls: "endcap", tee: physics.V(41, 40.8), angle: 225, power: 1},
 	{slug: "face", walls: "face", tee: physics.V(40.1, 41.6), angle: 270, power: 1},
 	{slug: "posts", walls: "posts", tee: physics.V(41.6, 40.1), angle: 180, power: 1},
-	{slug: "corner", walls: "corner", tee: physics.V(5, 5), angle: 30, kind: "rain"},
-	{slug: "corner", walls: "corner", tee: physics.V(5, 5), angle: 30, kind: "dry"},
+	{slug: "corner", walls: "corner", tee: physics.V(5, 5), angle: 30},
+	{slug: "cage", walls: "cage", zig: 8, rects: 23},
 }
 
 func bumpers(ws []physics.Wall) []physics.Wall {
@@ -210,31 +206,12 @@ func probe(s spec) *course.Simple {
 		Course: &physics.Field{Walls: walls, Posts: posts, Zones: zones, Friction: friction, Bounce: 1.5, Radius: radius}}
 }
 
-// slugFor is the probe's slug: its own, or for a new probe the first of
-// its name whose weather at this period is the one it names.
-func slugFor(cur realm, s spec, h *course.Simple) string {
-	if s.kind == "" {
-		return s.slug
-	}
-	want := s.kind
-	if want == "dry" {
-		want = course.Clear
-	}
-	me := cur.Address().String() // the author: this test's realm
-	for i := 0; ; i++ {
-		slug := s.slug + strconv.Itoa(i)
-		if course.ForecastFor(me+"/"+slug+"/v1", h.World, h, golf.Period()).Kind == want {
-			return slug
-		}
-	}
-}
-
 func main(cur realm) {
 	for _, s := range probes {
 		h := probe(s)
 		var id string
 		if r := revive(func() {
-			id = golf.PublishMine(cross(cur), slugFor(cur, s, h), hex.EncodeToString([]byte(course.Encode(h))), "")
+			id = golf.PublishMine(cross(cur), s.slug, hex.EncodeToString([]byte(course.Encode(h))), "")
 		}); r != nil {
 			println(s.slug, r)
 			continue
@@ -252,19 +229,6 @@ func main(cur realm) {
 			println(id)
 		}
 	}
-	h := probe(spec{walls: "cage", zig: 8, rects: 23})
-	var id string
-	if r := revive(func() {
-		id = golf.PublishMine(cross(cur), slugFor(cur, spec{slug: "cage", kind: "dry"}, h), hex.EncodeToString([]byte(course.Encode(h))), "")
-	}); r != nil {
-		println("cage", r)
-		return
-	}
-	taps := strings.Repeat("0,0.01;", 11)
-	println(id, revive(func() { golf.PlayRoundAt(cross(cur), id, taps+"135,10", golf.Period()) }))
-	golf.Reset(cross(cur), id) // a test does not revert what the refused commit did; a transaction does
-	println(golf.PlayRoundAt(cross(cur), id, taps, golf.Period()))
-	println(golf.PlayRoundAt(cross(cur), id, "135,10", golf.Period()))
 }
 
 // Output:
@@ -278,6 +242,5 @@ func main(cur realm) {
 // endcap golf: in its dearest weather, a commit on this hole would leave too little room for a shot
 // face golf: in its dearest weather, a commit on this hole would leave too little room for a shot
 // g19ea2wqvcgqxwgg7lg270ut8cvcmy70fr5lup0m/posts/v1
-// corner golf: in its dearest weather, a commit on this hole would leave too little room for a shot
 // corner golf: in its dearest weather, a commit on this hole would leave too little room for a shot
 // cage golf: in its dearest weather, a commit on this hole would leave too little room for a shot

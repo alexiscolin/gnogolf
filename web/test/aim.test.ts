@@ -6,12 +6,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { makeAimer, steerAim } from "../lib/engine/aim.ts";
+import { aimRig } from "./aim-rig.ts";
+import { steerAim } from "../lib/engine/aim.ts";
+import { pullFull } from "../lib/chain.ts";
 import { sight } from "../lib/scene/data.ts";
-import type { Live } from "../lib/engine/types.ts";
-import type { Mode, Stroke, Vec2 } from "../lib/types.ts";
-
-// ------------------------------------------------------------ steerAim
+import type { Stroke, Vec2 } from "../lib/types.ts";
 
 // a desktop screen: the zone is 0.28 of its width (403 px), 50° at its edge
 const VW = 1440, VH = 900, ZONE = 0.28 * VW, DEG = Math.PI / 180;
@@ -43,21 +42,13 @@ void test("steerAim: back inside the zone the spin stops, the fine aim going on 
 });
 
 void test("steerAim: down is the power, as a pull's; a 45° pull to full power does not spin; at the press's height, no shot", () => {
-  const full = Math.max(120, Math.min(VW, VH) * 0.24);
+  const full = pullFull(VW, VH);
   const a = steerAim(0, full, full, 1, VW, VH);
   assert.equal(a.spin, 0);
   assert.equal(a.shot?.power, 10);
   assert.equal(steerAim(0, 100, 5, 1, VW, VH).shot, null, "within 6 px of its height: cancelled");
   assert.ok((steerAim(0, 0, full / 2, 1, VW, VH).shot?.power ?? 0) > 4);
 });
-
-// ------------------------------------------------------------ makeAimer fixtures
-
-function makeDots(cap = 64) {
-  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), cap);
-  dots.count = 0;
-  return dots;
-}
 
 interface PendingCall {
   kind: "simulateFrom" | "simulateRound";
@@ -84,44 +75,11 @@ function mkStroke(path: Vec2[], cause = ""): Stroke {
 }
 
 function makeRig() {
-  const dots = makeDots();
-  const aim = new THREE.Group() as unknown as Live["aim"];
-  (aim as unknown as THREE.Group).userData.dots = dots;
   const chain = makeChain();
-  const g = {
-    roundMode: null as Mode | null,
-    ball: { x: 0, y: 0 },
-    period: 1,
-    shots: [] as string[],
-    id: "garden/1" as string | null,
-    rest: null as Vec2 | null,
-    round: 1,
-    course: null as { userData: { ghosts?: (on: boolean) => void } } | null,
-    weather: null as { fog?: boolean } | null,
-    s: null as { walls: { a: Vec2; b: Vec2; skin: string }[]; posts: { c: Vec2; r: number; skin: string }[]; hole?: string; slot?: string } | null,
-  };
-  const band = { visible: false };
-  const E = {
-    g,
-    chain,
-    aim,
-    band,
-    ground: () => 0,
-    mode: "assisted" as Mode,
-    shot: { angle: 0, power: 0, deg: undefined as number | undefined },
-    dragging: false,
-    tickNow: () => 0,
-    landing: () => null,
-    zones: () => [],
-    clock: 0,
-  } as unknown as Live;
-  const aimer = makeAimer(E);
-  return { E, g, aim: aim as unknown as THREE.Group, dots, band, chain, aimer };
+  return { ...aimRig(chain), chain };
 }
 
 const settle = () => Promise.resolve().then(() => Promise.resolve());
-
-// ------------------------------------------------------------ preview()
 
 void test("preview() does nothing for a pull too soft to shoot", () => {
   const { E, aimer, aim, chain } = makeRig();
@@ -131,6 +89,19 @@ void test("preview() does nothing for a pull too soft to shoot", () => {
   aimer.preview();
   assert.equal(aim.visible, false);
   assert.equal(chain.pending.length, 0);
+});
+
+void test("a pull brought back too soft to shoot puts its dots away", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { E, aimer, aim } = makeRig();
+  E.dragging = true;
+  E.shot.power = 8;
+  aim.visible = true; // as aimAt() sets it before every preview
+  aimer.preview();
+  E.shot.power = 0.2; // slid back toward the press: letting go shoots nothing
+  aim.visible = true;
+  aimer.preview();
+  assert.equal(aim.visible, false);
 });
 
 void test("preview() in pro mode shows no dots and never asks the chain", () => {
@@ -214,8 +185,6 @@ void test("a post in the way shortens the provisional straight line", () => {
   assert.ok(blocked < free, `expected the post to cut the line short (blocked=${blocked}, free=${free})`);
 });
 
-// ------------------------------------------------------------ answers: cache, morph, guards
-
 void test("the chain's answer replaces the line, morphs the dots, and is cached for this exact shot", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });
   const { E, g, aimer, dots, chain } = makeRig();
@@ -238,6 +207,26 @@ void test("the chain's answer replaces the line, morphs the dots, and is cached 
   assert.equal(aimer.moving(), false);
   aimer.forget();
   assert.equal(aimer.known(g.id!, g.shots, shot), undefined);
+});
+
+void test("swung too far from the chain's dots, the straight line is drawn along the aim, not turned by the swing", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { E, aimer, aim, dots, chain } = makeRig();
+  E.dragging = true;
+  E.shot.power = 5;
+  aimer.preview();
+  t.mock.timers.tick(120);
+  chain.pending[0].resolve(mkStroke([[0, 0], [6, 0]]));
+  await settle();
+  assert.equal(aimer.moving(), true); // the chain's dots still bending into place
+  E.shot.angle = 0.3; // past what the swung dots stand for
+  aimer.preview();
+  assert.equal(aimer.moving(), false, "nothing of the dropped dots bends over the line");
+  const m = new THREE.Matrix4(), p = new THREE.Vector3();
+  aim.updateMatrixWorld(true);
+  dots.getMatrixAt(dots.count - 1, m);
+  p.setFromMatrixPosition(m.premultiply(aim.matrixWorld));
+  assert.ok(Math.abs(Math.atan2(p.z, p.x) - 0.3) < 1e-4, `drawn at ${Math.atan2(p.z, p.x)}`);
 });
 
 void test("an aim already answered, revisited, is served from cache with no second request", async (t) => {

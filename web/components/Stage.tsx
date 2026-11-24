@@ -15,8 +15,8 @@ export function useGnomeStage<T extends HTMLElement = HTMLDivElement>(skin: Skin
     // a canvas of its own each time: a WebGL context that was released cannot
     // be taken again from the same element (React mounts twice in dev)
     const el = document.createElement("canvas");
-    // its size only: the locked look is the wrapper's filter, and a copied
-    // "--locked" class stayed on this canvas for good (every gnome went dark)
+    // its size only: the locked look is the wrapper's filter (a "--locked" class
+    // on this canvas would stay for good, every gnome dark)
     el.className = "pick__canvas";
     box.current!.appendChild(el);
     let p: ReturnType<typeof makePreview>;

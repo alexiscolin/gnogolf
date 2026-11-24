@@ -6,18 +6,19 @@ import (
 )
 
 // The catalogue: every gnome that can be minted, published by the owner a
-// series at a time (ADR-007). The genesis comes first, as the config says;
-// a later drop is one more AddSeries, of any size, with no new code. A
-// series is never changed once published: its gnomes may be owned.
+// series at a time. The genesis comes first, as the config says; a later
+// drop is one more AddSeries, of any size, with no new code. A series is
+// never changed once published: its gnomes may be owned.
 //
 // A series is its rows as published, one gnome per line,
 //
 //	id|tier|name|traits
 //
 // ids following on from the last series with no gap, tier one of the
-// config's, traits the designer's compact encoding (version-prefixed, opaque
-// here: the client reads it). The rows are kept as one string, read in place
-// (rows.gno): as structs they would cost several times the deposit.
+// config's, traits the designer's compact encoding (version-prefixed, read
+// by the portrait and the client). The rows are kept as one string, read
+// in place (rows.gno): as structs they would cost several times the
+// deposit.
 type series struct {
 	name        string
 	first, last int64  // the ids of its first and last rows
@@ -57,10 +58,10 @@ func AddSeries(cur realm, name, data string) {
 
 func addSeries(name, data string) error {
 	if len(catalogue) >= maxSeries {
-		return errors.New("gnomes: at most 64 series")
+		return errors.New("gnomes: at most " + itoa(maxSeries) + " series")
 	}
 	if !validSlug(name) {
-		return errors.New("gnomes: a series name is 1 to 32 of [a-z0-9-]")
+		return errors.New("gnomes: a series name is 1 to " + itoa(maxSeriesName) + " of [a-z0-9-]")
 	}
 	if seriesNamed(name) >= 0 {
 		return errors.New("gnomes: series " + name + " is already published")
@@ -86,7 +87,7 @@ func addSeries(name, data string) error {
 		count[g.tier]++
 		next++
 		if next-first > maxSeriesRows {
-			return errors.New("gnomes: a series has at most 1000 rows")
+			return errors.New("gnomes: a series has at most " + itoa(maxSeriesRows) + " rows")
 		}
 		start = end + 1
 	}

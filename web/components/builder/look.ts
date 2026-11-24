@@ -2,6 +2,7 @@
 // when the skin names a material (water, lava, sand, ice...). Data, not
 // code: a new skin shows in its kind's colour until a word here names it.
 import { entryParts } from "@/lib/builder/gg1";
+import { own } from "@/lib/own";
 
 /** A skin's material, by a word in it, first match wins. */
 const MATERIALS: readonly (readonly [RegExp, string])[] = [
@@ -17,5 +18,5 @@ const KINDS: Record<string, string> = {
 /** The fill of a piece of this entry ("*\/hazard/lava"). */
 export function fillOf(entry: string): string {
   const { kind, skin } = entryParts(entry);
-  return MATERIALS.find(([re]) => re.test(skin))?.[1] ?? KINDS[kind] ?? "#999";
+  return MATERIALS.find(([re]) => re.test(skin))?.[1] ?? own(KINDS, kind) ?? "#999";
 }

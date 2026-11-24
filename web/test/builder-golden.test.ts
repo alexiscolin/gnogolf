@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { build, loadWorld } from "./scene-harness.ts";
+import { loadWorld } from "./scene-harness.ts";
 import { host, lane, rail } from "./builder-fixture.ts";
 import { cases, garden, put } from "./builder-broken.ts";
 import { atFault, validate } from "../lib/builder/pipeline.ts";
@@ -109,7 +109,6 @@ void test("the course holes as the Builder judges them: those it passes keep pas
     if (Object.hasOwn(REFUSED_COURSE, slot)) t.diagnostic(`${slot} refused by the Builder (${rules.join(", ") || "none now"}): ${REFUSED_COURSE[slot]}`);
     else assert.deepEqual(rules, [], `${slot}: it passed before`);
   }
-  void build;
 });
 
 // Prevention: the ghost (canPlace), the drag (clampMove), the one-click fix (fixOf).
@@ -142,7 +141,7 @@ void test("clampMove: a drag stops at the last place it may go", () => {
   const d = lane("garden", [put("x", "*/post/rock", [12, 9])]);
   // dragged up onto the top rail (y 1.5 once framed): it stops clear of it
   const to = clampMove(d, "x", [13.5, 1.5], ctx);
-  const p = pieceIn(d, "x").geometry as { c: [number, number]; r: number };
+  const p = pieceIn(d, "x").geometry as { t: "post"; c: [number, number]; r: number };
   assert.equal(to[0], 13.5);
   assert.ok(to[1] > 1.5 + p.r && to[1] <= 10.5, to.join(", "));
   assert.deepEqual(canPlace(without(d, "x"), { ...pieceIn(d, "x"), geometry: { ...p, c: to } }, ctx), []);
@@ -166,7 +165,7 @@ void test("fixOf: one click moves the piece where its issue is gone, and the hol
 void test("E4 on an edit: closing the tee in or the cup off is refused, dragged or dropped, whichever piece does it", () => {
   const d = lane("garden", []), r1 = pieceIn(d, "r1"), closes = { tee: "This closes the tee in: no way to the cup.", cup: "This closes the cup off: no way from the tee." };
   // the top rail's end dragged down to the bottom rail: its far end closes the tee in, its near end the cup off
-  for (const [key, to, why] of [["b", [13.5, 21.5], closes.tee], ["a", [19.5, 21.5], closes.cup]] as const) {
+  for (const [key, to, why] of [["b", [13.5, 21.5] as V, closes.tee], ["a", [19.5, 21.5] as V, closes.cup]] as const) {
     const there = setHandle(r1, key, to, entryIn(r1.entry, garden)!, d.tee);
     // while dragged: the ghost red, in an edit's words
     const live = dragCheck(d, ctx).piece(there);

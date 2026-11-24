@@ -16,7 +16,7 @@ import (
 // thumbnail shows him (three-quarters, on his tier's plinth), from the
 // traced art of art.gno.
 func TokenURI(tid string) (string, error) {
-	if _, err := Token.OwnerOf(grc721.TokenID(tid)); err != nil {
+	if _, err := token.OwnerOf(grc721.TokenID(tid)); err != nil {
 		return "", errors.New(errNoGnome)
 	}
 	g, ok := tokenAt(parseID(tid))
@@ -34,14 +34,12 @@ func portrait(g gnome) string {
 
 const svgDataPrefix = "data:image/svg+xml;base64,"
 
-// ---------------------------------------------------------------- the look
-//
-// A token's traits as format 1 writes them (docs/gnomes/design.md, "The
-// trait encoding"): a byte a field in hex, the format first. Read as the
-// client reads them (web/lib/gnomes/codec.ts): a code past its table, a
-// colour past the palette, a field the string is too short for, all plain;
-// bytes past the fields ignored; another format, or not hex, the plain gnome
-// (the Classic). Nothing a row holds can make it panic.
+// A token's traits as format 1 writes them: a byte a field in hex, the
+// format first. Read as the client reads them (web/lib/gnomes/codec.ts): a
+// code past its table, a colour past the palette, a field the string is too
+// short for, all plain; bytes past the fields ignored; another format, or
+// not hex, the plain gnome (the Classic). Nothing a row holds can make it
+// panic.
 
 // The fields' bytes.
 const (
@@ -149,8 +147,6 @@ func colourOf(c byte) string {
 // isDark reports whether palette colour c is too dark for ink eyes.
 func isDark(c byte) bool { return int(c) < len(artDark) && artDark[c] == '1' }
 
-// ---------------------------------------------------------------- shapes
-//
 // A trait's art is shapes split by "|", each "<key><kind><colour>:<path>":
 //
 //   - key, two hex digits, its depth: shapes are painted by key, nearest
@@ -219,7 +215,7 @@ func shapesOf(out []shape, line string, hat byte) []shape {
 			continue
 		}
 		key := hi<<4 | lo
-		if key += dk; key < 2 {
+		if key += dk; dk != 0 && key < 2 {
 			key = 2 // (moved, still over the body)
 		}
 		out = append(out, shape{key: key, art: s[2:], shift: shift})
@@ -235,8 +231,6 @@ func fieldOf(s string, i int) string {
 	}
 	return f[i]
 }
-
-// ---------------------------------------------------------------- drawing
 
 // drawGnome draws gnome g: his tier's ground and plinth, his trail behind
 // him, then every shape of his look, far to near.

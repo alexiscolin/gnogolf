@@ -22,7 +22,8 @@ import { frame, keyOf, piecesBy, writeDraft } from "./gg1";
 import { pieceName } from "./names";
 import { CELL, gridOf, reach } from "./lane";
 import { cap, FIELD, MAX_PAR } from "./rules";
-import type { GHole, GZone } from "./types";
+import { SURFACE_RAIL } from "./surface";
+import type { GHole } from "./types";
 import type { BuilderHost } from "./wasm";
 import type { PieceRef } from "../scene/census";
 import { calmPeriod } from "./quickshot";
@@ -266,7 +267,6 @@ interface Named {
   piece?: string;
   rail: boolean;
 }
-const shapeOf = (z: GZone) => ({ min: z.min, max: z.max, round: z.round, poly: z.poly, outside: z.outside });
 
 /** The timed pieces (within a stroke, or in a pulse) the way to the cup cannot get round when they are there, each with the share of the time it lets the ball by (RARE or less), the rarest first. */
 function timedOnWay(h: GHole): { ref: PieceRef; open: number; pulse: boolean }[] {
@@ -336,7 +336,7 @@ export async function estimate(sim: Sim, draft: Draft, o: Run = {}): Promise<Est
   const by = piecesBy(d, refs);
   return estimateHole(sim, f.hex, (r) => {
     const p = by.get(keyOf(r));
-    return p && { name: pieceName(p), piece: p.id, rail: p.entry === "*/rail/" };
+    return p && { name: pieceName(p), piece: p.id, rail: p.entry === SURFACE_RAIL };
   }, o, t0);
 }
 
@@ -434,7 +434,7 @@ export async function estimateHole(sim: Sim, hex: string, named: (r: PieceRef) =
   if (k >= 0 && f < 0.4) {
     const where = k === 0 ? "from the tee" : k === forgiving.length - 1 && strokes ? "at the cup" : `on stroke ${k + 1}`, off = misses[k];
     const wet = h.zones.map((z, i) => ({ z, i })).filter(({ z }) => z.kind === "hazard" && !z.outside)
-      .map(({ z, i }) => ({ n: of({ set: "zone", i }), k: off.filter((p) => p.path.some((q) => inZone(shapeOf(z), q[0], q[1]))).length }))
+      .map(({ z, i }) => ({ n: of({ set: "zone", i }), k: off.filter((p) => p.path.some((q) => inZone(z, q[0], q[1]))).length }))
       .sort((x, y) => y.k - x.k)[0];
     const solids = solidsOf(h), tally = new Map<string, { n: Named; k: number }>();
     for (const p of off) {
@@ -469,13 +469,13 @@ export function meterLine(e: Estimate): { text: string; piece?: string } {
   return { text: e.level == null ? "Not measured: the test will tell." : `${LEVELS[e.level]} to play${e.par ? `: ${parWords(e)}` : ""}.` };
 }
 
-/** The meter's chip in full, for its tooltip and a screen reader: the level, the par it suggests until the test's rounds do, what it took. */
+/** The meter's words in full, for its tooltip and a screen reader: the level, the par it suggests until the test's rounds do, what it took. */
 export function meterTitle(e: Estimate): string {
   const par = e.par ? ` ${cap(parWords(e))}, until your test rounds set it.` : "";
   return `Difficulty, the meter's guess: ${e.level == null ? "not measured" : LEVELS[e.level]}.${par} (${e.shots.toLocaleString("en")} shots in ${e.ms} ms${e.cut ? ", cut short" : ""}.)`;
 }
 
-/** What the editor shows of an estimate (made in the meter's worker: the editor's own chunk carries none of the meter): the level and its word, the dock's line, the chip's words in full, the par. */
+/** What the editor shows of an estimate (made in the meter's worker: the editor's own chunk carries none of the meter): the level and its word, the dock's line, the meter's words in full, the par. */
 export interface Shown extends Pick<Estimate, "level" | "par" | "path" | "heat"> {
   word: string;
   line: { text: string; piece?: string };

@@ -1,24 +1,25 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The end-to-end smoke test, against a local chain and dev server (see the
-// README): every read the client makes, answered by the realm and passed
-// through the client's own checks (chain.ts `checks`, which throw on any
-// shape it does not expect), then the game in a headless Chrome: a hole
-// played and holed, the finished banner and its save clock, the leaderboard
-// read from the cups screen. Exits non-zero on the first failure.
+// The end-to-end smoke test, against a local chain and dev server: every
+// read the client makes, answered by the realm and passed through the
+// client's own checks (chain.ts `checks`, which throw on any shape it does
+// not expect), then the game in a headless Chrome: a hole played and holed,
+// the finished banner and its save clock, the leaderboard read from the cups
+// screen, a player the bot check flags hidden from the boards. Exits
+// non-zero if a step fails.
 //
 //   nice -n 20 node --experimental-strip-types scripts/smoke.ts
 //   (from web/: npm run smoke; RPC and APP override the local defaults)
 //
 // The realm is the client's, NEXT_PUBLIC_REALM (unset, the repo tree's
-// gno.land/r/gnogolf/golf). Against a staged deploy (scripts/stage.sh), set it
+// gno.land/r/gnogolf/golf/v2). Against a staged deploy (scripts/stage.sh), set it
 // here and in the dev server at APP alike:
-//   NEXT_PUBLIC_REALM=gno.land/r/<ns>/gnogolf/golf RPC=http://127.0.0.1:<port> APP=http://localhost:<port> npm run smoke
+//   NEXT_PUBLIC_REALM=gno.land/r/<ns>/gnogolf/golf/v2 RPC=http://127.0.0.1:<port> APP=http://localhost:<port> npm run smoke
 
 import assert from "node:assert/strict";
 // the client's modules as the unit tests load them (".ts" tried, "@/" read)
 import "../web/test/setup.mjs";
 
-const { makeChain } = await import("../web/lib/chain.ts");
+const { makeChain, shortAddr } = await import("../web/lib/chain.ts");
 /** media/lib/cdp.mjs, as this script uses it: one headless Chrome over the DevTools protocol */
 interface Browser {
   send: (method: string, params?: object) => Promise<unknown>;
@@ -52,7 +53,7 @@ if (!(await chainUp())) {
 }
 const chain = makeChain({ rpc: RPC });
 
-// ---------------------------------------------------------------- the reads
+// the reads
 let hole = "", player = "", period = 0;
 await step("Holes: the course is published", async () => {
   const list = await chain.holes(true);
@@ -76,8 +77,7 @@ await step("SimulateRound / At / In, SimulateCommit, SimulateFrom", async () => 
   await chain.simulateCommit(hole, [2, 8], 0, shots, period);
   await chain.simulateFrom(hole, at.rest, "0,1", 1, period); // the next stroke, from where the first stopped
 });
-await step("Leaderboard, CourseLeaderboard (paged), Rank", async () => {
-  const top = await chain.leaderboard("pro");
+await step("CourseLeaderboard (paged), Rank", async () => {
   const page = await chain.courseLeaderboard(0, 5, "pro");
   assert.ok(page.rows.length <= 5);
   // in the ranking's order: most holes, then the best score against par
@@ -86,7 +86,7 @@ await step("Leaderboard, CourseLeaderboard (paged), Rank", async () => {
     if (up) assert.ok(up.holes > r.holes || (up.holes === r.holes && up.strokes - up.par <= r.strokes - r.par), `row ${i + 1} ranks before row ${i}`);
   }
   if (page.players > 5) assert.equal((await chain.courseLeaderboard(page.next, 5, "pro")).offset, page.next);
-  player = (top.rows[0] || page.rows[0] || { player: "" }).player;
+  player = (page.rows[0] || { player: "" }).player;
   if (player) assert.ok((await chain.rank("pro", player)).rank >= 1, "the top player ranks");
   return `${page.players} ranked`;
 });
@@ -111,7 +111,7 @@ await step("names: registrar, a check, a batch", async () => {
   return reg;
 });
 
-// ---------------------------------------------------------------- the game
+// the game
 const b = await launch({ width: 1100, height: 700 });
 /** polls a page expression until it is truthy, or gives up: its last value */
 async function until<T>(expr: string, tries = 80, ms = 250): Promise<T> {
@@ -121,6 +121,14 @@ async function until<T>(expr: string, tries = 80, ms = 250): Promise<T> {
     v = await b.ev<T>(expr);
   }
   return v;
+}
+/** from the title to the cups screen: Play opens the modes first, Solo leads to the cups */
+async function toCups() {
+  await b.send("Page.navigate", { url: `${APP}/` });
+  assert.ok(await until<boolean>(`!!document.querySelector('.btn--start')`, 100), "no title screen");
+  await b.ev(`document.querySelector('.btn--start').click()`);
+  assert.ok(await until<boolean>(`!!document.querySelector('.mode--solo')`, 50), "no modes screen");
+  await b.ev(`document.querySelector('.mode--solo').click()`);
 }
 try {
   await step("a hole played and holed in the browser", async () => {
@@ -146,12 +154,7 @@ try {
     assert.match(await b.ev<string>(`(document.querySelector('.saveclock')||{}).textContent||""`), /Save within/, "the save clock");
   });
   await step("the leaderboard from the cups screen", async () => {
-    await b.send("Page.navigate", { url: `${APP}/` });
-    assert.ok(await until<boolean>(`!!document.querySelector('.btn--start')`, 100), "no title screen");
-    await b.ev(`document.querySelector('.btn--start').click()`);
-    // Play opens the modes first: Solo leads to the cups
-    assert.ok(await until<boolean>(`!!document.querySelector('.mode--solo')`, 50), "no modes screen");
-    await b.ev(`document.querySelector('.mode--solo').click()`);
+    await toCups();
     assert.ok(await until<boolean>(`!!document.querySelector('.podium__open')`, 50), "no records to beat on the cups screen");
     // a course standing reads as its holes and its score against par
     const vs = /(E|[+−]\d+)$/;
@@ -182,24 +185,20 @@ try {
     await b.send("Page.addScriptToEvaluateOnNewDocument", {
       source: `{ const f = window.fetch; window.fetch = (u, o) => String(u).endsWith("flags.json") ? Promise.resolve(new Response(${JSON.stringify(flags)})) : f(u, o); }`,
     });
-    await b.send("Page.navigate", { url: `${APP}/` });
-    assert.ok(await until<boolean>(`!!document.querySelector('.btn--start')`, 100), "no title screen");
-    await b.ev(`document.querySelector('.btn--start').click()`);
-    // Play opens the modes first: Solo leads to the cups
-    assert.ok(await until<boolean>(`!!document.querySelector('.mode--solo')`, 50), "no modes screen");
-    await b.ev(`document.querySelector('.mode--solo').click()`);
+    await toCups();
     assert.ok(await until<boolean>(`document.querySelectorAll('.podium__row li:not([aria-hidden])').length > 0`, 50), "no top players");
     const podium = await b.ev<string>(`document.querySelector('.podium__row').textContent`);
-    const name = (await chain.namesOf([player]))[0].name;
-    assert.ok(!name || !podium.includes(name), `the flagged ${name} is on the podium`);
+    // as the boards say them (Leaderboard.tsx useWho): their name, else their short address
+    const name = (await chain.namesOf([player]))[0].name || shortAddr(player);
+    assert.ok(!podium.includes(name), `the flagged ${name} is on the podium`);
     await b.ev(`document.querySelector('.podium__open').click()`);
     assert.ok(await until<boolean>(`[...document.querySelectorAll('.lb--full .linkish')].some((x) => /flagged/.test(x.textContent))`, 40), "no \"Show all (… flagged)\" toggle");
     const shown = await b.ev<string>(`document.querySelector('.lb--full').textContent`);
-    assert.ok(!name || !shown.includes(name), `the flagged ${name} is listed`);
+    assert.ok(!shown.includes(name), `the flagged ${name} is listed`);
     // Show all lists them, each saying why
     await b.ev(`[...document.querySelectorAll('.lb--full .linkish')].find((x) => /flagged/.test(x.textContent)).click()`);
     assert.ok(await until<boolean>(`[...document.querySelectorAll('.lb--full .flag-why')].some((x) => /smoke test/.test(x.textContent))`, 40), "Show all does not say why");
-    return `${name || player} hidden`;
+    return `${name} hidden`;
   });
   assert.equal(b.errors.length, 0, `console errors: ${JSON.stringify(b.errors).slice(0, 300)}`);
 } finally {

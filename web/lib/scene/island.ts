@@ -10,8 +10,8 @@ import { bakeLocal, look, weatherLooks } from "./bake";
 import { gnomelet, brolly } from "./props";
 import { animate, state } from "./state";
 import { timeOf, islandBox } from "./camera";
-import { seeded, lookSeed, ISLAND, GRASS, placer, type Rand } from "./common";
-import { zoneDetail } from "./zones";
+import { seeded, shuffled, lookSeed, ISLAND, GRASS, placer, type Rand } from "./common";
+import { zoneDetail, clipRect } from "./zones";
 import { ud, type Hole, type Height, type TubePath } from "./data";
 import type { FadeItem } from "./materials";
 import type { Bar, Rough, Skins } from "./worlds";
@@ -50,8 +50,6 @@ const P = {
 /** How high the sea is: a step below the sand, so the beach slopes into it. */
 export const SEA = GRASS - 0.9;
 
-// ---------------------------------------------------------------- the land
-//
 // The island is a rounded rectangle a little larger than the diorama's box,
 // with a wobbly shore. inland(x, z) is how far a point is inside the shore
 // (negative: in the sea), in world units — dunes, the beach and the foam all
@@ -308,8 +306,6 @@ function berms(s: Hole) {
   return { group: g, height };
 }
 
-// ----------------------------------------------------------------- props
-
 // A coconut palm, built as merged geometry so a beach of them stays cheap:
 // a trunk of tapering segments along a curve that bends more towards the top
 // (the wind's work), a crown of arching fronds with leaflets, coconuts.
@@ -430,7 +426,6 @@ function palm(rand: Rand, h = 4.5 + rand() * 2.5) {
   g.add(new THREE.Mesh(cr.rachis, sway(P.trunkDark)));
   for (const [k, geo] of cr.leaves.entries()) g.add(leafMesh(geo, k ? P.frond : P.frondDark));
   coconuts(g, top);
-  ud(g).top = top;
   return g;
 }
 
@@ -449,6 +444,7 @@ function paillote(big = 1) {
   const tip = drawn(new THREE.ConeGeometry(0.16 * big, 0.5 * big, 6), flat(P.strawDark));
   tip.position.y = hgt + r * 1.08 + 0.15;
   g.add(body, cap, fringe, tip);
+  ud(g).perch = new THREE.Vector3(0, tip.position.y + 0.25 * big, 0); // the finial's point
   // a round door and a round window, facing the lane (+z)
   const door = drawn(new THREE.CylinderGeometry(0.34 * big, 0.34 * big, 0.08, 14), flat(P.trunkDark));
   door.rotation.x = Math.PI / 2;
@@ -493,11 +489,12 @@ function tikiBar() {
  *  lamp room under a red cap, and after dusk a beam turning over the sea. */
 function lighthouse(night = false, away = 0) {
   const g = new THREE.Group();
-  for (const [x, z, r] of [[0, 0, 2.4], [1.9, 0.6, 1.5], [-1.6, 0.9, 1.7], [0.6, -1.6, 1.3]]) {
+  for (const [k, [x, z, r]] of [[0, 0, 2.4], [1.9, 0.6, 1.5], [-1.6, 0.9, 1.7], [0.6, -1.6, 1.3]].entries()) {
     const m = drawn(new THREE.DodecahedronGeometry(r, 0), flat(P.rock));
     m.position.set(x, r * 0.3, z);
     m.scale.y = 0.6;
     g.add(m);
+    if (k === 1) ud(g).perch = new THREE.Vector3(x, new THREE.Box3().setFromObject(m).max.y, z); // the top of the rock by the door
   }
   const bands = 6, bh = 1.2; // about 1.3× the first one: the whole tower fits the overview
   for (let i = 0; i < bands; i++) {
@@ -550,7 +547,6 @@ function lighthouse(night = false, away = 0) {
     beam.position.y = top + 0.85;
     g.add(beam);
     ud(g).live = true;
-    // it turns 
     // it sweeps to and fro over the open sea, never round over the island
     animate((tt) => (beam.rotation.y = away + Math.sin(tt * 0.5) * 1.0));
   }
@@ -696,8 +692,8 @@ function pebble(rand: Rand) {
   return m;
 }
 
-/** A crab that scuttles sideways along the sand, back and forth. */
-function crab(rand: Rand, x: number, z: number, y: number) {
+/** A crab that scuttles sideways along the sand, back and forth; roam 0: one that bobs on its spot. */
+function crab(rand: Rand, x: number, z: number, y: number, roam = 1) {
   const g = new THREE.Group();
   ud(g).live = true;
   const body = drawn(new THREE.SphereGeometry(0.22, 10, 6), flat(P.crab));
@@ -712,7 +708,7 @@ function crab(rand: Rand, x: number, z: number, y: number) {
     g.add(claw, eye);
   }
   g.position.set(x, y, z);
-  const ph = rand() * 6, span = 0.6 + rand() * 0.8;
+  const ph = rand() * 6, span = (0.6 + rand() * 0.8) * roam;
   animate((t) => {
     g.position.x = x + Math.sin(t * 0.7 + ph) * span;
     g.position.y = y + Math.abs(Math.sin(t * 9 + ph)) * 0.025;
@@ -854,8 +850,6 @@ function ship() {
   return g;
 }
 
-// ------------------------------------------------------- over the lane
-//
 // The dream of the island: tall palms whose trunks curve in from the sides and
 // hang their crowns high over the lane, giant hibiscus on the dunes, kites,
 // gulls gliding low. They cross the play camera's view on purpose — but a
@@ -893,7 +887,6 @@ function archPalm(rand: Rand, toward: THREE.Vector3, reach: number, h: number) {
   crown.position.copy(top);
   g.add(crown);
   ud(g).crown = crown;
-  ud(g).reach = Math.hypot(top.x, top.z);
   return g;
 }
 
@@ -993,7 +986,9 @@ function kite(rand: Rand, color: number, stake: THREE.Vector3) {
   fly.add(flier);
   g.add(fly);
   bakeLocal(g); // the stake and its string: a mesh per material, the flier left live
-  const pos = flier.geometry.attributes.position as THREE.BufferAttribute, ph = rand() * 6, spine: [number, number][] = [];
+  const pos = flier.geometry.attributes.position as THREE.BufferAttribute, ph = rand() * 6;
+  // the tail's spine, a point a row: its height set here, its sway each frame
+  const spine = Array.from({ length: N + 1 }, (_, j): [number, number] => [0, bottom.y - (j / N) * LEN]);
   animate((t) => {
     const w = windNow(), k = 1 + Math.min(w.length() * 15, 1);
     // the whole kite flutters about its knot, leaning a little downwind
@@ -1001,7 +996,7 @@ function kite(rand: Rand, color: number, stake: THREE.Vector3) {
     // the tail waves, more at its end, and streams downwind
     for (let j = 0; j <= N; j++) {
       const u = j / N;
-      spine[j] = [Math.sin(t * 2.6 * k - u * 5 + ph) * 0.22 * u + Math.max(-0.08, Math.min(0.08, w.x)) * 9 * u * u, bottom.y - u * LEN];
+      spine[j][0] = Math.sin(t * 2.6 * k - u * 5 + ph) * 0.22 * u + Math.max(-0.08, Math.min(0.08, w.x)) * 9 * u * u;
     }
     // PlaneGeometry: two vertices a row, from the top (the kite) down
     for (let i = 0; i <= 2 * N + 1; i++) pos.setXYZ(v0 + i, spine[i >> 1][0] + (i % 2 ? W : -W), spine[i >> 1][1], 0);
@@ -1014,8 +1009,6 @@ function kite(rand: Rand, color: number, stake: THREE.Vector3) {
 /** A whole object that moves as one, merged into a mesh per material by the
  *  shared bake (in its own frame), and marked live so the hole's own bake leaves it be. */
 const mergedMover = <T extends THREE.Object3D>(group: T) => ((ud(bakeLocal(group)).live = true), group);
-
-// ------------------------------------------------------------ beach life
 
 const STRIPES = [[C.cap, 0xffffff], [P.towel, 0xffffff], [0xf5b83d, C.cap], [0x5b6fb5, 0xf5b83d], [0x3fbf8f, 0xffffff], [0xf29ac0, 0xffffff]];
 
@@ -1277,8 +1270,6 @@ function footprints(from: THREE.Vector3, to: THREE.Vector3, y: Height) {
   return g;
 }
 
-// ---------------------------------------------------------------- decor
-
 function decor(s: Hole, bank: Height = () => 0): THREE.Group {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
@@ -1315,7 +1306,7 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       }
   };
   const X0 = sh.cx - sh.a, X1 = sh.cx + sh.a, Z0 = sh.cz - sh.b;
-  const perches: THREE.Vector3[] = []; // where a gull may stand: the pier, the lighthouse rocks
+  const perches: THREE.Vector3[] = []; // where a gull may stand: the huts' finials, a lighthouse rock, the pier
 
   // the lighthouse's spot (it is built further down), kept clear of the canopy
   const LH = [W + ISLAND.x - 2.6, Math.min(H * 0.4, 5)];
@@ -1357,8 +1348,8 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     const x = W * (0.25 + (0.5 * k) / Math.max(1, huts - 1)) + (rand() - 0.5) * 3, z = -5 - rand() * 2;
     const big = 0.8 + rand() * 0.35;
     if (dry(x, z, 2) && free(x, z, 2 * big)) {
-      put(paillote(big), x, z, 2 * big, (rand() - 0.5) * 0.4).add(shelter(wrand, [[-0.5 * big, 1.35 * big + 0.1], [0.5 * big, 1.35 * big + 0.1]]));
-      perches.push(new THREE.Vector3(x, GRASS + bank(x, z) + (1.6 + 1.75 * 0.62 + 0.05) * big, z)); // the top of its straw cap
+      const hut = put(paillote(big), x, z, 2 * big, (rand() - 0.5) * 0.4).add(shelter(wrand, [[-0.5 * big, 1.35 * big + 0.1], [0.5 * big, 1.35 * big + 0.1]]));
+      perches.push(ud(hut).perch!.clone().add(hut.position));
     }
   }
   {
@@ -1386,7 +1377,7 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       g.add(glow);
     }
     reserve(x, z, 3.2);
-    perches.push(new THREE.Vector3(x + 1.9, SEA + 0.9, z + 0.6));
+    perches.push(ud(lh).perch!.clone().add(lh.position));
   }
   // a pier off the back-left shore, a boat tied to it
   {
@@ -1445,8 +1436,7 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     () => scatter(1, X0 + 1, -1.5, H * 0.3, H + 2.5, 0.9, () => sandcastle()),
     () => { const th = rand() * Math.PI; g.add(seaweedLine(sh, rand, th, bank)); },
   ];
-  const kit = [...KIT.keys()].sort(() => rand() - 0.5).slice(0, 3 + Math.floor(rand() * 3));
-  for (const k of kit) KIT[k]();
+  for (const lay of shuffled(KIT, rand).slice(0, 3 + Math.floor(rand() * 3))) lay();
   // and on every beach: umbrellas with towels and sunbathers, the odd picnic
   // at night the first umbrella's place is a campfire's, gnomes round it (the
   // same draw of rand, so the rest of the beach stays put)
@@ -1464,11 +1454,11 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
   spot(1, X0 + 1, -1.8, -1, H + 2);
   spot(2, X0 + 1, X1 - 1, H + 1.6, sh.cz + sh.b - 2.4);
   g.add(runner(wrand, sh, bank));
-  // footprints from the huts down to the water
+  // footprints from in front of the board down to the water
   if (rand() < 0.7) {
     const fx = W * (0.2 + rand() * 0.6), [tx, tz] = sh.shore(Math.PI / 2 + (rand() - 0.5) * 0.8, -1.4);
     const fz = H + 1.6;
-    if (!onBoard(fx, fz)) g.add(footprints(new THREE.Vector3(fx, 0, fz), new THREE.Vector3(tx, 0, tz), (x, z) => GRASS + bank(x, z)));
+    g.add(footprints(new THREE.Vector3(fx, 0, fz), new THREE.Vector3(tx, 0, tz), (x, z) => GRASS + bank(x, z)));
   }
   scatter(2, X0, X1, Z0, -1.4, 0.7, () => hibiscus(rand));
   scatter(1, W + 1.4, X1, 0, H, 0.6, () => hibiscus(rand));
@@ -1554,8 +1544,6 @@ export const rough: Rough = { lo: P.wet, hi: P.sand, plant: (rand, s) => (green(
 
 export { base, edging, berms, decor };
 
-// -------------------------------------------------------- on-lane pieces
-//
 // The island's own look for what the chain puts on the lane. course.ts /
 // zones.ts call piece(kind, item, t, s) for each wall, post and zone, with
 // the chain's JSON for it (a wall comes as its whole bar); this returns an
@@ -1640,7 +1628,7 @@ function buoy(item: Post, t: Terrain) {
 function crabPost(item: Post, t: Terrain) {
   const [x, z] = item.c, r = item.r, g = new THREE.Group();
   ud(g).live = true;
-  const c = crab(seeded("crab" + x + z), 0, 0, 0);
+  const c = crab(seeded("crab" + x + z), 0, 0, 0, 0); // bobbing where it stands, on the circle the ball hits
   c.scale.setScalar(r / 0.32); // its claws' reach is the footprint
   g.add(c);
   g.position.set(x, ground(t, x, z), z);
@@ -1728,27 +1716,13 @@ function rowingBoat(bar: Bar, t: Terrain) {
 }
 
 /** A zone's polygon as a flat geometry (x, 0, z) about (cx, cz), cut in unit
- *  squares so it can follow the ground: each square's piece of the polygon
- *  (Sutherland–Hodgman), triangulated on its own. */
+ *  squares so it can follow the ground: each square's piece of the polygon,
+ *  triangulated on its own. */
 function polyGeometry(poly: readonly Vec2[], cx: number, cz: number) {
   const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]), pos: number[] = [];
-  const clip = (pts: readonly Vec2[], inside: (p: Vec2) => boolean, cut: (a: Vec2, b: Vec2) => Vec2) => {
-    const out: Vec2[] = [];
-    for (let i = 0; i < pts.length; i++) {
-      const a = pts[i], b = pts[(i + 1) % pts.length];
-      if (inside(b)) { if (!inside(a)) out.push(cut(a, b)); out.push(b); }
-      else if (inside(a)) out.push(cut(a, b));
-    }
-    return out;
-  };
-  const atX = (x: number) => (a: Vec2, b: Vec2): Vec2 => [x, a[1] + ((b[1] - a[1]) * (x - a[0])) / (b[0] - a[0])];
-  const atZ = (zz: number) => (a: Vec2, b: Vec2): Vec2 => [a[0] + ((b[0] - a[0]) * (zz - a[1])) / (b[1] - a[1]), zz];
   for (let x = Math.floor(Math.min(...xs)); x < Math.max(...xs); x++)
     for (let zz = Math.floor(Math.min(...zs)); zz < Math.max(...zs); zz++) {
-      let piece = clip(poly, (p) => p[0] >= x, atX(x));
-      piece = clip(piece, (p) => p[0] <= x + 1, atX(x + 1));
-      piece = clip(piece, (p) => p[1] >= zz, atZ(zz));
-      piece = clip(piece, (p) => p[1] <= zz + 1, atZ(zz + 1));
+      const piece = clipRect(poly, x, zz, x + 1, zz + 1);
       if (piece.length < 3) continue;
       const v = piece.map(([a, b]) => new THREE.Vector2(a, b));
       for (const tri of THREE.ShapeUtils.triangulateShape(v, [])) {
@@ -1794,11 +1768,11 @@ function waterZone(z: Zone, t: Terrain, _s: Hole, { color = P.shallow, stones = 
   const rand = seeded(z.skin + z.min.join());
   g.add(footprint(z, t, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false }), 0.05));
   if (foam) {
-    const ring = footprint(z, t, onTop(new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }), 2), 0.1);
+    const ring = footprint(z, t, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, depthWrite: false }), 0.1);
     ring.scale.set(0.96, 1, 0.96);
     ring.renderOrder = 1;
     ud(ring).live = true; // only the breathing foam: the rest bakes
-    const inner = footprint(z, t, onTop(new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }), 3), 0.15);
+    const inner = footprint(z, t, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }), 0.15);
     inner.scale.set(0.9, 1, 0.9);
     inner.renderOrder = 2;
     g.add(ring, inner);

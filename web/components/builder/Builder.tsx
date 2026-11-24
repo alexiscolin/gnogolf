@@ -1,13 +1,10 @@
 "use client";
 
-// The Builder on a computer (the GUI spec's B1, B2, B5): builder.wasm
-// loaded, then the drafts this browser keeps (Start: open one, or start a
-// new hole in a world), then the editor (Build, and Play over it), then
-// Publish; a community hole remixed from the game (?remix=, Community.tsx)
-// opens as a new draft. The author's address is the one this browser keeps,
-// else the account Adena already shares with the site, read without a popup
-// (adena.ts current). Reached only through app/build/gate.tsx's dynamic
-// import: nothing here loads on a phone.
+// The Builder on a computer: builder.wasm loaded, then the drafts this
+// browser keeps (Start), the editor (Build, with Play over it) and Publish.
+// A hole remixed from the game (?remix=) opens as a new draft. The author is
+// the address this browser keeps, else the account Adena already shares with
+// the site (read without a popup). Loaded only by gate.tsx: never on a phone.
 import "@/app/title.css";
 import "@/app/build/builder.css";
 import "@/app/build/phone.css";
@@ -31,8 +28,8 @@ export default function Builder() {
   const [host, setHost] = useState<BuilderHost | null>(null);
   const [failed, setFailed] = useState("");
   const [drafts, setDrafts] = useState<Kept[]>([]);
-  // the draft open (its key), how many times opened (a fresh editor each), the step, whether Play opens at once (back from
-  // Publish; its address to change first, readdress), and the id the editor found it proved under (Publish's)
+  // the open draft: its key, how many times opened (a fresh editor each), its step, Play at once (back from Publish;
+  // readdress: its address changed first) and the id it was proved under (for Publish)
   const [open, setOpen] = useState<{ at: string; n: number; step: "edit" | "publish"; play?: boolean; readdress?: boolean; next?: string } | null>(null);
   const [author, setAuthor] = useState<string | null>(null);
   const [unkept, setUnkept] = useState(false);
@@ -47,7 +44,7 @@ export default function Builder() {
     setElsewhere(false);
     setOpen({ at, n: 0, step: "edit" });
   }, []);
-  // a draft added (a new hole, a file, a remix) under a key of its own, an address no other draft has (templates.ts ownSlug), and opened
+  // a draft added (a new hole, a file, a remix) under its own key and an address no other draft has, then opened
   const among = useRef<readonly Kept[]>([]);
   among.current = drafts;
   const add = useCallback((d: Draft, others: readonly Kept[] = among.current) => {
@@ -61,14 +58,14 @@ export default function Builder() {
     // a remix asked for (taken from the address at once: a reload does not make another)
     const remix = remixId(window.location.search), url = new URL(window.location.href);
     if (remix) url.searchParams.delete("remix"), window.history.replaceState(window.history.state, "", url);
-    // a new player: straight onto the Garden's dogleg, with the first run's hints (templates.ts firstRun); not on a remix
+    // a new player opens the Garden's dogleg with the first run's hints (not on a remix)
     let hinted = true;
     try { hinted = !!localStorage.getItem(HINTS_KEY); } catch {}
     const first = remix ? null : firstRun(list.map((k) => k.draft), hinted);
     setDrafts(list);
     if (first) add(first, list), setHints(true);
-    // the address kept, else Adena's account if it already shares one with the site (no popup), kept as a typed one is
-    // (unless one was given meanwhile); a game under way keeps the author it opened with (Editor: from its next Play)
+    // the address kept, else the account Adena already shares (no popup), kept like a typed one unless one was given
+    // meanwhile; a game under way keeps the author it opened with
     const kept = knownAuthor();
     setAuthor(kept);
     if (!kept) void current().then((a) => a && !knownAuthor() && (keepAuthor(a.address), setAuthor((was) => was ?? a.address)));
@@ -155,9 +152,9 @@ export default function Builder() {
     );
   }
   return (
-    <Start host={host} author={author} drafts={drafts.map((k) => k.draft)} said={said}
-      onOpen={(i) => openAt(drafts[i].key)}
+    <Start host={host} author={author} drafts={drafts} said={said}
+      onOpen={openAt}
       onAdd={(d, broken = "") => { add(d); setOpened(broken); }}
-      onDelete={(i) => { dropDraft(drafts[i].key); setDrafts(drafts.filter((_, k) => k !== i)); }} />
+      onDelete={(key) => { dropDraft(key); setDrafts((list) => list.filter((k) => k.key !== key)); }} />
   );
 }

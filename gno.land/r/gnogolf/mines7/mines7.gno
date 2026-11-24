@@ -36,9 +36,9 @@ func hole() *course.Simple {
 		Shelter:   0.05,
 
 		Pulses: []course.Pulse{
-			// mid tide, strokes 1, 4, 7…: the low stones under
+			// mid tide, strokes 2, 5, 8…: the low stones under
 			{Every: 3, On: 1, Phase: 2, Zones: []physics.Zone{tide(v(10.77, 10.06), v(18.92, 22.59), v(10.77, 11.18), v(16.8, 22.59), v(18.92, 21.47), v(12.9, 10.06)), tide(v(33.65, 16.91), v(39.35, 23.09), v(35.49, 23.09), v(39.35, 18.45), v(37.51, 16.91), v(33.65, 21.55))}},
-			// high tide, strokes 2, 5, 8…: the middle ones too
+			// high tide, strokes 3, 6, 9…: the middle ones too
 			{Every: 3, On: 1, Phase: 1, Zones: []physics.Zone{tide(v(10.77, 10.06), v(18.92, 22.59), v(10.77, 11.18), v(16.8, 22.59), v(18.92, 21.47), v(12.9, 10.06)), tide(v(19.65, 16.91), v(25.35, 23.09), v(21.49, 23.09), v(25.35, 18.45), v(23.51, 16.91), v(19.65, 21.55)), tide(v(33.65, 16.91), v(39.35, 23.09), v(35.49, 23.09), v(39.35, 18.45), v(37.51, 16.91), v(33.65, 21.55)), tide(v(39.83, 17.6), v(47.61, 31.96), v(39.83, 18.52), v(45.39, 31.96), v(47.61, 31.04), v(42.05, 17.6))}},
 		},
 

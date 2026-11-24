@@ -17,7 +17,7 @@ import (
 //	 "external_url":"<site>g/1/",
 //	 "attributes":[{"trait_type":"Tier","value":"common"},{"trait_type":"Series","value":"genesis"}]}
 func TokenMetadata(tid string) (string, error) {
-	if _, err := Token.OwnerOf(grc721.TokenID(tid)); err != nil {
+	if _, err := token.OwnerOf(grc721.TokenID(tid)); err != nil {
 		return "", errors.New(errNoGnome)
 	}
 	g, ok := tokenAt(parseID(tid))

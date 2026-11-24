@@ -45,21 +45,21 @@ func TestBuyReadsItsIDsStrictly(cur realm, t *testing.T) {
 	fresh(t, cur)
 	a, b := itoa(nthOfTier(0, 0)), itoa(nthOfTier(0, 1))
 	six := strings.Repeat(a+",", 5) + a
-	for name, ids := range map[string]string{
-		"none":         "",
-		"a blank":      a + ",",
-		"a repeat":     a + "," + a,
-		"six":          six,
-		"a space":      a + ", " + b,
-		"a leading 0":  "0" + a,
-		"a sign":       "+" + a,
-		"zero":         "0",
-		"past the end": itoa(lastID() + 1),
-		"huge":         "99999999999999999999",
-		"a word":       "gnome",
+	for ids, why := range map[string]string{
+		"":                     "name 1 to 5 gnomes",
+		six:                    "name 1 to 5 gnomes",
+		a + "," + a:            "named twice",
+		a + ",":                "not a gnome id",
+		a + ", " + b:           "not a gnome id",
+		"0" + a:                "not a gnome id",
+		"+" + a:                "not a gnome id",
+		"0":                    "not a gnome id",
+		"99999999999999999999": "not a gnome id",
+		"gnome":                "not a gnome id",
+		itoa(lastID() + 1):     "no such gnome",
 	} {
 		testing.SetRealm(asUser(alice, ugnot(priceOf(common()))))
-		urequire.AbortsContains(t, cur, "gnomes: ", func() { Buy(cross(cur), ids) }, name)
+		urequire.AbortsContains(t, cur, why, func() { Buy(cross(cur), ids) }, ids)
 	}
 	uassert.Equal(t, int64(0), TotalSupply())
 }

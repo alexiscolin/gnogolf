@@ -4,7 +4,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   mod, there, onAt, untilOn, smoothstep, angDiff, closest, boxOf, nearestOnPoly, segDist, wallDist,
-  segHit, rayCircle, inPoly, inset, inZone, inSea, sandIn, airy, terrain, CELL, plainSkins, cupRadius, CUP_R, emptyZone,
+  segHit, rayCircle, inPoly, inset, inZone, inSea, sandIn, airy, terrain, CELL, plainSkins, cupRadius, emptyZone,
 } from "../lib/terrain.ts";
 import type { HoleState, Vec2, Wall, Zone } from "../lib/types.ts";
 
@@ -19,8 +19,6 @@ function mkWall(a: Vec2, b: Vec2, skin = "rail", over: Partial<Wall> = {}): Wall
 function mkHole(over: Partial<Fixture> = {}): Fixture {
   return { board: { w: 10, h: 8 }, walls: [], zones: [], start: [0.5, 0.5], cup: [9.5, 7.5], ...over };
 }
-
-// ------------------------------------------------------------- small sums
 
 void test("mod is never negative", () => {
   assert.equal(mod(-1, 4), 3);
@@ -216,8 +214,6 @@ void test("airy: a slope's own air flag wins; else guessed from skin or a clock"
   assert.equal(airy(mkZone({ kind: "surface", min: [0, 0], max: [1, 1] })), false); // not a slope at all
 });
 
-// --------------------------------------------------------------- terrain()
-
 void test("terrain: an open board is all green, height and ground flat", () => {
   const t = terrain(mkHole());
   assert.equal(t.onGreen(0.5, 0.5), true);
@@ -295,8 +291,7 @@ void test("terrain: a hill whose top comes too near the cup holds up to it, no s
 });
 
 void test("terrain: the cup at the hole's own radius (the chain's cupR): a smaller cup needs less room from a hill", () => {
-  assert.equal(cupRadius({}), CUP_R);
-  assert.equal(CUP_R, 1.2);
+  assert.equal(cupRadius({}), 1.2);
   assert.equal(cupRadius({ cupR: 1.0 }), 1.0);
   const hill = mkZone({ kind: "slope", min: [4, 1], max: [12, 9], vec: [-0.25, 0] });
   const at = (cupR?: number) => terrain({ ...mkHole({ board: { w: 20, h: 10 }, zones: [hill], start: [0.5, 5], cup: [14.4, 5] }), ...(cupR ? { cupR } : {}) });

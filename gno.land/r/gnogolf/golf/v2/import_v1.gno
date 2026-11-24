@@ -21,6 +21,10 @@ const (
 	EventNotImported = "NotImported"
 )
 
+func init() {
+	importNote = "The owner can also copy a v1 course hole into a slot here that has none (ImportHole), and v1's records of it onto its boards and the standings (ImportRecord), read from v1 in the same call: v1 has no near-copy rule, so a record sent again there and copied ranks here. "
+}
+
 // ImportHole copies v1's current version of a course slot, by its id
 // ("garden/7/v3"): its data, provenance (by, height, note), plays and wear.
 // Only the owner can, into a slot v2 has nothing in yet.

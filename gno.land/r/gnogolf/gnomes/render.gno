@@ -20,6 +20,7 @@ var (
 	hub  = strings.TrimPrefix(self, "gno.land")
 )
 
+// Render is the page gnoweb shows at path, "Not found" for any other.
 func Render(path string) string {
 	switch {
 	case path == "":
@@ -52,13 +53,13 @@ func renderHome() string {
 		}
 		b.WriteString("The genesis sale " + verb + " on " + dateOf(closeAt) + ".\n\n")
 	} else if saleOf(genesisName) >= 0 {
-		b.WriteString("The genesis sale has no closing date: it runs until sold out, unless one is announced later (at least 7 days ahead).\n\n")
+		b.WriteString("The genesis sale has no closing date: it runs until sold out, unless one is announced later (at least " + itoa(closeNotice/(24*3600)) + " days ahead).\n\n")
 	}
 	b.WriteString("## Sale\n\n| series | gnomes | opens | common / rare / epic / legendary | found a player |\n|---|---|---|---|---|\n")
 	for _, s := range sales {
 		c := catalogue[seriesNamed(s.series)]
 		b.WriteString("| " + s.series + " | " + itoa(c.first) + "–" + itoa(c.last) + " | " + dateOf(s.start) + " | " +
-			wholeGNOT(s.prices[0]) + " / " + wholeGNOT(s.prices[1]) + " / " + wholeGNOT(s.prices[2]) + " / " + gnot(s.prices[3]) + " | " +
+			gnot(s.prices[0]) + " / " + gnot(s.prices[1]) + " / " + gnot(s.prices[2]) + " / " + gnot(s.prices[3]) + " GNOT | " +
 			itoa(soldIn(c.first, c.last)) + " of " + itoa(c.last-c.first+1) + " |\n")
 	}
 	return b.String()
@@ -70,7 +71,7 @@ func renderGnome(tid string, g gnome) string {
 	b.WriteString("# " + name + "\n\n")
 	b.WriteString("![" + name + "](" + portrait(g) + ")\n\n")
 	b.WriteString("Gnome " + tid + ", " + tierName(g.tier) + ", of the " + g.series + " series.\n\n")
-	if o, err := Token.OwnerOf(grc721.TokenID(tid)); err == nil {
+	if o, err := token.OwnerOf(grc721.TokenID(tid)); err == nil {
 		b.WriteString("Owner: " + o.String() + "\n")
 	} else if isSold(g.id) {
 		b.WriteString("Burned.\n")
@@ -121,15 +122,12 @@ func markdownEscape(s string) string {
 	return b.String()
 }
 
-// wholeGNOT is a price as its number of GNOT alone ("30"), for a row of
-// prices; gnot the full amount ("815.85 GNOT").
-func wholeGNOT(ugnot int64) string { return strings.TrimSuffix(gnot(ugnot), " GNOT") }
-
+// gnot is a price as its number of GNOT ("815.85").
 func gnot(ugnot int64) string {
 	s := itoa(ugnot / 1_000_000)
 	if frac := ugnot % 1_000_000; frac != 0 {
 		f := itoa(frac + 1_000_000)[1:]
 		s += "." + strings.TrimRight(f, "0")
 	}
-	return s + " GNOT"
+	return s
 }

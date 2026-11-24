@@ -54,7 +54,6 @@ function setWindow(win: { adena?: Adena } | undefined) {
   (globalThis as unknown as { window?: { adena?: Adena } }).window = win;
 }
 
-// ---------------------------------------------------------------- fakeAdena
 type Res = { status: string; type?: string; code?: number; message?: string; data?: unknown };
 type Call = { name: string; args: unknown[] };
 
@@ -94,7 +93,6 @@ function fakeAdena(script: {
   return { a: raw as unknown as Adena, calls };
 }
 
-// ------------------------------------------------------------------ hasAdena
 test("hasAdena: true only with a window.adena", () => {
   setWindow(undefined);
   assert.equal(hasAdena(), false);
@@ -104,7 +102,6 @@ test("hasAdena: true only with a window.adena", () => {
   assert.equal(hasAdena(), true);
 });
 
-// -------------------------------------------------------------------- current
 test("current: null with no wallet, no account, or a throw; the account otherwise", async () => {
   setWindow(undefined);
   assert.equal(await current(), null);
@@ -129,7 +126,6 @@ test("current: null with no wallet, no account, or a throw; the account otherwis
   assert.deepEqual(await current(), { address: ADDR, chainId: CHAIN });
 });
 
-// --------------------------------------------------------------- onWalletChange
 test("onWalletChange: a no-op unsub with no wallet or no On; otherwise dispatches to every subscriber until unsubscribed", () => {
   setWindow(undefined);
   assert.equal(typeof onWalletChange(() => {}), "function");
@@ -163,7 +159,6 @@ test("onWalletChange: a no-op unsub with no wallet or no On; otherwise dispatche
   assert.equal(seen2.length, 2);
 });
 
-// --------------------------------------------------------------- onOurNode
 test("onOurNode: null with no wallet, no GetNetwork or no rpc; true/false by port (localhost normalised)", async () => {
   setWindow(undefined);
   assert.equal(await onOurNode(RPC), null);
@@ -197,7 +192,6 @@ test("onOurNode: null with no wallet, no GetNetwork or no rpc; true/false by por
   assert.equal(await onOurNode(RPC), null);
 });
 
-// ------------------------------------------------------ ensureNetwork (via recordRound)
 // ensureNetwork is not exported; recordRound always runs it first, so every
 // SwitchNetwork/AddNetwork/GetNetwork path and message is reachable through it.
 const roundArgs = (over: Record<string, unknown> = {}) => ({
@@ -291,7 +285,6 @@ test("ensureNetwork: switched, but to the wrong RPC under the right chain id", a
   });
 });
 
-// ------------------------------------------------------------------- connect
 test("connect: not installed", async () => {
   setWindow(undefined);
   await assert.rejects(() => connect({ chainId: CHAIN, rpc: RPC }), /not installed/);
@@ -340,7 +333,6 @@ test("connect: a different chain runs ensureNetwork and reports the switched-to 
   assert.ok(calls.some((c) => c.name === "SwitchNetwork"));
 });
 
-// -------------------------------------------------------------- commitsOf/gasOf
 test("commitsOf: a light round fits in one commit", () => {
   assert.deepEqual(commitsOf({ pts: [10, 10, 10], walls: 0, pieces: 0 }), [[0, 3]]);
 });
@@ -425,7 +417,6 @@ test("roundGas: a round in several commits pays each commit's call and fixed gas
   assert.equal(roundGas(c, 0), 0);
 });
 
-// ------------------------------------------------------------------ chainSplit
 const simRes = (rest: Vec2, strokes: number, period: number, holed = false): SimulateRound => ({
   version: 1, path: [rest], air: "", cause: "", rest, holed, bounces: 0, strokes, period,
 });
@@ -463,8 +454,7 @@ test("chainSplit: a chain refusal ('commit the first N') retries smaller, then c
   assert.deepEqual(parts, [[0, 2], [2, 3]]);
   assert.deepEqual(chain.calls.map((c) => c.name), ["simulateRound", "simulateRound", "simulateCommit"]);
   // the tee read goes in s.period (here: unset), the continuing SimulateCommit
-  // in chainSplit's own `period` argument — worth knowing if a caller ever
-  // passes the two out of step (see report)
+  // in chainSplit's own `period` argument
   assert.equal(chain.calls[0].args[2], undefined);
   assert.equal(chain.calls[2].args[4], 7);
 });
@@ -503,7 +493,6 @@ test("chainSplit: any other refusal is not retried", async () => {
   await assert.rejects(() => chainSplit(chain, { id: "beach/2", shots: ["1,1"], pts: [10] }, 1), /RPC down$/);
 });
 
-// ------------------------------------------------------------------ recordRound
 test("recordRound: not installed", async () => {
   setWindow(undefined);
   await assert.rejects(() => recordRound(roundArgs()), /not installed/);
@@ -651,7 +640,6 @@ test("recordRound: an Adena failure that does not say nothing went may have land
   }
 });
 
-// -------------------------------------------------------------------- why()
 // why() is not exported; every one of its branches is reachable through a
 // failed DoContract (recordRound is used as the vehicle here).
 test("why(): every status code and refusal shape reads out in words", async () => {
@@ -678,7 +666,6 @@ test("why(): an error of null falls back to the chain's log, not a TypeError", a
   await assert.rejects(() => recordRound(roundArgs()), (e: Error) => e.message === "chain boom");
 });
 
-// ------------------------------------------------------ calls(), registerName, claimRounds
 test("registerName: Register then Claim in one transaction, gas = REGISTER_GAS + CLAIM_GAS", async () => {
   const { a, calls } = fakeAdena();
   setWindow({ adena: a });
@@ -728,7 +715,6 @@ test("claimRounds: refused names its own default failure, and cancellation is fl
   });
 });
 
-// -------------------------------------------------------------------- gnokeyPlan
 test("gnokeyPlan: an empty, period-less-pro, or badly-shaped round is nothing to run", () => {
   assert.deepEqual(gnokeyPlan({ id: "garden/7", shots: [] }, { realm: REALM, rpc: RPC, chainId: CHAIN }), []);
   assert.deepEqual(gnokeyPlan({ id: "beach/2", shots: ["1,1"], period: null, roundMode: "pro" }, { realm: REALM, rpc: RPC, chainId: CHAIN }), []);
@@ -865,7 +851,6 @@ test("gnokeyLate: nothing to ask for a round with no period, or an RPC or realm 
   assert.equal(gnokeyLate(5, { realm: "gno.land/r/x; ls", rpc: RPC }), "");
 });
 
-// ------------------------------------------------ gnokeyName, gnokeyClaim, gnokeyTip
 const REG = "gno.land/r/sys/namereg/v0", OWNER = "g1" + "b".repeat(38);
 test("gnokeyName: Register (the name quoted) then Claim, two calls at their own gas, to this chain", () => {
   assert.deepEqual(gnokeyName({ registrar: REG, realm: REALM, name: "nym-golfer123", price: 0.001, chainId: CHAIN, rpc: RPC }), [
@@ -910,6 +895,7 @@ test("gnokeyName, gnokeyClaim, gnokeyTip in a paste: the retry helper, and every
     assert.match(paste, /^\(\nset -e\nsend\(\) \{\n[\s\S]*signature verification failed[\s\S]*\n\)$/);
     assert.equal(paste.split("\nsend gnokey maketx ").length - 1, plan.length);
     assert.ok(!paste.includes("<your-key-name>") && paste.includes(" 'my key'\n"));
+    assert.ok(paste.split("\n").every((line) => line.split("'").length % 2), "no line broken inside a quote: what is shown reads as it runs");
   }
 });
 
@@ -959,7 +945,6 @@ test("holedIn: the strokes a save's result says, none when it did not hole", () 
   assert.equal(holedIn(null), null);
 });
 
-// ------------------------------------------------------- depositBytes/shortOf/costOf
 test("depositBytes: later saves are cheap; a first finish is dearer still on the whole course", () => {
   assert.equal(depositBytes(false), 300);
   assert.equal(depositBytes(true), 1780);
@@ -990,6 +975,16 @@ test("commitsOf: a shot heavier than what is left of the budget (less its fixed 
   assert.deepEqual(commitsOf({ pts: heavy.map(() => 200), works: heavy, fixed: 150_000_000 }), [[0, 1], [1, 2], [2, 3], [3, 4]]);
   // without the works (a round kept from before they were said): the path's model alone
   assert.deepEqual(commitsOf({ pts: [60, 60] }), [[0, 2]]);
+});
+
+test("sendTip: one bank send of the tip in ugnot, from the player to the owner, at a send's gas", async () => {
+  const { a, calls } = fakeAdena();
+  setWindow({ adena: a });
+  await sendTip({ from: ADDR, to: OWNER, gnot: 5, price: 0.001, chainId: CHAIN, rpc: RPC });
+  const tx = calls.find((c) => c.name === "DoContract")!.args[0] as { messages: unknown[]; gasWanted: number; memo: string };
+  assert.deepEqual(tx.messages, [{ type: "/bank.MsgSend", value: { from_address: ADDR, to_address: OWNER, amount: "5000000ugnot" } }]);
+  assert.equal(tx.gasWanted, 2_000_000);
+  assert.equal(tx.memo, "gnogolf tip");
 });
 
 test("sendTip: sends nothing without two addresses and a whole ugnot amount", async () => {

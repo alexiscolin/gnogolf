@@ -28,13 +28,13 @@ const out = path.resolve(flag("--out") || path.join(os.tmpdir(), "gnogolf-likene
 const only = args.map(Number).filter(Boolean);
 const GNO = process.env.GNO || path.join(process.env.GNO_TOOLCHAIN || path.join(os.homedir(), ".cache/gno-toolchains/onyx"), "gno");
 
-/** @type {{ gnomes: { id: number, tier: string, name: string, traits: string, skin: object }[], earned: { kind: number, unlock: string, name: string, traits: string }[] }} */
+/** @type {{ gnomes: { id: number, tier: string, name: string, traits: string, skin: object }[], earned: { kind: number, unlock: string, name: string, traits: string }[], vocab: Record<string, string[]> }} */
 const cat = JSON.parse(fs.readFileSync(path.join(DESIGNS, "data/gnomes.json"), "utf8"));
 const EARNED = 1_000_000; // an earned kind k is shown as id EARNED + k
 const TRAIT = 2_000_000; // the n-th trait value alone, as id TRAIT + n
 
-// each value of each drawn field, alone on the Classic (format 1: docs/gnomes/design.md)
-const vocab = JSON.parse(fs.readFileSync(path.join(DESIGNS, "data/gnomes.json"), "utf8")).vocab;
+// each value of each drawn field alone on the Classic: his traits with that field's byte set
+const vocab = cat.vocab;
 const CLASSIC = "01010100000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff";
 const withByte = (/** @type {string} */ t, /** @type {number} */ f, /** @type {number} */ v) => t.slice(0, 2 * f) + v.toString(16).padStart(2, "0") + t.slice(2 * f + 2);
 /** @type {{ label: string, traits: string, look: Record<string, unknown> }[]} */

@@ -1,6 +1,6 @@
 // What a gnome of the collection leaves behind as he rolls (a trail) and what
 // the cup does when he drops in (a holing), within the limits that keep the
-// game readable (docs/gnomes/design.md, "Never in the way"): a trail is behind
+// game readable: a trail is behind
 // the ball, under the aim, without depth writes, at most 0.6 opaque and 1.5
 // long, gone 0.6 s after he stops; a holing starts after the drop, lasts at
 // most 1.5 s, never flashes the screen. One instanced draw each (a ribbon is
@@ -158,7 +158,7 @@ export function makeTrail(skin: Skin): GnomeTrail | null {
   if (!skin.trail || !motion) return null;
   const color = skin.trailColor ?? 0xffffff, rib = RIBBONS[skin.trail];
   if (rib) return ribbon(color, rib);
-  const s = swarm(SHAPES[skin.trail] ?? SHAPES.stars, color, 24, FADE_S);
+  const s = swarm(SHAPES[skin.trail], color, 24, FADE_S);
   let last = -1, prev = 0;
   return {
     group: s.mesh,

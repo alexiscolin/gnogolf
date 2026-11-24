@@ -16,7 +16,6 @@ function makeCam() {
     camLog: [] as unknown[],
     occluded: () => false,
     inner: { some: "state" },
-    lensWho: {} as Record<number, number>,
     yaw: () => 0.5,
     gliding: () => false,
     laneAt: (x: number, z: number) => ({ x, z }),
@@ -133,7 +132,7 @@ void test("sightProbe walks the ground under the camera-to-head line", () => {
   assert.ok(Number.isFinite(r.groundAtBall));
 });
 
-void test("inView lists the drawn meshes in the frustum, keyed by what draws them", () => {
+void test("inView counts the drawn meshes in the frustum, by type, radius, distance and vertices", () => {
   const { p, camera } = makeRig();
   camera.position.set(0, 0, 5);
   camera.lookAt(0, 0, 0);

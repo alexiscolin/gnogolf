@@ -1,9 +1,9 @@
 // Package mountain15 is the serac fall: a rising traverse under an icefall.
 // Three seracs lean over the path, and each drops its ice across it in turn,
-// over and over: a ball caught under falling ice is swept back down to the
-// start. Watch the rhythm and let go so the ball runs the gaps, or lay up
-// short of a serac and wait for the next stroke. Old debris lies where a
-// lay-up would be easy.
+// over and over: a ball caught under falling ice is swept back down to where
+// it was played from. Watch the rhythm and let go so the ball runs the gaps,
+// or lay up short of a serac and wait for the next stroke. Old debris lies
+// where a lay-up would be easy.
 package mountain15
 
 import (

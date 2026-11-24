@@ -15,10 +15,11 @@ import (
 const pageSize = 100
 
 // Collection is the mint page's header: the sale's switch ("open") and the
-// earned gnomes' ("earnedOpen"), the genesis's closing date (0 for none), the owner, the treasury and the one offered it, the
-// site, the tiers (the price of the next sale, the caps, how many sold) and
-// the series (how many sold; "closed" once the sale closed, so its final
-// supply is "sold"; its "sale", null before one is opened).
+// earned gnomes' ("earnedOpen"), the genesis's closing date (0 for none),
+// the owner, the treasury and the one offered it, the site, the royalty,
+// the tiers (the price of the next sale, the caps, how many sold) and the
+// series (how many sold; "closed" once the sale closed, so its final supply
+// is "sold"; its "sale", null before one is opened).
 func Collection() string {
 	var b strings.Builder
 	b.WriteString(`{"version":1,"open":` + strconv.FormatBool(mintOpen) + `,"earnedOpen":` + strconv.FormatBool(earnedOpen) + `,"closesAt":` + itoa(closeAt) +
@@ -67,7 +68,7 @@ func saleJSON(i int) string {
 // the next sale's when its series is on none yet; 0 for an earned one).
 //
 //	{"version":1,"id":"217","series":"genesis","name":"…","tier":"common",
-//	 "traits":"…","owner":"","price":36000000,"sold":false}
+//	 "traits":"…","owner":"","price":36000000,"sold":false,"closed":false}
 func Gnome(tid string) string {
 	g, ok := tokenAt(parseID(tid))
 	if !ok {
@@ -80,7 +81,7 @@ func Gnome(tid string) string {
 			price = sales[si].prices[g.tier]
 		}
 	}
-	owner, err := Token.OwnerOf(grc721.TokenID(tid))
+	owner, err := token.OwnerOf(grc721.TokenID(tid))
 	return `{"version":1,"id":"` + tid + `","series":"` + g.series + `","name":` + jsonq.Quote(g.name) +
 		`,"tier":"` + tierName(g.tier) + `","traits":` + jsonq.Quote(g.traits) + `,"owner":` + jsonq.Quote(owner.String()) +
 		`,"price":` + itoa(price) + `,"sold":` + strconv.FormatBool(err == nil || isSold(g.id)) +
@@ -115,7 +116,7 @@ func GnomesOf(owner address, offset int64) string {
 	if offset < 0 {
 		offset = 0
 	}
-	total, _ := Token.BalanceOf(owner)
+	total, _ := token.BalanceOf(owner)
 	ids, more := heldPage(owner, offset, pageSize)
 	next := int64(-1)
 	if more {

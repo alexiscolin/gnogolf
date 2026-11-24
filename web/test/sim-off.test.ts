@@ -1,16 +1,15 @@
 // The page's own aim previews turned off (lib/sim.ts), each case in a fresh
-// copy of the module: sources that are not the realm's, a worker that fails,
-// and (through the aim, engine/aim.ts) a shot the page refuses that the chain
-// answers. Off, simReady is false and the aim asks the chain again. And on,
+// copy of the module: sources that are not the realm's (checked once a
+// chain: one reseeded under the same realm is read again), a worker that
+// fails, and (through the aim, engine/aim.ts) a shot the page refuses that
+// the chain answers. Off, simReady is false and the aim asks the chain again. And on,
 // the chain is still asked once for a still aim previewed every frame.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import * as THREE from "three";
-import { makeHost } from "../lib/sim/host.ts";
-import type { Ask } from "../lib/sim/worker.ts";
+import { aimRig } from "./aim-rig.ts";
+import { answer, makeHost, type Ask } from "../lib/sim/host.ts";
 import type * as Sim from "../lib/sim.ts";
-import type { Live } from "../lib/engine/types.ts";
 import type { Stroke } from "../lib/types.ts";
 
 const repo = new URL("../../", import.meta.url);
@@ -20,10 +19,9 @@ class FakeWorker {
   host = makeHost(wasm);
   onmessage: ((e: { data: unknown }) => void) | null = null;
   postMessage(m: Ask & { n: number }) {
-    const h = this.host;
     const data = m.op === failing ? { n: m.n, err: "RuntimeError: unreachable" }
       : refusing && m.op !== "load" && m.op !== "sources" ? { n: m.n, out: "panic: golf: refused" }
-      : { n: m.n, out: m.op === "load" ? (h.load(m.id, m.hex), "") : m.op === "from" ? h.from(m.id, m.x, m.y, m.shot, m.stroke, m.period) : m.op === "round" ? h.round(m.id, m.shots, m.period) : JSON.stringify(h.sources()) };
+      : { n: m.n, out: answer(this.host, m) };
     setImmediate(() => this.onmessage?.({ data }));
   }
   terminate() {}
@@ -31,7 +29,10 @@ class FakeWorker {
 (globalThis as { Worker?: unknown }).Worker = FakeWorker;
 
 const hex = fs.readFileSync(new URL("data/holes.txt", repo), "utf8").split("\n")[0].split(" ")[3];
-const chain = (file = (p: string) => fs.readFileSync(new URL(p, repo), "utf8")) => ({ realm: "gno.land/r/gnogolf/golf/v2", file: (p: string) => Promise.resolve(file(p)), holeData: () => Promise.resolve(hex) });
+const chain = (file = (p: string) => fs.readFileSync(new URL(p, repo), "utf8")) => ({
+  realm: "gno.land/r/gnogolf/golf/v2", chainId: () => Promise.resolve("dev"), genesis: () => Promise.resolve("A"),
+  file: (p: string) => Promise.resolve(file(p)), holeData: () => Promise.resolve(hex),
+});
 const ID = "garden/1/v1", PERIOD = 5967997;
 let copies = 0;
 const fresh = () => import(`../lib/sim.ts?${++copies}`) as Promise<typeof Sim>;
@@ -44,6 +45,17 @@ void test("a deployed file that is not the one golf.wasm was built from: never s
   assert.equal(sim.simReady(ID), false);
 });
 
+void test("sources checked once a chain: not read again there, read again on a chain reseeded under the same realm", async () => {
+  let read = 0;
+  const counted = (p: string) => (read++, fs.readFileSync(new URL(p, repo), "utf8"));
+  assert.equal(await (await fresh()).startSim(chain()), true);
+  assert.equal(await (await fresh()).startSim(chain(counted)), true);
+  assert.equal(read, 0);
+  const reseeded = { ...chain((p) => counted(p) + (p.endsWith("physics/step.gno") ? " " : "")), genesis: () => Promise.resolve("B") };
+  assert.equal(await (await fresh()).startSim(reseeded), false);
+  assert.ok(read > 0);
+});
+
 void test("a worker that fails a simulation turns the page's previews off, not blank", async () => {
   const sim = await fresh();
   assert.equal(await sim.simHole(chain(), ID), true);
@@ -54,19 +66,11 @@ void test("a worker that fails a simulation turns the page's previews off, not b
 });
 
 void test("the page's own previews every frame (third person) on a still aim: the chain is still asked once, 120 ms on", async (t) => {
-  const sim = await import("../lib/sim.ts"), { makeAimer } = await import("../lib/engine/aim.ts");
+  const sim = await import("../lib/sim.ts");
   assert.equal(await sim.simHole(chain(), ID), true);
-  const aim = new THREE.Group();
-  aim.userData.dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), 256);
   let asked = 0;
   const ask = () => (asked++, new Promise<Stroke>(() => {}));
-  const E = {
-    g: { roundMode: null, ball: { x: 2, y: 3 }, period: PERIOD, shots: [], id: ID, rest: null, round: 1, course: null, weather: null, s: null },
-    aim, band: { visible: false }, ground: () => 0, mode: "assisted", shot: { angle: 0.3, power: 7, deg: 21 },
-    dragging: true, tickNow: () => 0, landing: () => null, zones: () => [], clock: 0,
-    chain: { ...chain(), simulateFrom: ask, simulateRound: ask },
-  } as unknown as Live;
-  const aimer = makeAimer(E);
+  const { aimer } = aimRig({ ...chain(), simulateFrom: ask, simulateRound: ask }, { id: ID, period: PERIOD, ball: { x: 2, y: 3 }, dragging: true, shot: { angle: 0.3, power: 7, deg: 21 } });
   t.mock.timers.enable({ apis: ["setTimeout"] });
   for (let i = 0; i < 20; i++) aimer.preview(), t.mock.timers.tick(16);
   assert.equal(asked, 1);
@@ -76,21 +80,12 @@ void test("the page's own previews every frame (third person) on a still aim: th
 });
 
 void test("a shot the page refuses that the chain answers is a difference", async (t) => {
-  const sim = await import("../lib/sim.ts"), { makeAimer } = await import("../lib/engine/aim.ts"); // the aim's own copy
+  const sim = await import("../lib/sim.ts"); // the aim's own copy
   assert.equal(await sim.simHole(chain(), ID), true);
   refusing = true;
-  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), 256);
-  const aim = new THREE.Group();
-  aim.userData.dots = dots;
   const asked: ((s: Stroke) => void)[] = [];
   const ask = () => new Promise<Stroke>((ok) => asked.push(ok));
-  const E = {
-    g: { roundMode: null, ball: { x: 2, y: 3 }, period: PERIOD, shots: [], id: ID, rest: null, round: 1, course: null, weather: null, s: null },
-    aim, band: { visible: false }, ground: () => 0, mode: "assisted", shot: { angle: 0.3, power: 7, deg: 21 },
-    dragging: true, tickNow: () => 0, landing: () => null, zones: () => [], clock: 0,
-    chain: { ...chain(), simulateFrom: ask, simulateRound: ask },
-  } as unknown as Live;
-  const aimer = makeAimer(E);
+  const { E, aimer } = aimRig({ ...chain(), simulateFrom: ask, simulateRound: ask }, { id: ID, period: PERIOD, ball: { x: 2, y: 3 }, dragging: true, shot: { angle: 0.3, power: 7, deg: 21 } });
   t.mock.timers.enable({ apis: ["setTimeout"] });
   aimer.preview();
   t.mock.timers.tick(120);

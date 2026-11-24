@@ -1,21 +1,19 @@
-/* The Builder on a computer (components/builder: the GUI spec's B1, B2, B5),
-   over the game's tokens (globals.css) and its front screens (title.css):
-   the front's paper and ink at a tool's density, flat info panels,
-   pressable things on their drop. The window never scrolls and never
-   scrolls sideways: the palette, the right column and the issues scroll in
-   themselves (no chaining); the board takes the wheel, the pinch and the
-   drag (touch-action: none). */
+/* The Builder on a computer (components/builder), on the game's tokens (globals.css) and front screens (title.css) at
+   a tool's density. The window never scrolls, not even sideways: the palette, the right column and the issues scroll
+   in themselves (no chaining), and the board takes the wheel, the pinch and the drag. */
 
-.bench { --palette-w: 212px; --col-w: 292px; position: fixed; inset: 0; display: grid; grid-template: 44px minmax(0, 1fr) / var(--palette-w) minmax(0, 1fr) var(--col-w); gap: var(--sp-5) var(--sp-4); padding: var(--sp-4) max(var(--sp-4), env(safe-area-inset-right)) var(--sp-4) max(var(--sp-4), env(safe-area-inset-left)); overflow: hidden; overscroll-behavior: none; font-family: var(--font); color: var(--ink); background: radial-gradient(circle, rgba(var(--ink-rgb), .08) 1.6px, transparent 2px) 0 0 / 14px 14px, var(--s0, var(--paper)); }
+:root { --board: #4f8a6b; } /* the board's ground round its green (the glossary's pieces on it too) */
+.bench, .pbench { --col-w: 292px; position: fixed; inset: 0; display: grid; padding: var(--sp-4) max(var(--sp-4), env(safe-area-inset-right)) var(--sp-4) max(var(--sp-4), env(safe-area-inset-left)); overflow: hidden; overscroll-behavior: none; font-family: var(--font); color: var(--ink); background: radial-gradient(circle, rgba(var(--ink-rgb), .08) 1.6px, transparent 2px) 0 0 / 14px 14px, var(--s0); }
+.bench { --palette-w: 212px; grid-template: 44px minmax(0, 1fr) / var(--palette-w) minmax(0, 1fr) var(--col-w); gap: var(--sp-5) var(--sp-4); }
 @media (min-width: 1280px) { .bench { --palette-w: 240px; } }
-@media (min-width: 1400px) { .bench { --palette-w: 256px; --col-w: 332px; grid-template-columns: var(--palette-w) minmax(0, 1fr) var(--col-w); } }
+@media (min-width: 1400px) { .bench { --palette-w: 256px; } .bench, .pbench { --col-w: 332px; } }
 .bench__wait { grid-column: 1 / -1; place-self: center; font-size: 17px; text-align: center; }
-.bench__unkept { position: fixed; left: 50%; bottom: var(--sp-3, 12px); transform: translateX(-50%); margin: 0; padding: 8px 16px; border: var(--edge); border-radius: var(--pill); background: var(--paper); font-weight: 700; white-space: nowrap; z-index: 2; }
-.bench__unkept--elsewhere { display: flex; align-items: center; gap: var(--sp-2, 8px); }
+.bench__unkept { position: fixed; left: 50%; bottom: var(--sp-3); transform: translateX(-50%); margin: 0; padding: 8px 16px; border: var(--edge); border-radius: var(--pill); background: var(--paper); font-weight: 700; white-space: nowrap; z-index: 2; }
+.bench__unkept--elsewhere { display: flex; align-items: center; gap: var(--sp-2); }
 /* the note has a band of its own under the screen it is said on: it covers no control */
 :is(.bench, .tbench, .pbench):has(+ .bench__unkept) { padding-bottom: 64px; }
 
-/* ------------------------------------------------------------ the header: the hole, the three steps, the one action */
+/* the header: the hole, the three steps, the one action */
 /* three zones, the steps in the middle of the window: the hole on the left, the history and the action on the right
    (never narrower than they are: a narrow window takes the room from the hole's name, the steps then off centre) */
 .bhead { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr); align-items: center; gap: var(--sp-4); min-width: 0; }
@@ -44,7 +42,7 @@
 .bhead__more[open] > summary svg { transform: rotate(180deg); }
 .bhead__menu { left: 0; right: auto; z-index: 6; min-width: 160px; }
 
-/* the steps: Edit, Test, Publish; done green, the current gold, the next open or locked with its reason */
+/* the steps: Build, Play, Publish; done green, the current gold, the next open or locked with its reason */
 .stepper { justify-self: center; display: flex; align-items: center; gap: var(--sp-1); height: 40px; margin: 0; padding: 2px; list-style: none; border: var(--edge); border-radius: var(--pill); background: var(--paper); }
 .step button { display: inline-flex; align-items: center; gap: var(--sp-2); height: 32px; padding: 0 var(--sp-4) 0 var(--sp-1); border: 0; border-radius: var(--pill); background: none; font: inherit; font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap; cursor: pointer; }
 .step .tip { display: flex; align-items: center; line-height: 1; } /* (a locked step: InfoTip, its why under it) */
@@ -64,7 +62,7 @@
 /* a narrower window: every step keeps its word (the three steps are the Builder's map), the pill tighter */
 @media (max-width: 1180px) { .step button { gap: 6px; padding-right: var(--sp-2); font-size: 14px; } .step + .step::before { width: 8px; margin-right: 4px; } }
 
-/* ------------------------------------------------------------ a column: a paper panel that scrolls in itself */
+/* a column: a paper panel that scrolls in itself */
 .col { min-height: 0; overflow: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: var(--sp-4); padding: var(--sp-4); border: var(--edge); border-radius: var(--r-card); background: var(--paper); }
 .col hr { border: 0; border-top: var(--rule); margin: 0; width: 100%; }
 /* the right side: the player's view on top, its own panel that never scrolls; the piece's settings under it, the rest of the height */
@@ -92,7 +90,7 @@
 /* the green's tools, over the pieces: their own small heading */
 .palette__tools { display: grid; gap: var(--sp-2); }
 /* the brush under the pointer, painting: its square of cells, white edged to paint, red dashed to erase */
-.board__brush { fill: rgba(255, 255, 255, .14); stroke: #fff; stroke-width: .12; vector-effect: none; }
+.board__brush { fill: rgba(255, 255, 255, .14); stroke: var(--white); stroke-width: .12; vector-effect: none; }
 .board__brush--shrink { fill: rgba(225, 75, 59, .12); stroke: #e14b3b; stroke-dasharray: .35 .25; }
 .board__brush--off { display: none; }
 .palette__tools h3 { margin: 0; }
@@ -130,9 +128,9 @@
 .palette__bin { position: sticky; bottom: 0; z-index: 1; margin-top: auto; padding: var(--sp-3); border: 2px dashed rgba(var(--ink-rgb), .35); border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 var(--sp-4) var(--paper); text-align: center; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
 .palette__bin::before { content: "🗑 "; }
 
-/* ------------------------------------------------------------ the centre: the board, its checks docked under it */
+/* the centre: the board, its checks docked under it */
 .centre { position: relative; min-height: 0; min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: var(--sp-3); }
-.board { position: relative; min-height: 0; border: var(--edge-bold); border-radius: var(--r-card); background: #4f8a6b; overflow: hidden; touch-action: none; overscroll-behavior: contain; cursor: default; user-select: none; }
+.board { position: relative; min-height: 0; border: var(--edge-bold); border-radius: var(--r-card); background: var(--board); overflow: hidden; touch-action: none; overscroll-behavior: contain; cursor: default; user-select: none; }
 .board--no { cursor: not-allowed; }
 .board__map { position: absolute; inset: 0; display: block; }
 .board__ground { fill: #5c9a78; }
@@ -153,9 +151,8 @@
 .board__hit { fill: transparent; pointer-events: all; }
 .measure--shake { animation: bshake .3s ease-in-out; }
 @keyframes bshake { 20% { translate: -5px 0; } 40% { translate: 4px 0; } 60% { translate: -3px 0; } 80% { translate: 2px 0; } }
-/* a piece just dropped pops (120 ms) */
-@media (prefers-reduced-motion: reduce) { .measure--shake, .board__piece--pop { animation: none; } }
-.board__said { position: absolute; left: 50%; bottom: var(--sp-3); transform: translateX(-50%); max-width: 80%; margin: 0; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--hat-ink); border-radius: 12px; background: var(--white); color: var(--hat-ink); font-size: 15px; font-weight: 700; z-index: 1; }
+@media (prefers-reduced-motion: reduce) { .measure--shake { animation: none; } }
+.board__said { position: absolute; left: 50%; bottom: var(--sp-3); transform: translateX(-50%); max-width: 80%; margin: 0; z-index: 1; } /* (the game's bad note: globals.css) */
 
 /* the checks, docked: two lines (the next step and the meter's guess; the gauges), the things to fix between them when there are */
 .checks { display: grid; gap: 6px; padding: 6px var(--sp-4); border: var(--edge); border-radius: 16px; background: var(--paper); min-width: 0; }
@@ -171,7 +168,7 @@
 .verdict--warn { color: #8a5a00; }
 .verdict--warn::before { content: "↺"; background: var(--gold); color: var(--ink); }
 /* a toast over the board's top: what an edit dropped, an undo away (calm, never in the way of the pointer) */
-.btoast { position: absolute; left: 50%; top: var(--sp-3); z-index: 2; transform: translateX(-50%); max-width: calc(100% - 2 * var(--sp-4)); margin: 0; padding: var(--sp-2) var(--sp-3); border: var(--edge); border-radius: 12px; background: var(--white); box-shadow: 0 6px 18px rgba(var(--ink-rgb), .18); color: var(--ink); font-size: 15px; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: var(--sp-3); pointer-events: none; animation: btoast-in .18s ease-out; }
+.btoast { position: absolute; left: 50%; top: var(--sp-3); z-index: 2; transform: translateX(-50%); width: max-content; max-width: calc(100% - 2 * var(--sp-4)); margin: 0; padding: var(--sp-2) var(--sp-3); border: var(--edge); border-radius: 12px; background: var(--white); box-shadow: 0 6px 18px rgba(var(--ink-rgb), .18); color: var(--ink); font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: var(--sp-3); pointer-events: none; animation: btoast-in .18s ease-out; }
 /* its Undo the one thing in it a click reaches (the board under it otherwise) */
 .btoast button { pointer-events: auto; flex: none; }
 @keyframes btoast-in { from { opacity: 0; transform: translate(-50%, -6px); } }
@@ -201,8 +198,8 @@ button.issue__why:hover { text-decoration-style: solid; }
 .issue--warn { background: #fff7e2; border: 2px solid #e0a44a; color: var(--ink); }
 .issue--warn::before { content: "?"; background: var(--sunny); color: var(--ink); }
 
-/* ------------------------------------------------------------ the right: the 3D, then the selected piece */
-.preview { position: relative; flex: none; aspect-ratio: 16 / 10; border: var(--edge); border-radius: 14px; background: #3f9a72; overflow: hidden; }
+/* the right: the 3D, then the selected piece */
+.preview { position: relative; flex: none; aspect-ratio: 16 / 10; border: var(--edge); border-radius: 14px; background: var(--fairway); overflow: hidden; }
 .preview:not(.preview--off) { cursor: grab; touch-action: none; }
 .preview:active { cursor: grabbing; }
 .preview canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
@@ -227,8 +224,7 @@ button.issue__why:hover { text-decoration-style: solid; }
 /* no 3D here: the preview's box kept (nothing shifts), its sentence ink on paper */
 .preview.preview--off { display: grid; place-items: center; margin: 0; padding: var(--sp-4); background: var(--paper); border-style: dashed; color: var(--ink); font-size: 15px; line-height: 1.4; text-align: center; }
 
-/* ------------------------------------------------------------ your holes (the computer's start) */
-/* ------------------------------------------------------------ your holes (the computer's start, B7): the workshop, a new hole, the drafts */
+/* your holes (the computer's start): the workshop, a new hole, the drafts */
 /* the screen's column, centred, as wide as the menu's cards; compact enough that the starters stand above the fold of a laptop */
 .screen.bholes { padding-top: clamp(28px, 6vh, 64px); }
 /* a window too narrow for the column beside the corner's Back: the column starts under it */
@@ -244,7 +240,6 @@ button.issue__why:hover { text-decoration-style: solid; }
   --blueprint: linear-gradient(rgba(255, 255, 255, .13) 1.5px, transparent 1.5px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(255, 255, 255, .13) 1.5px, transparent 1.5px) 0 0 / 24px 24px,
     linear-gradient(rgba(255, 255, 255, .06) 1px, transparent 1px) 0 0 / 6px 6px, linear-gradient(90deg, rgba(255, 255, 255, .06) 1px, transparent 1px) 0 0 / 6px 6px, #2f6db3;
 }
-/* its padding the same on every side: the steps never touch its edges */
 .bholes__sign {
   position: relative; display: grid; grid-template-columns: 148px minmax(0, 1fr); align-items: center; gap: var(--sp-5);
   margin-top: 28px; padding: var(--sp-4) var(--sp-5); border: var(--edge-bold); border-radius: var(--r-panel); color: var(--paper);
@@ -273,11 +268,8 @@ button.issue__why:hover { text-decoration-style: solid; }
 .bholes__starts ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-5); margin: 0; padding: 0; list-style: none; }
 .bholes__start {
   display: grid; grid-template-rows: auto auto 1fr auto; justify-items: start; gap: 4px; width: 100%; height: 100%; padding: 0 0 var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card);
-  background: var(--white); font: inherit; color: var(--ink); text-align: left; cursor: pointer; overflow: hidden; box-shadow: var(--shadow-btn); transition: transform var(--t-pop) var(--spring), box-shadow .2s;
-}
-.bholes__start:hover, .bholes__start:focus-visible { transform: translateY(-4px) rotate(-.6deg); box-shadow: 0 0 0 4px var(--glow), 0 8px 0 var(--ink); }
-.bholes__start:focus-visible { outline: none; box-shadow: var(--ring-shadow), 0 8px 0 var(--ink); }
-.bholes__start:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+  background: var(--white); font: inherit; color: var(--ink); text-align: left; overflow: hidden; box-shadow: var(--shadow-btn);
+} /* (its lift, press and ring: a card that is a button, title.css) */
 .bholes__start > b { margin: 2px var(--sp-3) 0; font-size: 18px; line-height: 1.15; }
 .bholes__line { margin: 0 var(--sp-3); font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--ink-soft); }
 /* the map on the world's panel colour, its dots: the hole as the game draws one */
@@ -344,10 +336,10 @@ button.issue__why:hover { text-decoration-style: solid; }
 .bholes__open { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
 .bholes__open .btn { margin: 0; }
 .bholes__hole { display: flex; flex: 1; min-width: 240px; gap: var(--sp-2); }
-.bholes__hole input { flex: 1; min-width: 0; min-height: 44px; padding: 0 var(--sp-3); border: var(--edge); border-radius: 12px; font: inherit; font-family: var(--mono); font-size: 14px; }
-.bholes__why { margin: 0; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--hat-ink); border-radius: 12px; background: var(--white); color: var(--hat-ink); font-weight: 700; }
+.bholes__hole input { flex: 1; font-family: var(--mono); } /* (a text field: globals.css) */
+.bholes__why { margin: 0; } /* (the game's bad note: globals.css) */
 
-/* ------------------------------------------------------------ Play (B3): the game over the editor, the weathers over it */
+/* Play: the game over the editor, the weathers over it */
 .tbench { position: fixed; inset: 0; overflow: hidden; font-family: var(--font); color: var(--ink); }
 .tmode { position: absolute; inset: 0; }
 /* its HUD: the game's own (globals.css .hud, .card, .card--score, .card--weather), held in the frame */
@@ -374,10 +366,10 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .tmode__chip--now { border: 2px solid var(--ink); background: var(--gold); }
 .tmode__chip--done { border: 2px solid var(--green); background: var(--mint); color: var(--green); }
 /* holed: its tick a badge, the game's green, beside the others still empty */
-.tmode__chip--done .tmode__tick { padding: 2px 6px; border-radius: 999px; background: var(--green); color: var(--white); font-weight: 800; }
+.tmode__chip--done .tmode__tick { padding: 2px 6px; border-radius: var(--pill); background: var(--green); color: var(--white); font-weight: 800; }
 .tmode__chip--bad { border: 2px solid var(--hat-ink); color: var(--hat-ink); background: var(--white); }
 /* a weather just holed: its "✓ in 2" stamped on */
-.tmode__chip--stamp .tmode__tick { animation: bstamp .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+.tmode__chip--stamp .tmode__tick { animation: bstamp .45s var(--spring) both; }
 @keyframes bstamp { from { transform: scale(2.4) rotate(-12deg); opacity: 0; } }
 /* the next weather, a moment: its title card in the middle of the game (calm, gone after a second) */
 .tmode__now { position: absolute; left: 50%; top: 38%; z-index: 2; margin: 0; padding: var(--sp-3) var(--sp-6); border: var(--edge-bold); border-radius: var(--r-card); background: var(--paper); box-shadow: var(--deep-card); font-size: clamp(28px, 3.4vw, 44px); font-weight: 800; translate: -50% -50%; pointer-events: none; animation: bnow 1.2s ease-out both; }
@@ -393,8 +385,9 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 /* under the HUD, one column: the strip (left), then the notes (centred) under it; the strip faded leaves the column (the notes move up) */
 .tmode__side { position: absolute; top: 104px; left: 0; right: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: var(--sp-3); pointer-events: none; }
 .tmode__notes { display: grid; justify-items: center; gap: var(--sp-3); width: min(640px, calc(100% - 2 * var(--sp-3))); pointer-events: none; }
-.tmode__why, .tmode__note { margin: 0; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--hat-ink); border-radius: 12px; background: var(--white); color: var(--hat-ink); font-size: 15px; font-weight: 700; text-align: center; }
-.tmode__note { border-color: rgba(var(--ink-rgb), .3); color: var(--ink); background: rgba(var(--paper-rgb), .96); font-weight: 600; }
+/* a why, the game's bad note (globals.css); a note, flat paper on a soft edge */
+.tmode__why, .tmode__note { margin: 0; text-align: center; }
+.tmode__note { padding: var(--sp-2) var(--sp-3); border: 2px solid rgba(var(--ink-rgb), .3); border-radius: 12px; background: rgba(var(--paper-rgb), .96); color: var(--ink); font-size: 15px; font-weight: 600; }
 /* holed: the game's hole-finished card (globals.css .banner--win), a test's few words and its three ways on */
 .tmode__won .banner__in { max-width: 680px; padding: 32px 36px 26px; }
 .tmode__won h2 { font-size: clamp(40px, 4.4vw, 56px); }
@@ -415,12 +408,11 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 /* a try holed (no address yet): the hole-finished card asks for it (TestMode.tsx AddressLine), Adena first, an address pasted behind a tap */
 .tmode__addr { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--sp-2); margin-top: var(--sp-3); }
 .tmode__addr .btn { margin: 0; }
-.tmode__addr input { width: 26ch; min-height: 48px; padding: 0 var(--sp-2); border: var(--edge); border-radius: 10px; font: inherit; font-size: 14px; font-family: var(--mono); }
+.tmode__addr input { width: 26ch; font-family: var(--mono); } /* (a text field: globals.css) */
 @media (prefers-reduced-motion: reduce) { .tmode__strip { transition: none; } }
 
-/* ------------------------------------------------------------ publish (B4): the hole as players will see it, the form beside it */
-.pbench { --col-w: 292px; position: fixed; inset: 0; display: grid; grid-template-rows: 44px minmax(0, 1fr); gap: var(--sp-5); padding: var(--sp-4) max(var(--sp-4), env(safe-area-inset-right)) var(--sp-4) max(var(--sp-4), env(safe-area-inset-left)); overflow: hidden; overscroll-behavior: none; font-family: var(--font); color: var(--ink); background: radial-gradient(circle, rgba(var(--ink-rgb), .08) 1.6px, transparent 2px) 0 0 / 14px 14px, var(--s0, var(--paper)); }
-@media (min-width: 1400px) { .pbench { --col-w: 332px; } }
+/* publish: the hole as players will see it, the form beside it */
+.pbench { grid-template-rows: 44px minmax(0, 1fr); gap: var(--sp-5); }
 /* the editor's frame: the hole where the board is, down to the column's foot; the form the editor's right column */
 .pub { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--col-w); grid-template-rows: minmax(0, 1fr); gap: var(--sp-4); }
 .pub__doneform { display: grid; align-content: center; justify-items: center; gap: var(--sp-3); padding: var(--sp-4); text-align: center; }
@@ -428,7 +420,7 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .pub__doneform p { margin: 0; font-size: 15px; }
 .pub__doneform .btn { margin: 0; }
 .pub__hole { position: relative; display: grid; min-width: 0; min-height: 0; }
-/* the 3D the board's frame and height (its own 16:10 no more) */
+/* the 3D in the board's frame, at its height (not the preview's 16:10) */
 .pub__hole .preview { width: 100%; height: 100%; min-height: 240px; aspect-ratio: auto; border: var(--edge-bold); border-radius: var(--r-card); }
 /* published: the hole's card on the 3D, at its foot (a label, as its "3D · in sync" at its top) */
 .pub__card { position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 1; display: grid; gap: 2px; max-width: calc(100% - 2 * var(--sp-3)); padding: var(--sp-2) var(--sp-3); border: var(--info-edge); border-radius: 12px; background: rgba(var(--paper-rgb), .95); pointer-events: none; }
@@ -451,16 +443,16 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 /* a field: its label (.h-sub), its box (the game's 48, its ring its own frame: globals.css), one line why under it */
 .pub__field { display: grid; gap: var(--sp-2); }
 .pub__field > .h-sub + small { margin-top: calc(-1 * var(--sp-1)); } /* its why under its title, read before typing */
-.pub__field > input, .pub__field textarea { min-height: 48px; padding: var(--sp-2) var(--sp-3); border: var(--edge); border-radius: 12px; background: var(--white); font: inherit; font-size: 15px; color: var(--ink); resize: none; }
+.pub__field textarea { padding: var(--sp-2) var(--sp-3); resize: none; } /* (a text field: globals.css) */
 .pub__field > input::placeholder, .pub__field textarea::placeholder { color: var(--ink-soft); }
 .pub__field [aria-invalid="true"] { border-color: var(--hat-ink); }
-.pub__link { font-family: var(--mono, ui-monospace, monospace); overflow-wrap: anywhere; } /* the address read: yours and its version soft round the hole's own */
+.pub__link { font-family: var(--mono); overflow-wrap: anywhere; } /* the address read: yours and its version soft round the hole's own */
 .pub__link > span { font-weight: 600; color: var(--ink-soft); }
 .pub__field .h-sub small { font-weight: 600; color: var(--ink-soft); }
 .pub__help { display: flex; justify-content: space-between; gap: var(--sp-3); }
 .pub__help > span:last-child { flex: none; font-variant-numeric: tabular-nums; }
 .pub__field small, .pub__review small, .pub__small { margin: 0; font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ink-soft); }
-.pub__bad { margin: 0; padding: var(--sp-2) var(--sp-3); border: 2px solid var(--hat-ink); border-radius: 12px; color: var(--hat-ink); font-weight: 700; }
+.pub__bad { margin: 0; } /* (the game's bad note: globals.css) */
 .pub__note { margin: 0; padding: var(--sp-2) var(--sp-3); border-radius: 12px; background: var(--white); font-weight: 700; }
 .pub__bill dl { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-1) var(--sp-3); margin: var(--sp-2) 0; font-size: 15px; font-variant-numeric: tabular-nums; }
 .pub__bill dd { margin: 0; text-align: right; }
@@ -482,13 +474,12 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .bhead__why { width: 100%; text-align: right; font-size: 14px; font-weight: 700; color: var(--hat-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 1200px) { .bhead__why { display: none; } }
 
-/* the difficulty meter (difficulty.ts): a chip of four pips and a word beside the big button, its width kept;
-   calm colours from the game's own (green, gold, bronze, ink), never the hat's red: a guess, not an alarm */
+/* the difficulty meter (difficulty.ts): a button of four pips and a word beside the big button, its width kept, the pips
+   at its start (nothing moves as the word changes); calm colours from the game's own (green, gold, bronze, ink), never
+   the hat's red: a guess, not an alarm */
 .bhead__meter { position: relative; display: flex; }
-.meter { flex: none; width: 118px; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink); cursor: pointer; transition: opacity .2s; }
-.meter:disabled { cursor: default; }
-.meter[aria-pressed="true"] { background: var(--gold); } /* (its line on the board: on, as every on control is: gold) */
-/* a change of par: the pips spring once, "par 3 → 4" a moment under the chip */
+.meter { flex: none; width: 118px; justify-content: flex-start; font-size: 13px; transition: opacity .2s, transform var(--t-press), box-shadow var(--t-press), background .15s; }
+/* a change of par: the pips spring once, "par 3 → 4" a moment under the meter */
 .meter--bump > i > b { animation: bpip .5s ease-out both; }
 .meter--bump > i > b:nth-child(2) { animation-delay: 60ms; } .meter--bump > i > b:nth-child(3) { animation-delay: 120ms; } .meter--bump > i > b:nth-child(4) { animation-delay: 180ms; }
 @keyframes bpip { 40% { transform: scaleY(1.6); } }
@@ -515,7 +506,7 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .bgloss { display: flex; flex-direction: column; gap: var(--sp-2); width: min(800px, 100%); max-width: none; max-height: 100%; overflow: auto; overscroll-behavior: contain; padding: var(--sp-3) var(--sp-4); }
 .bgloss__hints { display: grid; gap: var(--sp-1); }
 .bgloss p { margin: 0; font-size: 15px; line-height: normal; color: var(--ink); } /* (not the sheet's grey prose) */
-.bhint--in { position: static; max-width: none; padding: 0; border: 0; box-shadow: none; background: none; }
+.bhint--in { padding: 0; border: 0; background: none; }
 .bgloss .bgloss__keys { margin: var(--sp-1) 0 0; columns: 2 300px; column-gap: var(--sp-4); font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ink); }
 .bgloss__keys > div { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: var(--sp-2); padding: 3px 0; break-inside: avoid; }
 .bgloss__keys dt { justify-self: start; } .bgloss__keys dd { margin: 0; }
@@ -527,18 +518,17 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .bgloss h3 { margin: var(--sp-2) 0 0; } /* (its pieces' group, .h-sub) */
 .bgloss ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: var(--sp-2) var(--sp-3); }
 .bgloss__piece { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
-.bgloss__piece img { flex: none; border-radius: 10px; background: #4f8a6b; }
+.bgloss__piece img { flex: none; border-radius: 10px; background: var(--board); }
 .bgloss__piece span { display: grid; min-width: 0; line-height: 1.2; }
 .bgloss__piece b { font-size: 14px; }
 .bgloss__piece small { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 
 /* the keys at the board's foot */
 .board__keys { position: absolute; left: var(--sp-3); bottom: var(--sp-3); max-width: calc(100% - 2 * var(--sp-3)); margin: 0; padding: 4px var(--sp-2); border-radius: 10px; background: rgba(var(--paper-rgb), .92); font-size: 13px; font-weight: 700; color: var(--ink); pointer-events: none; }
-/* an entry whole on its line, its separator after it: a line never starts with one */
 .board__keys { white-space: nowrap; } /* (one line: the few keys most used; ? shows them all) */
 .board__keys > span { white-space: nowrap; }
 .board__keys > span:not(:last-child)::after { content: "\00a0·"; }
-/* the green's paint (Board's, B; its tools the palette's): the green faint, each side of its outline a line to drag or
+/* the green's paint (Board's, key B; its tools the palette's): the green faint, each side of its outline a line to drag or
    click (open: dashed; hovered and locked: it stays as it is, dimmed, no gold), the stroke one ghost (green where it may go, red where not), its walls drawn */
 .board--paint .board__map { cursor: crosshair; }
 .board__cells { fill: rgba(255, 255, 255, .1); }
@@ -572,8 +562,8 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .board__roll { fill: rgba(255, 255, 255, .85); stroke: var(--gold); stroke-width: 2px; vector-effect: non-scaling-stroke; animation: broll 1.2s ease-out both; }
 @keyframes broll { 80% { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .board__roll { display: none; } }
-/* Play, over the editor (kept open below it) */
-.tbench--play { z-index: 5; background: var(--paper); }
+/* Play over the editor, which stays open after it in the page: 1 lifts it over, the unkept note's 2 stays on top */
+.tbench--play { z-index: 1; background: var(--paper); }
 .tmode__small { margin: 0; font-size: 14px; color: var(--ink-soft); }
 .tmode__small a { color: var(--green); font-weight: 700; }
 /* the board in 3D (Scene.tsx): the game's scene under the overlay, which picks and draws only the selection, the handles, the ghost and what the scene does not show yet */
@@ -583,8 +573,8 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .board--3d .board__piece--on > :first-child { stroke: var(--gold); stroke-width: 2.5px; vector-effect: non-scaling-stroke; stroke-dasharray: none; filter: drop-shadow(0 0 .05px var(--gold)); }
 /* the board's feel (juice.ts): the ghost green where it may go (red stays for where it may not), a piece hovered lifted on a soft shadow, a dragged one leaning,
    a drop popping in (0, 1.15, 1) and stirring what it lands on (water ripples, sand puffs, dust), a piece taken away shrinking into a puff; none of it moves with reduced motion */
-.board--3d .board__ghost > :first-child:not([stroke="#c8322b"]) { fill: rgba(92, 214, 140, .45); stroke: #1c9a55; }
-.board--3d .board__ghost > :first-child[stroke="#c8322b"] { fill: rgba(225, 75, 59, .35); }
+.board--3d .board__ghost:not(.board__ghost--no) > :first-child { fill: rgba(92, 214, 140, .45); stroke: #1c9a55; }
+.board--3d .board__ghost--no > :first-child { fill: rgba(225, 75, 59, .35); }
 .board--3d .board__piece:hover > :first-child { stroke: rgba(255, 255, 255, .9); stroke-width: 2px; vector-effect: non-scaling-stroke; filter: drop-shadow(0 .03px .02px rgba(0, 0, 0, .45)); }
 .board__lean { transform-box: fill-box; transform-origin: center; transition: rotate .12s ease-out; }
 .board__piece--pop { animation: bpop .15s ease-out; transform-box: fill-box; transform-origin: center; }
@@ -611,8 +601,8 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .pview { display: grid; gap: var(--sp-2); }
 .pview__say { margin: 0; font-size: 13px; line-height: 1.4; color: var(--ink-soft); }
 .pview__say kbd { color: var(--ink); }
-.pview__pic { display: block; width: 100%; margin: 0; padding: 0; font: inherit; cursor: zoom-in; }
+.preview.pview__pic { display: block; width: 100%; margin: 0; padding: 0; font: inherit; cursor: zoom-in; touch-action: auto; } /* (the 3D preview's frame, not its grab: a click opens it) */
 .pview__big.sheet__in { display: grid; gap: var(--sp-3); width: min(92vw, 1040px); max-width: none; max-height: 92dvh; padding: 22px var(--sp-5) var(--sp-5); }
 .pview__big h2 { margin: 0 52px 0 0; }
-.pview__big canvas { display: block; width: 100%; aspect-ratio: 16 / 10; max-height: calc(92dvh - 120px); border: var(--edge); border-radius: 14px; background: #3f9a72; }
+.pview__big canvas { display: block; width: 100%; aspect-ratio: 16 / 10; max-height: calc(92dvh - 120px); border: var(--edge); border-radius: 14px; background: var(--fairway); }
 @media (max-width: 1099px) { .col--still { display: none; } }

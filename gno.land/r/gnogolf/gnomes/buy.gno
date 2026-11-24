@@ -11,10 +11,10 @@ import (
 
 // Buy sells the caller the gnomes ids names, 1 to 5 catalogue ids
 // separated by commas ("217,301"), and returns them as given. Each must be
-// in a sale under way and unsold; the caller's caps hold for the whole list. Exactly the sum of
-// their sale prices must be sent with the call (-send "<sum>ugnot"); it
-// goes to the treasury before the call returns. Any refusal reverts the call,
-// coins included.
+// in a sale under way and unsold; the caller's caps hold for the whole
+// list. Exactly the sum of their sale prices must be sent with the call
+// (-send "<sum>ugnot"); it goes to the treasury before the call returns.
+// Any refusal reverts the call, coins included.
 //
 // Only a direct user call (maketx call) is taken. That is what makes
 // OriginSend the caller's own money: a realm or a run script in between
@@ -103,7 +103,7 @@ func check(buyer address, ids string, t int64) (o order, code, why string) {
 		}
 		if t < s.playersUntil {
 			if !player && !hasRecord(buyer) {
-				return o, "players-only", "gnomes: players only until " + itoa(s.playersUntil) + ": finish a hole first"
+				return o, "players-only", "gnomes: players only until " + dateOf(s.playersUntil) + ": finish a hole first"
 			}
 			player = true
 			k := windowKey(s.series, buyer)
@@ -133,7 +133,7 @@ func check(buyer address, ids string, t int64) (o order, code, why string) {
 func readIDs(ids string) ([]int64, string) {
 	parts := strings.Split(ids, ",")
 	if ids == "" || len(parts) > maxBatch {
-		return nil, "gnomes: name 1 to 5 gnomes, as ids separated by commas"
+		return nil, "gnomes: name 1 to " + itoa(maxBatch) + " gnomes, as ids separated by commas"
 	}
 	list := make([]int64, 0, len(parts))
 	for _, p := range parts {
@@ -151,7 +151,8 @@ func readIDs(ids string) ([]int64, string) {
 	return list, ""
 }
 
-// parseID reads a catalogue id in decimal, 0 for anything else.
+// parseID reads a token id in decimal, no sign and no leading zero; 0 for
+// anything else.
 func parseID(s string) int64 {
 	if len(s) == 0 || len(s) > 9 || s[0] == '0' {
 		return 0

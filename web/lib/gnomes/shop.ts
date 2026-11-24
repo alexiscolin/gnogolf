@@ -1,5 +1,5 @@
-// The gnomes' shop as the screens read it (the GUI spec, A): the realm's
-// answers (r/gnogolf/gnomes, ADR-007, ADR-013) checked into these shapes, one query
+// The gnomes' shop as the screens read it: the realm's
+// answers (r/gnogolf/gnomes) checked into these shapes, one query
 // each, and what a screen decides from them, pure, so the tests hold every
 // state: the sale's phase, why a gnome can't be bought in plain words, the
 // bill before a signature, the gallery's shelf. The
@@ -7,17 +7,15 @@
 import { depositFor, feeFor, upToHundredth } from "../adena";
 import { GNOMES_REALM, isAddress, isObj, nums, shortAddr, strs, type Chain, type Obj } from "../chain";
 import { cap as capitalised, theWorld } from "../card";
-import { TIER_LOOK, filterGnomes, type Listed, type Query } from "./catalogue";
+import { own } from "../own";
+import { plural } from "../words";
+import { SALE_TIERS, TIER_LOOK, filterGnomes, type Listed, type Query, type SaleTier } from "./catalogue";
 import type { Tier } from "./vocab";
 
 export { SHOP } from "./door";
 
-/** The tiers Buy sells: every one, at its sale's fixed price (there is no auction). */
-export const BUY_TIERS = ["common", "rare", "epic", "legendary"] as const;
-export type BuyTier = (typeof BUY_TIERS)[number];
-type PerTier = Record<BuyTier, number>;
+type PerTier = Record<SaleTier, number>;
 
-// ------------------------------------------------------------ the shapes (read.gno, equip.gno)
 export interface TierRow { name: string; price: number; cap: number; playerCap: number; sold: number }
 /** A series' sale: its start, its players' window's end (its start: none), its prices per tier (ugnot), as opened. */
 export interface SaleRow { start: number; playersUntil: number; prices: number[] }
@@ -40,13 +38,13 @@ export interface Worn { player: string; id: string; name: string; tier: string; 
 export type Reason = "" | "ids" | "unknown" | "unlisted" | "later" | "taken" | "closed" | "paused" | "players-only" | "window-cap" | "cap";
 /** CanBuy(buyer, ids): what Buy would do, its own sentence (said), the sum to send; the caps left, the window's while it runs. */
 export interface CanBuy { version: number; ok: boolean; reason: Reason; said: string; total: number; left: PerTier; window: { until: number; left: PerTier } }
-/** Params(): the longest player window and a Buy's batch, as the realm holds them. */
-export interface Params { version: number; maxHours: number; maxBatch: number; denom: string }
+/** equip.gno maxPlayers: the most players one WornMany reads. */
+export const MAX_PLAYERS = 50;
 
 // (the shape checks the chain's reads use, chain.ts; booleans, the gnomes' alone)
 const bools = (v: Obj, ...k: string[]) => k.every((x) => typeof v[x] === "boolean");
 const every = (v: unknown, ok: (x: unknown) => boolean) => Array.isArray(v) && v.every(ok);
-const perTier = (v: unknown): v is PerTier => isObj(v) && nums(v, ...BUY_TIERS);
+const perTier = (v: unknown): v is PerTier => isObj(v) && nums(v, ...SALE_TIERS);
 const checks = {
   collection: (v: unknown): v is Collection =>
     isObj(v) && bools(v, "open", "earnedOpen") && nums(v, "closesAt") && strs(v, "site") &&
@@ -61,7 +59,6 @@ const checks = {
   wornList: (v: unknown): v is { rows: Worn[] } => isObj(v) && every(v.rows, checks.worn),
   canBuy: (v: unknown): v is CanBuy =>
     isObj(v) && bools(v, "ok") && strs(v, "reason", "said") && nums(v, "total") && perTier(v.left) && isObj(v.window) && nums(v.window, "until") && perTier(v.window.left),
-  params: (v: unknown): v is Params => isObj(v) && nums(v, "maxHours", "maxBatch") && strs(v, "denom"),
 };
 
 const q = (v: unknown) => JSON.stringify(String(v));
@@ -110,15 +107,14 @@ export function makeShop(chain: Pick<Chain, "qjson" | "qstr">, realm = GNOMES_RE
       if (!checks.worn(v)) throw Object.assign(new Error("The chain's answer to Worn is not one this page can read."), { kind: "chain" });
       return v;
     },
-    /** What these players wear for everyone (the first 50 addresses, once each): a board's page, a rival. */
+    /** What these players wear for everyone (the first MAX_PLAYERS addresses, once each): a board's page, a rival. */
     wornMany: async (players: readonly string[]) => {
-      const list = [...new Set(players.filter(isAddress))].slice(0, 50), got = new Map<string, Worn>();
+      const list = [...new Set(players.filter(isAddress))].slice(0, MAX_PLAYERS), got = new Map<string, Worn>();
       if (!list.length) return got;
       for (const w of (await read(`WornMany(${q(list.join(","))})`, checks.wornList)).rows) if (list.includes(w.player)) got.set(w.player, w);
       return got;
     },
     canBuy: async (buyer: string, ids: readonly number[]) => read(`CanBuy(${addr(buyer)}, ${q(ids.map((id) => JSON.parse(gnomeId(id)) as string).join(","))})`, checks.canBuy),
-    params: () => read("Params()", checks.params),
     /** A gnome's picture as the chain draws it: his TokenURI once minted, else his page (Render), which draws any
      *  gnome of a published series; the answer as the realm gives it (onchain.ts reads it). */
     portrait: async (id: number) => {
@@ -135,7 +131,6 @@ export function soldSet(hex: string) {
   return (id: number) => ok && id >= 1 && (parseInt(hex.substr(((id - 1) >> 3) * 2, 2) || "0", 16) & (1 << ((id - 1) & 7))) !== 0;
 }
 
-// ------------------------------------------------------------ numbers and dates
 /** ugnot as GNOT, exact, thousands apart: 333330000 → "333.33". */
 export function gnot(ugnot: number) {
   const n = Math.max(0, Math.round(ugnot)), whole = Math.floor(n / 1e6), frac = String(n % 1e6).padStart(6, "0").replace(/0+$/, "");
@@ -159,15 +154,14 @@ export function utcDate(unix: number, now: number, short = false) {
 /** The same time in the player's own clock, for a hover and a screen reader. */
 export const localDate = (unix: number) => new Date(unix * 1000).toLocaleString(undefined, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-const label = (t: string) => (TIER_LOOK[t as Tier] || { label: t }).label;
-const plural = (word: string, n: number) => (n === 1 ? word : word + "s");
+/** A tier's name as the screens and the receipt say it ("Legendary"); a word not a tier, as it is. */
+export const tierName = (t: string) => own(TIER_LOOK, t)?.label ?? t;
 const tierIndex = (c: Collection, t: string) => c.tiers.findIndex((x) => x.name === t);
 /** Whether a gnome is the closed genesis's: the closing closes the genesis alone (close.gno isClosed), a later series sells on. */
 const closedOut = (c: Collection, id: number) => !!c.series[0]?.closed && id >= c.series[0].first && id <= c.series[0].last;
 /** The sale a gnome is in, his series' (none: not opened yet). */
 const saleOf = (c: Collection, id: number) => c.series.find((s) => id >= s.first && id <= s.last)?.sale;
 
-// ------------------------------------------------------------ the sale's life (A9)
 type Some = Pick<Listed, "id" | "tier">;
 /** A series' sale as the screens say it: its series (the realm's name) and its name for people ("Genesis"), its
  *  row, its ids, its size and what found a player. */
@@ -199,9 +193,8 @@ export function nowRow(c: Collection, sold: (id: number) => boolean, entries: re
   return { at: now < sale.row.playersUntil ? "players" : "open", sale };
 }
 
-// ------------------------------------------------------------ the shop's sale card (a little fairway, tee to flag)
 /** A tier of the sale: what found a player of what it holds, its price (ugnot, 0: none said), all in words. */
-export interface TierShare { tier: BuyTier; found: number; total: number; price: number; label: string }
+export interface TierShare { tier: SaleTier; found: number; total: number; price: number; label: string }
 /** The shop's sale card: the series' name ("Genesis") and its count ("4 of 720 found a player": big "4", rest the words), the same said
  *  whole (label), the ball's place
  *  from tee (0) to flag (1) as the share that found a player, each tier's share, its Legendaries at
@@ -215,9 +208,9 @@ export function saleLine(row: Now, c: Collection, entries: readonly Pick<Listed,
   if (row.at === "none") return null;
   if (row.at === "closed") return { at: "closed", title: "The sale is closed", count: `${row.made} made · ${row.never} never made`, label: `The sale is closed: ${row.made} gnomes made, ${row.never} never made` };
   const { sale } = row, inSale = entries.filter((e) => e.id >= sale.first && e.id <= sale.last);
-  const tiers = BUY_TIERS.map((tier) => {
+  const tiers = SALE_TIERS.map((tier) => {
     const of = inSale.filter((e) => e.tier === tier), found = of.filter((e) => sold(e.id)).length, price = sale.row.prices[tierIndex(c, tier)] ?? 0;
-    return { tier, found, total: of.length, price, label: `${label(tier)}${price > 0 ? `, ${gnot(price)} GNOT` : ""}: ${found} of ${of.length} found a player` };
+    return { tier, found, total: of.length, price, label: `${tierName(tier)}${price > 0 ? `, ${gnot(price)} GNOT` : ""}: ${found} of ${of.length} found a player` };
   }).filter((t) => t.total > 0);
   const legends = inSale.filter((e) => e.tier === "legendary"), waiting = legends.filter((e) => !sold(e.id)), until = utcDate(sale.row.playersUntil, now, true), opens = utcDate(sale.row.start, now, true);
   // (short: a phone's, the day said only when it is not today's)
@@ -246,7 +239,6 @@ function legendsWords(all: number, waiting: number, id: number) {
   return { id, name, words: `${name} ${waiting ? (waiting === 1 ? "waits at the flag" : "wait at the flag") : "found a player"}` };
 }
 
-// ------------------------------------------------------------ the collection on the game's screens
 /** What the menu's Gnomes card, the picker's Collection section and the finish card say of the sale: the
  *  sale to see (on sale, players first, paused, or opening), its series' name, its size and what found a player,
  *  its lowest price, its Legendary and three faces (an Epic, a Rare, a Common); null when there is none
@@ -286,23 +278,22 @@ export function promoWords(p: Promo, now: number) {
   };
 }
 
-// ------------------------------------------------------------ why not (A2), every CanBuy code in words
 /** What the buy panel says instead of buying: its button's words (off) and one note; play: the note links to a hole. */
 export interface WhyNot { button: string; note: string; play?: true }
 export function whyNot(r: CanBuy, c: Collection, g: Pick<Listed, "id" | "tier" | "home">, now: number): WhyNot | null {
   if (r.ok) return null;
-  const t = g.tier as BuyTier, i = tierIndex(c, t), from = `From ${theWorld(g.home)}.`;
+  const t = g.tier as SaleTier, i = tierIndex(c, t), from = `From ${theWorld(g.home)}.`;
   const sale = saleOf(c, g.id);
   switch (r.reason) {
     case "paused": return { button: "Paused for a moment", note: "The sale picks up where it stopped." };
     case "players-only": return { button: `Players first until ${utcDate(r.window.until, now, true)}`, note: "Save one round on-chain to buy now.", play: true };
     case "window-cap": {
       const cap = c.tiers[i]?.playerCap ?? 0;
-      return { button: `${cap - r.window.left[t]} of ${cap} ${plural(label(t), cap)} this window`, note: `Your share until ${utcDate(r.window.until, now, true)}. Then open to everyone.` };
+      return { button: `${cap - r.window.left[t]} of ${cap} ${plural(tierName(t), cap)} this window`, note: `Your share until ${utcDate(r.window.until, now, true)}. Then open to everyone.` };
     }
     case "cap": {
       const cap = c.tiers[i]?.cap ?? 0;
-      return { button: `${cap - r.left[t]} of ${cap} ${plural(label(t), cap)}`, note: "The most one wallet buys." };
+      return { button: `${cap - r.left[t]} of ${cap} ${plural(tierName(t), cap)}`, note: "The most one wallet buys." };
     }
     case "later": return { button: sale ? `Opens ${utcDate(sale.start, now, true)}` : "Not on sale yet", note: from };
     case "unlisted": return { button: "Not on sale yet", note: c.closesAt ? `${from} Its sale opens before ${utcDate(c.closesAt, now)}, or never.` : from };
@@ -312,13 +303,17 @@ export function whyNot(r: CanBuy, c: Collection, g: Pick<Listed, "id" | "tier" |
     default: return { button: "Can't be bought now", note: `The chain says: ${r.said}.` };
   }
 }
+/** whyNot with no buyer to ask CanBuy for (no wallet connected): what the sale alone says, Buy's first refusals in its
+ *  order (paused, no sale for his series, not opened yet), none of which reads more of a CanBuy; null while on sale. */
+export function saleWhyNot(c: Collection, g: Pick<Listed, "id" | "tier" | "home">, now: number) {
+  const sale = saleOf(c, g.id), reason: Reason = !c.open ? "paused" : !sale ? "unlisted" : now < sale.start ? "later" : "";
+  return reason ? whyNot({ ok: false, reason } as CanBuy, c, g, now) : null;
+}
 
-// ------------------------------------------------------------ a buy sent, not confirmed
 /** Where a buy the wallet gave no hash for stands, by the gnome read again: the buyer's ("mine": it landed), another's
  *  ("taken"), or null, still unsold: nothing landed (yet). */
 export const landing = (row: GnomeRow | null, me: string) => (!row || !row.owner ? null : row.owner === me ? "mine" : "taken");
 
-// ------------------------------------------------------------ the bill (shared pieces)
 /** A bill's figure as it is said, in ugnot: its parts' sum up to the hundredth of a GNOT, never under what the wallet
  *  may be asked. The one rounding rule: the review's Total, the order's button and a sheet's chain costs all say it. */
 export const totalOf = (...ugnot: number[]) => upToHundredth(ugnot.reduce((a, b) => a + b, 0));
@@ -332,15 +327,14 @@ export function bill({ price, bytes, storagePrice, gas, gasPrice, balance }: { p
 }
 export type Bill = ReturnType<typeof bill>;
 
-// ------------------------------------------------------------ the shelf (A1)
 /** A page of the gallery's grid. */
 export const PAGE = 48;
 type View = "mine" | "all";
 interface Seen { c: Collection; sold: (id: number) => boolean; mine: ReadonlySet<number>; now: number }
-/** Whether a gnome is on sale now: his series' sale started, not sold, not the closed genesis's. */
+/** Whether a gnome is on sale now: the sale not paused, his series' sale started, not sold, not the closed genesis's. */
 export function onSale(e: Some, c: Collection, sold: (id: number) => boolean, now: number) {
   const s = saleOf(c, e.id);
-  return !sold(e.id) && !closedOut(c, e.id) && !!s && s.start <= now;
+  return c.open && !sold(e.id) && !closedOut(c, e.id) && !!s && s.start <= now;
 }
 /** Whether a gnome was never made: the closed genesis's, never sold. */
 export const neverMade = (e: Some, s: Seen) => closedOut(s.c, e.id) && !s.sold(e.id);
@@ -362,7 +356,7 @@ export const theirTitle = (name: string, who: string) => `${name || shortAddr(wh
 export const showsClosing = (c: Collection) => c.closesAt > 0 && !c.series[0]?.closed;
 /** The closing line's place in the shop's head: its line, none, or its room kept while the sale is not read yet (null). */
 export const closingSlot = (c: Collection | null): "line" | "none" | "room" => (!c ? "room" : showsClosing(c) ? "line" : "none");
-/** Whether a card in the gallery shows Buy: on sale now (its sale started, unsold, the sale not closed) and not the player's. */
+/** Whether a card in the gallery shows Buy: on sale now (its sale started and not paused, unsold, the sale not closed) and not the player's. */
 export const canBuyCard = (e: Listed, s: Seen) => !s.mine.has(e.id) && onSale(e, s.c, s.sold, s.now);
 /** A card's one fact: the price on sale, "Yours", "Found a player", "Never made", when it opens, or not on sale yet. */
 export function cardFact(e: Listed, s: Seen) {
@@ -374,13 +368,11 @@ export function cardFact(e: Listed, s: Seen) {
   return sale ? `Opens ${utcDate(sale.start, s.now, true)}` : "Not on sale yet";
 }
 
-// ------------------------------------------------------------ a team (A6)
 const RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3, earned: 4 };
 /** A wallet's gnomes as the shelf lays them out: Legendary first, then Epic, Rare, Common, earned, then by number. */
 export const teamOrder = <R extends { id: string; tier: string }>(rows: readonly R[]) =>
   [...rows].sort((a, b) => (RANK[a.tier] ?? 5) - (RANK[b.tier] ?? 5) || Number(a.id) - Number(b.id));
 
-// ------------------------------------------------------------ the share moments' words (A8)
 /** What each moment says: short, about the game, never value. */
 export const shareWords = {
   bought: (name: string, id: number | string) => `I just adopted ${name}, gnome #${id} of Gnogolf. ${name} rolls for me now`,

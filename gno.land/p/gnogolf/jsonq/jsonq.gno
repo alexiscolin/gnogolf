@@ -4,9 +4,8 @@
 // client), a byte that is not UTF-8 written as U+FFFD (JSON is UTF-8: as
 // Go's encoding/json does), and U+2028 and U+2029 escaped (line ends to
 // JavaScript). Most strings need nothing escaped: plain ASCII goes out as it
-// is, without the copy (a byte at a time costs gas). It is golf/v2's jstr
-// (state.gno), shared from the gnomes realm on; golf/v2 keeps its copy until
-// its next version.
+// is, without the copy (a byte at a time costs gas). golf/v2 has its own
+// copy, jstr (state.gno), which writes the bytes from 0x80 as they are.
 package jsonq
 
 import "unicode/utf8"

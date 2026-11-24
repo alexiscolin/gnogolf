@@ -1,8 +1,9 @@
-// lib/gnomes/collection.ts: the collection as status, never as a gift
-// (ADR-011). A player's album (per world, per tier, per archetype set, from
-// the catalogue's own data), a collector rank from what they hold (the one
-// config's thresholds), read one page a player and kept for the visit, shown
-// where the ADR says, in words with no money in them.
+// lib/gnomes/collection.ts: the collection as status, never as a gift. A
+// player's album (per world, per tier, per archetype set, from the
+// catalogue's own data), a collector rank from what they hold (the one
+// config's thresholds), read one page a player and kept for the visit, the
+// album shown where the shop opens and the ranks wherever it is built, in
+// words with no money in them.
 import "./canvas.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -21,7 +22,6 @@ const row = (id: number) => ({ id: String(id), tier: gnomes.find((g) => g.id ===
 const earnedRow = (kind: number) => ({ id: String(1_000_000 + kind), tier: "earned", traits: earned.find((e) => e.kind === kind)!.traits });
 const held = (rows: readonly { id: string; tier: string }[], total = rows.length): Holding => ({ total, rows });
 
-// ------------------------------------------------------------ the album
 test("collection: the album's worlds, tiers and sets are the catalogue's own, none owned", () => {
   const a = album(gnomes, earned, []);
   const homes = [...new Set(gnomes.map((g) => g.home))];
@@ -55,6 +55,7 @@ test("collection: some owned fill their world, tier and set; an earned gnome its
   assert.equal(a.tiers.find((t) => t.key === "legendary")!.have, 1);
   assert.equal(a.tiers.find((t) => t.key === "earned")!.have, 1);
   assert.ok(a.tiers.find((t) => t.key === "earned")!.items.some((x) => x.unlock === "king" && x.mine));
+  assert.equal(album(gnomes, earned, [{ ...earnedRow(8), id: "100008" }]).tiers.find((t) => t.key === "earned")!.have, 1, "earned by the realm's tier, whatever its id");
   assert.equal(a.sets.find((s) => s.key === g1.archetype)!.items.find((x) => x.id === 1)!.mine, true);
   assert.equal(a.have, 5);
   assert.equal(albumLine(a, g1.home), `${a.worlds.find((w) => w.key === g1.home)!.label} ${a.worlds.find((w) => w.key === g1.home)!.have}/${a.worlds.find((w) => w.key === g1.home)!.of}`);
@@ -70,7 +71,6 @@ test("collection: all owned fills every row; unknown ids are counted apart, neve
   assert.equal(b.tiers.reduce((n, t) => n + t.have, 0), 1);
 });
 
-// ------------------------------------------------------------ the rank
 test("collection: the rank is the one config's, at its boundaries", () => {
   const { points, ranks } = COLLECTOR;
   assert.deepEqual(ranks.map((r) => r.id), ["bronze", "silver", "gold", "legendary"]);
@@ -133,7 +133,6 @@ test("collection: the album in one line, what a buy brings, a gnome's place in t
   assert.equal(seriesLine(epic, gnomes), `#${epic.id} · one of ${epics} Epics of Garden · 1 of ${gnomes.length}`);
 });
 
-// ------------------------------------------------------------ the reader
 test("collection: a player's holding is one page, read once a visit, holders only, a few at a time", async () => {
   const pages: string[] = [], holds: string[] = [];
   let running = 0, most = 0;
@@ -178,7 +177,6 @@ test("collection: a read that fails is asked again next time, and says no rank m
   assert.equal(n, 2);
 });
 
-// ------------------------------------------------------------ where it shows (ADR-011)
 test("collection: the album where the shop opens; ranks wherever the shop is built, as the faces", () => {
   assert.equal(albumShown(false, true), false, "the shop's flag off: nothing");
   assert.equal(albumShown(true, false), false, "a blocked region: no album");
@@ -188,7 +186,6 @@ test("collection: the album where the shop opens; ranks wherever the shop is bui
   assert.equal(ranksShown(true), true, "a board reads the same in every region: a fact of the chain, as the gnome worn");
 });
 
-// ------------------------------------------------------------ honest words
 test("collection: the module's words carry no money, no promise and no hurry", () => {
   const BANNED = /\b(value|valuable|worth|invest\w*|asset|floor|profit\w*|resale|resell|flip|apprecia\w*|scarc\w*|rarest|hurry|last chance|limited time|only \d+ left|don't miss|price|gain|earnings?|roi)\b/i;
   for (const f of ["../lib/gnomes/collection.ts", "../components/gnomes/Album.tsx", "../components/gnomes/Rank.tsx"]) {

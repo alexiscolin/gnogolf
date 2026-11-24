@@ -14,12 +14,11 @@ import { loadFriends, saveFriends, addFriend, nameFriends } from "@/lib/friends"
 import { registerName, claimRounds, gnokeyName, gnokeyClaim, type SendError } from "@/lib/adena";
 import { GnokeyTx } from "@/components/Gnokey";
 import { failure, track, trackError } from "@/lib/analytics";
-import { Button, InfoTip, Segmented, Sheet, VsPar } from "@/components/ui";
+import { Button, Frame, InfoTip, Segmented, Sheet, VsPar } from "@/components/ui";
 import Share from "@/components/Share";
 import { messageOf, shortAddr, holeLink, dareLink, parHere, HONEST, nameHint, nameRefusal, strokesWord, holesWord, AIMS, AIM_NAMES, useCopied, GNOME, byStanding, standingVs, RANKED_BY } from "@/components/common";
 import { vsPar, type SkyKind } from "@/lib/card";
 import { SkyIcon } from "@/components/Weather";
-import { Frame } from "@/components/Worlds";
 import { gnomeById } from "@/lib/scene";
 import { rivalSkin, type Skin } from "@/lib/scene/gnome";
 import { SHOP, onWear, wearVersion } from "@/lib/gnomes/door";
@@ -111,7 +110,7 @@ const flagsOf = (chain: Chain) =>
     })
     .catch(() => ((flagsOnce = null), track("flags_stale", { hours: -1 }), readFlags("", ""))));
 function useFlags(chain: Chain | null | undefined) {
-  const [f, setF] = useState<Flags>({});
+  const [f, setF] = useState<Flags | null>(null);
   useEffect(() => {
     if (!chain) return;
     let live = true;
@@ -203,7 +202,7 @@ function Friends({ s, chain, me, mode = "pro", inHole = true, onConnect, onRace 
           ))}
         </ol>
       )}
-      <h3>The course <small>{course ? `${course.holes} holes · ${RANKED_BY}` : RANKED_BY}</small></h3>
+      <h3>The course <small>{course?.holes ? `${course.holes} holes · ${RANKED_BY}` : RANKED_BY}</small></h3>
       {!c && <p className="lb__empty">Reading the chain…</p>}
       {c && c.length === 0 && <p className="lb__empty">No saved rounds yet: be the first.</p>}
       {c && c.length > 0 && (
@@ -225,7 +224,7 @@ function Friends({ s, chain, me, mode = "pro", inHole = true, onConnect, onRace 
         <input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Add a friend: address or gno.land name" aria-label="Add a friend by address or gno.land name" />
         <Button variant="secondary" type="submit">Add</Button>
       </form>
-      {note && <p className="note note--warn">{note}</p>}
+      {note && <p className="note note--warn" role="alert">{note}</p>}
       {friends.length > 0 && (
         <ul className="friends__list">
           {friends.map((f) => (
@@ -241,7 +240,7 @@ function Friends({ s, chain, me, mode = "pro", inHole = true, onConnect, onRace 
           className="linkish friends__invite"
           onClick={() => void copy(invite)}
         >
-          {copied ? "Copied: they race your ghost, and you join their friends" : "Copy my dare link"}
+          <span aria-live="polite">{copied ? "Copied: they race your ghost, and you join their friends" : "Copy my dare link"}</span>
         </button>
       )}
       </section>
@@ -276,10 +275,10 @@ export function Boards({ s, chain, me, onClose, goTo, mode: mine = "pro", inHole
         <span className="eyebrow">Players · saved on-chain</span>
         <h2>Beat a record</h2>
         <div className="boards__modes">
-          <Segmented className="seg--s" role="tablist" label="Aim mode" value={mode} onChange={setMode} options={AIMS} />
+          <Segmented className="seg--s" label="Aim mode" value={mode} onChange={setMode} options={AIMS} />
           <InfoTip label="About these boards" note={<>{HONEST} Ranked: players with a gno.land name{!(me && myName) && ", taken when you save"}.</>} />
         </div>
-        <Segmented className="boards__tabs" full role="tablist" label="Board" value={tab} onChange={setTab} options={[...(friendsFirst ? [["friends", "Friends"] as const] : []), ...(inHole ? [["hole", "This hole"] as const] : []), ["course", "The course"] as const, ...(friendsFirst ? [] : [["friends", "Friends"] as const])]} />
+        <Segmented className="boards__tabs" full label="Board" value={tab} onChange={setTab} options={[...(friendsFirst ? [["friends", "Friends"] as const] : []), ...(inHole ? [["hole", "This hole"] as const] : []), ["course", "The course"] as const, ...(friendsFirst ? [] : [["friends", "Friends"] as const])]} />
         {tab === "course" && inHole && onRace && <p className="real__fine boards__legend">Race here: this hole · Their holes: pick one.</p>}
         {tab !== "friends" && me && myName && chain && <ClaimRounds chain={chain} me={me} mode={mode} onDone={() => setClaimed((n) => n + 1)} />}
         {tab === "hole" && newer && (
@@ -331,7 +330,7 @@ function Unnamed({ kind, chain, id, mode, me, count }: { kind: "hole" | "course"
     <details className="unnamed late" onToggle={(e) => { const o = (e.target as HTMLDetailsElement).open; setOpen(o); if (o && !rows) load(""); }}>
       <summary>Also finished, no name{count ? ` (${count})` : ""}</summary>
       {open && !rows && !err && <p className="lb__empty">Reading the chain…</p>}
-      {err && <p className="note note--bad">The chain did not answer. <button className="linkish" onClick={() => load(rows ? after : "")}>Try again</button></p>}
+      {err && <p className="note note--bad" role="alert">The chain did not answer. <button className="linkish" onClick={() => load(rows ? after : "")}>Try again</button></p>}
       {rows && rows.length === 0 && !after && !err && <p className="lb__empty">Nobody without a name here.</p>}
       {rows && rows.length > 0 && (
         <ul>
@@ -363,20 +362,19 @@ export type Placed = StrokesRow & { holes?: number; par?: number; at: number };
  * The rival screen's three quick picks, flagged players left out as on the
  * boards: today's rival (featured.ts: never the first three, drawn by the day),
  * a player at the player's level (next to their place; the board's middle
- * without one), and one at random, drawn again on each visit. null while read;
- * a pick nobody fills, null.
+ * without one) and yourself (null while no one is connected); and a surprise
+ * drawn again on each visit (the board's Surprise me). null while read; a pick
+ * nobody fills, null; a board that could not be read: retry, to read it again.
  */
-// the three picks (today's rival, your level, yourself: null while no one is connected),
-// and a surprise (the board's Surprise me); a board that could not be read: retry, to read it again
 export function useRivalPicks(chain: Chain | null, me: string | null | undefined, mode: Mode) {
   const [picks, setPicks] = useState<{ rows: readonly (Placed | null)[]; surprise: Placed | null; retry?: () => void } | null>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    // a page of the course's board, its places kept, the flagged out
+    // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
     const page = (at: number, n: number) =>
-      Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows.map((r, i) => ({ ...r, at: at + i + 1 })), f.flags) }));
+      Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
     void Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null])
       .then(async ([top, mine]) => {
         // (a page that fails: the first one's players stand in)
@@ -396,6 +394,13 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
   return picks;
 }
 
+/** The weather a record was played in, beside its strokes: none for a calm sky (the bar every record is read against). */
+function SkyMark({ kind, mine }: { kind: SkyKind | undefined; mine: boolean }) {
+  if (!kind) return null;
+  const said = `Played in ${kind === "wind" ? "the wind" : skyWord(kind)}`;
+  return <span className="lb__sky" role="img" aria-label={said} title={said}><SkyIcon sky={kind} mine={mine} /></span>;
+}
+
 /**
  * A whole board, the hole's or the course's, read a page at a time as it is
  * scrolled: a page is O(page) on the chain however deep. Every row links to
@@ -404,24 +409,19 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
  */
 // max: its first rows only, and nothing else (the rival's stickers: the whole board is a link away)
 // onRace: a hole's rows, and the course's with a best on the hole played; onGhosts: the course's others (all of them off a hole)
-/** The weather a record was played in, beside its strokes: none for a calm sky (the bar every record is read against). */
-function SkyMark({ kind, mine }: { kind: SkyKind | undefined; mine: boolean }) {
-  if (!kind) return null;
-  const said = `Played in ${kind === "wind" ? "the wind" : skyWord(kind)}`;
-  return <span className="lb__sky" role="img" aria-label={said} title={said}><SkyIcon sky={kind} mine={mine} /></span>;
-}
-
 export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace, onGhosts, row, max, gnome }: BoardProps & { kind: "hole" | "course"; onGhosts?: (player: string) => void; /** a row drawn otherwise (the rival's stickers) */ row?: (r: Placed) => ReactNode; max?: number }) {
   const PAGE = 20, TOP = 5;
   const id = s.id || "";
-  const [rows, setRows] = useState<readonly Placed[] | null>(null);
+  const [loaded, setLoaded] = useState<readonly Placed[] | null>(null);
   const [head, setHead] = useState<{ par: number; holes: number; players: number; finished?: number } | null>(null);
   const [next, setNext] = useState(0); // the next page's offset, 0 at the end
   const [err, setErr] = useState(false); // a page the chain did not give
   const [more, setMore] = useState(false);
   const [mine, setMine] = useState<{ rank: number; of: number; strokes: number; holes?: number; par?: number } | null>(null);
   const [mineRead, setMineRead] = useState(!me); // (your place asked: the records put forward wait for it, then hold)
-  const flags = useFlags(chain);
+  const flagList = useFlags(chain), flags = flagList || {};
+  // the rows wait for the bot check's list: a flagged player is never placed, nor put forward, then taken out
+  const rows = flagList && loaded;
   const [showAll, setShowAll] = useState(false);
   // the course's rows with a best on the hole played, read with their page (one read a page, not one a row):
   // their Race is there, the others' (all of them if the read failed) their ghosts. A hole's rows all race there.
@@ -448,9 +448,8 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
   const add = (offset: number) =>
     read(offset).then(async ({ b, head: h }) => {
       const players = b.rows.map((r) => r.player);
-      // (the rows never wait for it: a page of forecasts takes the node a second or two)
-      // a hole's records, one read for the page (the rows never wait for it): their skies,
-      // worked out from their periods (lib/sky.ts)
+      // a hole's records, one read for the page: their skies, worked out from their periods (lib/sky.ts);
+      // the rows never wait for it (a page of forecasts takes the node a second or two)
       if (kind === "hole")
         void chain!.recordsOf(id, mode, players).then((kept) => {
           if (alive.current && kept.size) setInfo((was) => new Map([...was, ...[...kept].map(([p, r]): [string, { height: number; sky: SkyKind }] => [p, { height: r.height, sky: skyOf(id, s.world || "garden", r.period) }])]));
@@ -460,7 +459,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
       if (got.length) setHere((was) => new Set([...was, ...got]));
       primeNames(chain!, b.rows);
       setHead(h);
-      setRows((r) => {
+      setLoaded((r) => {
         const had = offset ? r || [] : [];
         // a place is the rows shown before it: the chain's offsets also count
         // names deleted since, skipped in their page. A row already shown (the
@@ -586,7 +585,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
       <h3>
         {title} <small>{sub}</small>
       </h3>
-      {err && <p className="note note--bad">The chain did not answer. <button className="linkish" onClick={() => (setErr(false), rows ? loadMore() : void add(0).catch(() => setErr(true)))}>Try again</button></p>}
+      {err && <p className="note note--bad" role="alert">The chain did not answer. <button className="linkish" onClick={() => (setErr(false), rows ? loadMore() : void add(0).catch(() => setErr(true)))}>Try again</button></p>}
       {/* (the course's board is never a few rows: its cards' place held while it is read) */}
       {(featured || (own && kind === "course" && !rows && !err)) && (
         <section className="featured" aria-label="Records to beat today">
@@ -669,7 +668,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
             label="Dare a friend"
             kind="dare"
             saved
-            text={`⚔ Beat my ${myScore} ${kind === "hole" ? `on ${s.name}` : "across the course"} in Gnogolf (${mode}), saved on-chain: race my ghost, free to play, no wallet needed.${SHARE_TAGS}`}
+            text={`⚔ Beat my ${myScore} ${kind === "hole" ? `on ${s.name}` : "across the course"} in Gnogolf (${AIM_NAMES[mode]}), saved on-chain: race my ghost, free to play, no wallet needed.${SHARE_TAGS}`}
             link={kind === "hole" ? holeLink(s, "", me || "", "board") : dareLink(me || "", "board")}
           />
         </div>
@@ -752,22 +751,15 @@ interface Gain { pass: readonly string[]; best: boolean; sky: SkyKind; beat?: Ri
 type Rival = { player: string; name: string; strokes: number };
 const NO_GAIN: Gain = { pass: [], best: false, sky: "" };
 
-/** The chain's own name registrar on gnoweb (onyx, mainnet and a local gno: v0; pearl had v1), NEXT_PUBLIC_NAMEREG if set. */
-function NameLink({ chain, children }: { chain: Chain | null; children: ReactNode }) {
-  const [reg, setReg] = useState(process.env.NEXT_PUBLIC_NAMEREG || "");
-  useEffect(() => {
-    if (reg || !chain) return;
-    let live = true;
-    void chain.nameReg().then((r) => live && setReg(r), () => {});
-    return () => void (live = false);
-  }, [chain, reg]);
-  if (!chain || !reg) return <>{children}</>;
-  return (
+/** The chain's own name registrar on gnoweb (reg: chain.nameReg's, or the build's NEXT_PUBLIC_NAMEREG), the words alone until it is read. */
+const NameLink = ({ chain, reg, children }: { chain: Chain; reg: string; children: ReactNode }) =>
+  reg ? (
     <a href={chain.web + "/" + reg.replace(/^(gno\.land)?\//, "")} target="_blank" rel="noopener noreferrer">
       {children}
     </a>
+  ) : (
+    <>{children}</>
   );
-}
 
 /**
  * A name typed (what follows "nym-"), the chain asked about it once the typing
@@ -813,14 +805,13 @@ export function NameForm({ chain, account, chainId, price, lead, onNamed, typed,
   const [err, setErr] = useState<string | null>(null); // Adena's refusal
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
-  // the registrar gnokey calls, as registerName's (read once there is a paste to make)
+  // the registrar, as registerName's: the link under the form, and gnokey's paste
   const [reg, setReg] = useState("");
   useEffect(() => {
-    if (typed) return;
     let live = true;
     void chain.nameReg().then((r) => live && setReg(r), () => {});
     return () => void (live = false);
-  }, [chain, typed]);
+  }, [chain]);
   // a name taken with gnokey, said done: the account connected asked (gnokey's key may be another)
   const sent = async () => {
     if (!account) return;
@@ -883,7 +874,7 @@ export function NameForm({ chain, account, chainId, price, lead, onNamed, typed,
                 : why === undefined
                   ? stem ? `Checking ${name}…` : "Type the name you want."
                   : `✓ ${name}`}
-        {bad && typed ? " · Fix it, or clear it to save without a name." : ""} · <NameLink chain={chain}>names on gno.land ↗</NameLink>
+        {bad && typed ? " · Fix it, or clear it to save without a name." : ""} · <NameLink chain={chain} reg={process.env.NEXT_PUBLIC_NAMEREG || reg}>names on gno.land ↗</NameLink>
       </small>
     </form>
     {/* (outside the form: its Copy and its key's field submit nothing) */}
@@ -927,7 +918,7 @@ function ClaimRounds({ chain, me, mode, onDone }: { chain: Chain; me: string; mo
     <div className="note note--warn">
       {holes} saved hole{holes === 1 ? " is" : "s are"} not ranked yet: the name came after them.{" "}
       <Button variant="secondary" disabled={state === "busy"} onClick={() => void go()}>{state === "busy" ? "Adena…" : "Rank them"}</Button>
-      {state && state !== "busy" && <small className="nameform__err"> {state}</small>}
+      {state && state !== "busy" && <small className="nameform__err" role="alert"> {state}</small>}
       <ClaimGnokey chain={chain} summary="Rank them with gnokey instead" onSent={() => (setAsked((n) => n + 1), onDone())} />
     </div>
   );
@@ -970,7 +961,7 @@ export function useWho(chain: Chain | null, addr: string, me?: string | null) {
 /** A ranked player as the boards show them (useWho), their address under their name in full. */
 function Who({ chain, addr, me, link, title = "See this round on gno.land" }: { chain: Chain | null; addr: string; me?: string | null; link?: string; title?: string }) {
   const { label, name } = useWho(chain, addr, me);
-  // (their collector rank after the name, on its line: ADR-011)
+  // (their collector rank after the name, on its line)
   const body = name || addr === me ? (
     <span className="who">
       <span className="who__line"><span className="who__name">{label}</span><Collector chain={chain} player={addr} /></span>
@@ -1068,23 +1059,23 @@ const Place = ({ at, plain = false }: { at: number; plain?: boolean }) =>
 const StickerGhost = ({ at = 0, free }: { at?: number; free?: string }) =>
   <div className="sticker podium__ghost"><Frame className="sticker__face" />{at > 0 && <Place at={at} />}{free === undefined ? <i /> : at <= 1 && free && <b className="podium__free">{free}</b>}</div>;
 /** A board's player as a sticker: their gnome flat (in their ghost's skin;
- *  yours, your gnome), their place, name and a line under it (sub); a tap
+ *  yours, your gnome), their name and a line under it (sub); a tap
  *  races them (onClick), else it only shows. */
-// tag: why it is there (a ghost put forward), said over its corner instead of a place
+// tag: why it is there (a ghost put forward), said over its corner
 // say: what a tap does, for a reader (racing them, by default)
 // go: what a tagged card's tap starts, said on it (Race, by default: "Their holes" lists their ghosts)
-export function Sticker({ player, at = 0, tag, sub, chain, me, gnome, onClick, say, go = "Race" }: { player: string; at?: number; tag?: string; sub: string; chain: Chain | null; me?: string | null; gnome: string; onClick?: () => void; say?: string; go?: string }) {
+export function Sticker({ player, tag, sub, chain, me, gnome, onClick, say, go = "Race" }: { player: string; tag?: string; sub: string; chain: Chain | null; me?: string | null; gnome: string; onClick?: () => void; say?: string; go?: string }) {
   const { label } = useWho(chain, player, me), mine = player === me;
   useWorn(chain, mine ? "" : player);
   const body = (<>
     <Face skin={mine ? gnomeById(gnome) : rivalSkin(player, gnome)} />
-    {tag ? <span className="sticker__tag">{tag}</span> : at > 0 && <Place at={at} />}
+    {tag && <span className="sticker__tag">{tag}</span>}
     <span className="sticker__who"><Collector chain={chain} player={player} />{label}</span>
     <span className="sticker__sub">{sub}</span>
     {tag && onClick && !say && <span className="sticker__go" aria-hidden="true">{go} ▸</span>}
   </>);
   return onClick
-    ? <button className="sticker" aria-label={`${say ? `${label}: ${say}` : mine ? "Race your best" : go === "Race" ? `Race ${label}'s ghost` : `${label}: ${go.toLowerCase()}`}: ${tag || `#${at}`}, ${sub}`} onClick={onClick}>{body}</button>
+    ? <button className="sticker" aria-label={`${say ? `${label}: ${say}` : mine ? "Race your best" : go === "Race" ? `Race ${label}'s ghost` : `${label}: ${go.toLowerCase()}`}: ${tag ? `${tag}, ` : ""}${sub}`} onClick={onClick}>{body}</button>
     : <div className="sticker">{body}</div>;
 }
 /** A board's face wears the gnome its player wears for everyone (SHOP): asked with the page's other faces in

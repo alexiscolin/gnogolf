@@ -1,9 +1,9 @@
 #!/bin/sh
 # holedata.sh [--check]: data/holes.txt, every course hole as GG1 data, from its source.
 #
-# Runs every hole's fingerprint test (which also proves the hole survives
+# Runs every hole's tests (its fingerprint test also proves the hole survives
 # encoding: see fingerprint.Check), one run over them all, and keeps the line
-# each logs, one per hole:
+# each fingerprint logs, one per hole:
 #
 #   <slot> <pkgpath> <sha8> <hex>
 #
@@ -35,9 +35,9 @@ par=$(mktemp)
 trap 'rm -f "$tmp" "$log" "$par"' EXIT
 pkgs=$(for d in $(ls -d gno.land/r/gnogolf/*/ | sort); do [ -f "$d/fingerprint_test.gno" ] && echo "./${d%/}"; done)
 # shellcheck disable=SC2086 # (one word a package)
-if ! nice -n 20 "$GNO" test -v -run TestFingerprint $pkgs >"$log" 2>&1; then
+if ! nice -n 20 "$GNO" test -v $pkgs >"$log" 2>&1; then
 	cat "$log" >&2
-	echo "holedata.sh: a hole fails its fingerprint test" >&2
+	echo "holedata.sh: a hole fails its tests" >&2
 	exit 1
 fi
 # a package's output ends on its "ok ./<pkgpath>" line, its data line above it

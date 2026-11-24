@@ -14,7 +14,7 @@ import (
 func copyHole(cur realm, title string) string { return publish(cur, cupHole("garden", 93, title)) }
 
 // holeRank is a player's place on a hole's board, 0 off it.
-func holeRank(id string, p address) string { return jfield(HoleRank(id, "assisted", p), "rank") }
+func holeRank(id string, p address) string { return jget(HoleRank(id, "assisted", p), "rank") }
 
 // A record of the board sent again, nearly (each shot within copyAngle and
 // copyPower): kept as the player's round and ghost, never ranked, not even by a
@@ -76,8 +76,8 @@ func TestACopyNeverReplacesAnOwnBest(cur realm, t *testing.T) {
 	giveName(cur, a, "rpa")
 	giveName(cur, b, "rpb")
 	replayAs(cur, b, id, "0.6,0.01;0.62,0.01;0.64,0.01;0.66,1") // their own, 4
-	replayAs(cur, a, id, "0.37,0.01;0.41,0.01;0.29,1")         // 3
-	replayAs(cur, b, id, "0.37,0.01;0.41,0.01;0.29,1")         // a's, sent again
+	replayAs(cur, a, id, "0.37,0.01;0.41,0.01;0.29,1")          // 3
+	replayAs(cur, b, id, "0.37,0.01;0.41,0.01;0.29,1")          // a's, sent again
 	uassert.Equal(t, 4, BestOf(id, "assisted", b), "their own best stays")
 	uassert.Equal(t, "2", holeRank(id, b), "and so does its place")
 }
@@ -95,11 +95,11 @@ func TestACopyIsCaughtInEitherModeAndAnyTick(cur realm, t *testing.T) {
 	uassert.Equal(t, "0", holeRank(id, b), "another tick: still a copy")
 	testing.SetRealm(testing.NewUserRealm(c))
 	PlayRoundPro(cross(cur), id, "359.99,0.01;0.41,0.01;0.29,1", Period()) // the assisted record, sent as pro
-	uassert.Equal(t, "0", jfield(HoleRank(id, "pro", c), "rank"), "the other mode: still a copy")
+	uassert.Equal(t, "0", jget(HoleRank(id, "pro", c), "rank"), "the other mode: still a copy")
 	uassert.Equal(t, 3, BestOf(id, "pro", c), "kept")
 	replayAs(cur, d, id, "-0.02,0.01;0.42,0.02;0.3,1") // 0.03° off across 0°
 	uassert.Equal(t, "0", holeRank(id, d), "across 0°: still a copy")
 	testing.SetRealm(testing.NewUserRealm(a))
 	PlayRoundPro(cross(cur), id, "359.99,0.01;0.41,0.01;0.29,1", Period()) // their own, in the other mode
-	uassert.Equal(t, "1", jfield(HoleRank(id, "pro", a), "rank"), "one's own round, in the other mode: ranked")
+	uassert.Equal(t, "1", jget(HoleRank(id, "pro", a), "rank"), "one's own round, in the other mode: ranked")
 }

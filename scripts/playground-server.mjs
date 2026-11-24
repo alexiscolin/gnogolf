@@ -14,6 +14,7 @@
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
@@ -22,7 +23,7 @@ const TYPES = {
   ".woff2": "font/woff2", ".wasm": "application/wasm", ".webmanifest": "application/manifest+json", ".xml": "application/xml",
 };
 /** The node this may stream to: http on this machine, a port. */
-export const LOCAL_RPC = /^http:\/\/127\.0\.0\.1:\d{1,5}$/;
+const LOCAL_RPC = /^http:\/\/127\.0\.0\.1:\d{1,5}$/;
 
 /**
  * The server, not yet listening: root the static build, rpc the node.
@@ -84,7 +85,8 @@ export function playgroundServer({ root, rpc }) {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// run, not imported: the path node ran, its links resolved (import.meta.main needs Node 22.18)
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [root, port, rpc] = process.argv.slice(2);
   if (!root || !/^\d{1,5}$/.test(port || "") || !rpc) throw new Error("usage: playground-server.mjs <out dir> <port> <rpc>");
   playgroundServer({ root, rpc }).listen(Number(port), "127.0.0.1", () => console.log(`playground: ${root} on http://127.0.0.1:${port}, /rpc to ${rpc}`));

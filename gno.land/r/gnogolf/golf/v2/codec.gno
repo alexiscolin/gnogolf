@@ -7,11 +7,14 @@ import (
 
 // How golf's rows are kept in store: strings, never golf's own types (a value
 // of a realm's type kept in another realm would carry this realm's methods into
-// it, and would not outlive these rules). Each is its format's version, then
-// its fields, each as its length, ":" and itself (store's own rows are so): a
-// row reads back by its lengths, not by a scan of every byte (a scan, as
-// strings.Split, costs several times more gas), whatever its fields hold. A
-// later version of the rules reads every format ever written, row by row.
+// it, and would not outlive these rules). A version of a hole, a round and a
+// standing are each their format's version, then their fields, each as its
+// length, ":" and itself (store's own rows are so): a row reads back by its
+// lengths, not by a scan of every byte (a scan, as strings.Split, costs
+// several times more gas), whatever its fields hold. The other rows are plain
+// values: ids, players, counts, flags, a best as bestOf writes it, a hole's
+// data. A later version of the rules reads every format ever written, row by
+// row.
 const format = "1"
 
 func join(fs ...string) string {
@@ -44,9 +47,9 @@ func fields(s, what string, n int) []string {
 	return f[1:]
 }
 
-func itoa(n int) string      { return strconv.Itoa(n) }
-func i64(n int64) string     { return strconv.FormatInt(n, 10) }
-func ftoa(x float64) string  { return strconv.FormatFloat(x, 'g', -1, 64) } // (exact: it reads back to the same float)
+func itoa(n int) string     { return strconv.Itoa(n) }
+func i64(n int64) string    { return strconv.FormatInt(n, 10) }
+func ftoa(x float64) string { return strconv.FormatFloat(x, 'g', -1, 64) } // (exact: it reads back to the same float)
 func btoa(b bool) string {
 	if b {
 		return "1"
@@ -78,8 +81,6 @@ func atof(s string) float64 {
 	return x
 }
 
-// --- a version of a hole -------------------------------------------------------
-
 func encodeEntry(e *entry) string {
 	out := []string{"", "", "", "", ""} // never archived: no drain
 	if e.out != nil {
@@ -101,8 +102,6 @@ func decodeEntry(s string) *entry {
 	return e
 }
 
-// --- a round under way ---------------------------------------------------------
-
 func encodeRound(r *round) string {
 	return join(ftoa(r.bx), ftoa(r.by), ftoa(r.fx), ftoa(r.fy), itoa(r.strokes), i64(r.period), r.shots, itoa(r.mode))
 }
@@ -111,8 +110,6 @@ func decodeRound(s string) *round {
 	f := fields(s, "round", 8)
 	return &round{bx: atof(f[0]), by: atof(f[1]), fx: atof(f[2]), fy: atof(f[3]), strokes: atoi(f[4]), period: atoi64(f[5]), shots: f[6], mode: atoi(f[7])}
 }
-
-// --- a course standing ---------------------------------------------------------
 
 func encodeRow(r *row) string {
 	return join(r.player, itoa(r.holes), itoa(r.strokes), itoa(r.par), i64(r.height))

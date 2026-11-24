@@ -1,4 +1,4 @@
-// The "mines" world: the Crystal Mines (ADR-005), same functions as
+// The "mines" world: the Crystal Mines, same functions as
 // garden.ts (see worlds.ts for the contract). The board is a lit pocket deep
 // in a cave: a carpet laid down by the gnomes along a gallery of blue-slate
 // rock, timber and iron all round, crystals growing out of the rock and
@@ -18,7 +18,7 @@ import { animate } from "./state";
 import { seeded, GRASS, placer, shown, type Rand } from "./common";
 import { ud, md, type Hole, type Height } from "./data";
 import type { Bar, Skins } from "./worlds";
-import { VOID_ROWS, VOID_BANDS, VOID_FLOOR, voidEdges } from "./course";
+import { VOID_ROWS, VOID_BANDS, VOID_FLOOR, voidEdges, voidRow, onBoardEdge } from "./course";
 import { gnomeIn } from "./gnome";
 import { terrain, mod, boxOf, inZone, inSea, smoothstep, cupRadius, segDist, CELL, type Terrain } from "../terrain";
 import { MINES, minesOrder, darkGallery, crystalMat, HUES, planks, drawnGround, lantern, lanternsLit, GLASS, DEAD_GLASS, chamferField } from "./mines-kit";
@@ -33,11 +33,9 @@ import { board, ladder, wood, WINDOW, newHoleBoards } from "./mines-decor";
 import * as pieces from "./mines-pieces";
 import * as rides from "./mines-rides";
 import { signs, pulseSigns } from "./mines-signs";
-import type { Extras, MutVec2, Post, Vec2, Wall, Zone } from "../types";
+import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
-// ------------------------------------------------------------ the cave
-//
 // Round the board: a floor of blue slate, a ridge of rock along the lane's
 // edges (the gallery it runs in), rubble rising to the cave's wall; the wall
 // and the vault as one shell over it all (a superellipse round the board,
@@ -67,8 +65,9 @@ interface Cave {
   voidAt: (x: number, z: number) => boolean;
   /** where a ball plays: the green, off the void */
   lane: (x: number, z: number) => boolean;
-  /** distance to the lane (0 on it), and how far the lane lies behind (−z) within 10 */
+  /** distance to the lane (0 on it) */
   dist: (x: number, z: number) => number;
+  /** how far the lane lies behind (−z) or in +x, from here or a little to either side */
   back: (x: number, z: number) => number;
   /** > 0 on the floor, < 0 over a drop (the front chasm, the void's), 0 its edge */
   drop: (x: number, z: number) => number;
@@ -88,11 +87,11 @@ interface Cave {
   sites: Site[];
   /** the lane's edge distance, for its wear (wearTex) */
   wear?: THREE.DataTexture;
-  /** a pit's lake: its depth (what stands in it stamps it dry) and the lights streaked on it */
   /** the pit's floor (or its lake's surface) at (x, z), over the drop; undefined elsewhere (pitFloor) */
   pitAt?: (x: number, z: number) => number | undefined;
   /** what is drawn at (x, z) on the pit's floor: its lake's water, its seam's lava, or dry floor (undefined) (pitFloor) */
   pitWet?: (x: number, z: number) => "water" | "lava" | undefined;
+  /** a pit's lake: its depth (what stands in it stamps it dry) and the lights streaked on it */
   lake?: { field: WaterField; lights: (list: readonly WaterLight[]) => void; follow: (x: number, z: number, h: number, k: number) => void };
 }
 
@@ -105,7 +104,7 @@ function caveOf(s: Hole): Cave {
   if (had) return had;
   // (the cave's own terrain, kept with it: without the rough's cells, the course's alone to plant)
   const W = s.board.w, H = s.board.h, t = lifted(s) ?? { ...terrain(s), rough: [] };
-  const voids = (s.zones || []).filter((q) => q.skin === "void" && q.kind === "hazard");
+  const voids = s.zones.filter((q) => q.skin === "void" && q.kind === "hazard");
   const voidAt = (x: number, z: number) => voids.some((q) => inZone(q, x, z));
   const lane = (x: number, z: number) => t.onGreen(x, z) && !voidAt(x, z);
   const cx = W / 2, ax = W / 2 + SIDE, cz = (-BACK + H + FRONT) / 2, az = (H + BACK + FRONT) / 2;
@@ -192,7 +191,6 @@ function caveOf(s: Hole): Cave {
     pools: [], glows: [], lamps: () => {}, lampK: { value: 1 }, tick: () => {},
   };
   caves.set(s, cave);
-  newHoleBoards();
   return cave;
 }
 
@@ -201,6 +199,8 @@ const SITE_GROUND: Record<SiteKind, THREE.Color> = {
   work: new THREE.Color(0x6a5446), camp: new THREE.Color(0x6e5848), ore: new THREE.Color(0x6a5446), collapse: new THREE.Color(0x6a6278),
   mushrooms: new THREE.Color(0x3c5a5a), lake: new THREE.Color(0x34485a), druse: new THREE.Color(0x4a4a6e), stalagmites: new THREE.Color(0x4e4862),
 };
+/** The size a site's things are built at, by its kind: a site scales them by its k to its own r. */
+const SITE_R: Record<SiteKind, number> = { work: 6.5, lake: 7, druse: 4.5, ore: 4.5, camp: 5, collapse: 5, mushrooms: 5, stalagmites: 5 };
 /** A place the cave is dressed in: where, how big, what, at what level. */
 interface Site { x: number; z: number; r: number; y: number; kind: SiteKind; tall: boolean; k: number }
 /** The sites each biome is dressed in, in order of preference; low ones
@@ -236,11 +236,11 @@ function planSites(s: Hole, f: { dist: Height; back: Height; drop: Height; rim: 
     const tall = f.back(c.x, c.z) > 7, fits = (k: SiteKind) => tall || LOW.has(k), used = new Set(out.map((q) => q.kind));
     const kind = kinds.find((k) => fits(k) && !used.has(k)) ?? ALL_SITES.find((k) => fits(k) && !used.has(k));
     if (!kind) continue;
-    const r = (kind === "work" ? 6.5 : kind === "lake" ? 7 : kind === "druse" || kind === "ore" ? 4.5 : 5) * (f.dist(c.x, c.z) > 11 ? 1.7 : 1.35);
+    const r = SITE_R[kind] * (f.dist(c.x, c.z) > 11 ? 1.7 : 1.35);
     if (f.drop(c.x, c.z) < r + 1 || f.dist(c.x, c.z) < r + 2 || out.some((q) => Math.hypot(q.x - c.x, q.z - c.z) < q.r + r + 3)) continue;
     // (a work site needs its tunnel mouth behind: a spot the lane is well in front of)
     if (kind === "work" && f.back(c.x, c.z) < 11) continue;
-    out.push({ x: c.x, z: c.z, r, y: ground(c.x, c.z) - GRASS, kind, tall, k: r / (kind === "work" ? 6.5 : kind === "lake" ? 7 : kind === "druse" || kind === "ore" ? 4.5 : 5) });
+    out.push({ x: c.x, z: c.z, r, y: ground(c.x, c.z) - GRASS, kind, tall, k: r / SITE_R[kind] });
   }
   // and along the floor in front of the lane (a narrow band before the
   // ledge): small low ones, a row of them
@@ -250,7 +250,7 @@ function planSites(s: Hole, f: { dist: Height; back: Height; drop: Height; rim: 
       const r = 3.2 + rand() * 0.8, kind = FRONT.find((q) => !out.some((o) => o.kind === q));
       if (!kind) break; // (none twice on the hole)
       if (f.drop(x, z) < r + 0.4 || f.dist(x, z) < r + 1.4 || f.dist(x, z) > 16 || out.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + r + 1.5)) continue;
-      out.push({ x, z, r, y: ground(x, z) - GRASS, kind, tall: false, k: r / (kind === "lake" ? 7 : kind === "druse" || kind === "ore" ? 4.5 : 5) });
+      out.push({ x, z, r, y: ground(x, z) - GRASS, kind, tall: false, k: r / SITE_R[kind] });
       k++;
       break;
     }
@@ -259,8 +259,6 @@ function planSites(s: Hole, f: { dist: Height; back: Height; drop: Height; rim: 
   return out;
 }
 
-// ------------------------------------------------------------ the terraces
-//
 // A lane in parts joined only by geysers (the Geysers' terraces): each part
 // a step higher than the one its geyser throws from, so the climb reads as a
 // climb and not as walls on one floor. Cosmetic: the ball is drawn on it
@@ -270,13 +268,13 @@ const STEP_UP = 1.4;
 const lifts = new WeakMap<Hole, Terrain | null>();
 function lifted(s: Hole): Terrain | null {
   if (lifts.has(s)) return lifts.get(s)!;
-  const geysers = (s.zones || []).filter((q) => q.kind === "tunnel" && q.skin === "geyser");
+  const geysers = s.zones.filter((q) => q.kind === "tunnel" && q.skin === "geyser");
   const t = terrain(s);
   let out: Terrain | null = null;
   if (geysers.length) {
     // the lane's parts: its cells joined across no wall (a cell a wall runs
     // through belongs to no part)
-    const walls = (s.walls || []).filter((w) => !w.every), nx = t.nx, nz = t.nz;
+    const walls = s.walls.filter((w) => !w.every), nx = t.nx, nz = t.nz;
     const label = new Int32Array(nx * nz).fill(-1);
     const free = (i: number, j: number) => t.inGrid(i, j) && !!t.green[t.idx(i, j)] && !walls.some((w) => segDist((i + 0.5) * CELL, (j + 0.5) * CELL, w.a, w.b) < 0.3);
     let parts = 0;
@@ -324,8 +322,6 @@ function lifted(s: Hole): Terrain | null {
   lifts.set(s, out);
   return out;
 }
-
-// ------------------------------------------------------------ the land
 
 /** A lit point: the pools of light and the glows are its (see Pool, Glow). */
 function light(cv: Cave, x: number, y: number, z: number, c: number, { r = 4, k = 0.7, lamp = false, glow = 1.6 } = {}) {
@@ -418,10 +414,7 @@ function floorMesh(cv: Cave) {
     let nxv = ez / l, nzv = -ex / l;
     const mx = (P[0] + Q[0]) / 2, mz = (P[2] + Q[2]) / 2;
     if (drop(mx + nxv * 0.3, mz + nzv * 0.3) > drop(mx - nxv * 0.3, mz - nzv * 0.3)) (nxv = -nxv), (nzv = -nzv); // toward the drop
-    const row = (v: number[], k: number) => {
-      const [dy, out] = VOID_ROWS[k], jag = k && k < VOID_ROWS.length - 1 ? 0.12 * Math.sin(v[0] * 1.9 + v[2] * 1.3 + k * 2.1) : 0;
-      return [v[0] + nxv * (out + jag), k === VOID_ROWS.length - 1 ? VOID_FLOOR - 0.4 : v[1] + dy, v[2] + nzv * (out + jag)];
-    };
+    const row = (v: number[], k: number) => voidRow(v, k, nxv, nzv, 0.12);
     for (let k = 0; k + 1 < VOID_ROWS.length; k++) {
       const a0 = row(P, k), a1 = row(P, k + 1), b1 = row(Q, k + 1), b0 = row(Q, k);
       band.set(VOID_BANDS[k]);
@@ -462,13 +455,6 @@ function galleriesOf(s: Hole) {
 }
 const GALLERY_HALF = 0.05, GALLERY_ROWS = 2; // an opening's half-angle, and the rows of the shell it takes
 
-/**
- * The shell: the cave's wall rising from the floor's edge (from the chasm's
- * depth in front) and curving over into the vault, one mesh of big facets,
- * rock in strata at its foot going into the vault's dark over it; openings
- * into other galleries; stalactites hanging from the vault, crystals growing
- * out of the wall and veins of crystal running up it, glowworms over it all.
- */
 const VAULT_ROW = 6; // the rows from which the shell is the vault
 const THREAD = share(new THREE.LineBasicMaterial({ color: 0x8fe8f0, transparent: true, opacity: 0.85, fog: false }));
 // the vault's material: unlit, and not drawn over the eye (a camera up at the
@@ -484,6 +470,13 @@ const VAULT_MAT = (() => {
   return share(m);
 })();
 const ROWS: readonly (readonly [number, number])[] = [[0, 0], [2.5, 0.006], [6, 0.018], [10, 0.04], [14, 0.08], [18, 0.16], [22, 0.29], [25.5, 0.45], [28, 0.63], [30, 0.82], [VAULT, 1]];
+/**
+ * The shell: the cave's wall rising from the floor's edge (from the chasm's
+ * depth in front) and curving over into the vault, one mesh of big facets,
+ * rock in strata at its foot going into the vault's dark over it; openings
+ * into other galleries; stalactites hanging from the vault, crystals growing
+ * out of the wall and veins of crystal running up it, glowworms over it all.
+ */
 function shell(cv: Cave, rand: Rand) {
   const g = new THREE.Group();
   const N = 76, R = ROWS.length;
@@ -800,11 +793,15 @@ function merge(list: THREE.BufferGeometry[]) {
 
 /** The hot holes: lava on the lane (and the boss). */
 function hotHole(s: Hole) {
-  return [7, 11, 13, 18].includes(minesOrder(s)) || (s.zones || []).some((q) => q.skin.startsWith("lava"));
+  return [7, 11, 13, 18].includes(minesOrder(s)) || s.zones.some((q) => q.skin.startsWith("lava"));
 }
 
 function base(s: Hole) {
   const cv = caveOf(s), rand = seeded("mines" + s.hole);
+  // (each build its own lights, its boards toned from the first: the same hole built again draws the same)
+  cv.pools = [];
+  cv.glows = [];
+  newHoleBoards();
   const g = new THREE.Group();
   g.name = "mines:cave"; // (the probes say whose a surface is by its nearest named group)
   g.add(floorMesh(cv), shell(cv, rand));
@@ -817,8 +814,6 @@ function base(s: Hole) {
 function berms(s: Hole) {
   return { group: new THREE.Group(), height: caveOf(s).floor };
 }
-
-// ------------------------------------------------------------ the edge
 
 /**
  * Round the lane: over the void, a border along its edge — kerb stones set
@@ -914,7 +909,6 @@ function voidTrim(cv: Cave, edges: readonly (readonly [Vec2, Vec2])[], timber: b
   // (one geometry of them all, inked: it bakes with the hole's other relief, no draws of its own)
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v = new THREE.Vector3(), sc = new THREE.Vector3();
   const all = merge(items.map((it) => {
-    rand(); // (the roll once drawn here: kept, the rest laid as before; none now, a stone's sides straight up, never slanting through the lane's plane)
     q.setFromEuler(e.set(it.p, it.a, 0, "YXZ"));
     return geo.clone().applyMatrix4(m.compose(v.set(it.x, it.y, it.z), q, sc.set(1, it.h, it.l)));
   }));
@@ -942,11 +936,10 @@ function overDrop(cv: Cave, o: THREE.Object3D) {
  * wall's line, its face on the lane's side. One mesh and its ink, baked with the rest.
  */
 function lostRails(cv: Cave) {
-  const s = cv.s, parts: THREE.BufferGeometry[] = [], outside = (s.zones || []).some((q) => q.outside && q.kind === "hazard");
-  const onEdge = (w: Wall) => ([0, 1] as const).some((k) => [w.a[k], w.b[k]].every((v) => Math.abs(v) < 0.01 || Math.abs(v - (k ? s.board.h : s.board.w)) < 0.01) && Math.abs(w.a[k] - w.b[k]) < 0.01);
-  for (const w of s.walls || []) {
+  const s = cv.s, parts: THREE.BufferGeometry[] = [], outside = s.zones.some((q) => q.outside && q.kind === "hazard");
+  for (const w of s.walls) {
     // (a plain one course.ts leaves undrawn; a rock face or a rail guard, whose piece stands only where it has room: the rail at its foot all along, inside the rock where the rock stands)
-    if (w.every || !(w.skin ? w.skin === "rockface" || w.skin === "railguard" : inSea(w, s.zones) || (outside && onEdge(w)))) continue;
+    if (w.every || !(w.skin ? w.skin === "rockface" || w.skin === "railguard" : inSea(w, s.zones) || (outside && onBoardEdge(w, s.board)))) continue;
     const L = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
     if (L < 0.2) continue;
     const ux = (w.b[0] - w.a[0]) / L, uz = (w.b[1] - w.a[1]) / L, ang = Math.atan2(uz, ux);
@@ -986,7 +979,7 @@ function deckOf(cv: Cave) {
  */
 function risers(cv: Cave) {
   const t = cv.t, nose: THREE.BufferGeometry[] = [], rise = [new Set<number>(), new Set<number>()]; // (cells climbing along x, along z)
-  const g = new THREE.Group(), ground = { height: t.ground || t.height };
+  const g = new THREE.Group(), ground = { height: t.ground };
   for (let j = 0; j < t.nz; j++)
     for (let i = 0; i < t.nx; i++) {
       if (!t.green[t.idx(i, j)]) continue;
@@ -1011,7 +1004,7 @@ function risers(cv: Cave) {
 }
 
 /** A wall standing on the lane's edge at (x, z) (its own border there). */
-const walled = (cv: Cave, x: number, z: number) => (cv.s.walls || []).some((w) => !w.every && segDist(x, z, w.a, w.b) < 0.6);
+const walled = (cv: Cave, x: number, z: number) => cv.s.walls.some((w) => !w.every && segDist(x, z, w.a, w.b) < 0.6);
 
 /** A gantry's pile from top down into the pit, wet and dark where it stands
  *  in its lake (stamped dry in it: its foam ring). */
@@ -1105,8 +1098,6 @@ function faceItem(kind: number, rand: Rand) {
 
 
 
-// ------------------------------------------------------------ props
-
 /**
  * Water coming through the vault in the rain: thin streams pouring off the
  * wall's overhang onto the floor, white water running down them, a ring
@@ -1160,10 +1151,9 @@ const STREAMS = (() => {
 })();
 
 /** A lamp post: a timber post with a bracket, the lantern hanging off it. */
-function lampPost(rand: Rand) {
+function lampPost() {
   const g = new THREE.Group();
   const post = board(0.24, 2.7, 0.24, MINES.timber);
-  void rand;
   post.position.y = 1.35;
   const arm = board(0.9, 0.14, 0.14, MINES.timberDark);
   arm.position.set(0.38, 2.55, 0);
@@ -1218,7 +1208,7 @@ function swingingLamps(cv: Cave, hung: readonly THREE.Vector3[], rand: Rand) {
       const n = geo.attributes.position.count, col = geo.attributes.color, glow = m === GLASS ? 1 : 0;
       const out = new Float32Array(n * 3);
       for (let i = 0; i < n; i++) {
-        c.copy(m.color || c.set(0xffffff));
+        c.copy(m.color);
         if (col && m.vertexColors) c.multiply(new THREE.Color().fromBufferAttribute(col, i));
         if (glow) c.set(MINES.lantern);
         out.set([c.r, c.g, c.b], i * 3);
@@ -1244,8 +1234,7 @@ function swingingLamps(cv: Cave, hung: readonly THREE.Vector3[], rand: Rand) {
   }
   return g;
 }
-// the swing, about each vertex's hook: as the instanced set's was (a little
-// always, more and downwind in the draught)
+// the swing, about each vertex's hook: a little always, more and downwind in the draught
 const SWING = /* glsl */ `
   vec3 swRel = transformed - aHook;
   float swPh = aHook.x * 0.37 + aHook.z * 0.21, swK = 0.012 + min(0.09, length(uWind) * 0.8);
@@ -1293,8 +1282,6 @@ const LAMP_INK = (() => {
 const CHAIN = 9;
 const CHAIN_MAT = share(new THREE.MeshBasicMaterial({ vertexColors: true }));
 
-// ------------------------------------------------------------ decor
-
 function decor(s: Hole, bank: Height = caveOf(s).floor) {
   const cv = caveOf(s), g = new THREE.Group();
   g.name = "mines:decor";
@@ -1304,7 +1291,7 @@ function decor(s: Hole, bank: Height = caveOf(s).floor) {
   const ok = (x: number, z: number, r: number, clear = 0.9) => free(x, z, r) && cv.drop(x, z) > r + 0.3 && cv.dist(x, z) > r + clear && cv.rim(x, z) < 0.96;
   // (on ground level enough to stand on, nothing standing out over the floor
   // falling away on the rim's talus: a prop turned down there (its room kept
-  // all the same, the rest laid out as it was), a set piece on its posts
+  // all the same, so the rest lies as with it), a set piece on its posts
   // footed at the lowest of the ground under it, dug into the rest)
   const footing = (x: number, z: number, r: number) => Math.min(bank(x, z), ...[0, 1, 2, 3, 4, 5].map((k) => bank(x + Math.cos(k * 1.05) * r, z + Math.sin(k * 1.05) * r)));
   const place = <T extends THREE.Object3D>(m: T, x: number, z: number, r: number, rot = 0, clear = 0.9) => {
@@ -1335,7 +1322,7 @@ function decor(s: Hole, bank: Height = caveOf(s).floor) {
       for (let u = rand() * 3; u < L; u += 4) spots.push([a[0] + ((b[0] - a[0]) * u) / L + nx * off, a[1] + ((b[1] - a[1]) * u) / L + nz * off, nx, nz]);
     };
     if (cv.voids.length) for (const [a, b] of voidEdges(cv.voids)) along(a, b, 1.9, cv.voidAt);
-    else for (const w of s.walls || []) if (!w.every) along(w.a, w.b, 1.35, (x, z) => !cv.lane(x, z));
+    else for (const w of s.walls) if (!w.every) along(w.a, w.b, 1.35, (x, z) => !cv.lane(x, z));
     // (a hole in its lava's dark gets them closer: the Corkscrew's loop lit warm)
     const lastAt: MutVec2[] = [], hung: THREE.Vector3[] = [], many = minesOrder(s) === 11, gap = many ? 4.5 : 7;
     for (const [x, z, nx, nz] of spots.sort(() => rand() - 0.5)) {
@@ -1348,7 +1335,7 @@ function decor(s: Hole, bank: Height = caveOf(s).floor) {
         light(cv, x, y + 0.25, z, MINES.lantern, { r: 6.5, k: 0.9, lamp: true, glow: 3.6 });
         cv.glows[cv.glows.length - 1].hook = hung[hung.length - 1]; // (its glow swings with it)
       } else {
-        const m = place(lampPost(rand), x, z, 0.5, Math.atan2(nz, -nx), 0.6); // (its arm over the lane)
+        const m = place(lampPost(), x, z, 0.5, Math.atan2(nz, -nx), 0.6); // (its arm over the lane)
         if (!m) continue;
         m.updateMatrixWorld(true);
         const at = new THREE.Vector3(0.72, 1.95, 0).applyMatrix4(m.matrixWorld);
@@ -1489,7 +1476,7 @@ function dress(cv: Cave, s: Hole, g: THREE.Group, rand: Rand, { ok, place, reser
   // rock pillars far back, rising into the dark (the cave's depth)
   for (let k = 0; k < few(4); k++) {
     const h = 14 + rand() * 10, r = 1.2 + rand() * 1.2, at = spot(10, 30, r * 1.4, h);
-    if (at) place(pillar(rand, Math.min(h, (cv.back(...at) - 0.8) * 0.6), r, 0, h * 0.55), at[0], at[1], r * 1.4, rand() * 6);
+    if (at) place(pillar(rand, Math.min(h, (cv.back(...at) - 0.8) * 0.6), r, h * 0.55), at[0], at[1], r * 1.4, rand() * 6);
   }
   // bats in flocks wheeling round the brightest lights behind the lane (the
   // giant crystals), so they show against them; big enough to read from far
@@ -1524,7 +1511,7 @@ function groves(rand: Rand, n: number, where: (h: number) => MutVec2 | null, pla
     const c = giantCrystal(rand, h, hueOf()), m = place(c.g, at[0], at[1], h * 0.45, rand() * 6, 2);
     if (!m) continue;
     lit(m, c.heart, hue, h * 1.5, 1.2, h);
-    for (let j = 0; j < 1; j++) {
+    {
       const a = rand() * Math.PI * 2, d = h * 0.55 + 1.2, hh = 3 + rand() * 2, b = giantCrystal(rand, hh, hueOf());
       if (place(b.g, at[0] + Math.cos(a) * d, at[1] + Math.sin(a) * d, hh * 0.45, rand() * 6)) lit(b.g, b.heart, hue, hh * 1.5, 0.8, hh * 0.9);
     }
@@ -1614,8 +1601,6 @@ const BIOME_HUE: Record<Biome, number> = {
   shaft: MINES.cyan, collapse: MINES.rose, boiler: MINES.cyan, lavafalls: 0xffb35a, frozen: 0x9fe8ff, vault: MINES.rose, lode: MINES.amethyst,
 };
 
-// ------------------------------------------------------------ the pit
-//
 // Under the void (and past the front ledge) the drop has a floor a few units
 // down, VOID_FLOOR: a still lake, scree with a rail gallery, a bed of glowing
 // crystals or a seam of lava, by turns along the cup. The ball that falls in
@@ -1681,8 +1666,10 @@ function bank(field: WaterField, ground: Height) {
   return new THREE.Mesh(geoOf(pos, idx, col), relief());
 }
 
+/** The middle of the lava's seam down the pit, at x: a winding line. */
+const seamMid = (cv: Cave, x: number) => cv.cz * 0.35 + 0.65 * cv.H / 2 + 3 * Math.sin(x * 0.11) + 1.4 * Math.sin(x * 0.29 + 1);
 /** Where the lava's seam runs down the pit: a winding band (0 at its middle, 1 at its banks). */
-const seamAt = (cv: Cave, x: number, z: number) => Math.abs(z - (cv.cz * 0.35 + 0.65 * cv.H / 2 + 3 * Math.sin(x * 0.11) + 1.4 * Math.sin(x * 0.29 + 1))) / 2.4;
+const seamAt = (cv: Cave, x: number, z: number) => Math.abs(z - seamMid(cv, x)) / 2.4;
 
 /** The last pit drawn, read for its hole only (by its place in the course: a stroke's own state, or a realm's version of it, is a hole of its own).
  *  One, not one a hole: a Cave holds its Hole and Terrain, and with them the scene systems keyed by them. */
@@ -1727,12 +1714,12 @@ function pitFloor(cv: Cave) {
   if (kind === "lava") {
     // the seam: lava down a winding band of the pit's floor, a ribbon along
     // its course, crusted at its banks, cut where the pit's floor rises
-    const mid = (x: number) => cv.cz * 0.35 + 0.65 * cv.H / 2 + 3 * Math.sin(x * 0.11) + 1.4 * Math.sin(x * 0.29 + 1);
+    const half = (x: number) => 2.4 * (0.8 + 0.25 * Math.sin(x * 0.37)); // (the ribbon's width either side of the middle, waxing and waning)
     const lp: number[] = [], lc: number[] = [], li: number[] = [], A = 7;
     const ok = (x: number, z: number) => inPit(x, z) && ground(x, z) < VOID_FLOOR + 0.55;
     let prevOk = false;
     for (let x = x0, n = 0; x <= x1; x += 1, n++) {
-      const w = 2.4 * (0.8 + 0.25 * Math.sin(x * 0.37)), zc = mid(x), row = n * A;
+      const w = half(x), zc = seamMid(cv, x), row = n * A;
       for (let k = 0; k < A; k++) {
         const v = k / (A - 1) * 2 - 1;
         lp.push(x, VOID_FLOOR + 0.3 + 0.04 * (1 - v * v), zc + v * w);
@@ -1742,14 +1729,14 @@ function pitFloor(cv: Cave) {
       if (n && here && prevOk) for (let k = 0; k < A - 1; k++) { const a0 = row - A + k, b0 = row + k; li.push(a0, a0 + 1, b0, a0 + 1, b0 + 1, b0); }
       prevOk = here;
     }
-    cv.pitWet = (x, z) => (ok(x, mid(x)) && Math.abs(z - mid(x)) <= 2.4 * (0.8 + 0.25 * Math.sin(x * 0.37)) ? "lava" : undefined);
+    cv.pitWet = (x, z) => (ok(x, seamMid(cv, x)) && Math.abs(z - seamMid(cv, x)) <= half(x) ? "lava" : undefined);
     const lg = new THREE.BufferGeometry();
     lg.setAttribute("position", new THREE.Float32BufferAttribute(lp, 3));
     lg.setAttribute("lavaCrust", new THREE.Float32BufferAttribute(lc, 1));
     lg.setIndex(li);
     g.add(new THREE.Mesh(lg, lavaMaterial()));
     for (let x = x0; x < x1; x += 3) {
-      const z = cv.cz * 0.35 + 0.65 * cv.H / 2 + 3 * Math.sin(x * 0.11) + 1.4 * Math.sin(x * 0.29 + 1);
+      const z = seamMid(cv, x);
       if (inPit(x, z) && ground(x, z) < VOID_FLOOR + 0.5) {
         cv.glows.push({ x, y: VOID_FLOOR + 0.9, z, c: MINES.lava, s: 5, tw: 0.3 });
         cv.pools.push({ x, y: VOID_FLOOR + 1, z, r: 5, c: new THREE.Color(MINES.lava), k: 0.8, lamp: false });
@@ -1929,7 +1916,7 @@ const biomeOf = (s: Hole): Biome => BIOMES[(minesOrder(s) || [...String(s.hole)]
  * small surprises (a canary, a gnome asleep, the canteen, a fossil, the
  * dynamite shed), put down before the rest takes the room.
  */
-function setPieces(cv: Cave, s: Hole, rand: Rand, { ok, place, reserve }: Placing,
+function setPieces(cv: Cave, s: Hole, rand: Rand, { ok, place }: Placing,
   spot: (dmin: number, dmax: number, r: number, tall?: number, tries?: number) => MutVec2 | null,
   lit: (o: THREE.Object3D, p: THREE.Vector3, c: number, r: number, k: number, glow: number, lamp?: boolean) => void) {
   const W = s.board.w, biome = biomeOf(s), low = quality.low;
@@ -1943,7 +1930,7 @@ function setPieces(cv: Cave, s: Hole, rand: Rand, { ok, place, reserve }: Placin
   };
   const put = <T extends THREE.Object3D>(o: T, at: MutVec2 | null, r: number, rot = 0) => (at ? place(o, at[0], at[1], r, rot, 1.2) : null);
   const lamp = () => lantern(1);
-  const hot = hotHole(s), lava = lavaMaterial();
+  const lava = lavaMaterial();
   const ORANGE = MINES.lava, GOLD = MINES.lavaHi;
 
   switch (biome) {
@@ -2030,7 +2017,7 @@ function setPieces(cv: Cave, s: Hole, rand: Rand, { ok, place, reserve }: Placin
       break;
     }
     case "boiler": {
-      const b = boiler(rand, lava), m = put(b.g, back(2.6, 5), 2.6, rand() * 0.4 - 0.2);
+      const b = boiler(lava), m = put(b.g, back(2.6, 5), 2.6, rand() * 0.4 - 0.2);
       if (m) {
         lit(m, b.fire, ORANGE, 5, 0.9, 2.4);
         m.updateMatrixWorld(true);
@@ -2061,7 +2048,6 @@ function setPieces(cv: Cave, s: Hole, rand: Rand, { ok, place, reserve }: Placin
   if (minesOrder(s) === 1) (surprises[0](), surprises.pop()!(), surprises.shift());
   const take = low ? 1 : 2 + (rand() < 0.5 ? 1 : 0);
   for (let k = 0; k < take; k++) surprises.splice(Math.floor(rand() * surprises.length), 1)[0]();
-  void [reserve, hot];
 }
 const at_ = <T extends THREE.Object3D>(o: T, x: number, y: number, z: number, ry = 0) => (o.position.set(x, y, z), (o.rotation.y = ry), o);
 /** A buffer stop at a siding's end: a timber beam on posts. */
@@ -2085,7 +2071,7 @@ function winchBuffer() {
  */
 function heat(cv: Cave, s: Hole, rand: Rand) {
   const hot: THREE.Vector3[] = [];
-  for (const q of s.zones || []) {
+  for (const q of s.zones) {
     if (!q.skin.startsWith("lava")) continue;
     for (let x = q.min[0] + 1; x < q.max[0]; x += 2.6)
       for (let z = q.min[1] + 1; z < q.max[1]; z += 2.6) {
@@ -2133,7 +2119,11 @@ function motes(cv: Cave, rand: Rand) {
   (ud(pts).live = true), (pts.name ||= "mines:motes");
   g.add(pts);
   animate((t) => {
-    m.forEach((d, i) => pos.set([d.l.x + Math.cos(d.a + t * d.s) * d.r, d.l.y + d.y + Math.sin(t * d.s * 2 + d.a) * 0.2, d.l.z + Math.sin(d.a + t * d.s) * d.r], i * 3));
+    m.forEach((d, i) => {
+      pos[i * 3] = d.l.x + Math.cos(d.a + t * d.s) * d.r;
+      pos[i * 3 + 1] = d.l.y + d.y + Math.sin(t * d.s * 2 + d.a) * 0.2;
+      pos[i * 3 + 2] = d.l.z + Math.sin(d.a + t * d.s) * d.r;
+    });
     pts.geometry.attributes.position.needsUpdate = true;
   });
   return g;
@@ -2228,7 +2218,7 @@ function headlamp(s: Hole) {
   mesh.frustumCulled = false;
   (ud(mesh).live = true), (mesh.name ||= "mines:headlamp");
   const last = new THREE.Vector3(NaN, 0, 0), fwd = new THREE.Vector3(), at = new THREE.Vector3(), sc = new THREE.Vector3();
-  let yaw = Math.PI / 2;
+  let yaw = Math.PI / 2, laidX = NaN, laidZ = NaN, laidYaw = NaN, laidFalling = false;
   mesh.onBeforeRender = (_r, scene) => {
     const gn = gnomeIn(scene), lamp = gn && gn.userData.lamp;
     if (!gn || !lamp || !shown(lamp)) return void ((uK.value = 0), cv.lake?.follow(0, 0, 0, 0));
@@ -2253,13 +2243,16 @@ function headlamp(s: Hole) {
     }
     yaw += Math.atan2(Math.sin(want - yaw), Math.cos(want - yaw)) * 0.25;
     const cs = Math.cos(yaw), sn = Math.sin(yaw);
-    // the sheet under the light, on the ground as it lies
-    for (let i = 0; i < pos.count; i++) {
-      const u = (i % (NA + 1)) / NA, v = Math.floor(i / (NA + 1)) / NS, lx = -BACK_ + u * (R + BACK_ + 0.3), lz = (v - 0.5) * 2 * SIDE_;
-      const x = p.x + lx * cs - lz * sn, z = p.z + lx * sn + lz * cs;
-      pos.setXYZ(i, x, (falling ? cv.pitAt!(x, z) ?? floorY : cv.t.height(x, z)) + lift, z);
+    // the sheet under the light, on the ground as it lies: laid again only once he or the way he faces has moved
+    if (p.x !== laidX || p.z !== laidZ || yaw !== laidYaw || falling !== laidFalling) {
+      (laidX = p.x), (laidZ = p.z), (laidYaw = yaw), (laidFalling = falling);
+      for (let i = 0; i < pos.count; i++) {
+        const u = (i % (NA + 1)) / NA, v = Math.floor(i / (NA + 1)) / NS, lx = -BACK_ + u * (R + BACK_ + 0.3), lz = (v - 0.5) * 2 * SIDE_;
+        const x = p.x + lx * cs - lz * sn, z = p.z + lx * sn + lz * cs;
+        pos.setXYZ(i, x, (falling ? cv.pitAt!(x, z) ?? floorY : cv.t.height(x, z)) + lift, z);
+      }
+      pos.needsUpdate = true;
     }
-    pos.needsUpdate = true;
     uO.value.set(p.x, p.z);
     uD.value.set(cs, sn);
     uK.value = (cv.lampK.value < 0.5 ? 1.25 : 0.24) * (falling ? Math.max(0.35, 1 - (p.y - floorY) / 8) * 2 : 1); // (in the dark it is the light; down the pit, the only light)
@@ -2280,8 +2273,6 @@ function cupLamp(s: Hole) {
   return g;
 }
 const CUP_GLOW = share(new THREE.MeshBasicMaterial({ color: 0x6b4a1c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -8 }));
-
-// ------------------------------------------------------------ the light
 
 /**
  * After the merge: every lit mesh's colours take the pools of light round it
@@ -2308,6 +2299,7 @@ function baked(course: THREE.Object3D) {
   // or takes that back, no copy of the whole colours kept
   const lit: { a: THREE.BufferAttribute; at: Uint32Array; add: Float32Array }[] = [];
   let cur = 0;
+  const v = new THREE.Vector3();
   course.traverse((o) => {
     if (!(o instanceof THREE.Mesh) || o.matrixAutoUpdate || ud(o).live) return;
     const mesh = o as THREE.Mesh<THREE.BufferGeometry, THREE.Material>, m = mesh.material;
@@ -2315,7 +2307,8 @@ function baked(course: THREE.Object3D) {
     if (!a || a.itemSize !== 3 || m instanceof THREE.MeshBasicMaterial || md(m).hull || m.transparent) return;
     const p = mesh.geometry.attributes.position, n = p.count, arr = a.array as Float32Array, at: number[] = [], add: number[] = [];
     for (let i = 0; i < n; i++) {
-      const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+      // (where it stands: a moving piece merged in its own frame (bakeLocal) is lit where it is, not at the board's corner)
+      const { x, y, z } = v.fromBufferAttribute(p, i).applyMatrix4(mesh.matrixWorld);
       // the pocket: light round the board, the dark closing in away from it
       const off = Math.max(-x, 0, x - W, -z, 0, z - H), vig = 1 - 0.5 * smoothstep((off - 5) / 24) - 0.3 * smoothstep((GRASS - 1 - y) / 6);
       let r = vig, g = vig, b = vig, wr = 0, wg = 0, wb = 0;
@@ -2371,8 +2364,6 @@ function baked(course: THREE.Object3D) {
   cv.lamps(!darkGallery(s));
 }
 
-// ------------------------------------------------------------ the board
-
 /** The board's rough: the floor's own (drawn by base), nothing over it. */
 const rough = { lo: MINES.slate, hi: MINES.slate, mound: 0, plant: () => null };
 /** The lane's surface by the hole's biome: packed ore dirt, planks (a
@@ -2389,7 +2380,7 @@ const TONES: Record<Exclude<Surface, "planks">, readonly [number, number]> = {
   tread: [0xa4a8b4, 0x9ea2ae], crystal: [0xb4c6d8, 0xadbfd2], marble: [0xe0d4bc, 0xdacdb4],
 };
 // (the Stamp Mill's floors: iron tread plate, the engine hall's, not the Pithead's boardwalk)
-const surfaceOf = (s: Hole): Surface => (minesOrder(s) === 6 ? "tread" : [1, 14].includes(minesOrder(s)) && (s.zones || []).some((q) => q.skin === "void") ? "planks" : SURFACE[biomeOf(s)]);
+const surfaceOf = (s: Hole): Surface => (minesOrder(s) === 6 ? "tread" : [1, 14].includes(minesOrder(s)) && s.zones.some((q) => q.skin === "void") ? "planks" : SURFACE[biomeOf(s)]);
 const green = (s: Hole): readonly [number, number] | "planks" => { const k = surfaceOf(s); return k === "planks" ? k : TONES[k]; };
 
 /**
@@ -2400,39 +2391,19 @@ const green = (s: Hole): readonly [number, number] | "planks" => { const k = sur
 function wearTex(cv: Cave) {
   if (cv.wear) return cv.wear;
   const S = 4, nx = Math.ceil(cv.W * S), nz = Math.ceil(cv.H * S), D = new Float32Array(nx * nz), data = new Uint8Array(nx * nz);
-  const fixed = (cv.s.walls || []).filter((w) => !w.every);
+  const fixed = cv.s.walls.filter((w) => !w.every);
   for (let j = 0; j < nz; j++)
     for (let i = 0; i < nx; i++) {
       const x = (i + 0.5) / S, z = (j + 0.5) / S;
-      D[j * nx + i] = cv.lane(x, z) && !fixed.some((w) => Math.abs(w.a[0] - x) + Math.abs(w.a[1] - z) < 99 && segNear(x, z, w.a, w.b)) ? 1e4 : 0;
+      D[j * nx + i] = cv.lane(x, z) && !fixed.some((w) => segDist(x, z, w.a, w.b) < 0.32) ? 1e4 : 0;
     }
-  const a = 1 / S, d2 = a * Math.SQRT2;
-  for (let pass = 0; pass < 2; pass++)
-    for (let jj = 0; jj < nz; jj++)
-      for (let ii = 0; ii < nx; ii++) {
-        const i = pass ? nx - 1 - ii : ii, j = pass ? nz - 1 - jj : jj, k = j * nx + i, s0 = pass ? -1 : 1;
-        if (!D[k]) continue;
-        const ni = i - s0, nj = j - s0;
-        let v = D[k];
-        if (ni >= 0 && ni < nx) v = Math.min(v, D[k - s0] + a);
-        if (nj >= 0 && nj < nz) {
-          v = Math.min(v, D[k - s0 * nx] + a);
-          if (ni >= 0 && ni < nx) v = Math.min(v, D[k - s0 * nx - s0] + d2);
-          const oi = i + s0;
-          if (oi >= 0 && oi < nx) v = Math.min(v, D[k - s0 * nx + s0] + d2);
-        }
-        D[k] = v;
-      }
+  chamferField(D, nx, nz, 1 / S);
   for (let k = 0; k < D.length; k++) data[k] = Math.round(Math.min(1.5, D[k]) / 1.5 * 255);
   const tex = new THREE.DataTexture(data, nx, nz, THREE.RedFormat);
   tex.magFilter = tex.minFilter = THREE.LinearFilter;
   tex.needsUpdate = true;
   return (cv.wear = tex);
 }
-const segNear = (x: number, z: number, a: Vec2, b: Vec2) => {
-  const dx = b[0] - a[0], dz = b[1] - a[1], l2 = dx * dx + dz * dz || 1, u = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / l2));
-  return Math.hypot(x - a[0] - u * dx, z - a[1] - u * dz) < 0.32;
-};
 
 // each surface's pattern, in the fragment (on the lane's top: vGrainW, the
 // grain's world point; grainNoise/grainHash, its noise)
@@ -2467,12 +2438,10 @@ const PATTERN: Record<Surface, () => string> = {
     vec2 tq = lp * 3.0;
     tq.x += 0.5 * mod(floor(tq.y), 2.0);
     vec2 tf = fract(tq) - 0.5;
-    float dm = abs(tf.x * 1.8 + tf.y * 0.9) + abs(tf.y * 0.9 - tf.x * 1.8 * 0.0);
     diffuseColor.rgb *= 1.0 + 0.14 * (1.0 - smoothstep(0.12, 0.2, abs(tf.x * 2.2 + tf.y) * 0.5 + abs(tf.y) * 0.4));
     vec2 rv = vec2(fract(lp.x * 0.5) - 0.5, fract(lp.y * 1.5) - 0.5);
     diffuseColor.rgb *= 1.0 - 0.35 * (1.0 - smoothstep(0.05, 0.08, length(vec2(rv.x * 2.0, rv.y * 0.7))));
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.55, 0.32, 0.2), 0.25 * smoothstep(0.55, 0.8, grainNoise(vec3(lp * 0.7, 4.0))));
-    dm += 0.0;`,
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.55, 0.32, 0.2), 0.25 * smoothstep(0.55, 0.8, grainNoise(vec3(lp * 0.7, 4.0))));`,
   crystal: () => SLABS("vec2(0.45, 0.65)", "vec3(0.55, 0.9, 1.0)"),
   marble: () => `
     // the vault's floor: big dressed slabs of pale stone, gold running in their veins

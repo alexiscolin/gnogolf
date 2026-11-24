@@ -21,8 +21,6 @@ import { md, ud, type Hole, type Ride, type TubePath } from "./data";
 import type { Bar, Track } from "./worlds";
 import { own } from "../own";
 
-// ------------------------------------------------------------ the kit
-//
 // What every ride is built of: rock, timber and riveted iron, in the mines'
 // palette, toon and inked like every world's pieces (mines-toon.ts's kit).
 
@@ -164,6 +162,14 @@ function portal(D: number, Wd: number, HP: number, rand: Rand, { foot = true, si
   return grp;
 }
 
+/** Where a ball rolls on hole s: on the green and in no hazard that is always there (a timed one comes and goes). */
+function laneOf(s: Hole, t: Terrain) {
+  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every);
+  return (x: number, z: number) => t.onGreen(x, z) && !holes.some((q) => inZone(q, x, z));
+}
+/** Whether zone q is a drop: the void, a shaft, a crumbling floor. */
+const isDrop = (q: Zone) => q.kind === "hazard" && /void|shaft|crumble/.test(q.skin);
+
 /**
  * A portal (as portal() draws it) with its mouth at (x, z) opening to heading
  * a, fitted where it stands: as deep, as wide and as thick in the rock as asked
@@ -172,8 +178,7 @@ function portal(D: number, Wd: number, HP: number, rand: Rand, { foot = true, si
  * thinner in the rock, its depth and width kept).
  */
 function mouthAt(s: Hole, t: Terrain, x: number, z: number, a: number, D: number, Wd: number, HP: number, rand: Rand, { foot = true, own = null as Zone | null, y = t.height(x, z), fixed = false } = {}) {
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), c = Math.cos(a), sn = Math.sin(a);
-  const lane = (px: number, pz: number) => t.onGreen(px, pz) && !holes.some((q) => inZone(q, px, pz));
+  const lane = laneOf(s, t), c = Math.cos(a), sn = Math.sin(a);
   const near = (px: number, pz: number) => { for (let i = 0; i < 8; i++) for (const r of [1, 2]) if (lane(px + Math.cos(i * 0.785) * r, pz + Math.sin(i * 0.785) * r)) return true; return false; };
   const taken = (px: number, pz: number) => !(own && inZone(own, px, pz)) && t.onGreen(px, pz) && (lane(px, pz) || near(px, pz));
   // (the footprint set `back` into the rock: its legs and cheeks on the lane itself count first, then near it)
@@ -196,8 +201,6 @@ function mouthAt(s: Hole, t: Terrain, x: number, z: number, a: number, D: number
   piece.position.set(x - c * best.back, y, z - sn * best.back);
   return { piece, D: best.d, n: best.n, on: best.on };
 }
-
-// ------------------------------------------------------------ carts
 
 /**
  * An ore cart, L long (along x) and W wide, on its wheels at 0: a riveted
@@ -312,8 +315,6 @@ function cartOn(bar: Bar, t: Terrain) {
 }
 const gauge = (th: number) => Math.min(0.55, th * 0.3);
 
-// ------------------------------------------------------------ the track
-
 /**
  * A cart track (a line of `cart` bars): iron rails on timber sleepers across
  * the lane, and an adit at each end, timbered and set in the rock, dark
@@ -361,8 +362,6 @@ function cartTrack(l: Track, s: Hole, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------ rides
-//
 // A tunnel of the mines is a set piece, its mouth and its exit drawn as one,
 // and the ball rides it (replay.ts through): its curve and its Ride (data.ts)
 // go in the course's tubes, keyed by the zone.
@@ -393,7 +392,7 @@ function clockOf(z: Zone) {
  * tee, the cup) breaking a tie. Its body runs the other way, into the rock.
  */
 function openTo(s: Hole, t: Terrain, x: number, z: number, prefer: readonly number[]) {
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), lane = (a: number, b: number) => t.onGreen(a, b) && !holes.some((q) => inZone(q, a, b));
+  const lane = laneOf(s, t);
   let best = 0, score = -1;
   for (let i = 0; i < 32; i++) {
     const a = (i / 32) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
@@ -409,6 +408,14 @@ function openTo(s: Hole, t: Terrain, x: number, z: number, prefer: readonly numb
 const facing = <O extends THREE.Object3D>(o: O, a: number) => ((o.rotation.y = Math.PI - a), o);
 /** Heading a as a flat unit vector. */
 const headV = (a: number) => new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
+/** The share of curve c's length (to a 200th) at its point nearest p. */
+function shareOf(c: THREE.Curve<THREE.Vector3>, p: THREE.Vector3) {
+  let best = 0, bd = Infinity;
+  for (let i = 0; i <= 200; i++) { const d = c.getPointAt(i / 200).distanceTo(p); if (d < bd) (bd = d), (best = i / 200); }
+  return best;
+}
+/** Curve c's own parameter at share u of its length: the ease of a ride reckoned in lengths (the replay goes by the parameter: rideStep). */
+const byLength = (c: THREE.Curve<THREE.Vector3>, u: number) => c.getUtoTmapping(u, 0);
 
 /**
  * A ride through the rock, out of sight: in at a (the ball rolling into a
@@ -418,17 +425,18 @@ const headV = (a: number) => new THREE.Vector3(Math.cos(a), 0, Math.sin(a));
  * between: a passage in the rock is not seen from the air) and watches it
  * come out. back0, back1: how deep each mouth's dark begins.
  */
-function transit(a: THREE.Vector3, ia: number, b: THREE.Vector3, ob: number, { back0 = 1.6, back1 = 1.6, deep = 1.6, ms = 0 } = {}): { curve: THREE.CatmullRomCurve3; ride: Ride } {
+function transit(a: THREE.Vector3, ia: number, b: THREE.Vector3, ob: number, { back0 = 1.6, back1 = 1.6, deep = 1.6 } = {}): { curve: THREE.CatmullRomCurve3; ride: Ride } {
   const da = headV(ia), db = headV(ob), A = a.clone().addScaledVector(da, -back0), B = b.clone().addScaledVector(db, -back1);
   // (in level, down under the floor, straight along, up, out level: a run with clean ends, no swoop)
   const low = Math.min(a.y, b.y) - deep, A1 = A.clone().addScaledVector(da, -0.8).setY(low), B1 = B.clone().addScaledVector(db, -0.8).setY(low);
   const curve = new THREE.CatmullRomCurve3([a, A, A1, A1.clone().lerp(B1, 0.5), B1, B, b], false, "centripetal");
-  const len = curve.getLength(), uOf = (p: THREE.Vector3) => { let best = 0, bd = Infinity; for (let i = 0; i <= 200; i++) { const d = curve.getPointAt(i / 200).distanceTo(p); if (d < bd) (bd = d), (best = i / 200); } return best; };
-  const uA = uOf(A), uB = uOf(B); // (seen only while in a mouth's dark or out of it: never under the ground or a lake between)
+  const len = curve.getLength();
+  const uA = shareOf(curve, A), uB = shareOf(curve, B); // (seen only while in a mouth's dark or out of it: never under the ground or a lake between)
   return {
     curve,
     ride: {
-      ms: ms || Math.min(2600, 1100 + len * 22),
+      ms: Math.min(2600, 1100 + len * 22),
+      ease: (k) => byLength(curve, k), // (an even pace along it: uA and uB are shares of its length)
       at: (k, ball) => void (ball.visible = k < 0 || k < uA || k > uB),
       cam: cutCam(a, da, b, db, B, 0.2),
     },
@@ -459,8 +467,6 @@ const easer = (rate: number) => {
     return (x += (to - x) * (1 - Math.exp(-rate * dt)));
   };
 };
-
-// ------------------------------------------------------------ geysers
 
 const SINTER = 0xdcc79c, SINTER_RUST = 0xc9824a, STEAM = share(flat(0xeef3f8, { transparent: true, opacity: 0.9, depthWrite: false, emissive: 0x9fb6c8, emissiveIntensity: 0.35 }));
 const SPOUT = share(new THREE.MeshToonMaterial({ color: 0xc8f2ff, emissive: 0x5fc8e8, emissiveIntensity: 0.45, transparent: true, opacity: 0.82, depthWrite: false }));
@@ -540,7 +546,8 @@ function geyser(z: Zone, t: Terrain) {
     grate.rotation.z = Math.min(1, o * 3) * 1.9;
     jet.scale.set(0.8 + 0.2 * o + 0.05 * Math.sin(tt * 21), H * o, 0.8 + 0.2 * o + 0.05 * Math.cos(tt * 17));
     for (let i = 0; i < N; i++) {
-      const [u0, a, sz, w] = seeds[i];
+      // (read by index: destructured, a puff allocates on every frame)
+      const sd = seeds[i], u0 = sd[0], a = sd[1], sz = sd[2], w = sd[3];
       const u = (tt * (0.55 + 0.25 * w) + u0) % 1;
       // blowing: rolling up the column and off its head; between: a plume
       // that builds over the period, taller and thicker as the blow comes
@@ -574,19 +581,21 @@ function geyser(z: Zone, t: Terrain) {
   const before = state.ghosts;
   state.ghosts = (on) => { if (before) before(on); hint.visible = !!on; };
   const cam = chase(dir, 7.5, 3, 1.2, y + 2.5), at = new THREE.Vector3();
+  // shot up fast, hanging at the top, down onto the terrace
+  const ease = (k: number) => (k < 0.35 ? 0.4 * (1 - (1 - k / 0.35) ** 2) : 0.4 + 0.6 * ((k - 0.35) / 0.65) ** 1.3);
   rides(z, curve, {
     ms: 1900,
-    // shot up fast, hanging at the top, down onto the terrace
-    ease: (k) => (k < 0.35 ? 0.4 * (1 - (1 - k / 0.35) ** 2) : 0.4 + 0.6 * ((k - 0.35) / 0.65) ** 1.3),
+    ease,
     at: (k) => void (forced = k),
-    cam: (k, pos, look) => cam(k, pos, look, curve.getPoint(k < 0.35 ? 0.4 * (1 - (1 - k / 0.35) ** 2) : 0.4 + 0.6 * ((k - 0.35) / 0.65) ** 1.3, at)),
+    cam: (k, pos, look) => cam(k, pos, look, curve.getPoint(ease(k), at)),
   });
   return g;
 }
 
-// ------------------------------------------------------------ the pithead
-
 const SHAFT_D = 14; // how deep the cage goes down, out of sight
+// how far down the cage drops out of the landing quick (its roof under it), and in what share of a substep either side
+// of its window: the chain has the landing lane then, the leaves shut over it
+const CLEAR = 3.8, QUICK = 0.3;
 
 /**
  * A cage's depth on its tunnel's clock (phase p of every E, at the landing
@@ -595,9 +604,8 @@ const SHAFT_D = 14; // how deep the cage goes down, out of sight
  * the window opens, a little bounce as it settles there.
  */
 function hoist(p: number, E: number, ON: number, deep: number, run = 2.3) {
-  // (out of the landing quick: in the window's last 0.3 substep up the last 3.2, in its first 0.3 after it down them;
-  // the chain has the landing lane then, the leaves shut over it; the rest of the way eased)
-  const r = Math.min(run, (E - ON) / 2), q = 0.3, top = Math.min(3.8, deep); // (in its first 0.3, its roof under the landing)
+  // (down its first CLEAR in the QUICK after its window, back up them in the QUICK before it; the rest of the way eased)
+  const r = Math.min(run, (E - ON) / 2), q = QUICK, top = Math.min(CLEAR, deep);
   if (p < ON) return -0.07 * Math.exp(-4 * p) * Math.sin(8 * p);
   if (p < ON + q) return -top * smoothstep((p - ON) / q);
   if (p < ON + r) return -top - (deep - top) * smoothstep((p - ON - q) / (r - q));
@@ -607,7 +615,7 @@ function hoist(p: number, E: number, ON: number, deep: number, run = 2.3) {
 }
 
 /**
- * The cage (ADR §8, hole 1), local: its floor at 0, the way in facing −x, an
+ * The cage (hole 1), local: its floor at 0, the way in facing −x, an
  * iron cage 2.1 square and 2.3 tall: corner posts, a riveted floor and roof,
  * barred sides and back, the bridle's chains up to the rope's shackle, a lamp
  * inside. Merged (bakeLocal).
@@ -733,7 +741,7 @@ function headframe(site: THREE.Group, H: number, S: number, R: number, rand: Ran
  * station at the pit bottom (the tunnel's exit): a portal with a cage at rest
  * in it.
  */
-// the shaft's lining, seen from inside (one for every build: a material made per visit and shared was never freed)
+// the shaft's lining, seen from inside (one for every build: a material made per visit and shared is never freed)
 const SHAFT_LINING = share(flat(0x33241a, { side: THREE.BackSide }));
 function pithead(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), { cx, cz, hx, hz } = boxOf(z), y = t.height(cx, cz), rand = seeded("pithead" + z.min.join());
@@ -758,7 +766,7 @@ function pithead(z: Zone, t: Terrain, s: Hole) {
     site.add(l);
   }
   collar(site, hole, 0.25, 0.08, 0); // (flush round the landing)
-  const drops = s.zones.filter((q) => q.kind === "hazard" && /void|shaft|crumble/.test(q.skin) && q !== z);
+  const drops = s.zones.filter((q) => isDrop(q) && q !== z);
   const H = 8.6, R = 1.25, { sheave, rope } = headframe(site, H, hole + 1.7, R, rand, false, (x, zz) => drops.some((q) => inZone(q, x, zz)));
   // the cage, and the landing's leaves
   // (the cage sized from its opening: 0.2 clear of the shaft's sets each side on its way down)
@@ -786,13 +794,13 @@ function pithead(z: Zone, t: Terrain, s: Hole) {
   animate(() => {
     const d = depth();
     c.position.y = d;
-    c.visible = ride > -2 || d > -Math.min(3.8, SHAFT_D) - 1e-3; // (under its leaves, shut once it is down its first 3.8, it is not drawn: on the landing only through its window, as the chain has it)
+    c.visible = ride > -2 || d > -Math.min(CLEAR, SHAFT_D) - 1e-3; // (under its leaves, shut once it is down its first CLEAR, it is not drawn: on the landing only through its window, as the chain has it)
     rope.scale.y = H + 0.2 + R - (d + 3.4);
     sheave.rotation.z = (d / R) % (Math.PI * 2);
     cw.position.set(2 * R, 1.8 - 0.45 * d, 0); // (its foot over a ball's head at its lowest)
     cwRope.scale.y = H + 0.2 + R - (cw.position.y + 0.45);
-    // the leaves open through the window (and a ride), shut over the landing a 0.3 substep either side of it, as the cage goes
-    const ph = clock.phase(), o = ride > -2 ? 1 : ph < ON ? 1 : ph < ON + 0.3 ? 1 - smoothstep((ph - ON) / 0.3) : ph > E - 0.3 ? smoothstep((ph - (E - 0.3)) / 0.3) : 0;
+    // the leaves open through the window (and a ride), shut over the landing a QUICK either side of it, as the cage goes
+    const ph = clock.phase(), o = ride > -2 ? 1 : ph < ON ? 1 : ph < ON + QUICK ? 1 - smoothstep((ph - ON) / QUICK) : ph > E - QUICK ? smoothstep((ph - (E - QUICK)) / QUICK) : 0;
     for (const [pv, sz] of leaves) pv.rotation.x = -sz * o * (Math.PI / 2 + 0.15); // (opening outward, past upright, off the cage's sides)
   });
   // the station at the pit bottom (the exit): a portal with a cage at rest in its dark
@@ -842,16 +850,14 @@ function pithead(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ adits, chutes, manways
-
 /** An adit (hole 13, 14): a timbered mouth in the rock at the zone, another where it comes out, and the dark between. */
 function aditPair(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), { cx, cz } = boxOf(z), y = t.height(cx, cz), rand = seeded("adit" + z.min.join());
   const a = openTo(s, t, cx, cz, s.start), da = headV(a), [ox, oz] = z.vec, oy = t.height(ox, oz), b = openTo(s, t, ox, oz, s.cup), db = headV(b);
   g.add(mouthAt(s, t, cx - da.x * 1.6, cz - da.z * 1.6, a, 2.4, 2.3, 2.1, rand, { foot: false, own: z, y }).piece);
   // the adit's boarded landing: planks over the lane where the chain takes the ball in (the zone), running into the mouth
-  const { hx, hz } = boxOf(z), holes = s.zones.filter((q) => q.kind === "hazard" && !q.every);
-  g.add(planks([{ inside: (px, pz) => inZone(z, px, pz) && t.onGreen(px, pz) && !holes.some((q) => inZone(q, px, pz)), top: (px, pz) => drawnGround(t, px, pz) + 0.08, box: [cx - hx, cz - hz, cx + hx, cz + hz], angle: a }], wood));
+  const { hx, hz } = boxOf(z), lane = laneOf(s, t);
+  g.add(planks([{ inside: (px, pz) => inZone(z, px, pz) && lane(px, pz), top: (px, pz) => drawnGround(t, px, pz) + 0.08, box: [cx - hx, cz - hz, cx + hx, cz + hz], angle: a }], wood));
   // where it comes out: a timbered mouth against the rock, or in open lane a hatch in the floor
   const open = inOpen(s, t, ox, oz), ex = open ? exitOf(s, t, ox, oz, rand) : null;
   if (ex) g.add(ex.piece);
@@ -870,7 +876,7 @@ function aditPair(z: Zone, t: Terrain, s: Hole) {
  */
 function trough(L: number, fall: number, W = 1.3, rand: Rand = wood) {
   const g = new THREE.Group(), sl = Math.atan2(fall, L), run = Math.hypot(L, fall);
-  // its bed boards along it (the kit's planks: each its own tone, bevel and nails), their tops where the old slab's was
+  // its bed boards along it (the kit's planks: each its own tone, bevel and nails)
   const bed = planks([{ inside: (x, z) => Math.abs(x) <= run / 2 && Math.abs(z) <= W / 2, top: () => 0.06, box: [-run / 2, -W / 2, run / 2, W / 2], angle: 0 }], rand, { tone: TIMBER_LIGHT });
   bed.position.set(L / 2, -fall / 2, 0);
   bed.rotation.z = -sl;
@@ -898,11 +904,11 @@ function trough(L: number, fall: number, W = 1.3, rand: Rand = wood) {
 
 /** Whether (x, z) stands in open lane (lane all round it within 2.6): an exit there comes up out of the floor, not out of a wall. */
 function inOpen(s: Hole, t: Terrain, x: number, z: number) {
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every);
+  const lane = laneOf(s, t);
   let n = 0;
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2, px = x + Math.cos(a) * 2.6, pz = z + Math.sin(a) * 2.6;
-    if (t.onGreen(px, pz) && !holes.some((q) => inZone(q, px, pz))) n++;
+    if (lane(px, pz)) n++;
   }
   return n >= 13;
 }
@@ -983,8 +989,8 @@ function chute(z: Zone, t: Terrain, s: Hole) {
     const h = Math.min(hx, hz) * 0.72, deep = 2.6, throat = 0.55;
     for (let i = 0; i < 4; i++) {
       const wall = new THREE.Group(), slope = Math.atan2(h - throat, deep), len = Math.hypot(h - throat, deep);
-      // each wall the kit's boards, laid across it (a deck on its side: its top the wall's inner face, where the old
-      // slab's was), as wide as the funnel at their height (and a hair more: the corners close)
+      // each wall the kit's boards, laid across it (a deck on its side: its top the wall's inner face),
+      // as wide as the funnel at their height (and a hair more: the corners close)
       const half = (v: number) => throat + (h - throat) * (v / len + 0.5) + 0.08;
       const boards = planks([{ inside: (x, v) => Math.abs(v) <= len / 2 && Math.abs(x) <= half(v), top: () => 0.06, box: [-h - 0.1, -len / 2, h + 0.1, len / 2], angle: 0 }], wood, { tone: i % 2 ? TIMBER : TIMBER_DARK });
       boards.rotation.x = -Math.PI / 2;
@@ -1067,8 +1073,6 @@ function manway(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ the cart ride
-
 /** A hexagonal timber post from a to b, r thick (a trestle's leg: cheaper than a rounded beam). */
 const post = (a: THREE.Vector3, b: THREE.Vector3, r: number, color: number = TIMBER_DARK) => between(solid(new THREE.CylinderGeometry(r, r * 1.1, a.distanceTo(b), 6).rotateX(Math.PI / 2), color, INK_THIN), a, b);
 /** Flat unit vector to the right of a curve's heading at u. */
@@ -1083,7 +1087,7 @@ function sideAt(c: THREE.Curve<THREE.Vector3>, u: number, out = new THREE.Vector
  * bents under it: two splayed legs going down into the dark, a cap, a
  * brace; now and then a rock pillar with crystal on it takes a bent.
  */
-function trackAlong(c: THREE.Curve<THREE.Vector3>, gg: number, rand: Rand, deep: (x: number, z: number, y: number) => boolean, a = 0, b = 1, bare = 0, drop: (x: number, z: number) => boolean = () => true, battened: (x: number, z: number) => boolean = () => false) {
+function trackAlong(c: THREE.Curve<THREE.Vector3>, gg: number, rand: Rand, deep: (x: number, z: number, y: number) => boolean, { a = 0, b = 1, bare = 0, drop = (_x: number, _z: number): boolean => true, battened = (_x: number, _z: number): boolean => false } = {}) {
   const g = new THREE.Group(), L = c.getLength() * (b - a), sd = new THREE.Vector3();
   const pts: THREE.Vector3[] = [];
   for (let i = 0, n = Math.max(2, Math.ceil(L / 0.9)); i <= n; i++) pts.push(c.getPointAt(a + ((b - a) * i) / n)); // (a point every 0.9: the rails' bends read, the triangles a third fewer)
@@ -1146,6 +1150,8 @@ function bufferStop(p: THREE.Vector3, dir: THREE.Vector3, gg: number) {
 }
 
 const CART_PAINT: readonly number[] = [0xb8402f, 0x3f64a8]; // the red cart, the blue
+// the coaster past its switch: each point along the station track, out to the coaster's side and down
+const COASTER = [[2.5, 0.4, -0.1], [5, 2.6, -0.9], [6.5, 6.5, -3.4], [4.5, 10.5, -5.6], [0, 12.2, -5.2], [-6, 12.8, -4.6], [-12, 13, -4.3]] as const;
 
 /**
  * The cart ride (hole 14's red and blue carts, 18's red): each `cart ride`
@@ -1170,7 +1176,7 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
   // the track's heading: down the incline the berths stand on, else along the berths
   const hill = s.zones.find((q) => q.kind === "slope" && inZone(q, cx, cz));
   const ref = hill ? Math.atan2(hill.vec[1], hill.vec[0]) : 0, u = headV(ref), sd = new THREE.Vector3(-u.z, 0, u.x);
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), lane = (x: number, zz: number) => t.onGreen(x, zz) && !holes.some((q) => inZone(q, x, zz));
+  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), lane = laneOf(s, t);
   const along = (p: THREE.Vector3) => p.x * u.x + p.z * u.z;
   const berths = all.map((q) => { const b = boxOf(q); return new THREE.Vector3(b.cx, t.height(b.cx, b.cz), b.cz); });
   const W0 = berths.reduce((m, p) => (along(p) < along(m) ? p : m), berths[0]);
@@ -1207,30 +1213,30 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
     end = Math.min(end, near.length ? Math.max(pitEnd + 0.5, ...near.map((d) => d + 2.5)) : pitEnd + 0.5);
   }
   // the coaster's side: the one with the deep under it (never under a lane), else toward the exits
-  const S0p = P(sw), onLaneCount = (g1: number) => [[2.5, 0.4], [5, 2.6], [6.5, 6.5], [4.5, 10.5], [0, 12.2], [-6, 12.8], [-12, 13]].filter(([d, o]) => { const x = S0p.x + u.x * d + sd.x * g1 * o, zz = S0p.z + u.z * d + sd.z * g1 * o; return x < 0 || zz < 0 || x > s.board.w || zz > s.board.h || t.onGreen(x, zz); }).length;
+  const S0p = P(sw), onLaneCount = (g1: number) => COASTER.filter(([d, o]) => { const x = S0p.x + u.x * d + sd.x * g1 * o, zz = S0p.z + u.z * d + sd.z * g1 * o; return x < 0 || zz < 0 || x > s.board.w || zz > s.board.h || t.onGreen(x, zz); }).length;
   const toward = far.length ? Math.sign(far.reduce((m, q) => m + (q.vec[0] - W0.x) * sd.x + (q.vec[1] - W0.z) * sd.z, 0)) || 1 : 1;
   const sg = onLaneCount(toward) <= onLaneCount(-toward) ? toward : -toward;
   // the coaster: off the switch, out over the deep, down and round, back along into a portal
   const S0 = trackPt(sw), Y = S0.y;
   // (it dives only over a drop, a void or a shaft: over lava or the lane it keeps over them, on its trestles)
-  const drop = (x: number, zz: number) => s.zones.some((q) => q.kind === "hazard" && /void|shaft|crumble/.test(q.skin) && inZone(q, x, zz));
+  const drop = (x: number, zz: number) => s.zones.some((q) => isDrop(q) && inZone(q, x, zz));
   const at = (d: number, off: number, dy: number) => { const p = S0.clone().addScaledVector(u, d).addScaledVector(sd, sg * off); return p.setY(Y + (drop(p.x, p.z) ? dy : Math.max(dy, -0.1))); };
   const station: THREE.Vector3[] = [];
   for (let d = -2.5; d < sw; d += 1.5) station.push(trackPt(d));
-  const coaster = new THREE.CatmullRomCurve3([...station, S0, at(2.5, 0.4, -0.1), at(5, 2.6, -0.9), at(6.5, 6.5, -3.4), at(4.5, 10.5, -5.6), at(0, 12.2, -5.2), at(-6, 12.8, -4.6), at(-12, 13, -4.3)], false, "centripetal");
+  const coaster = new THREE.CatmullRomCurve3([...station, S0, ...COASTER.map(([d, o, dy]) => at(d, o, dy))], false, "centripetal");
   const coastLen = coaster.getLength();
-  const dOf = (p: THREE.Vector3) => { let best = 0, bd = Infinity; for (let i = 0; i <= 200; i++) { const q = coaster.getPointAt(i / 200), dd = q.distanceTo(p); if (dd < bd) (bd = dd), (best = i / 200); } return best * coastLen; };
+  const dOf = (p: THREE.Vector3) => shareOf(coaster, p) * coastLen;
   const deep = (x: number, zz: number, yy: number) => !lane(x, zz) || yy < t.height(x, zz) - 0.4;
   if (first) {
     // the station track, berths to its end (and over its pit), a buffer stop there
     // (on the lane's ground all along, down its incline: a point a unit)
     const n = Math.ceil(end + 3), line = new THREE.CatmullRomCurve3(Array.from({ length: n + 1 }, (_, i) => trackPt(-2.5 + ((end + 3) * i) / n)));
-    g.add(trackAlong(line, gg, rand, (x, zz) => holes.some((q) => inZone(q, x, zz)), 0, 1, 0, undefined, (x, zz) => s.zones.some((q) => q.skin === "incline" && inZone(q, x, zz))));
+    g.add(trackAlong(line, gg, rand, (x, zz) => holes.some((q) => inZone(q, x, zz)), { battened: (x, zz) => s.zones.some((q) => q.skin === "incline" && inZone(q, x, zz)) }));
     // a buffer stop at its end, where that is off the lane and on the rock
     const rockAt = (d: number, o = 0) => { const q = P(d, o); return !t.onGreen(q.x, q.z); };
     if ([-gg - 0.1, 0, gg + 0.1].every((o) => rockAt(end + 0.6, o))) g.add(bufferStop(P(end + 0.6).setY(laneY(end)), u, gg));
     if (far.length) {
-      g.add(trackAlong(coaster, gg, rand, deep, dOf(at(2.5, 0.4, -0.1)) / coastLen, 1, 3, drop)); // (from where it has left the station track: no rail over its rails)
+      g.add(trackAlong(coaster, gg, rand, deep, { a: dOf(at(...COASTER[0])) / coastLen, bare: 3, drop })); // (from where it has left the station track: no rail over its rails)
       // the points' lever by the switch, on the rock beside the lane
       const spot = [0.8, 1.6, 2.4, 3.2].flatMap((d) => [1.1, 1.8, 2.6].flatMap((o) => [-sg, sg].map((k) => [sw - d, k * (gg + o)]))).find(([d, o]) => rockAt(d, o));
       if (spot) {
@@ -1249,7 +1255,7 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
     }
   }
   // this cart's berth: the cart on its lift (the incline's slabs are its floor: no frame of its own laid on them)
-  const paint = CART_PAINT[far.includes(z) ? 0 : 1]; // red down the coaster, blue to the siding (ADR §8)
+  const paint = CART_PAINT[far.includes(z) ? 0 : 1]; // red down the coaster, blue to the siding
   const make = () => {
     // (no bigger than its zone: what the chain has there is what is drawn, the ball passes beside it)
     const along = Math.abs((z.max[0] - z.min[0]) * u.x) + Math.abs((z.max[1] - z.min[1]) * u.z), across = Math.abs((z.max[0] - z.min[0]) * u.z) + Math.abs((z.max[1] - z.min[1]) * u.x);
@@ -1265,24 +1271,25 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
   };
   const cart = make();
   g.add(cart);
-  const dStart = dOf(new THREE.Vector3(cx, y, cz)), dPortal = coastLen;
+  const dStart = dOf(new THREE.Vector3(cx, y, cz)), dPortal = coastLen, dAt = (k: number) => dStart + (dPortal - dStart) * (k / 0.62) ** 1.6; // (down the coaster in the ride's first 0.62, gathering speed)
   const onRoute = (d: number, o: THREE.Object3D) => {
     const uu = Math.min(1, Math.max(0, d / coastLen)), p = coaster.getPointAt(uu), tg = coaster.getTangentAt(uu);
     o.position.copy(p);
     o.rotation.set(0, Math.atan2(-tg.z, tg.x), Math.asin(Math.max(-1, Math.min(1, tg.y))), "YZX");
   };
   // the clock: up on the lift before the window, there through it, then away down the coaster
-  const clock = clockOf(z), ON = z.on || 0;
+  const clock = clockOf(z), ON = z.on || 0, berth = new THREE.Object3D();
+  onRoute(dStart, berth); // (headed as the coaster is there)
   let riding = false;
   animate(() => {
     if (riding) return;
     const p = clock.phase();
-    // (up out of the berth over the window's first 0.3 substep: before it the berth is lane, nothing on it)
+    // (up out of the berth over the window's first 0.3 substep: before it the berth is lane, nothing on it; after it,
+    // down again into its berth: it never drives out over the lane, where the chain has nothing)
+    const down = p < ON ? 1 - smoothstep(p / 0.3) : p < ON + 0.3 ? smoothstep((p - ON) / 0.3) : null;
+    cart.visible = down !== null;
     // (in its berth: on the zone itself, not the nearest point of the coaster's curve)
-    if (p < ON) (onRoute(dStart, cart), cart.position.set(cx, y - 1.9 * (1 - smoothstep(p / 0.3)), cz), (cart.visible = true));
-    // (after it, down again into its berth: it never drives out over the lane, where the chain has nothing)
-    else if (p < ON + 0.3) (onRoute(dStart, cart), cart.position.set(cx, y - 1.9 * smoothstep((p - ON) / 0.3), cz), (cart.visible = true));
-    else cart.visible = false;
+    if (down !== null) (cart.rotation.copy(berth.rotation), cart.position.set(cx, y - 1.9 * down, cz));
   });
   // the ride
   const [ox, oz] = z.vec, oy = t.height(ox, oz), exit = new THREE.Vector3(ox, oy + BALL_R, oz);
@@ -1307,7 +1314,8 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
     const pm = pw.clone().addScaledVector(db, -0.6);
     g.add(mouthAt(s, t, pm.x, pm.z, b, 3, cartMouth(1.7).width, cartMouth(1.7).height, rand, { y: pm.y, fixed: true }).piece);
   } else {
-    arrive = new THREE.CatmullRomCurve3([new THREE.Vector3(cx, y, cz), new THREE.Vector3(cx, y, cz).lerp(stopAt, 0.5).setY(laneY(dOf(stopAt) - 1)), stopAt.clone().setY(laneY(along(stopAt) - along(W0)))]);
+    const mid = new THREE.Vector3(cx, y, cz).lerp(stopAt, 0.5);
+    arrive = new THREE.CatmullRomCurve3([new THREE.Vector3(cx, y, cz), mid.setY(laneY(along(mid) - along(W0))), stopAt.clone().setY(laneY(along(stopAt) - along(W0)))]);
   }
   const arr = arrive;
   const placeOn = (c: THREE.CatmullRomCurve3, k: number, o: THREE.Object3D) => {
@@ -1324,7 +1332,7 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
       cart.visible = false;
       ridden.visible = true;
       if (isFar && k < 0.62) {
-        onRoute(dStart + (dPortal - dStart) * (k / 0.62) ** 1.6, ridden);
+        onRoute(dAt(k), ridden);
         ridden.visible = ridden.position.distanceTo(coaster.getPointAt(1)) > 0.8;
         ball.position.copy(ridden.position).add(up);
         ball.visible = ridden.visible;
@@ -1344,7 +1352,7 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
     },
     cam: (k, pos, look) => {
       if (isFar && k < 0.62) {
-        const d = dStart + (dPortal - dStart) * (k / 0.62) ** 1.6, uu = Math.min(0.999, d / coastLen), p = coaster.getPointAt(uu), tg = coaster.getTangentAt(uu);
+        const uu = Math.min(0.999, dAt(k) / coastLen), p = coaster.getPointAt(uu), tg = coaster.getTangentAt(uu);
         pos.copy(p).addScaledVector(tg, -6.2).y += 2.6;
         look.copy(p).addScaledVector(tg, 4).y += 0.8;
         return true;
@@ -1363,8 +1371,6 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
   });
   return g;
 }
-
-// ------------------------------------------------------------ the cable car
 
 /**
  * The cable car over the great shaft (hole 17): a timed tunnel where the car
@@ -1386,7 +1392,7 @@ function cableCar(z: Zone, t: Terrain, s: Hole) {
   const A = new THREE.Vector3(cx, y, cz), B = new THREE.Vector3(ox, oy, oz).addScaledVector(dir, -1.4), HANG = 3.3, CS = 1.45, TOP = (HANG + 0.2) * CS;
   const span = A.distanceTo(B), sag = Math.min(4, span * 0.05);
   const cable = (u: number, out: THREE.Vector3) => out.lerpVectors(A, B, u).setY(A.y + (B.y - A.y) * u + TOP - sag * 4 * u * (1 - u));
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), onLedge = (x: number, zz: number) => t.onGreen(x, zz) && !holes.some((q) => inZone(q, x, zz));
+  const onLedge = laneOf(s, t);
   // the gantries
   const gantry = (at: THREE.Vector3, sign: number) => {
     const grp = new THREE.Group();
@@ -1483,14 +1489,14 @@ function cableCar(z: Zone, t: Terrain, s: Hole) {
     ga.wheel.rotation.y = gb.wheel.rotation.y = (u * span) / 0.85;
   };
   // the clock: docked through its window, across, waiting, back
-  const clock = clockOf(z), E = z.every || 1, ON = z.on || 0, cross = Math.max(2, (E - ON) / 2 - 1.5);
+  // (across it waits short of the far dock, over the shaft: the chain has no car there, the lane by the far dock is lane)
+  const clock = clockOf(z), E = z.every || 1, ON = z.on || 0, cross = Math.max(2, (E - ON) / 2 - 1.5), OUT = 0.14, FAR = 1 - OUT;
   let held = -1; // after a ride: parked at the far side until the clock comes there
   animate((tt) => {
     if (held >= 0) return;
     const p = clock.phase();
     // (out of the dock in the window's first 0.3 substep, and back in its last 0.3 before it: the chain has the dock lane then)
-    // (across it waits short of the far dock, over the shaft: the chain has no car there, the lane by the far dock is lane)
-    const OUT = 0.14, FAR = 1 - OUT, u = p < ON ? 0 : p < ON + 0.3 ? OUT * smoothstep((p - ON) / 0.3) : p < ON + cross ? OUT + (FAR - OUT) * smoothstep((p - ON - 0.3) / (cross - 0.3)) : p < E - cross ? FAR : p < E - 0.3 ? FAR - (FAR - OUT) * smoothstep((p - (E - cross)) / (cross - 0.3)) : OUT * (1 - smoothstep((p - (E - 0.3)) / 0.3));
+    const u = p < ON ? 0 : p < ON + 0.3 ? OUT * smoothstep((p - ON) / 0.3) : p < ON + cross ? OUT + (FAR - OUT) * smoothstep((p - ON - 0.3) / (cross - 0.3)) : p < E - cross ? FAR : p < E - 0.3 ? FAR - (FAR - OUT) * smoothstep((p - (E - cross)) / (cross - 0.3)) : OUT * (1 - smoothstep((p - (E - 0.3)) / 0.3));
     place(u, 0.03 * Math.sin(tt * 1.3) + (u > 0 && u < 1 ? 0.04 * Math.sin(u * 9) : 0));
   });
   state.timed.push({ at: (st) => { if (held >= 0 && mod(st + (z.phase ?? 0), E) >= ON + cross) held = -1; } });
@@ -1530,9 +1536,10 @@ function cableCar(z: Zone, t: Terrain, s: Hole) {
     at: (k, ball) => {
       if (k < 0) return void (held = 1);
       held = 1;
-      const u = smoothstep(Math.min(1, k / 0.88));
+      // (across to the far dock; as the ball rolls off onto its lane, back out over the shaft, where the clock's car waits)
+      const u = k < 0.88 ? smoothstep(k / 0.88) : 1 - OUT * smoothstep((k - 0.88) / 0.12);
       place(u, 0.05 * Math.sin(k * 14) * (1 - u));
-      ball.position.copy(carM.position).y += BALL_R + 0.12 * CS;
+      ball.position.copy(k < 0.88 ? carM.position : B).y += BALL_R + 0.12 * CS;
       if (k > 0.88) ball.position.lerp(exit, (k - 0.88) / 0.12);
     },
     cam: (k, pos, look) => {
@@ -1546,8 +1553,6 @@ function cableCar(z: Zone, t: Terrain, s: Hole) {
   });
   return g;
 }
-
-// ------------------------------------------------------------ the corkscrew
 
 /**
  * A U-trough swept along a curve (the corkscrew's ore chute): planks on
@@ -1606,7 +1611,6 @@ function chuteAlong(c: THREE.Curve<THREE.Vector3>, up: (u: number, out: THREE.Ve
     c.getTangentAt(u, T);
     const band = tinted(new THREE.TorusGeometry(r * 0.95, 0.05, 4, 12, Math.PI * 1.1), IRON_DARK);
     band.position.copy(p);
-    band.lookAt(p.clone().add(T));
     Bn.crossVectors(T, up(u, U)).normalize();
     N.crossVectors(Bn, T).normalize();
     // (the band's arc under the bed: turned so its gap is the trough's open side)
@@ -1728,22 +1732,23 @@ function corkscrew(z: Zone, t: Terrain, _s: Hole) {
   } else hinge.rotation.z = up;
   // the ride
   const at = new THREE.Vector3(), tg = new THREE.Vector3();
+  // (where the ball is, a share of its length: slower up the ramp and the loop, quicker down the chute)
+  const share = (k: number) => Math.min(1, k < 0.55 ? loopEnd * (k / 0.55) ** 1.15 : loopEnd + (1 - loopEnd) * ((k - 0.55) / 0.45));
   rides(z, curve, {
     ms: Math.min(2800, 1000 + L * 45),
     // a ball too slow for it climbs a quarter of the loop at most, and rolls back out (step.gno: put back in front of the mouth)
     climb: rampU + ((Math.PI / 2) * R) / L,
-    // (slower up the ramp and the loop, quicker down the chute)
-    ease: (k) => (k < 0.55 ? loopEnd * (k / 0.55) ** 1.15 : loopEnd + (1 - loopEnd) * ((k - 0.55) / 0.45)),
+    ease: (k) => byLength(curve, share(k)),
     cam: (k, pos, look) => {
-      const u = k < 0.55 ? loopEnd * (k / 0.55) ** 1.15 : loopEnd + (1 - loopEnd) * ((k - 0.55) / 0.45);
-      curve.getPointAt(Math.min(1, u), at);
+      const u = share(k);
+      curve.getPointAt(u, at);
       if (u < loopEnd) {
         // beside the loop, looking at the ball going round it
         pos.copy(centre).addScaledVector(sd, -exitSide * (R * 2.6 + 3)).y += 0.8;
         look.copy(at);
         return true;
       }
-      curve.getTangentAt(Math.min(1, u), tg);
+      curve.getTangentAt(u, tg);
       pos.copy(at).addScaledVector(tg.setY(0).normalize(), -5.5).y += 2.6;
       look.copy(at).addScaledVector(tg, 3);
       return true;
@@ -1751,8 +1756,6 @@ function corkscrew(z: Zone, t: Terrain, _s: Hole) {
   });
   return g;
 }
-
-// ------------------------------------------------------------ the lift
 
 /**
  * The lift (hole 8): a pulse tunnel, at one landing or another with the
@@ -1789,7 +1792,7 @@ function liftPiece(z: Zone, t: Terrain, s: Hole) {
   // the frame: a gantry over each landing and the rope across between their sheaves (one piece, it never moves)
   const frame = new THREE.Group(), H = 7.2, R = 0.9, CH = 2.6, DOWN = 7; // (DOWN: the shaft's dark floor is under 7.8)
   const siteOf = (o: number) => { const q = new THREE.Group(); q.position.set(long ? cx : cx + o, y, long ? cz + o : cz); q.rotation.y = -a; return q; };
-  const cages: THREE.Object3D[] = [], ropeAt: THREE.Vector3[] = [], sheaveAt: THREE.Vector3[] = [];
+  const cages: THREE.Object3D[] = [], sheaveAt: THREE.Vector3[] = [];
   // the ropes, from each sheave down to its cage's spreader, paid out and wound in as it goes: one draw for them all
   const ropes = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.045, 0.045, 1, 5).translate(0, -0.5, 0), flat(MINES.ink), 4), rm = new THREE.Matrix4();
   ud(ropes).live = true;
@@ -1848,7 +1851,6 @@ function liftPiece(z: Zone, t: Terrain, s: Hole) {
     mount.add(cage);
     root.add(mount);
     cages[i] = cage;
-    ropeAt[i] = mount.position.clone().setY(mount.position.y + H + 0.3 + R);
     sheaveAt[i] = mount.position.clone().setY(mount.position.y + H + 0.3 + R);
   });
   ropes.count = at.length;
@@ -1906,7 +1908,7 @@ function liftPiece(z: Zone, t: Terrain, s: Hole) {
         heights.set(key, d);
       }
       c.position.y = i === here && drop !== null ? drop : d;
-      ropes.setMatrixAt(i, rm.makeScale(1, Math.max(0.05, H + 0.3 + R - (c.position.y + CH + 1.2)), 1).setPosition(ropeAt[i]));
+      ropes.setMatrixAt(i, rm.makeScale(1, Math.max(0.05, H + 0.3 + R - (c.position.y + CH + 1.2)), 1).setPosition(sheaveAt[i]));
       // (its sheave turning as it goes: its axle across toward the other landing)
       sheaves.setMatrixAt(i, rm.makeRotationFromEuler(eu.set(0, Math.PI / 2, c.position.y / R, "YXZ")).setPosition(sheaveAt[i]));
     });
@@ -1914,8 +1916,8 @@ function liftPiece(z: Zone, t: Terrain, s: Hole) {
   });
   // where the tunnel lets the ball out: just off the landing a hatch in the floor, else the station on the level
   // below; every landing's seen so far drawn at every stroke, the same (a stroke's never comes and goes)
-  const exits = liftExits.get(s) || new Map<number, readonly number[]>();
-  liftExits.set(s, exits.set(at[here], z.vec));
+  const exits = liftExits.get(s.hole) || new Map<number, readonly number[]>();
+  liftExits.set(s.hole, exits.set(keyOf(here), z.vec));
   const exitAt = (o: number, [x, zz]: readonly number[]) => {
     const r = seeded("liftexit" + x.toFixed(2) + zz.toFixed(2)), lx = long ? cx : cx + o, lz = long ? cz + o : cz, b = openTo(s, t, x, zz, s.cup);
     if (Math.max(Math.abs(x - lx) - w / 2, Math.abs(zz - lz) - h / 2) < 4) return exitOf(s, t, x, zz, r, true);
@@ -1925,13 +1927,14 @@ function liftPiece(z: Zone, t: Terrain, s: Hole) {
     root.add(st.piece);
     return null;
   };
-  let ex: ReturnType<typeof exitOf> | null = null;
-  for (const [o, v] of exits) {
-    const e = exitAt(o, v);
-    if (e) root.add(e.piece);
-    if (o === at[here]) ex = e;
-    else if (e && e.lid) ud(e.lid).live = false; // (another landing's lid stays shut: merged with the rest)
-  }
+  const ex = exitAt(0, z.vec);
+  if (ex) root.add(ex.piece);
+  at.forEach((o, i) => {
+    const v = exits.get(keyOf(i)), e = i !== here && v ? exitAt(o, v) : null;
+    if (!e) return;
+    root.add(e.piece);
+    if (e.lid) ud(e.lid).live = false; // (another landing's lid stays shut: merged with the rest)
+  });
   // a sump just off a way out: the shaft's flooded foot, framed as the shaft's own (a collar, a head over it)
   // (a stroke's pieces are handed the stroke's zones: the hole's are the terrain's)
   const sumps = new Set<Zone>();
@@ -1988,8 +1991,8 @@ function liftPiece(z: Zone, t: Terrain, s: Hole) {
 
 /** Each hole's lift cages' heights, by the landing's place across (tenths): kept across every rebuild of the stroke's pieces. */
 const liftHeights = new Map<string, Map<number, number>>();
-/** The lifts' ways out seen so far, by hole: a landing's (its offset across) → its exit. */
-const liftExits = new WeakMap<Hole, Map<number, readonly number[]>>();
+/** The lifts' ways out seen so far, by hole: a landing's (its place across, tenths) → its exit. */
+const liftExits = new Map<string, Map<number, readonly number[]>>();
 
 /** A baked group without its ink outline (a moving piece at the draw budget: its body alone). */
 function withoutHull<O extends THREE.Object3D>(o: O): O {
@@ -2024,8 +2027,6 @@ function liftCage(L: number, D: number, CH: number, FL = L, FD = D) {
   }
   return cage;
 }
-
-// ------------------------------------------------------------ dispatch
 
 const ZONES: Record<string, (z: Zone, t: Terrain, s: Hole) => THREE.Object3D> = { geyser, cage: pithead, adit: aditPair, "ore chute": chute, hopper: chute, ladder: manway, "cart ride": cartRide, "cable car": cableCar, corkscrew, lift: liftPiece };
 

@@ -6,7 +6,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { makeReplay, flightsOf, type Arc } from "../lib/engine/replay.ts";
+import { makeReplay, flightsOf, outlived, type Arc } from "../lib/engine/replay.ts";
 import { BALL_R } from "../lib/terrain.ts";
 import type { Live, GameState } from "../lib/engine/types.ts";
 import type { Post, Vec2, Wall, Zone } from "../lib/types.ts";
@@ -86,8 +86,6 @@ function makeFixture(ground: (x: number, z: number) => number = () => 0) {
   return { E: E as unknown as Live, g, ball, calls };
 }
 
-// -------------------------------------------------------------- landing()
-
 void test("landing: no hole loaded, no zones, or the two points coincide", () => {
   const { E, g } = makeFixture();
   const api = makeReplay(E);
@@ -145,8 +143,6 @@ void test("landing: of several zones landing at the same point, the nearest to p
   assert.equal(api.landing([0, 0], [10, 10]), "hazard");
 });
 
-// --------------------------------------------------------------- replay()
-
 void test("replay: a plain roll ends exactly at the path's last point", async () => {
   const { E, ball, g } = makeFixture();
   const api = makeReplay(E);
@@ -167,26 +163,29 @@ void test("replay: a holed final step eases in and sinks the ball, scaling it do
 });
 
 void test("replay: a hazard step (a shaped, poly sea) splashes down and sinks", async () => {
-  const { E, ball } = makeFixture();
+  const { E, ball, calls } = makeFixture();
   const api = makeReplay(E);
   const sea = mkZone({ kind: "hazard", min: [1, 1], max: [5, 5], vec: [3, 3], poly: [[1, 1], [5, 1], [5, 5], [1, 5]] });
   E.g.s = mkHole([sea]) as unknown as GameState["s"];
   const path: Vec2[] = [[0, 0], [3, 3], [3, 3]]; // the hazard sends it right back to where it fell
   await withFakeClock(() => api.replay(path, false, "000"));
+  assert.equal(calls.moodShake, 1); // splashed, not rolled on
   assert.equal(ball.visible, true); // back and visible once the splash finishes
 });
 
 void test("replay: a hazard step off a rectangular pond (no poly), and off a roof", async () => {
-  const { E, ball } = makeFixture();
+  const { E, ball, calls } = makeFixture();
   const api = makeReplay(E);
   const pond = mkZone({ kind: "hazard", min: [1, 1], max: [5, 5], vec: [3, 3], round: true });
   E.g.s = mkHole([pond]) as unknown as GameState["s"];
   await withFakeClock(() => api.replay([[0, 0], [3, 3], [3, 3]], false, "000"));
+  assert.equal(calls.moodShake, 1);
   assert.equal(ball.visible, true);
 
   const roof = mkZone({ kind: "hazard", min: [1, 1], max: [5, 5], vec: [3, 3], skin: "roof" });
   E.g.s = mkHole([roof]) as unknown as GameState["s"];
   await withFakeClock(() => api.replay([[0, 0], [3, 3], [3, 3]], false, "000"));
+  assert.equal(calls.moodShake, 2);
   assert.equal(ball.visible, true);
 });
 
@@ -310,14 +309,23 @@ void test("replay: a named cause (a slope) glows and clears through fadeSlopes",
   api.clearGlow(); // never throws with nothing left glowing
 });
 
-void test("replay: a wind cause over a windy zone, and a tilt when it isn't wind", () => {
-  const { E, ball } = makeFixture();
-  const api = makeReplay(E);
-  const wind = mkZone({ kind: "slope", min: [-1, -1], max: [7, 1], skin: "wind", vec: [1, 0] });
-  E.g.s = mkHole([wind]) as unknown as GameState["s"];
-  return withFakeClock(() => api.replay([[0, 0], [3, 0]], false, "00", "-w")).then(() => {
+void test("replay: a wind cause over a windy zone, and a tilt when it isn't wind", async () => {
+  const named = async (zones: Zone[], why: string) => {
+    const { E, ball } = makeFixture();
+    const kinds = new Set<string>();
+    E.causes.at = (_p, _vx, _vz, c) => (kinds.add(c!.kind), null);
+    E.g.s = mkHole(zones) as unknown as GameState["s"];
+    await withFakeClock(() => makeReplay(E).replay([[0, 0], [3, 0]], false, "00", why));
     assert.ok(Math.abs(ball.position.x - 3) < 1e-6);
-  });
+    return [...kinds];
+  };
+  const box = { min: [-1, -1] as Vec2, max: [7, 1] as Vec2 };
+  assert.deepEqual(await named([mkZone({ kind: "slope", ...box, skin: "wind", vec: [1, 0] })], "-w"), ["wind"]);
+  // a mines vent: moving air by the chain's own flag, on a clock, and a hill under it
+  const vent = mkZone({ kind: "slope", ...box, skin: "vent", air: true, every: 8, on: 3, vec: [0.25, 0] });
+  assert.deepEqual(await named([vent], "-w"), ["wind"]);
+  assert.deepEqual(await named([mkZone({ kind: "slope", ...box, vec: [0.2, 0] }), vent], "-s"), ["slope"]);
+  assert.deepEqual(await named([mkZone({ kind: "slope", ...box, skin: "seesaw", every: 8, on: 4, vec: [0.2, 0] })], "-s"), ["tilt"]);
 });
 
 void test("replay: no flags at all (an older realm) guesses the flight from the ground itself", async () => {
@@ -395,7 +403,27 @@ void test("replay: a head-on bounce turns where the ball meets the wall, BALL_R 
   assert.ok(Math.abs(far - (5 - BALL_R)) < 0.02, `turned at ${far}`);
 });
 
-// ------------------------------------------------------ the mines' hooks
+void test("outlived: a replay that ends in time is not cut, its timer cleared; one that throws is cut at once", async (t) => {
+  const timers = () => process.getActiveResourcesInfo().filter((r) => r === "Timeout").length, before = timers();
+  assert.equal(await outlived(Promise.resolve(), 5000), false);
+  assert.equal(timers(), before, "no timer left behind");
+  const warn = t.mock.method(console, "warn", () => {});
+  assert.equal(await outlived(Promise.reject(new Error("a frame threw")), 5000), true);
+  assert.equal(warn.mock.callCount(), 1);
+});
+
+void test("outlived: a replay that never settles is cut once its time is spent, not before", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const turn = () => new Promise((r) => setImmediate(r));
+  let cut: boolean | undefined;
+  outlived(new Promise(() => {}), 5000).then((c) => (cut = c));
+  t.mock.timers.tick(4999);
+  await turn();
+  assert.equal(cut, undefined);
+  t.mock.timers.tick(1);
+  await turn();
+  assert.equal(cut, true);
+});
 
 void test("landing: the stroke's own tunnels count too (a lift at this stroke's landing)", () => {
   const { E, g } = makeFixture();
@@ -451,7 +479,7 @@ void test("replay: a ride cut short (a new round) lets its set piece and the cam
   assert.equal(g.inTube, false);
 });
 
-void test("a ride's frame that throws lets the camera go and tells its set piece it is over", async () => {
+void test("replay: a ride's frame that throws lets the camera go and tells its set piece it is over", async () => {
   const { E, g } = makeFixture();
   const api = makeReplay(E);
   const tunnel = mkZone({ kind: "tunnel", min: [1, -1], max: [3, 1], vec: [10, 10], skin: "cart ride" });
@@ -480,6 +508,22 @@ void test("a ride's frame that throws lets the camera go and tells its set piece
   assert.ok(pinned, "the ride had the camera");
   assert.equal(g.ride, null, "let go after the throw");
   assert.equal(at[at.length - 1], -1, "its set piece told it is over");
+});
+
+void test("replay: a drop's camera lets go once the ball is gone, even when a frame comes late (a tab hidden mid-fall)", async () => {
+  const { E, g, ball } = makeFixture();
+  const api = makeReplay(E);
+  // the void round the lane: off it past x 3, back to the start
+  const dark = mkZone({ kind: "hazard", min: [0, -10], max: [20, 10], poly: [[-1, -1], [3, -1], [3, 1], [-1, 1]], outside: true, skin: "void" });
+  g.s = mkHole([dark]) as unknown as GameState["s"];
+  let late = 0, pinned = false;
+  const frame = () => {
+    pinned ||= !!g.ride;
+    if (!late && g.ride && ball.scale.x < 1) late = 2000; // going down out of sight: the next frame 2 s on
+  };
+  await withSteppedClock(16, frame, () => api.replay([[0, 0], [2.9, 0], [0, 0]], false, "000", "---"), (t) => t + late);
+  assert.ok(pinned && late, "the camera over the lip, the ball going down");
+  assert.equal(g.ride, null, "let go");
 });
 
 /** What a fall puts in the scene (the geometries' types): into a hazard of

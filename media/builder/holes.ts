@@ -1,11 +1,11 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The Builder video's holes (media/builder/promo.mjs): three fun holes built
 // of the Builder's own pieces, each checked by the whole pipeline as
-// scripts/starters.ts checks a starter (validate, the canonical bytes), a
+// scripts/starters.ts checks a starter (validate, the canonical bytes) and a
 // holing round of each in every weather its world asks for (proved: a
-// replay), and its one-stroke holes, the video's money shots (a sweep all
-// round the tee). Writes media/builder/holes.json: each draft with its
-// proofs, its bytes and its one-strokers, for promo.mjs to publish and film.
+// replay). Writes media/builder/holes.json: each draft with its proofs and
+// its bytes, for promo.mjs to publish and film (render.mjs finds each
+// one-stroker as it films, in the chain's weather).
 //
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts [name]
 
@@ -25,7 +25,6 @@ const { canonicalHex, proofKey, replay } = await import("../../web/lib/builder/p
 const { plan, holeRow } = await import("../../web/lib/builder/testmode.ts");
 const { makeLocalChain } = await import("../../web/lib/builder/localchain.ts");
 const { holing, estimate } = await import("../../web/lib/builder/difficulty.ts");
-const { shotOf } = await import("../../web/lib/chain.ts");
 
 /** The author the holes are published and proved under (AUTHOR: the key promo.mjs publishes with; gnodev's test1 by default), and the clock their weathers are found from. */
 const AUTHOR = process.env.AUTHOR || "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5", NOW = Number(process.env.NOW) || 5967997;
@@ -65,7 +64,7 @@ const HOLES: Record<string, { world: string; make: Make }> = {
 };
 
 const only = process.argv[2];
-const out: Record<string, unknown> = fs.existsSync(new URL("holes.json", import.meta.url)) ? JSON.parse(fs.readFileSync(new URL("holes.json", import.meta.url), "utf8")) : {};
+const out = (fs.existsSync(new URL("holes.json", import.meta.url)) ? JSON.parse(fs.readFileSync(new URL("holes.json", import.meta.url), "utf8")) : {}) as Record<string, unknown>;
 let failed = 0;
 for (const [slug, { world, make }] of Object.entries(HOLES)) {
   if (only && slug !== only) continue;
@@ -79,28 +78,16 @@ for (const [slug, { world, make }] of Object.entries(HOLES)) {
   const id = `${AUTHOR}/${slug}/v1`, hex = canonicalHex(d, host), key = await proofKey(d, host);
   if (!hex || !key) { failed++; console.error(`no bytes: ${slug}`); continue; }
   host.load(id, hex);
-  const proofs = [], aces: Record<string, string[]> = {};
+  const proofs = [];
   for (const { kind, period } of plan(host, id, world, NOW)) {
     const shots = await holing(host, id, d.tee, d.pin, period, { fan: { spread: 60, step: 2, powers: Array.from({ length: 39 }, (_, k) => 0.5 + k * 0.25) } });
     const p = shots && (await replay(makeLocalChain(host, holeRow(id, d), hex, period), { key, id, kind, period, shots }));
-    if (p && typeof p !== "string") proofs.push(p), console.log(`  ${slug} ${kind || "clear"}: holed in ${p.shots.length}`);
+    if (p && typeof p !== "string") { proofs.push(p); console.log(`  ${slug} ${kind || "clear"}: holed in ${p.shots.length}`); }
     else { failed++; console.error(`not holed: ${slug} in ${kind || "clear"}${p ? `: ${p}` : ""}`); }
-    // the one-strokers: every way round the tee, every power; the forward ones first, the longest ride first (a video's pick)
-    host.setperiod(period);
-    const found: { shot: string; a: number; len: number }[] = [];
-    for (let a = -180; a < 180; a += 1) for (let pw = 1; pw <= 10; pw += 0.25) {
-      const shot = shotOf(a, pw), out = host.round(id, shot, period);
-      if (out.startsWith("panic")) continue;
-      const r = JSON.parse(out) as { holed: boolean; path: V[] };
-      if (r.holed) found.push({ shot, a, len: r.path.reduce((n, p, i) => (i ? n + Math.hypot(p[0] - r.path[i - 1][0], p[1] - r.path[i - 1][1]) : 0), 0) });
-    }
-    const ace = found.sort((x, y) => +(Math.abs(x.a) >= 45) - +(Math.abs(y.a) >= 45) || y.len - x.len).map((f) => f.shot);
-    aces[kind || "clear"] = ace;
-    console.log(`  ${slug} ${kind || "clear"}: ${ace.length} one-strokers${ace.length ? ` (${ace.slice(0, 4).join(" ")}…)` : ""}`);
   }
   const est = await estimate(host, d);
   const par = Math.max(2, Math.min(5, est?.par ?? Math.max(...proofs.map((p) => p.strokes)) + 1));
-  out[slug] = { draft: { ...d, slug: "", par, proofs }, hex, aces, level: est?.level ?? null };
+  out[slug] = { draft: { ...d, slug: "", par, proofs }, hex, level: est?.level ?? null };
   console.log(`${slug}: par ${par}, ${proofs.length} weathers proved, level ${est?.level ?? "?"}`);
 }
 fs.writeFileSync(new URL("holes.json", import.meta.url), JSON.stringify(out, null, 1) + "\n");

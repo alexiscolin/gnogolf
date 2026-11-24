@@ -1,5 +1,4 @@
-// lib/gnomes/legal.ts: the shop's words the law asks for, as the copy draft
-// writes them (the legal pack's draft shop copy): the final
+// lib/gnomes/legal.ts: the shop's words the law asks for: the final
 // confirmation before the wallet opens, its two separate boxes, its button,
 // and the receipt with every field it must carry.
 import { test } from "node:test";

@@ -1,4 +1,4 @@
-// The Crystal Mines' shared kit (ADR-005 §6): the palette every mines module
+// The Crystal Mines' shared kit: the palette every mines module
 // draws with, and what a hole of the mines is (its place, whether its
 // gallery is dark). Dark around a lit lane: the darkness lives in the vault
 // and the walls, never on the carpet. And the looks the world and its pieces
@@ -16,7 +16,7 @@ export const MINES = {
   basalt: 0x3b3450, umber: 0x5a4638, // rock: walls, berms, boulders
   slate: 0x566089, slateDark: 0x3a4062, rockHi: 0x6f6590, // the cave floor's blue slate, a lit rock face
   timber: 0x9a6536, timberDark: 0x74492a, iron: 0x4b4f5c, rust: 0x8a4a2c, brass: 0xc9a24a, rope: 0x9c7a4c, // props, sleepers, kerbs, rails
-  carpet: 0xb68e5d, carpetDark: 0xae8757, carpetLit: 0xe0bd86, // the lane: packed ore dirt, the one warm bright ground; its lit edge
+  carpet: 0xb68e5d, carpetDark: 0xae8757, // the lane: packed ore dirt, the one warm bright ground
   cyan: 0x5ff3ff, amethyst: 0xb27cff, rose: 0xff8fc8, // crystal
   lava: 0xff4d1a, lavaHi: 0xffb23b, crust: 0x3a1a14,
   lantern: 0xffcf6b, glowworm: 0x8ff5d8,
@@ -26,8 +26,6 @@ export const MINES = {
 // a mines hole's place and its dark galleries: in data.ts, so the game's own
 // chunk (the HUD, the aim dots) reads them without the mines' kit
 export { minesOrder, darkGallery } from "./data";
-
-// ------------------------------------------------------------ crystals
 
 let crystalM: THREE.MeshToonMaterial | null = null;
 /** Every crystal of the hole a little brighter for a while: the singing crystals struck (mines-pieces.ts ring). */
@@ -84,7 +82,7 @@ export function shard(r: number, h: number, hue: number) {
   for (let i = 0; i < p.count; i++) {
     const k = Math.max(0, p.getY(i)) / top;
     // (each facet its own tone, from its facing: two at one height never the same)
-    const f = 0.82 + 0.3 * (((Math.sin(nr.getX(i - (i % 3)) * 12.9898 + nr.getY(i - (i % 3)) * 78.233 + nr.getZ(i - (i % 3)) * 37.719) * 43758.5453) % 1 + 1) % 1);
+    const f = 0.82 + 0.3 * (((Math.sin(nr.getX(i) * 12.9898 + nr.getY(i) * 78.233 + nr.getZ(i) * 37.719) * 43758.5453) % 1 + 1) % 1);
     const c = c0.clone().lerp(c1, k * k).multiplyScalar(f);
     col.set([c.r, c.g, c.b], i * 3);
   }
@@ -114,7 +112,7 @@ export function crystalCluster(rand: Rand, size = 1, hue: number = HUES[Math.flo
 }
 
 /** An ore cart heaped with its load (mines-rides.ts oreCart: its tub's rim at 1.35, the ore and the crystals over it), how high it stands. */
-export const CART_LOAD_H = 2.5;
+const CART_LOAD_H = 2.5;
 /**
  * The mouth a cart W wide goes through, ride or decor: its timber set's
  * width (the legs and the second set take 0.6 of it, a margin of 0.2 either
@@ -124,12 +122,14 @@ export const CART_LOAD_H = 2.5;
 export const cartMouth = (cartW: number) => ({ width: cartW + 1.0, height: CART_LOAD_H + 0.4 });
 
 /** The ground as drawn under a point: the terrain's mesh, a grid of CELL
- *  squares each split corner to corner, flat in each triangle (a laid surface
- *  on it hugs what is drawn, not the smooth height it samples). */
+ *  squares each split between its two corners nearer in height (as course.ts
+ *  groundMesh splits the lane's), flat in each triangle (a laid surface on it
+ *  hugs what is drawn, not the smooth height it samples). */
 export function drawnGround(t: { height: (x: number, z: number) => number }, x: number, z: number) {
   const i = Math.floor(x / CELL), j = Math.floor(z / CELL), fx = x / CELL - i, fz = z / CELL - j;
-  const h = (a: number, b: number) => t.height((i + a) * CELL, (j + b) * CELL), h00 = h(0, 0), h11 = h(1, 1);
-  return fz > fx ? h00 + fz * (h(0, 1) - h00) + fx * (h11 - h(0, 1)) : h00 + fx * (h(1, 0) - h00) + fz * (h11 - h(1, 0));
+  const h = (a: number, b: number) => t.height((i + a) * CELL, (j + b) * CELL), h00 = h(0, 0), h01 = h(0, 1), h10 = h(1, 0), h11 = h(1, 1);
+  if (Math.abs(h00 - h11) > Math.abs(h01 - h10) + 1e-4) return fx + fz < 1 ? h00 + fx * (h10 - h00) + fz * (h01 - h00) : h11 + (1 - fx) * (h01 - h11) + (1 - fz) * (h10 - h11);
+  return fz > fx ? h00 + fz * (h01 - h00) + fx * (h11 - h01) : h00 + fx * (h10 - h00) + fz * (h11 - h10);
 }
 
 /** A distance field in place, a two-pass chamfer over an nx by nz grid of cells
@@ -151,8 +151,6 @@ export function chamferField(D: Float32Array, nx: number, nz: number, step: numb
     }
   return D;
 }
-
-// ------------------------------------------------------------ planks
 
 /** Where a deck lies: which points its boards may cover, its top there, the
  *  box to fill, and the way its boards run (their long axis, radians from +x). */
@@ -206,7 +204,9 @@ export function planks(spans: readonly DeckSpan[], rand: Rand, { width = 0.46, g
           const yAt = (q: number, k: number) => sp.top(...P(Math.min(e, Math.max(q, u)), v + k * w * 0.5));
           while (L > 0.2 && [-1, 0, 1].some((k) => [0.25, 0.5, 0.75].some((f) => Math.abs(yAt(s0 + L * f, k) - (yAt(s0, k) * (1 - f) + yAt(s0 + L, k) * f)) > 0.005))) L *= 0.7;
           first = false;
-          board(s0, s0 + (hi - s0 - L < 0.35 ? hi - s0 : L), v, w, u, e, !sp.inside(...P(s0 + L / 2, v - w / 2 - gap - 0.1)) || !sp.inside(...P(s0 + L / 2, v + w / 2 + gap + 0.1)));
+          const last = hi - s0 - L < 0.35; // (too little left for another: this one runs to the end)
+          board(s0, s0 + (last ? hi - s0 : L), v, w, u, e, !sp.inside(...P(s0 + L / 2, v - w / 2 - gap - 0.1)) || !sp.inside(...P(s0 + L / 2, v + w / 2 + gap + 0.1)));
+          if (last) break;
           s0 += L + 0.02;
         }
         u = e + 0.2;
@@ -223,7 +223,7 @@ export function planks(spans: readonly DeckSpan[], rand: Rand, { width = 0.46, g
       const V = [...T, ...B, ...F];
       const dark = c.clone().multiplyScalar(0.72);
       // its top in two strips along it, each its own tone: the grain runs with the board
-      const mid = (a: number, b: number) => a === b ? V[a] : V[a].clone().lerp(V[b], 0.5), M0 = mid(0, 3), M1 = mid(1, 2);
+      const mid = (a: number, b: number) => V[a].clone().lerp(V[b], 0.5), M0 = mid(0, 3), M1 = mid(1, 2);
       const c2 = c.clone().multiplyScalar(0.9 + 0.12 * rand());
       tri([V[0], V[1], M1, M0], [0, 2, 1], c), tri([V[0], V[1], M1, M0], [0, 3, 2], c);
       tri([M0, M1, V[2], V[3]], [0, 2, 1], c2), tri([M0, M1, V[2], V[3]], [0, 3, 2], c2);
@@ -251,8 +251,6 @@ export function planks(spans: readonly DeckSpan[], rand: Rand, { width = 0.46, g
   return new THREE.Mesh(geo, relief());
 }
 const NAIL = new THREE.Color(0x2a2733), JOIST = 1.4;
-
-// ------------------------------------------------------------ lanterns
 
 /** A lantern: an iron frame round a lit glass, a little roof and a ring to
  *  hang it by; its foot at 0 (hung: from its ring). Every lantern of the

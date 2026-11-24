@@ -2,7 +2,6 @@ package gnomes
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 )
@@ -52,11 +51,7 @@ func idOf(row string) int64 {
 	if n < 0 {
 		return 0
 	}
-	id, err := strconv.ParseInt(row[:n], 10, 64)
-	if err != nil {
-		return 0
-	}
-	return id
+	return parseID(row[:n])
 }
 
 // parseRow reads "id|tier|name|traits", checking every field.
@@ -65,8 +60,8 @@ func parseRow(row string) (gnome, error) {
 	if len(f) != 4 {
 		return gnome{}, errors.New("gnomes: a row is id|tier|name|traits")
 	}
-	id := idOf(row)
-	if id < 1 || f[0] != itoa(id) {
+	id := parseID(f[0])
+	if id == 0 {
 		return gnome{}, errors.New("gnomes: a row starts with its id")
 	}
 	ti := tierAt(f[1])
@@ -74,10 +69,10 @@ func parseRow(row string) (gnome, error) {
 		return gnome{}, errors.New("gnomes: unknown tier " + f[1])
 	}
 	if !plainName(f[2]) {
-		return gnome{}, errors.New("gnomes: a name is 1 to 48 bytes of letters, digits, spaces and - ' .")
+		return gnome{}, errors.New("gnomes: a name is 1 to " + itoa(maxGnomeName) + " bytes of letters, digits, spaces and - ' .")
 	}
 	if !printable(f[3], maxTraits) {
-		return gnome{}, errors.New("gnomes: traits are 1 to 256 bytes of printable ASCII")
+		return gnome{}, errors.New("gnomes: traits are 1 to " + itoa(maxTraits) + " bytes of printable ASCII")
 	}
 	return gnome{id: id, tier: ti, name: f[2], traits: f[3]}, nil
 }

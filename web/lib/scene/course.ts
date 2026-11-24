@@ -7,18 +7,18 @@ import { state, report } from "./state";
 import type { Census, PieceRef } from "./census";
 import { timeOf, islandBox } from "./camera";
 import { bush, stone, flower, tuft, mole, windmill, smokeBatch } from "./props";
-import { seeded, GRASS, dropOf } from "./common";
+import { seeded, placer, GRASS, dropOf } from "./common";
 import { roughOf } from "./garden";
 import { worldOf, drawnBy, fromWorld, gapWater, DECK, GAP_Y, type Skins } from "./worlds";
 import { WEATHER_SKINS } from "./weather";
 import { POSTS, BARS, roofs, SLAB } from "./pieces";
 import { zoneDetail, waterMask, pondWater } from "./zones";
 import { ud, withData, type Course, type CourseData, type CourseTerrain as T, type Fade, type Height, type Hole, type Tick, type Timed } from "./data";
-import type { Extras, MutVec2, Post, Timing, Vec2, Wall, Wear, Zone } from "../types";
+import type { Board, Extras, MutVec2, Post, Timing, Vec2, Wall, Wear, Zone } from "../types";
 import { own as ownKey } from "../own";
 
 // the tunnels whose mouth is a real hole in the lane (drawn by their world): its shape
-const MOUTHS: Readonly<Record<string, "round" | "square">> = { blowhole: "round", cage: "square", ladder: "square", hopper: "square" };
+const LANE_HOLES: Readonly<Record<string, "round" | "square">> = { blowhole: "round", cage: "square", ladder: "square", hopper: "square" };
 
 /** A world's own holes in the lane (worlds.ts open): its function, and whether a zone is one of them. */
 function ownHoles(s: Hole) {
@@ -70,9 +70,11 @@ export function buildHole(s: Hole, { defer = false, census }: { defer?: boolean;
   state.mill = null;
   const g = new THREE.Group();
   const t: T = worldOf(s).lifted?.(s) ?? terrain(s); // (a world may raise parts of its lane: the mines' terraces)
-  state.water = waterMask(t); // what splashes are clipped to, for this hole
-  // where a ball off the lane falls instead of splashing: the rooftops' streets
-  state.fallAt = s.zones.some((q) => q.skin === "roof") ? (x, z) => t.zoneAt(x, z)?.skin === "roof" : null;
+  if (!census) { // (a census's hole is not played: splashes stay the played hole's)
+    state.water = waterMask(t); // what splashes are clipped to, for this hole
+    // where a ball off the lane falls instead of splashing: the rooftops' streets
+    state.fallAt = s.zones.some((q) => q.skin === "roof") ? (x, z) => t.zoneAt(x, z)?.skin === "roof" : null;
+  }
   // where rain lies (puddles, splashes): the lane as drawn, not the water in
   // or round it, a gap or the rooftops, nor under a wall; nor a sand's dish
   // (a puddle is flat: it soaks into the sand)
@@ -119,7 +121,7 @@ export function buildHole(s: Hole, { defer = false, census }: { defer?: boolean;
     } else report(z, { by: "hidden", why: "sea" });
   }
   for (const w of wallPieces(s, t)) g.add(w);
-  for (const p of s.posts) g.add(post(p, t.height, s, t));
+  for (const p of s.posts) g.add(post(p, s, t));
   g.add(hole(s.cup, t.height, cupRadius(s)));
   g.add(tee(s.start, t.height));
 
@@ -257,16 +259,16 @@ function greenEdge(s: Hole, t: T) {
  * A wall with the stretches cut out where a gap crosses it or an inlet of the
  * sea opens it. Returns the pieces left.
  */
-function openings(w: WallLike, zones: readonly Zone[] | undefined, lines: readonly Strip[] = []): WallLike[] {
+function openings(w: WallLike, zones: readonly Zone[], lines: readonly Strip[] = []): WallLike[] {
   // a gap across the lane (a crevasse, a ditch) cuts through whatever
   // crosses it: the rails fell in too
   const strips: Strip[] = [];
   // (a polygon gap, "everything but the lane", cuts nothing: the lane's own walls run along its edge; a round or
   // polygon one, the Builder's, cuts nothing either: its box's corners are ground, the rails there walls: common.ts dropOf)
-  for (const z of zones || []) if (GAPS.has(z.skin) && dropOf(z) === "straight") strips.push([z.min[0], z.max[0], z.min[1] - 1, z.max[1] + 1]);
+  for (const z of zones) if (GAPS.has(z.skin) && dropOf(z) === "straight") strips.push([z.min[0], z.max[0], z.min[1] - 1, z.max[1] + 1]);
   // (and where a tram's rails cross it: a level crossing, a low curb instead)
   strips.push(...lines);
-  const inlet = (zones || []).some((z) => z.skin === "sea" && z.poly && !z.outside);
+  const inlet = zones.some((z) => z.skin === "sea" && z.poly && !z.outside);
   if (!strips.length && !inlet) return [w];
   const [ax, az] = w.a, dx = w.b[0] - ax, dz = w.b[1] - az, L = segLen(w) || 1;
   // where the wall is inside each strip, in its own parameter u (Liang-Barsky)
@@ -282,7 +284,7 @@ function openings(w: WallLike, zones: readonly Zone[] | undefined, lines: readon
   }
   // an inlet of the sea (a sea polygon cut into the lane) opens the rail
   // across its mouth: the stretches of the wall inside the polygon
-  for (const z of zones || []) if (z.skin === "sea" && z.poly && !z.outside) cuts.push(...polyCuts(w, z.poly));
+  for (const z of zones) if (z.skin === "sea" && z.poly && !z.outside) cuts.push(...polyCuts(w, z.poly));
   let pieces: MutVec2[] = [[0, 1]];
   for (const [c0, c1] of cuts) pieces = pieces.flatMap(([p0, p1]): MutVec2[] => [[p0, Math.min(p1, c0)], [Math.max(p0, c1), p1]]).filter(([p0, p1]) => p1 - p0 > 1e-6);
   const at = (u: number): MutVec2 => [ax + dx * u, az + dz * u];
@@ -326,6 +328,11 @@ export const VOID_ROWS: readonly (readonly [number, number])[] = [[0, 0], [-0.14
  *  foot tucks a little under it. */
 export const VOID_FLOOR = -3.2;
 export const VOID_BANDS = [0x625a80, 0x4f4668, 0x604d40, 0x453c5e, 0x4a3b33, 0x3a3150, 0x2c2640, 0x1c182c];
+/** Row k of the void's cut face under the lane's edge at v: out along (nx, nz), jagged up to jag by where it is. */
+export function voidRow(v: readonly number[], k: number, nx: number, nz: number, jag: number) {
+  const [dy, out] = VOID_ROWS[k], wob = k && k < VOID_ROWS.length - 1 ? jag * Math.sin(v[0] * 1.9 + v[2] * 1.3 + k * 2.1) : 0;
+  return [v[0] + nx * (out + wob), k === VOID_ROWS.length - 1 ? VOID_FLOOR - 0.4 : v[1] + dy, v[2] + nz * (out + wob)];
+}
 
 /** The nearest point of a lane's edge over the void, on any of its zones'
  *  outlines (voidEdges). */
@@ -373,12 +380,23 @@ export function groundMesh(s: Hole, t: T) {
   // reads as one smooth surface and not as a patchwork of triangles
   const e = 0.05;
   const gh = t.ground || t.height;
-  const up = (x: number, z: number): [number, number, number] => {
+  // (worked out once a place: a cell's two triangles list six vertices, and four cells share each corner)
+  const once = <R>(f: (x: number, z: number) => R) => {
+    const kept = new Map<number, Map<number, R>>();
+    return (x: number, z: number): R => {
+      let row = kept.get(x);
+      if (!row) kept.set(x, (row = new Map<number, R>()));
+      if (!row.has(z)) row.set(z, f(x, z));
+      return row.get(z)!;
+    };
+  };
+  const up = once((x, z): [number, number, number] => {
     const dx = (gh(x + e, z) - gh(x - e, z)) / (2 * e);
     const dz = (gh(x, z + e) - gh(x, z - e)) / (2 * e);
     const l = Math.hypot(dx, 1, dz);
     return [-dx / l, 1 / l, -dz / l];
-  };
+  });
+  const pond = once((x, z) => t.pond(x, z));
   // a pond's bank: the lane's grass, turning to earth as it goes down, dark
   // and wet at the water
   // (by the water's skin: a pond's earth, a rock pool's rock, a lagoon's
@@ -386,7 +404,7 @@ export function groundMesh(s: Hole, t: T) {
   const BANKS: Record<string, readonly [number, number]> = { water: [0x8a6a45, 0x4f4232], tidepool: [0x8d8274, 0x4d463d], lagoon: [0xd9bd88, 0x8c7552], canal: [0xa7a9a3, 0x55605f] };
   const earth = new THREE.Color(), wet = new THREE.Color(), bank = new THREE.Color();
   const banked = (color: THREE.Color, p: readonly number[]) => {
-    const w = t.pond(p[0], p[2]), dd = w ? w.k * -POOL.bed : 0; // how far down the bank
+    const w = pond(p[0], p[2]), dd = w ? w.k * -POOL.bed : 0; // how far down the bank
     if (!w || dd < 0.01) return color;
     const [e, d] = ownKey(BANKS, w.skin) || BANKS.water;
     return bank.copy(color).lerp(earth.set(e), smoothstep(dd / 0.22)).lerp(wet.set(d), smoothstep((dd - 0.25) / 0.2));
@@ -397,7 +415,7 @@ export function groundMesh(s: Hole, t: T) {
   const quad = (p: readonly (readonly number[])[], color: THREE.Color, n?: readonly number[], low?: THREE.Color) => {
     for (const k of Math.abs(p[0][1] - p[2][1]) > Math.abs(p[1][1] - p[3][1]) + 1e-4 ? [0, 1, 3, 1, 2, 3] : [0, 1, 2, 0, 2, 3]) {
       pos.push(...p[k]);
-      if (wetY) wetY.push(t.pond(p[k][0], p[k][2])?.level ?? -99);
+      if (wetY) wetY.push(pond(p[k][0], p[k][2])?.level ?? -99);
       const cc = low && (k === 1 || k === 2) ? low : n || !t.pond ? color : banked(color, p[k]);
       col.push(cc.r, cc.g, cc.b);
       nor.push(...(n || up(p[k][0], p[k][2])));
@@ -476,7 +494,7 @@ export function groundMesh(s: Hole, t: T) {
   const cutAt = dropFirst(s, t);
   const crev = (a: number, b: number) => { const q = cutAt((a + 0.5) * CELL, (b + 0.5) * CELL); return !!q && (GAPS.has(q.skin) || own(q)); };
   const hasCrev = s.zones.some((q) => GAPS.has(q.skin) || own(q)) || !!s.pulseZones?.some(own);
-  if (ownSea || hasRoof || hasCrev || s.zones.some((q) => ownKey(MOUTHS, q.skin)))
+  if (ownSea || hasRoof || hasCrev || s.zones.some((q) => ownKey(LANE_HOLES, q.skin)))
     for (let j = 0; j < t.nz; j++)
       for (let i = 0; i < t.nx; i++) {
         const q = cutAt((i + 0.5) * CELL, (j + 0.5) * CELL);
@@ -490,9 +508,9 @@ export function groundMesh(s: Hole, t: T) {
         // a blowhole's mouth is a real hole (its rim, drawn by island.ts,
         // covers the cells' stepped edge)
         // (and the mines' shaft landing, manway and hopper: a square one)
-        if (q && ownKey(MOUTHS, q.skin)) {
+        if (q && ownKey(LANE_HOLES, q.skin)) {
           const ex = ((i + 0.5) * CELL - (q.min[0] + q.max[0]) / 2) / ((q.max[0] - q.min[0]) / 2), ez = ((j + 0.5) * CELL - (q.min[1] + q.max[1]) / 2) / ((q.max[1] - q.min[1]) / 2);
-          if (ownKey(MOUTHS, q.skin) === "round" ? ex * ex + ez * ez < 0.72 * 0.72 : Math.max(Math.abs(ex), Math.abs(ez)) < 0.72) open_[t.idx(i, j)] = 2; // 2: no edge is pulled onto it
+          if (ownKey(LANE_HOLES, q.skin) === "round" ? ex * ex + ez * ez < 0.72 * 0.72 : Math.max(Math.abs(ex), Math.abs(ez)) < 0.72) open_[t.idx(i, j)] = 2; // 2: no edge is pulled onto it
         }
         // a plank laid between two roofs: the street shows under it (the
         // world draws the plank); 2, so the roofs' edges are not pulled onto it
@@ -557,10 +575,7 @@ export function groundMesh(s: Hole, t: T) {
   // going into the dark
   const band = new THREE.Color(), bandLow = new THREE.Color();
   const voidFace = (p: readonly number[], q: readonly number[], n: readonly number[]) => {
-    const row = (v: readonly number[], k: number) => {
-      const [dy, out] = VOID_ROWS[k], jag = k && k < VOID_ROWS.length - 1 ? 0.07 * Math.sin(v[0] * 1.9 + v[2] * 1.3 + k * 2.1) : 0;
-      return [v[0] + n[0] * (out + jag), k === VOID_ROWS.length - 1 ? VOID_FLOOR - 0.4 : v[1] + dy, v[2] + n[2] * (out + jag)];
-    };
+    const row = (v: readonly number[], k: number) => voidRow(v, k, n[0], n[2], 0.07);
     for (let k = 0; k + 1 < VOID_ROWS.length; k++)
       quad([row(p, k), row(p, k + 1), row(q, k + 1), row(q, k)], band.set(VOID_BANDS[k]), n, bandLow.set(VOID_BANDS[k + 1]));
   };
@@ -788,7 +803,7 @@ function roughScenery(s: Hole, t: T) {
     ...s.zones.filter((z) => z.skin === "saddle crest" && z.vec[0] < 0).map((z) => ({ min: [z.max[0] - 1.5, z.min[1]], max: [z.max[0] + 1.5, z.max[1]] })),
     // (nor on a tram's rails, into its tunnels)
     ...tramCuts(tramLines(s, t)).map(([x0, x1, z0, z1]) => ({ min: [x0 - 3, z0 - 3], max: [x1 + 3, z1 + 3] }))];
-  const taken: { x: number; z: number; r: number }[] = [];
+  const { free, reserve } = placer();
   const FOOT = [0.75, 0.45, 0.2, 0.2]; // bush, stone, tuft, flower
   for (const cells of t.rough) {
     // plant it: a few things per ten cells, on the slope
@@ -800,8 +815,8 @@ function roughScenery(s: Hole, t: T) {
       if (R && !R.plant && r > 0.3) continue; // bare: a third as many things, all stones
       const x = (i + 0.5) * CELL, z = (j + 0.5) * CELL, kind = R ? 1 : r < 0.35 ? 0 : r < 0.55 ? 1 : r < 0.75 ? 2 : 3;
       if (built.some((q) => x > q.min[0] - 0.5 && x < q.max[0] + 0.5 && z > q.min[1] - 0.5 && z < q.max[1] + 0.5)) continue;
-      if (taken.some((q) => Math.hypot(q.x - x, q.z - z) < q.r + FOOT[kind])) continue; // nothing inside anything else
-      taken.push({ x, z, r: FOOT[kind] });
+      if (!free(x, z, FOOT[kind])) continue; // nothing inside anything else
+      reserve(x, z, FOOT[kind]);
       // a world's own planting may say "nothing here" (null): a lagoon, a street
       const m = R && R.plant ? R.plant(rand, s, x, z) : [bush, stone, tuft, flower][kind](rand);
       if (!m) continue;
@@ -915,7 +930,8 @@ function hay([x, z]: Vec2, len: number, thick: number, ang: number, height: Heig
  * inner face on the wall line (where the ball bounces), its outer foot down
  * to the garden. Smooth, with no joints.
  */
-function kerb(W: readonly WallLike[], ch: Chain, t: T, reachable: (x: number, z: number) => boolean, { TH = 0.72, TOP = 0.6, smooth = true, foot = GRASS - 0.4, color = C.wood } = {}) {
+function kerb(W: readonly WallLike[], ch: Chain, t: T, reachable: (x: number, z: number) => boolean, color: number) {
+  const TH = 0.72, TOP = 0.6, foot = GRASS - 0.4;
   const pts: Vec2[] = [];
   for (let k = ch.from; k <= ch.to; k++) pts.push(W[k].a);
   if (!ch.closed) pts.push(W[ch.to].b);
@@ -925,15 +941,8 @@ function kerb(W: readonly WallLike[], ch: Chain, t: T, reachable: (x: number, z:
   const w = W[best], wl = segLen(w) || 1, nx = -(w.b[1] - w.a[1]) / wl, nz = (w.b[0] - w.a[0]) / wl;
   const mx = (w.a[0] + w.b[0]) / 2, mz = (w.a[1] + w.b[1]) / 2;
   const side = reachable(mx + nx * 0.6, mz + nz * 0.6) ? -1 : 1; // outward = away from the green
-  const v3 = pts.map(([x, z]) => new THREE.Vector3(x, 0, z));
-  let curve: THREE.Curve<THREE.Vector3>;
-  if (smooth) curve = new THREE.CatmullRomCurve3(v3, ch.closed, "centripetal");
-  else {
-    const path = new THREE.CurvePath<THREE.Vector3>();
-    for (let k = 0; k + 1 < v3.length; k++) path.add(new THREE.LineCurve3(v3[k], v3[k + 1]));
-    curve = path;
-  }
-  const N = smooth ? Math.max(40, Math.round(curve.getLength() * 3)) : Math.max(2, Math.round(curve.getLength() * 2));
+  const curve = new THREE.CatmullRomCurve3(pts.map(([x, z]) => new THREE.Vector3(x, 0, z)), ch.closed, "centripetal");
+  const N = Math.max(40, Math.round(curve.getLength() * 3));
   // a rounded profile, from the green's side over the top to the garden's
   // thick enough to cover the green cells that reach past the wall line (up
   // to 0.61 out): their side faces showed through the kerb as dark slots
@@ -955,7 +964,7 @@ function kerb(W: readonly WallLike[], ch: Chain, t: T, reachable: (x: number, z:
     for (let d = -3; d <= 3; d++) {
       let mx = 0;
       for (let e = -3; e <= 3; e++) {
-        const q = k + d + e, r = ring[ch.closed ? ((q % rings) + rings) % rings : Math.max(0, Math.min(rings - 1, q))];
+        const q = k + d + e, r = ring[ch.closed ? mod(q, rings) : Math.max(0, Math.min(rings - 1, q))];
         mx = Math.max(mx, r.out);
       }
       s += mx;
@@ -997,8 +1006,6 @@ function chordAlong(x: number, z: number, ox: number, oz: number, segs: readonly
  * each a live piece of its own, there only on the substeps the chain has it.
  * Each registers { at(step), walls } in state.timed for the engine's clock.
  */
-// ------------------------------------------------------------ trams
-//
 // A tram is a timed bar across the lane: the chain has it standing through
 // its window. It is drawn as a tram driving along its rails, the bar's own
 // axis: out of a tunnel mouth off one side of the lane, slowing as it comes,
@@ -1074,7 +1081,7 @@ const TRACKS = new Set(["tram", "cart"]);
  * come-in / go-away times and far ends.
  */
 function tramLines(s: Pick<Hole, "walls" | "zones">, t: Pick<T, "onGreen">): TramLine[] {
-  const walls = (s.walls || []).filter((w) => TRACKS.has(w.skin) && w.every), lane = laneOf(s, t);
+  const walls = s.walls.filter((w) => TRACKS.has(w.skin) && w.every), lane = laneOf(s, t);
   const bars: Tram[] = [];
   for (let i = 0; i + 3 < walls.length; i += 4) {
     const q = walls.slice(i, i + 4), l0 = segLen(q[0]), l1 = segLen(q[1]), long = l0 >= l1 ? q[0] : q[1];
@@ -1089,7 +1096,7 @@ function tramLines(s: Pick<Hole, "walls" | "zones">, t: Pick<T, "onGreen">): Tra
     while (hi < L / 2 && on(hi + 0.25)) hi += 0.25;
     const every = q[0].every ?? 0, phase = q[0].phase ?? 0;
     // (the timing along the line is set below, line by line)
-    bars.push({ q, u: [ux, uz], c, th: Math.min(l0, l1), lo, hi, every, on: q[0].on ?? 0, w: (((-phase) % every) + every) % every, sF: 0, Lt: 0, Aa: 0, Ad: 0, S0: 0, S1: 0 });
+    bars.push({ q, u: [ux, uz], c, th: Math.min(l0, l1), lo, hi, every, on: q[0].on ?? 0, w: mod(-phase, every), sF: 0, Lt: 0, Aa: 0, Ad: 0, S0: 0, S1: 0 });
   }
   const lines: TramLine[] = [];
   for (const b of bars) {
@@ -1125,7 +1132,7 @@ function tramLines(s: Pick<Hole, "walls" | "zones">, t: Pick<T, "onGreen">): Tra
       b.Lt = b.hi - b.lo + 2 * TRAM_CREEP + 0.3;
       // time to come in: since the last window on this line closed; to go
       // away: until the next one opens (a tram behind it must not catch it up)
-      const gap = (from: number, to: number) => ((((to - from) % b.every) + b.every) % b.every) || b.every;
+      const gap = (from: number, to: number) => mod(to - from, b.every) || b.every;
       const before = Math.min(...l.trams.map((o) => gap(o.w + o.on, b.w))), after = Math.min(...l.trams.map((o) => gap(b.w + b.on, o.w)));
       // (one tram on a line comes and goes in the same gap: half each; two on
       // one line go and come in it together, one behind the other: all of it)
@@ -1148,7 +1155,7 @@ function tramLines(s: Pick<Hole, "walls" | "zones">, t: Pick<T, "onGreen">): Tra
 /** Where a line of skin crosses the lane: the green, and for a cart not over
  *  a hazard either (the mines' lanes are edged by the void, not by kerbs). */
 function laneOf(s: Pick<Hole, "zones">, t: Pick<T, "onGreen">) {
-  const holes = (s.zones || []).filter((z) => z.kind === "hazard" && !z.every);
+  const holes = s.zones.filter((z) => z.kind === "hazard" && !z.every);
   return (skin: string, x: number, z: number) => t.onGreen(x, z) && (skin !== "cart" || !holes.some((q) => inZone(q, x, z)));
 }
 
@@ -1221,7 +1228,7 @@ function tramEase(m: number, k: number) {
  * and its next coming.
  */
 function tramAt(b: Tram, t: number) {
-  const E = b.every, tau = (((t - b.w) % E) + E) % E, creep = (2 * TRAM_CREEP) / b.on;
+  const E = b.every, tau = mod(t - b.w, E), creep = (2 * TRAM_CREEP) / b.on;
   const inAt = E - b.Aa;
   if (tau <= b.on) return { s: b.sF - TRAM_CREEP + creep * tau, sway: 0 };
   if (tau <= b.on + b.Ad) {
@@ -1375,8 +1382,6 @@ interface Piece {
   line: TramLine | undefined;
   clock?: (tick: number, e: number) => void;
 }
-// the timed bar being drawn (timedPieces): its timing, told to a world's own piece
-let barTiming: Timing | null = null;
 /** A timed piece's dashed outline, shown or hidden: its own line, or its part of the one line (ghostLine). */
 interface Ghost { visible: boolean }
 /**
@@ -1459,11 +1464,9 @@ function timedPieces(s: Hole, t: T, out: THREE.Object3D[]) {
     let clock: ReturnType<typeof ud>["clock"];
     if (own) piece.add(own);
     else if (!follower) {
-      barTiming = q[0];
       const copies = q.map(({ a, b, skin }) => ({ a, b, skin }));
       copies.forEach((c, k) => state.origin.set(c, q[k]));
-      const made = wallPieces({ ...s, walls: copies }, t);
-      barTiming = null;
+      const made = wallPieces({ ...s, walls: copies }, t, q[0]);
       // a world's piece that moves itself (a stamp, a wheel): drawn as it is,
       // off the pivot, told the clock
       clock = made.length === 1 ? ud(made[0]).clock : undefined;
@@ -1541,7 +1544,7 @@ function timedPieces(s: Hole, t: T, out: THREE.Object3D[]) {
         const prev = p.there(k + 1) ? hands.find((o) => o !== p && o.there(k)) : null;
         if (prev) {
           let d = p.ang - prev.ang;
-          d = ((d % Math.PI) + Math.PI) % Math.PI; // hands are lines: half turns
+          d = mod(d, Math.PI); // hands are lines: half turns
           p.pivot.rotation.y = d * (1 - e); // from the old hand's angle to its own
         } else p.pivot.visible = false; // going: the next one takes over
       } else if (e < 1) {
@@ -1617,14 +1620,19 @@ function unreached(walls: readonly Wall[], zones: readonly Zone[]) {
   return out;
 }
 
+/** Whether wall w runs along an edge of the board. */
+export const onBoardEdge = (w: Pick<Wall, "a" | "b">, board: Board) =>
+  ([0, 1] as const).some((k) => [w.a[k], w.b[k]].every((v) => Math.abs(v) < 0.01 || Math.abs(v - (k ? board.h : board.w)) < 0.01) && Math.abs(w.a[k] - w.b[k]) < 0.01);
+
 /**
  * Walls as the eye expects them. build.Bar makes a free-standing barrier out
  * of four segments; drawn one by one they look like two rails, so four closed
  * thin segments are drawn as one solid timber. A lone segment is a board edge:
  * its face is put on the line, on the side the ball plays on, so a gnome that
- * stops against it touches it instead of sinking into it.
+ * stops against it touches it instead of sinking into it. timing: the timed
+ * bar they are (timedPieces), told to a world's own piece.
  */
-function wallPieces(s: Hole, t: T) {
+function wallPieces(s: Hole, t: T, timing?: Timing) {
   const out: THREE.Object3D[] = [];
   // a timed wall (a mill's sail) is drawn by what it belongs to, not as a bar
   // (nor a run of walls no ball can reach: see outOfReach)
@@ -1642,13 +1650,13 @@ function wallPieces(s: Hole, t: T) {
   const inKerb = new Set<number>();
   // a world may dress the rails its own way: world.kerb = { color, post }
   // (mountain: grey stone, town: kerbstone...); wood by default
-  const K: { color?: number; post?: number } = (s.board && worldOf(s).kerb) || {};
+  const K: { color?: number; post?: number } = worldOf(s).kerb || {};
   const cuts = tramCuts(tramLines(s, t));
-  const cutAny = cuts.length > 0 || (s.zones || []).some((q) => GAPS.has(q.skin) || (q.skin === "sea" && q.poly && !q.outside)); // any gap, inlet or tram line to cut the kerbs at
+  const cutAny = cuts.length > 0 || s.zones.some((q) => GAPS.has(q.skin) || (q.skin === "sea" && q.poly && !q.outside)); // any gap, inlet or tram line to cut the kerbs at
   for (const ch of kerbChains(W)) {
     for (let k = ch.from; k <= ch.to; k++) inKerb.add(k), report(W[k], { by: "kerb" });
     for (const { list, ch: c } of cutAny ? kerbRuns(W, ch, s.zones, cuts) : [{ list: W as readonly WallLike[], ch }]) {
-      out.push(kerb(list, c, t, reachable, { color: K.color ?? C.wood }));
+      out.push(kerb(list, c, t, reachable, K.color ?? C.wood));
       // an open run ends at a post, like any wall: no bare cut profile
       if (!c.closed) for (const p of [list[c.from].a, list[c.to].b]) caps.set(p[0].toFixed(2) + "," + p[1].toFixed(2), [p[0], p[1]]);
     }
@@ -1660,8 +1668,8 @@ function wallPieces(s: Hole, t: T) {
     if (q.length === 4 && q.every((w, k) => near(w.b, q[(k + 1) % 4].a))) {
       const l0 = segLen(q[0]), l1 = segLen(q[1]);
       // (any skinned one, for a world that draws its own walls: a piston's head is fat)
-      if (Math.min(l0, l1) <= 1.6 || ownKey(BARS, q[0].skin) || (q[0].skin && s.board && worldOf(s).walls)) {
-        out.push(...barPiece(q, W, s, t));
+      if (Math.min(l0, l1) <= 1.6 || ownKey(BARS, q[0].skin) || (q[0].skin && worldOf(s).walls)) {
+        out.push(...barPiece(q, W, s, t, timing));
         i += 3;
         continue;
       }
@@ -1674,7 +1682,7 @@ function wallPieces(s: Hole, t: T) {
       continue;
     }
     // a world that draws its own lone skinned walls (worlds.ts walls)
-    if (whole.skin && s.board && worldOf(s).walls) {
+    if (whole.skin && worldOf(s).walls) {
       const len = segLen(whole), c: Vec2 = [(whole.a[0] + whole.b[0]) / 2, (whole.a[1] + whole.b[1]) / 2];
       const own = fromWorld(s, "wall", { walls: [whole], skin: whole.skin, c, length: len, thick: 0, ang: Math.atan2(whole.b[1] - whole.a[1], whole.b[0] - whole.a[0]) }, t);
       if (own) {
@@ -1687,12 +1695,9 @@ function wallPieces(s: Hole, t: T) {
     for (const w of parts) {
     const len = segLen(w);
     if (len < 1e-6) continue;
-    // a hole with no rails (all sea or rooftops round the lane) is only
-    // fenced at the board's edge: a low rope on posts, not a timber
-    const onEdge = (k: 0 | 1) => [w.a[k], w.b[k]].every((v) => Math.abs(v) < 0.01 || Math.abs(v - (k ? s.board.h : s.board.w)) < 0.01) && Math.abs(w.a[k] - w.b[k]) < 0.01;
     // round a lane over the sea or the rooftops the board's own edge can't be
     // reached (the ball is in the water first): no rail out in the water
-    if (!w.skin && s.board && (onEdge(0) || onEdge(1)) && (s.zones || []).some((q) => q.outside && q.kind === "hazard")) { report(whole, { by: "hidden", why: "sea" }); continue; }
+    if (!w.skin && onBoardEdge(w, s.board) && s.zones.some((q) => q.outside && q.kind === "hazard")) { report(whole, { by: "hidden", why: "sea" }); continue; }
     report(whole, whole.skin ? { by: "fallback" } : { by: "kerb" }); // a rail; a skin nothing draws on its own, the plain timber
     const ang = Math.atan2(w.b[1] - w.a[1], w.b[0] - w.a[0]);
     const nx = -Math.sin(ang), nz = Math.cos(ang);
@@ -1724,7 +1729,7 @@ function wallPieces(s: Hole, t: T) {
 
 /** A bar (four walls round a thin box: a timber, a gate, a tram, a world's
  *  own piece) drawn as one piece: what to add to the course. */
-function barPiece(q: readonly Wall[], W: readonly Wall[], s: Hole, t: T) {
+function barPiece(q: readonly Wall[], W: readonly Wall[], s: Hole, t: T, timing?: Timing) {
   const l0 = segLen(q[0]), l1 = segLen(q[1]), parts: THREE.Object3D[] = [];
   const long = l0 >= l1 ? q[0] : q[1];
   const thick = Math.min(l0, l1);
@@ -1763,7 +1768,7 @@ function barPiece(q: readonly Wall[], W: readonly Wall[], s: Hole, t: T) {
       L0 = hi - lo + 2 * TRAM_CREEP + 0.3; // over the whole crossing as it creeps, into the level crossings
     }
   }
-  const own = s.board && fromWorld(s, "wall", { walls: q, skin, c: c0, length: L0, thick, ang, ...(barTiming && { timing: { every: barTiming.every, on: barTiming.on, phase: barTiming.phase } }) }, t);
+  const own = fromWorld(s, "wall", { walls: q, skin, c: c0, length: L0, thick, ang, ...(timing && { timing: { every: timing.every, on: timing.on, phase: timing.phase } }) }, t);
   const drew = (draw: "table" | "world" | "fallback") => { for (const w of q) report(w, { by: "bar", draw, key: skin }); };
   if (own) return drew("world"), [own];
   // their own look, on the chain's footprint exactly
@@ -1895,18 +1900,18 @@ export const DRAWN = {
 
 /** A post is a bumper; in this garden a bumper is a mushroom — or, when the
  *  chain says so, a rock or a stump. An unknown skin is a mushroom. */
-function post(p: Post, height: Height, s: Hole, t: T) {
+function post(p: Post, s: Hole, t: T) {
   // the world draws its own pieces first (see worlds.ts, piece()); then ours
-  const own = s && fromWorld(s, "post", p, t);
+  const own = fromWorld(s, "post", p, t);
   if (own) return report(p, { by: "world", key: p.skin }), own;
   const table = ownKey(POSTS, p.skin);
-  if (table) return report(p, { by: "table", key: p.skin }), table(p, height(p.c[0], p.c[1]));
-  if (p.skin === "rock") return report(p, { by: "table", key: p.skin }), rock(p, height);
-  if (p.skin === "stump") return report(p, { by: "table", key: p.skin }), stump(p, height);
+  if (table) return report(p, { by: "table", key: p.skin }), table(p, t.height(p.c[0], p.c[1]));
+  if (p.skin === "rock") return report(p, { by: "table", key: p.skin }), rock(p, t.height);
+  if (p.skin === "stump") return report(p, { by: "table", key: p.skin }), stump(p, t.height);
   report(p, { by: "fallback" }); // the mushroom (a bumper's, on purpose)
   const g = new THREE.Group();
   const [x, z] = p.c;
-  g.position.y = height(x, z);
+  g.position.y = t.height(x, z);
 
   const stem = drawn(new THREE.CylinderGeometry(p.r * 0.5, p.r * 0.62, 1.1, 14), flat(C.cream));
   stem.position.set(x, 0.55, z);
@@ -2008,7 +2013,7 @@ function wearLayer(wear: Wear, W: number, H: number, height: Height, tint: THREE
     const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0, Math.max(1, Math.ceil((x1 - x0) * step)), Math.max(1, Math.ceil((z1 - z0) * step))); // as fine as the ground's cells (a world's wearStep)
     geo.rotateX(-Math.PI / 2);
     geo.translate((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
-    // the texture spans the whole board, as before
+    // the texture spans the whole board
     const p = geo.attributes.position, uv = geo.attributes.uv;
     for (let k = 0; k < p.count; k++) uv.setXY(k, p.getX(k) / W, 1 - p.getZ(k) / H);
     drape(geo, height);
@@ -2054,7 +2059,7 @@ function wearLayer(wear: Wear, W: number, H: number, height: Height, tint: THREE
 const WEATHER = new Set([...WEATHER_SKINS, "gust"]);
 
 export function buildExtras(course: Course, ex: Extras) {
-  if ((ex.zones || []).some(emptyZone)) ex = { ...ex, zones: (ex.zones || []).filter((z) => !emptyZone(z)) }; // (as buildHole)
+  if (ex.zones.some(emptyZone)) ex = { ...ex, zones: ex.zones.filter((z) => !emptyZone(z)) }; // (as buildHole)
   const t = course.userData.terrain;
   const g = new THREE.Group();
   ud(g).live = true;
@@ -2066,6 +2071,9 @@ export function buildExtras(course: Course, ex: Extras) {
   const course0 = { timed: state.timed, ghosts: state.ghosts };
   const timed: Timed[] = (state.timed = []);
   state.ghosts = null;
+  // a ride its pieces give (the mines' lift) goes in the course's tubes, where the replay looks; the last stroke's goes
+  const tubes = (state.tubes = course.userData.tubes);
+  for (const z of tubes.keys()) if (!course.userData.state.zones.includes(z)) tubes.delete(z);
   // a world may draw a stroke's pieces itself (an avalanche, a wave): it
   // returns { group, skins }, and what it drew is left out of the rest
   const own = worldOf(course.userData.state).extras?.(ex, course.userData.state, t);
@@ -2073,13 +2081,13 @@ export function buildExtras(course: Course, ex: Extras) {
     ud(own.group).live = true;
     ud(g).steady = ud(own.group).steady;
     g.add(own.group);
-    ex = { ...ex, walls: ex.walls.filter((w) => !own.skins.has(w.skin)), posts: ex.posts.filter((p) => !own.skins.has(p.skin)), zones: (ex.zones || []).filter((z) => !own.skins.has(z.skin)) };
+    ex = { ...ex, walls: ex.walls.filter((w) => !own.skins.has(w.skin)), posts: ex.posts.filter((p) => !own.skins.has(p.skin)), zones: ex.zones.filter((z) => !own.skins.has(z.skin)) };
   }
-  for (const w of wallPieces({ ...course.userData.state, walls: ex.walls, zones: ex.zones || [] }, t)) g.add(w);
-  for (const p of ex.posts) g.add(p.skin === "mole" ? mole(p, t.height) : post(p, t.height, course.userData.state, t));
+  for (const w of wallPieces({ ...course.userData.state, walls: ex.walls, zones: ex.zones }, t)) g.add(w);
+  for (const p of ex.posts) g.add(p.skin === "mole" ? mole(p, t.height) : post(p, course.userData.state, t));
   // what a stroke adds on the lane (a wave washing across...); the weather is
   // the sky's and the engine's, not drawn on the ground
-  for (const z of ex.zones || []) if (!WEATHER.has(z.skin)) g.add(zoneDetail(z, { ...course.userData.state, zones: ex.zones }, t));
+  for (const z of ex.zones) if (!WEATHER.has(z.skin)) g.add(zoneDetail(z, { ...course.userData.state, zones: ex.zones }, t));
   // a blade is a mill's sweep: stand the mill itself on its hub
   const blade = ex.walls.filter((w) => w.skin === "blade");
   if (blade.length) {

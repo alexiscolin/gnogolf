@@ -1,11 +1,10 @@
 "use client";
 
-// What the picker adds for a player who holds gnomes (the game's picker
-// itself unchanged, Golf.tsx Picker): one line saying who sees what, one
-// row of their gnomes' faces (a tap plays one, free, kept in this browser),
-// and, apart, the one call that costs: showing everyone another than their
-// best (Equip). Loaded with the shop's chunk, and only for a player with a
-// collection.
+// What the game's picker (Golf.tsx Picker) adds for a player who holds
+// gnomes: one line saying who sees what, one row of their gnomes' faces (a tap
+// plays one, free, kept in this browser), and, apart, the one call that costs:
+// showing everyone another than their best (Equip). Loaded with the shop's
+// chunk, and only for a player with a collection.
 import "@/app/gnomes.css";
 import { useState } from "react";
 import Share from "@/components/Share";
@@ -40,7 +39,7 @@ export default function Owned({ chain, me, held, worn, playing, onPick, region, 
   const [shown, setShown] = useState<{ id: string; name: string; home: string } | null>(null); // the one just shown to everyone: share him
   const [error, setError] = useState("");
   // (an earned gnome is one of the picker's own: the row is the bought ones)
-  const bought = held.filter((g) => Number(g.id) < 1_000_001);
+  const bought = held.filter((g) => g.tier !== "earned");
   if (!bought.length) return null;
   const said = seen({ worn, playing, name });
   const id = playing.startsWith("t") ? Number(playing.slice(1)) : NaN;

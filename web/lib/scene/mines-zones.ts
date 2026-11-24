@@ -4,9 +4,9 @@
 // surfaces laid on it (rubble, ballast and its track, ore piles, drip pools,
 // crystal ice, a floor of coins, the causeway's basalt columns), the hills
 // (the conveyor belt, the man-way, the banked ledge, a kicker), the air (the
-// steam vents and boosters on their clock, the magnetic vein), the set
-// pieces told by a decor surface (the Heart, the frozen fall), the lava falls,
-// and the ball's fall into each hazard.
+// steam vents and boosters on their clock, the magnetic vein), the lava falls,
+// the Heart crystal (mines-machines.ts stands it by its chamber), and the
+// ball's fall into each hazard.
 //
 // Organic, as the other worlds' ponds and bunkers: a zone's outline is
 // zones.ts organic() (a round zone its ellipse, a plain rectangle rounded, a
@@ -32,8 +32,6 @@ import type { MutVec2, Vec2, Zone } from "../types";
 import type { FallIn } from "./worlds";
 import { own } from "../own";
 
-// ------------------------------------------------------------ outlines and sheets
-
 /** A zone's outline as drawn: organic (rounded, a hair of wobble), its points on the board. */
 export function outline(z: Zone, s: Hole): MutVec2[] {
   // (a surface's plain rectangle is a patch, rounded as a round zone is: the
@@ -55,7 +53,7 @@ function edgeDist(x: number, z: number, pts: readonly Vec2[]) {
 }
 /** The void round the lane (the world's): nothing of a zone is laid out over it. */
 const voids = (s: Hole) => s.zones.filter((q) => q.skin === "void");
-export const overVoid = (s: Hole, x: number, z: number) => voids(s).some((v) => inZone(v, x, z));
+export const overVoid = (s: Hole, x: number, z: number) => s.zones.some((q) => q.skin === "void" && inZone(q, x, z));
 /** A point over the void, onto the lane's edge there (the void's outline); null if not over it. */
 const offVoid = (s: Hole) => (x: number, z: number): MutVec2 | null => {
   const v = voids(s).find((q) => inZone(q, x, z));
@@ -119,6 +117,11 @@ function normals(pts: readonly Vec2[]) {
     return [nx, nz] as const;
   });
 }
+/** An outline moved out by d along its normals. */
+const grow = (pts: readonly Vec2[], d: number) => {
+  const ns = normals(pts);
+  return pts.map(([x, z], k): MutVec2 => [x + ns[k][0] * d, z + ns[k][1] * d]);
+};
 
 /**
  * A band along a closed outline: rows of points at offsets (along the
@@ -169,8 +172,6 @@ function spotsIn(pts: readonly Vec2[], n: number, m: number, rand: Rand, keep?: 
   return out;
 }
 
-// ------------------------------------------------------------ the sunk hazards
-//
 // The lane is cut open over them (worlds.ts open: its cells left out, rock
 // down to their level); here, what is inside: a bank or a lining from the
 // lane's edge down to it, its rim over the cut cells' steps, and the stuff
@@ -264,7 +265,7 @@ function lining(pts: readonly Vec2[], t: Terrain, depth: number, skip?: (x: numb
 }
 
 /** A rim of rock round a pit: over the lane's cut edge, rounded, lit on top; a hot one scorched, glowing down its inner face. */
-function rim(pts: readonly Vec2[], t: Terrain, _rand: Rand, skip?: (x: number, z: number) => boolean, hot = false) {
+function rim(pts: readonly Vec2[], t: Terrain, skip?: (x: number, z: number) => boolean, hot = false) {
   const foot = hot ? 0x6a5a66 : 0x5f5878, top = hot ? 0x5e4c58 : 0x736a8c, face = hot ? 0x7a3a2a : 0x4f4866, lip = hot ? 0xe0651e : 0x3a3450;
   const bump = (x: number, z: number) => 0.02 * (vnoise(x * 1.7, z * 1.7) - 0.5);
   const geo = band(pts, [
@@ -318,7 +319,7 @@ function lavaPool(pts: MutVec2[], level: number, t: Terrain, s: Hole, rand: Rand
   const pits = s.zones.filter((q) => (q.skin !== "lava" && open(q) != null) || q.skin === "causeway").map((q) => ({ q, o: outline(q, s) }));
   const bank = (x: number, zz: number) => off(x, zz) || pits.some(({ q, o }) => inZone(q, x, zz) || edgeDist(x, zz, o) < 0.6); // (and none within a rim's width of it: one rim there, the other pit's)
   g.add(lining(fine, t, level - 0.05, bank, 0.5));
-  g.add(rim(fine, t, rand, bank, true));
+  g.add(rim(fine, t, bank, true));
   // a line of ember light where the lava meets its bank
   const glow = band(pts, [[-0.02, () => level + 0.03, 0xff7a2a], [-0.5, () => level + 0.01, 0x000000]], off);
   g.add(new THREE.Mesh(glow, once("lava lip glow", () => new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))));
@@ -349,8 +350,10 @@ function lavaPool(pts: MutVec2[], level: number, t: Terrain, s: Hole, rand: Rand
 }
 const areaOf = (pts: readonly Vec2[]) => pts.reduce((a, p, k) => { const q = pts[(k + 1) % pts.length]; return a + (p[0] * q[1] - q[0] * p[1]) / 2; }, 0);
 
+/** How far a shaft's collar of planks reaches out round its mouth. */
+const COLLAR = 0.42;
 /** The open shaft: a timber collar round its mouth, cribbing down its sides into the dark, a ladder, nothing at the bottom. */
-function shaft(z: Zone, t: Terrain, s: Hole, _rand: Rand) {
+function shaft(z: Zone, t: Terrain, s: Hole) {
   // (nothing of it laid where another hazard is: a bite out of the ledge, a pit beside it)
   const g = new THREE.Group(), pts = outline(z, s), off = (x: number, zz: number) => overVoid(s, x, zz) || inHazard(s, x, zz, z);
   const depth = GAP_Y - 1;
@@ -378,7 +381,7 @@ function shaft(z: Zone, t: Terrain, s: Hole, _rand: Rand) {
   // (flat where the ball rolls: it is the lane's own level)
   // (0.055 over the ground as drawn: over the paving laid round it (0.04); an incline's boards stop short of it)
   // (the kit's boards, one way across the ring round the mouth: every deck of the mines one way)
-  const ring = pts.map(([x, zz], k): MutVec2 => [x + ns[k][0] * 0.42, zz + ns[k][1] * 0.42]);
+  const ring = grow(pts, COLLAR);
   let bx0 = Infinity, bz0 = Infinity, bx1 = -Infinity, bz1 = -Infinity;
   for (const [x, zz] of ring) (bx0 = Math.min(bx0, x)), (bz0 = Math.min(bz0, zz)), (bx1 = Math.max(bx1, x)), (bz1 = Math.max(bz1, zz));
   g.add(planks([{ inside: (x, zz) => inPoly(x, zz, ring) && !inPoly(x, zz, pts) && edgeDist(x, zz, pts) > 0.03 && !off(x, zz), top: (x, zz) => drawnGround(t, x, zz) + 0.055, box: [bx0, bz0, bx1, bz1], angle: 0 }], seeded("collar" + z.min.join() + z.max.join()), { width: 0.34 }));
@@ -400,7 +403,6 @@ function shaft(z: Zone, t: Terrain, s: Hole, _rand: Rand) {
   return g;
 }
 
-/** Cave water in a pit: black and still, a cold sheen, drips falling into it from the vault and their rings. */
 /** Cave water over an outline (the world's one water, mines-water.ts): its depth, from 0 at the rim, given to the shader per vertex. */
 // (all the hole's pools one mesh, one material: each pool's sheet added to it as it is built)
 function pitWater(t: Terrain, pts: readonly Vec2[], level: number, off: (x: number, z: number) => boolean, deep = 1.2, mud: boolean | "milk" = false): THREE.Object3D | null {
@@ -467,16 +469,16 @@ function sump(z: Zone, t: Terrain, s: Hole, rand: Rand) {
 }
 function sumpPool(pts: MutVec2[], level: number, t: Terrain, s: Hole, rand: Rand) {
   const g = new THREE.Group(), off = (x: number, zz: number) => overVoid(s, x, zz) || !reachable(t, x, zz);
-  g.add(lining(pts, t, level - 0.8, off, 0.3), rim(pts, t, rand, off));
+  g.add(lining(pts, t, level - 0.8, off, 0.3), rim(pts, t, off));
   add(g, pitWater(t, pts, level, off, 1.6));
   add(g, drips(t, spotsIn(pts, 3, 0.5, rand).map(([x, zz]) => new THREE.Vector3(x, level, zz)), rand));
   return g;
 }
 
-/** Steam rising from spots: soft puffs swelling and thinning as they climb (gate: how much now, 0..1), one system a hole (shared: the first caller gets its group). */
-export function steam(build: object, spots: readonly THREE.Vector3[], rand: Rand, { rise = 2.2, size = 0.5, period = 3, gate }: { rise?: number; size?: number; period?: number; gate?: () => number } = {}): THREE.Object3D | null {
+/** Steam rising from spots: soft puffs swelling and thinning as they climb, one system a hole (shared: the first caller gets its group). */
+function steam(build: object, spots: readonly THREE.Vector3[], rand: Rand, { rise, size, period }: { rise: number; size: number; period: number }): THREE.Object3D | null {
   const { sys, first } = shared(build, "steam", steamSystem);
-  for (const at of spots) for (let k = 0; k < 4; k++) sys.list.push({ at, ph: rand(), rise, size, period, gate });
+  for (const at of spots) for (let k = 0; k < 4; k++) sys.list.push({ at, ph: rand(), rise, size, period });
   return first ? sys.root : null;
 }
 /** A puff that moves its own way: sets where it is at time tt, returns its size. */
@@ -496,7 +498,7 @@ function steamSystem() {
   const CAPS = 256, puff = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), mat, CAPS);
   puff.frustumCulled = false;
   root.add(puff);
-  const list: { at: THREE.Vector3; ph: number; rise: number; size: number; period: number; gate?: () => number; place?: Place }[] = [];
+  const list: { at: THREE.Vector3; ph: number; rise: number; size: number; period: number; place?: Place }[] = [];
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(), P = new THREE.Vector3();
   animate((tt) => {
     const n = Math.min(CAPS, list.length);
@@ -504,8 +506,8 @@ function steamSystem() {
     for (let i = 0; i < n; i++) {
       const L = list[i];
       if (L.place) { puff.setMatrixAt(i, M.compose(P, Q, S.setScalar(Math.max(0, L.place(tt, P))))); continue; }
-      const at = L.at, k = (tt / L.period + L.ph) % 1, on = L.gate ? L.gate() : 1;
-      const r = L.size * (0.3 + k * 0.9) * (1 - k) ** 0.6 * 1.6 * on;
+      const at = L.at, k = (tt / L.period + L.ph) % 1;
+      const r = L.size * (0.3 + k * 0.9) * (1 - k) ** 0.6 * 1.6;
       M.compose(P.set(at.x + Math.sin(L.ph * 9 + k * 3) * 0.3 * k, at.y + k * L.rise, at.z + Math.cos(L.ph * 7 + k * 2) * 0.3 * k), Q, S.setScalar(Math.max(0, r)));
       puff.setMatrixAt(i, M);
     }
@@ -579,8 +581,6 @@ function oreBin(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ surfaces
-//
 // Laid on the lane over their outline, a hair over it (the shared polygon
 // offset keeps them from shimmering), each with its own 3D stuff on top.
 // the worlds' toon over the patch's own colours, crisp (its edge inked, not faded into the lane)
@@ -639,30 +639,29 @@ const inkLine = share(new THREE.LineBasicMaterial({ color: MINES.ink }));
 /** The patches laid in a hole, each its height over the ground as drawn. */
 const patched = new WeakMap<Hole, Map<Zone, number>>();
 
-/** A patch over the outline, on the lane (not over the void), coloured by col, lifted by lift at its middle. */
-function patch(z: Zone, t: Terrain, s: Hole, col: (x: number, z: number, d: number, c: THREE.Color) => void, lift: (x: number, z: number, d: number) => number = () => 0, cells = 2500) {
+/** A patch over the outline, on the lane (not over the void), coloured by col. */
+function patch(z: Zone, t: Terrain, s: Hole, col: (x: number, z: number, d: number, c: THREE.Color) => void, cells = 2500) {
   // (a hair past its outline: two patches that meet overlap, each at its own height, no ground showing between them in teeth)
-  const edge = outline(z, s), ns = normals(edge), pts = edge.map(([x, zz], k): MutVec2 => [x + ns[k][0] * 0.15, zz + ns[k][1] * 0.15]);
+  const pts = grow(outline(z, s), 0.15);
   // (nor over a sunk hazard, a shaft, lava: where the ball falls nothing is laid)
   const sunk = s.zones.filter((q) => q !== z && open(q) != null);
-  // (each patch at its own height, its lift with it, 0.025 apart from any other laid before it that it overlaps — and
+  // (each patch at its own height, 0.025 apart from any other laid before it that it overlaps — and
   // so 0.01 from that one's edge ink, 0.015 over it; 0.04 up at least: clear of the lane's own coarser triangles on its
   // slopes, and 0.02 over the world's edging laid at 0.02)
-  const bases = patched.get(s) ?? patched.set(s, new Map()).get(s)!, up = lift(boxOf(z).cx, boxOf(z).cz, 0);
+  const bases = patched.get(s) ?? patched.set(s, new Map()).get(s)!;
   if (!bases.has(z)) {
     const near = [...bases].filter(([q]) => q.min[0] < z.max[0] + 0.3 && z.min[0] < q.max[0] + 0.3 && q.min[1] < z.max[1] + 0.3 && z.min[1] < q.max[1] + 0.3).map(([, b]) => b);
-    const b = [0, 1, 2].map((k) => 0.04 + up + 0.025 * k).find((b) => near.every((q) => Math.abs(b - q) >= 0.025 - 1e-6));
-    bases.set(z, b ?? 0.04 + up);
+    const b = [0, 1, 2].map((k) => 0.04 + 0.025 * k).find((b) => near.every((q) => Math.abs(b - q) >= 0.025 - 1e-6));
+    bases.set(z, b ?? 0.04);
   }
-  const own = bases.get(z)! - up;
+  const base = bases.get(z)!;
   // (its corners that fall in the void or a sunk hazard pulled onto its edge: the patch ends along the drop, not in steps)
-  // (a shaft's collar ring, 0.42 round its mouth, left to the collar's planks: the paving ends at its outer edge)
-  const grow = (o: MutVec2[], d: number) => { const n = normals(o); return o.map(([x, zz], k): MutVec2 => [x + n[k][0] * d, zz + n[k][1] * d]); };
-  const sunkOut = sunk.map((q) => ({ q, o: q.skin === "shaft" ? grow(outline(q, s), 0.42) : outline(q, s) })), void0 = offVoid(s);
+  // (a shaft's collar ring left to the collar's planks: the paving ends at its outer edge)
+  const sunkOut = sunk.map((q) => ({ q, o: q.skin === "shaft" ? grow(outline(q, s), COLLAR) : outline(q, s) })), void0 = offVoid(s);
   const snap = (x: number, zz: number): MutVec2 | null => { const v = void0(x, zz); if (v) return v; const k = sunkOut.find(({ o }) => inPoly(x, zz, o)); return k ? nearestOnPoly(x, zz, k.o) : null; };
-  const geo = sheet(pts, 0.35, (x, zz, d) => drawnGround(t, x, zz) + own + lift(x, zz, d), col, (x, zz) => !overVoid(s, x, zz) && t.onGreen(x, zz) && Math.hypot(x - s.cup[0], zz - s.cup[1]) > 1.6 && !sunkOut.some(({ o }) => inPoly(x, zz, o) && edgeDist(x, zz, o) > 0.5), cells, snap); // (nothing laid over the cup's rings; a cell across a sunk hazard's edge kept, its corners in it pulled onto the edge: the paving ends exactly on the lip)
+  const geo = sheet(pts, 0.35, (x, zz) => drawnGround(t, x, zz) + base, col, (x, zz) => !overVoid(s, x, zz) && t.onGreen(x, zz) && Math.hypot(x - s.cup[0], zz - s.cup[1]) > 1.6 && !sunkOut.some(({ o }) => inPoly(x, zz, o) && edgeDist(x, zz, o) > 0.5), cells, snap); // (nothing laid over the cup's rings; a cell across a sunk hazard's edge kept, its corners in it pulled onto the edge: the paving ends exactly on the lip)
   const mesh = new THREE.Group();
-  mesh.add(new THREE.Mesh(geo, laid()), edgeInk(pts, t, s, own + 0.015 + lift(pts[0][0], pts[0][1], 0)));
+  mesh.add(new THREE.Mesh(geo, laid()), edgeInk(pts, t, s, base + 0.015));
   return { mesh, pts };
 }
 
@@ -687,7 +686,7 @@ function stones(spots: readonly Vec2[], t: Terrain, rand: Rand, r0: number, r1: 
 /** Rubble: scree over the floor, grey-violet grit thinning at its edge, stones of every size in strata on it. */
 function rubble(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   const grit = [0x837a98, 0x71688a, 0x8c7c6c].map((c) => new THREE.Color(c));
-  const { mesh, pts } = patch(z, t, s, (_x, _zz, d, c) => c.copy(grit[0]).lerp(grit[1], 0.5 * (1 - smoothstep(d / 0.5))), () => 0);
+  const { mesh, pts } = patch(z, t, s, (_x, _zz, d, c) => c.copy(grit[0]).lerp(grit[1], 0.5 * (1 - smoothstep(d / 0.5))));
   const g = new THREE.Group();
   g.add(mesh);
   const ok = (x: number, zz: number) => t.onGreen(x, zz) && !overVoid(s, x, zz);
@@ -702,7 +701,7 @@ function rubble(z: Zone, t: Terrain, s: Hole, rand: Rand) {
 /** An ore pile: a low heap of crushed ore, dark and glinting, lumps and nuggets of copper and gold on it. */
 function orePile(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   const ores = [0x9a7a5a, 0x8a6a4c, 0xa88a62].map((c) => new THREE.Color(c));
-  const { mesh, pts } = patch(z, t, s, (_x, _zz, d, c) => c.copy(ores[0]).lerp(ores[1], 0.6 * (1 - smoothstep(d / 0.5))), () => 0);
+  const { mesh, pts } = patch(z, t, s, (_x, _zz, d, c) => c.copy(ores[0]).lerp(ores[1], 0.6 * (1 - smoothstep(d / 0.5))));
   const g = new THREE.Group();
   g.add(mesh);
   const ok = (x: number, zz: number) => t.onGreen(x, zz) && !overVoid(s, x, zz);
@@ -731,10 +730,12 @@ function ballast(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   const { w, h, cx, cz } = boxOf(z);
   if (!z.poly && Math.max(w, h) > 2.5 * Math.min(w, h)) {
     const along = w >= h, L = Math.max(w, h), gauge = Math.min(1.1, Math.min(w, h) * 0.32);
+    // (the bed is rounded and the track straight: each part of it only where it lies on the bed, u along it, v across)
+    const onBed = (u: number, v: number) => inPoly(along ? cx + u : cx + v, along ? cz + v : cz + u, pts);
     const sleepers: THREE.BufferGeometry[] = [];
     for (let u = -L / 2 + 0.5; u <= L / 2 - 0.4; u += 0.75) {
       const x = along ? cx + u : cx, zz = along ? cz : cz + u;
-      if (!ok(x, zz)) continue;
+      if (!ok(x, zz) || !onBed(u, -gauge - 0.3) || !onBed(u, gauge + 0.3)) continue;
       // (flush with the bed: the ball rolls over them)
       const geo = new THREE.BoxGeometry(along ? 0.28 : gauge * 2 + 0.6, 0.06, along ? gauge * 2 + 0.6 : 0.28).translate(x, t.height(x, zz) + 0.03, zz);
       paint(geo, (_x, y, _z, c) => c.set(TIMBER_DARK).multiplyScalar(0.8 + 1.5 * (y - t.height(x, zz))));
@@ -744,11 +745,14 @@ function ballast(z: Zone, t: Terrain, s: Hole, rand: Rand) {
     for (const sd of [-gauge, gauge]) {
       // (let into the bed, their heads flush, as a crossing's rails: a rail's own I, foot, web and head, not a bar)
       const sh = new THREE.Shape([[-0.06, 0], [0.06, 0], [0.06, 0.02], [0.015, 0.035], [0.015, 0.065], [0.035, 0.07], [0.035, 0.095], [-0.035, 0.095], [-0.035, 0.07], [-0.015, 0.065], [-0.015, 0.035], [-0.06, 0.02]].map(([a, b]) => new THREE.Vector2(a, b)));
-      const len = L - 0.6, geo = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false }).translate(0, 0, -len / 2);
+      // (as far along its line as the bed goes, 0.3 short of its edge at each end)
+      let lo = Infinity, hi = -Infinity;
+      for (let u = -L / 2; u <= L / 2; u += 0.05) if (onBed(u, sd)) (lo = Math.min(lo, u)), (hi = Math.max(hi, u));
+      const len = hi - lo - 0.6, mid = (lo + hi) / 2, geo = new THREE.ExtrudeGeometry(sh, { depth: len, bevelEnabled: false }).translate(0, 0, -len / 2);
       if (along) geo.rotateY(Math.PI / 2);
       paint(geo, (_x, y, _z, c) => c.set(y > 0.07 ? 0xb8bec9 : 0x7a808e));
       const r = inked(geo, relief(), INK_THIN);
-      r.position.set(along ? cx : cx + sd, t.height(cx, cz) - 0.005, along ? cz + sd : cz);
+      r.position.set(along ? cx + mid : cx + sd, t.height(cx, cz) - 0.005, along ? cz + sd : cz + mid);
       g.add(r);
     }
   }
@@ -768,10 +772,18 @@ function dripPool(z: Zone, t: Terrain, s: Hole, rand: Rand) {
 /** Crystal ice: a floor of pale glass, deep cyan in its middle, crystals caught in it, frost at its rim, a glint. */
 let iceMat: THREE.MeshPhongMaterial | null = null;
 function ice(z: Zone, t: Terrain, s: Hole, rand: Rand) {
-  // (not over the cup's rings: the cup is set in the rock, the ice round it)
-  const [cx0, cz0] = s.cup, CUP = 1.6, pts = outline(z, s), g = new THREE.Group(), ok = (x: number, zz: number) => t.onGreen(x, zz) && !overVoid(s, x, zz) && Math.hypot(x - cx0, zz - cz0) > CUP;
-  // (its edge round the cup a clean circle: the corners inside it pulled onto it, not a ring of stepped cells)
-  const round = (x: number, zz: number): MutVec2 | null => { const d = Math.hypot(x - cx0, zz - cz0); return d < CUP ? [cx0 + ((x - cx0) / (d || 1)) * CUP, cz0 + ((zz - cz0) / (d || 1)) * CUP] : null; };
+  // (not over the cup's rings: the cup is set in the rock, the ice round it; nor under a surface listed after it,
+  // the floor there as the physics has it)
+  const over = s.zones.slice(s.zones.indexOf(z) + 1).filter((q) => q.kind === "surface").map((q) => outline(q, s)), under = (x: number, zz: number) => over.some((o) => inPoly(x, zz, o));
+  const [cx0, cz0] = s.cup, CUP = 1.6, pts = outline(z, s), g = new THREE.Group(), ok = (x: number, zz: number) => t.onGreen(x, zz) && !overVoid(s, x, zz) && Math.hypot(x - cx0, zz - cz0) > CUP && !under(x, zz);
+  // (its edge round the cup a clean circle, and along such a surface that surface's outline: the corners inside
+  // pulled onto it, not stepped cells)
+  const snap = (x: number, zz: number): MutVec2 | null => {
+    const d = Math.hypot(x - cx0, zz - cz0);
+    if (d < CUP) return [cx0 + ((x - cx0) / (d || 1)) * CUP, cz0 + ((zz - cz0) / (d || 1)) * CUP];
+    const o = over.find((q) => inPoly(x, zz, q));
+    return o ? nearestOnPoly(x, zz, o) : null;
+  };
   const rimC = new THREE.Color(0xeafaff), mid = new THREE.Color(0x9fdcf0), deep = new THREE.Color(0x5fb4d8), lit = new THREE.Color(0xb8f6ff);
   // crystals frozen in it, just under the surface: seen through as a glow in the ice itself (its colours: no glow
   // laid over the lane)
@@ -801,7 +813,7 @@ function ice(z: Zone, t: Terrain, s: Hole, rand: Rand) {
     // frost: white creeping in from its edge, speckled
     const f = (1 - smoothstep(d / 0.9)) * (0.55 + 0.45 * vnoise(x * 4.1, zz * 4.1));
     c.lerp(frost, 0.8 * f);
-  }, (x, zz) => t.onGreen(x, zz) && !overVoid(s, x, zz) && Math.hypot(x - cx0, zz - cz0) > CUP * 0.55, 8000, round); // (fine on a big floor: it follows the ground under it)
+  }, (x, zz) => t.onGreen(x, zz) && !overVoid(s, x, zz) && Math.hypot(x - cx0, zz - cz0) > CUP * 0.55 && !over.some((o) => inPoly(x, zz, o) && edgeDist(x, zz, o) > step), 8000, snap); // (fine on a big floor: it follows the ground under it)
   iceMat ||= share(new THREE.MeshPhongMaterial({ vertexColors: true, emissive: 0x3f8fb8, emissiveIntensity: 0.3, shininess: 110, specular: 0xffffff, flatShading: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
   g.add(new THREE.Mesh(geo, iceMat));
   // facet lines: the crystal's cleavage, straight cracks at three angles
@@ -811,7 +823,7 @@ function ice(z: Zone, t: Terrain, s: Hole, rand: Rand) {
     if (!x) continue;
     const a = (Math.floor(rand() * 3) / 3) * Math.PI + 0.3, l = 0.5 + rand() * 1.2;
     const p = [x - Math.cos(a) * l, zz - Math.sin(a) * l], q = [x + Math.cos(a) * l, zz + Math.sin(a) * l];
-    if (!inPoly(p[0], p[1], pts) || !inPoly(q[0], q[1], pts)) continue;
+    if (!inPoly(p[0], p[1], pts) || !inPoly(q[0], q[1], pts) || under(p[0], p[1]) || under(q[0], q[1])) continue;
     lines.push(new THREE.Vector3(p[0], t.height(p[0], p[1]) + 0.05, p[1]), new THREE.Vector3(q[0], t.height(q[0], q[1]) + 0.05, q[1]));
   }
   if (lines.length) g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 })));
@@ -866,7 +878,7 @@ function gold(z: Zone, t: Terrain, s: Hole, rand: Rand) {
 }
 
 /** A stepping stone of the causeway: a cluster of basalt columns up out of the lava, their tops a hexagonal paving at the lane's height. */
-function causeway(z: Zone, t: Terrain, s: Hole, _rand: Rand) {
+function causeway(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), pts = outline(z, s);
   const cols: THREE.BufferGeometry[] = [];
   const R = 0.42, dx = R * 1.5, dz = R * Math.sqrt(3);
@@ -894,8 +906,6 @@ function causeway(z: Zone, t: Terrain, s: Hole, _rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ the lava falls
-//
 // A curtain of lava pouring from a spout in the vault across the gallery,
 // on the tick clock: when its window opens the head of the flow falls from
 // the spout to the floor, it pours through the window, then its tail falls
@@ -1028,8 +1038,6 @@ function lavaFall(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ hills
-//
 // The terrain raises a hill's ground itself (terrain.ts): here what it is
 // made of, laid on that ground.
 
@@ -1047,7 +1055,7 @@ function conveyor(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), A = axes(z), ok = (x: number, zz: number) => t.onGreen(x, zz) && !overVoid(s, x, zz);
   const { mesh } = patch(z, t, s, (_x, _zz, _d, c) => c.set(0x34303e));
   g.add(mesh);
-  const at = (a: number, b: number): THREE.Vector3 => { const x = A.cx + A.ux * a + A.nx * b, zz = A.cz + A.uz * a + A.nz * b; return new THREE.Vector3(x, t.height(x, zz), zz); };
+  const at = (a: number, b: number, out = new THREE.Vector3()) => { const x = A.cx + A.ux * a + A.nx * b, zz = A.cz + A.uz * a + A.nz * b; return out.set(x, t.height(x, zz), zz); };
   // (all of it flush with the belt, its ribs a hair over it: the ball rolls over the whole of it)
   // the side frames: iron channel along each edge
   const frame: THREE.BufferGeometry[] = [];
@@ -1110,9 +1118,9 @@ function conveyor(z: Zone, t: Terrain, s: Hole) {
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(A.uz, A.ux)), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3();
   animate((tt) => {
     for (let k = 0; k < N; k++) {
-      const a = A.a0 + mod((k * L) / N + tt * speed, L), p = at(a, 0);
+      const a = A.a0 + mod((k * L) / N + tt * speed, L), p = at(a, 0, P);
       const vis = ok(p.x, p.z);
-      cleats.setMatrixAt(k, M.compose(P.set(p.x, p.y + 0.045, p.z), Q, vis ? S : P.clone().set(0, 0, 0)));
+      cleats.setMatrixAt(k, M.compose(p.setY(p.y + 0.045), Q, vis ? S : NONE));
     }
     cleats.instanceMatrix.needsUpdate = true;
   });
@@ -1122,9 +1130,9 @@ function conveyor(z: Zone, t: Terrain, s: Hole) {
 /** The man-way: an incline laid with planks across, battens nailed over them for the feet, worn in the middle. */
 function incline(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), A = axes(z);
-  // (the kit's boards, across the incline: every deck of the mines one way; none on a shaft's collar, 0.5 round its
-  // mouth: the collar's planks are the floor there)
-  const collars = s.zones.filter((q) => q.skin === "shaft").map((q) => { const o = outline(q, s), n = normals(o); return o.map(([x, zz], k): MutVec2 => [x + n[k][0] * 0.5, zz + n[k][1] * 0.5]); });
+  // (the kit's boards, across the incline: every deck of the mines one way; none on a shaft's collar nor a hair past
+  // it: the collar's planks are the floor there)
+  const collars = s.zones.filter((q) => q.skin === "shaft").map((q) => grow(outline(q, s), COLLAR + 0.08));
   const on = (x: number, zz: number) => inZone(z, x, zz) && t.onGreen(x, zz) && !overVoid(s, x, zz) && !inHazard(s, x, zz) && !collars.some((o) => inPoly(x, zz, o));
   // (their tops taken at their own edges, 0.05 over the slope: laid across it, a board's edges sampled further out
   // put its lower edge down in the lane; and a flat board over a hump dips at its middle)
@@ -1165,7 +1173,7 @@ function ledgeBank(z: Zone, t: Terrain, s: Hole) {
     const along = ((x - A.cx) * pu[0] + (zz - A.cz) * pu[1]) / span, across = (x - A.cx) * -pu[1] + (zz - A.cz) * pu[0];
     c.multiplyScalar(1.1 - 0.3 * smoothstep(along * 0.5 + 0.5));
     if (Math.abs(fract(across * 1.7 + 0.35 * vnoise(along * 3, across)) - 0.5) < 0.06) c.lerp(joint, 0.35);
-  }, () => 0, 5000); // (its own height over the ground as drawn is enough: it never shows through the paving)
+  }, 5000);
   return mesh;
 }
 const fract = (v: number) => v - Math.floor(v);
@@ -1201,7 +1209,7 @@ function ropeBridge(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   // (no wider or longer than the lane it carries: its boards' ragged ends, up to 0.15 past its sides, still over the
   // lane's edge, not out over the drop)
   const a = at(u0).setY(0), b = at(u1).setY(0);
-  const d = deck({ a: a.clone().sub(at(0)), b: b.clone().sub(at(0)), width: hi - lo - 0.1, rail: "none", rand });
+  const d = deck({ a: a.clone().sub(at(0)), b: b.clone().sub(at(0)), width: hi - lo - 0.1, rand });
   bakeLocal(d);
   const piv = new THREE.Group();
   piv.add(d);
@@ -1232,8 +1240,6 @@ function ropeBridge(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   }
   return g;
 }
-
-// ------------------------------------------------------------ the air
 
 /** Where along a zone its air comes from: the edge against its push, split into outlets (grates or nozzles) a couple of units apart. */
 function outlets(z: Zone, t: Terrain) {
@@ -1341,7 +1347,7 @@ function magnet(z: Zone, t: Terrain, s: Hole, rand: Rand) {
     // (low in the floor, their tops under 0.1 over it: the ball rolls over the vein, nothing of it stands in its way)
     const r = 0.14 + rand() * 0.14, geo = new THREE.OctahedronGeometry(r, 0).scale(1, 0.3, 1).rotateY(rand() * 6).translate(x, t.height(x, zz) + 0.01, zz);
     paint(geo, (_x, y, _z, c) => c.set(rand() < 0.2 ? RUST : 0x3c4252).multiplyScalar(0.8 + 2 * (y - t.height(x, zz))));
-    lumpsG.push(geo.toNonIndexed());
+    lumpsG.push(geo);
   }
   if (lumpsG.length) {
     const m = mergeGeometries(lumpsG);
@@ -1360,19 +1366,6 @@ function magnet(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   ud(filings).live = true;
   g.add(filings);
   animate((tt) => ((filings.material).opacity = 0.45 + 0.3 * (0.5 + 0.5 * Math.sin(tt * 2.2))));
-  return g;
-}
-
-// ------------------------------------------------------------ the Heart
-
-/** The Heart's chamber floor: crystal paving, and the Heart itself floating high over it, turning, lighting it. */
-function heart(z: Zone, t: Terrain, s: Hole) {
-  const g = new THREE.Group(), A = axes(z);
-  const tones = [0x5fd8f0, 0x8fe8ff, 0xb27cff].map((c) => new THREE.Color(c).multiplyScalar(0.5));
-  const { mesh } = patch(z, t, s, (x, zz, d, c) => c.copy(tones[mod(Math.floor(x * 0.8) + Math.floor(zz * 0.8), 3)]).lerp(new THREE.Color(0x2a2440), 0.4 * (1 - smoothstep(d / 1.5))));
-  g.add(mesh);
-  // (on the chamber's far rim from its entry: the zone's middle is the lane)
-  g.add(heartCrystal(A.cx + A.ux * A.a1 * 0.9, A.cz + A.uz * A.a1 * 0.9, t.height(A.cx, A.cz), Math.min(A.b1 - A.b0, A.a1 - A.a0) * 0.12 + 0.8));
   return g;
 }
 
@@ -1442,14 +1435,12 @@ function streams(rand: Rand, L: number, T: number, n: number, r: number) {
   return crustBy(geo, () => FALLING);
 }
 
-// ------------------------------------------------------------ dispatch
-
 export function zone(z: Zone, t: Terrain, s: Hole): THREE.Object3D | undefined {
   const rand = seeded("mz" + s.hole + z.min.join() + z.max.join() + z.skin);
   switch (z.skin) {
     case "lava": return z.every ? undefined : lava(z, t, s, rand);
     case "lava fall": return lavaFall(z, t, s, rand);
-    case "shaft": return z.every ? undefined : shaft(z, t, s, rand);
+    case "shaft": return z.every ? undefined : shaft(z, t, s);
     case "sump": return sump(z, t, s, rand);
     case "hot spring": return hotSpring(z, t, s, rand);
     case "ore bin": return oreBin(z, t, s, rand);
@@ -1459,7 +1450,7 @@ export function zone(z: Zone, t: Terrain, s: Hole): THREE.Object3D | undefined {
     case "drip pool": return dripPool(z, t, s, rand);
     case "ice": return ice(z, t, s, rand);
     case "gold": return gold(z, t, s, rand);
-    case "causeway": return causeway(z, t, s, rand);
+    case "causeway": return causeway(z, t, s);
     case "conveyor": return conveyor(z, t, s);
     case "incline": return incline(z, t, s);
     case "ledge bank": return ledgeBank(z, t, s);
@@ -1468,13 +1459,10 @@ export function zone(z: Zone, t: Terrain, s: Hole): THREE.Object3D | undefined {
     case "vent": return steamJets(z, t, s, rand, false);
     case "booster": return steamJets(z, t, s, rand, true);
     case "magnet": return magnet(z, t, s, rand);
-    case "heart": return heart(z, t, s);
     default: return undefined;
   }
 }
 
-// ------------------------------------------------------------ falling in
-//
 // The ball into each hazard of the mines, in its own way (worlds.ts fallIn:
 // the replay has brought it down to where it meets the hazard, then steps
 // this for its 1.4 s while the ball sinks and comes back): into lava a hiss,
@@ -1588,7 +1576,7 @@ export function fallIn(_s: Hole, skin: string, at: THREE.Vector3, loud: boolean)
       billow(at, 0x3a3450, 5, 1.2, 0.5, 1.2, 0.6),
     ]);
   }
-  if (skin === "sump" || skin === "drip pool") {
+  if (skin === "sump") {
     say("splash");
     return fx([
       flung(at, new THREE.SphereGeometry(0.07, 6, 4).scale(1, 1.6, 1), DROP, 12, 2.2, 6, 1.1, at.y - 0.1),

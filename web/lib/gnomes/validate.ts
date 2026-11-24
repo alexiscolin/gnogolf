@@ -1,4 +1,4 @@
-// The collection's rules, checked (docs/gnomes/design.md): what a tier may
+// The collection's rules, checked: what a tier may
 // wear, no two gnomes alike, none a copy of GNOMES', readable on every
 // ground and as a ghost, the counts as the series says. Pure: the catalogue
 // in, a report out (scripts/gnomes.ts prints it; the tests hold it to none).
@@ -29,7 +29,7 @@ export const BUDGET = {
 export const MAX_REACH = 1.1;
 /** A duel's ghost's opacity (engine/rival.ts makeGhost(0.55)). */
 const GHOST = 0.55;
-const INK = 0x144134;
+const INK = colour("ink");
 
 /** The trails and holings each tier may have: a Rare's ribbon, the Epics' own, the Legendaries' own. */
 export const TIER_FX: Readonly<Record<Tier, { trails: readonly string[]; holings: readonly string[] }>> = {
@@ -88,7 +88,7 @@ export function earnedSignature(t: Traits): string {
 /** What a gnome must read against: his ink eyes on his body, his hat on his body, him on every ground and as a ghost. */
 export function readability(t: Traits): string[] {
   const out: string[] = [];
-  const body = t.pattern !== "plain" ? t.body : t.body ?? 0xfdf6e9, hat = t.hatColour ?? 0xe0524b;
+  const body = t.pattern !== "plain" ? t.body : t.body ?? CREAM, hat = t.hatColour ?? CAP;
   if (body !== null && !darkBody(body) && oklab(body)[0] - oklab(INK)[0] < 0.25) out.push(`eyes: ink on ${colourName(body)} does not read`);
   if ((t.tier === "common" || t.tier === "rare") && body !== null && deltaE(hat, body) < 0.06) out.push(`hat ${colourName(hat)} too close to body ${colourName(body)}`);
   // what shows of him: his hat and body, and an Epic's or a Legendary's marks and prop (a porcelain's paint, a neon's light)

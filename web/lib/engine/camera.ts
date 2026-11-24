@@ -99,8 +99,6 @@ export function makeCamera(E: Live) {
     return r;
   }
 
-  // ------------------------------------------------------------ the camera
-  //
   // One controller. A MODE says where the camera wants to be — classic (the
   // rig on the gnome), far (the whole hole, high and wide), third person (low
   // behind the gnome) — for the STATE the game is in: at rest, aiming, the
@@ -146,7 +144,6 @@ export function makeCamera(E: Live) {
   const takeView = () => { if (held == null) (yaw = viewYaw()), (swingTo = swing = 0), (dodge = dodgeTo = 0); };
   const ndcB = new THREE.Vector3(), ndcTop = new THREE.Vector3(), ndcBot = new THREE.Vector3(), camLog: CamRow[] = [];
   let sightOk = true, sightTick = 0, clearTick = 0;
-  const lensWho: Record<number, number> = {};
   const rawPos = new THREE.Vector3(), push = new THREE.Vector3();
 
   // Where the course goes next from a point: a distance field over the green
@@ -403,12 +400,12 @@ export function makeCamera(E: Live) {
     return railGap(x, z) >= gap;
   }
 
-  /** Third person's target, per state: 7 behind, 3 up, looking along the aim, the ball's run, or at the cup. */
   const cupPt = new THREE.Vector3(), fallPt = new THREE.Vector3();
   let laneY = 0; // the ball's height the last time it was over the lane
+  /** Third person's target, per state: 7 behind, 3 up, looking along the aim, the ball's run, or at the cup. */
   function thirdTarget(dt: number, state: CamState) {
     // holed: framed on the cup, up and back a little — the ball sinking into
-    // it is not followed down (that was a close-up of the hat)
+    // it is not followed down (that would be a close-up of the hat)
     // off the lane in a replay (off the rooftops into the street, into the
     // sea): followed across at the height it left at, never down among the houses
     const P = E.ball.position, t = g.course && g.course.userData.terrain;
@@ -607,11 +604,12 @@ export function makeCamera(E: Live) {
     const ride = gl < 0 ? g.ride : null;
     if (ride) (want.pos.copy(ride.pos), want.look.copy(ride.look), (want.fov = ride.fov ?? TP_FOV), (want.oy = 0), (want.near = 0.3), (want.far = 260));
     const snapped = snap || !sp.live || !!(ride && ride.cut);
+    const own = mode === "third" && gl < 0 && !ride; // (the third person's own pose: neither a glide's nor a ride's)
     // faster in flight, a touch faster still when the ball would leave the frame
     const w = ride ? 14 : urgent ? 16 : state === "replay" ? 11 : 9;
     if (gl >= 0) {
       // (the glide has put the pose itself)
-    } else if (!sp.live || snap || (ride && ride.cut)) {
+    } else if (snapped) {
       sp.pos.copy(want.pos), sp.look.copy(want.look), (sp.fov = want.fov), (sp.oy = want.oy), sp.vp.set(0, 0, 0), sp.vl.set(0, 0, 0), (sp.vf = sp.vo = 0), (sp.live = true);
     } else {
       // in steps of 1/60 s at most: one step over an idle frame (0.1 s) is
@@ -627,7 +625,7 @@ export function makeCamera(E: Live) {
     }
     // a floor on the real pose too (the spring lags a ball rolling back at the
     // camera): walked back out to MIN_FLAT across the ground in third person
-    if (mode === "third" && gl < 0 && !ride) {
+    if (own) {
       const B0 = E.ball.position, fx = sp.pos.x - B0.x, fz = sp.pos.z - B0.z, fl = Math.hypot(fx, fz), floor = MIN_FLAT - 0.3, k = floor / Math.max(fl, 1e-3);
       if (fl < floor && !steep && inside(B0.x + fx * k, B0.z + fz * k, NEAR_GAP)) {
         if (fl > 1e-3) walkTo(B0.x + fx * k, B0.z + fz * k, dt);
@@ -639,13 +637,13 @@ export function makeCamera(E: Live) {
     // end that lag is out past the rail — the real pose slides back in along
     // its line to the target, which is inside; not while aiming, whose target
     // may sit just over the rail: pulled in there, the pose sawed back and forth)
-    if (mode === "third" && gl < 0 && !ride && !aimView && !inside(sp.pos.x, sp.pos.z, NEAR_GAP)) {
+    if (own && !aimView && !inside(sp.pos.x, sp.pos.z, NEAR_GAP)) {
       _d.subVectors(want.pos, sp.pos);
       let q = 1;
       while (q < 8 && !inside(sp.pos.x + (_d.x * q) / 8, sp.pos.z + (_d.z * q) / 8, NEAR_GAP)) q++;
       sp.pos.y += ((_d.y * q) / 8) * walkTo(sp.pos.x + (_d.x * q) / 8, sp.pos.z + (_d.z * q) / 8, dt);
     }
-    if (orbiting && mode === "third" && gl < 0 && !ride) {
+    if (orbiting && own) {
       const B0 = E.ball.position, fl = Math.hypot(sp.pos.x - B0.x, sp.pos.z - B0.z), vr = sp.vp.x * -cdir.x + sp.vp.z * -cdir.z;
       (sp.pos.x = B0.x - cdir.x * fl), (sp.pos.z = B0.z - cdir.z * fl);
       (sp.vp.x = -cdir.x * vr), (sp.vp.z = -cdir.z * vr); // (radial only: nothing left to kick it sideways after)
@@ -653,7 +651,7 @@ export function makeCamera(E: Live) {
     // never a dive at the ball: across the ground the pose closes in at APPROACH at most, held at
     // the furthest stand still inside, the spring's pull in dropped (the clear pass pulling it in
     // front of a rail did it in a frame); not catching up on a ball out of sight
-    if (mode === "third" && gl < 0 && !ride && !snapped && !urgent) {
+    if (own && !snapped && !urgent) {
       const B0 = E.ball.position, fx = sp.pos.x - B0.x, fz = sp.pos.z - B0.z, fl = Math.hypot(fx, fz), most = lastFl - APPROACH * farOf() * dt;
       if (fl < most && fl > 1e-3) {
         let q = 0, r = most;
@@ -662,18 +660,18 @@ export function makeCamera(E: Live) {
       }
     }
     // a world's relief and solids: the real pose too (the springs cut corners)
-    if (mode === "third" && gl < 0 && !ride && hasSolids()) {
+    if (own && hasSolids()) {
       refreshDyn();
       const B0 = E.ball.position;
       sp.pos.y = Math.max(sp.pos.y, floorAt(sp.pos.x, sp.pos.z) + 0.6);
       unbox(sp.pos, B0, want.pos);
     }
-    lastFl = mode === "third" && gl < 0 && !ride ? Math.hypot(sp.pos.x - E.ball.position.x, sp.pos.z - E.ball.position.z) : 0;
+    lastFl = own ? Math.hypot(sp.pos.x - E.ball.position.x, sp.pos.z - E.ball.position.z) : 0;
     // the gnome never off the picture: the look turned toward him when it is
     // more than LOOK_OFF of the lens off him — the springs lagging a ball
     // rolling back at a camera the board leaves no room to back off in, or
     // the glide's look still on the middle of a long hole
-    if ((mode === "third" && gl < 0 && !ride) || gl > 0) {
+    if (own || gl > 0) {
       const lens = Math.atan(LOOK_OFF * Math.tan(((sp.fov / 2) * Math.PI) / 180));
       const off = gl > 0 ? Math.max(lens, glide.off0) + (lens - Math.max(lens, glide.off0)) * gl : lens;
       _d.subVectors(sp.look, sp.pos);
@@ -752,14 +750,14 @@ export function makeCamera(E: Live) {
   const STEEP = (65 * Math.PI) / 180; // a world's solids: looking over one right by the gnome
   let steep = false; // the last collision pass looked over one so
   const maxPitch = () => MAX_PITCH + (aimView ? 0 : squeeze * SQUEEZE_PITCH); // (aiming, never steeper: the view along the aim is the point)
-  /** Whether the line from B (raised by lift) to C clears the ground (from 1.5 out). */
-  function lineClear(B: THREE.Vector3, cx: number, cy: number, cz: number, lift = 0.7) {
+  /** Whether the line from B to C clears the ground (from 1.5 out). */
+  function lineClear(B: THREE.Vector3, cx: number, cy: number, cz: number) {
     const L = Math.hypot(cx - B.x, cz - B.z) || 1;
     for (let k = 1; k < 8; k++) {
       const t = k / 8;
       if (t * L < 1.5) continue;
       const x = B.x + (cx - B.x) * t, z = B.z + (cz - B.z) * t;
-      if (B.y + lift + (cy - B.y - lift) * t < floorAt(x, z) + 0.15) return false;
+      if (B.y + (cy - B.y) * t < floorAt(x, z) + 0.15) return false;
     }
     return true;
   }
@@ -778,7 +776,7 @@ export function makeCamera(E: Live) {
     if (!course) return void ((fixed = solids = new Float32Array(0)), (solidsFor = reliefFor = reliefFn = null), (wallsFor = null), (wallsAll = NO_WALLS));
     const out: number[] = [];
     course.updateMatrixWorld(true);
-    boxesOf(course, course, false, out);
+    boxesOf(course, false, out);
     (fixed = new Float32Array(out)), (solids = fixed), (solidsFor = course), nearAt.set(Infinity, 0, 0), (dynTick = 0);
   }
   // what moves (a machine, a ride, a stroke's pieces: built after the merge,
@@ -789,7 +787,7 @@ export function makeCamera(E: Live) {
   function refreshDyn() {
     if (!g.course || !hasSolids() || dynTick++ % DYN_EVERY) return;
     const out: number[] = [];
-    boxesOf(g.course, g.course, true, out, E.ball.position);
+    boxesOf(g.course, true, out, E.ball.position);
     const n = fixed.length + out.length;
     if (dynBuf.length < n) dynBuf = new Float32Array(n * 2);
     solids = dynBuf.subarray(0, n);
@@ -801,14 +799,14 @@ export function makeCamera(E: Live) {
   // stand still on the CPU (the lamps swing in their shader, a stroke's
   // pieces wait between strokes), and a big one is boxed vertex by vertex
   const boxed = new WeakMap<THREE.Mesh, { at: number[]; geo: THREE.BufferGeometry; v: number; out: number[] }>();
-  // the boxes of root's opaque meshes, the ones that stand still (moving
+  // the boxes of the course's opaque meshes, the ones that stand still (moving
   // false) or the moving ones and a stroke's pieces (true), into out
   // (near: only what stands within NEAR_R of it — a moving piece further off is no camera's business yet)
   const NEAR_R = 20, _s = new THREE.Sphere();
-  function boxesOf(course: THREE.Object3D, root: THREE.Object3D, moving: boolean, out: number[], near?: THREE.Vector3) {
+  function boxesOf(course: THREE.Object3D, moving: boolean, out: number[], near?: THREE.Vector3) {
     const height = (course.userData as { height: Height }).height;
     const moves = (o: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p && p !== course; p = p.parent) if (ud(p).live || p === E.extras) return true; return false; };
-    root.traverseVisible((o) => {
+    course.traverseVisible((o) => {
       if (!(o instanceof THREE.Mesh) || moves(o) !== moving) return;
       const mat = (Array.isArray(o.material) ? o.material[0] : o.material) as THREE.Material | undefined;
       // (a crystal is see-through but solid: what is nearly clear, a glow, an ink hull, is not)
@@ -882,12 +880,12 @@ export function makeCamera(E: Live) {
   // as it likes, and from inside at once); where it leaves it, in boxOut
   const O3 = [0, 0, 0], D3 = [0, 0, 0];
   let boxOut = 1;
-  function boxT(k: number, ox: number, oy: number, oz: number, px: number, py: number, pz: number, pad = 0, flat = false, any = false, arr: Float32Array = solids) {
+  function boxT(k: number, ox: number, oy: number, oz: number, px: number, py: number, pz: number, pad = 0, flat = false) {
     (O3[0] = ox), (O3[1] = oy), (O3[2] = oz), (D3[0] = px - ox), (D3[1] = py - oy), (D3[2] = pz - oz);
     let t0 = 0, t1 = 1;
     for (let a = 0; a < 3; a++) {
       if (flat && a === 1) continue;
-      const lo = arr[k + a] - pad, hi = arr[k + 3 + a] + pad;
+      const lo = solids[k + a] - pad, hi = solids[k + 3 + a] + pad;
       if (Math.abs(D3[a]) < 1e-9) {
         if (O3[a] < lo || O3[a] > hi) return -1;
         continue;
@@ -897,7 +895,7 @@ export function makeCamera(E: Live) {
       if (t0 > t1) return -1;
     }
     boxOut = t1;
-    return t0 > 0 ? t0 : flat ? 1e-3 : any ? 0 : -1;
+    return t0 > 0 ? t0 : flat ? 1e-3 : -1;
   }
   const inBox = (k: number, P: THREE.Vector3, pad: number) => P.x > solids[k] - pad && P.x < solids[k + 3] + pad && P.y > solids[k + 1] - pad && P.y < solids[k + 4] + pad && P.z > solids[k + 2] - pad && P.z < solids[k + 5] + pad;
   // a camera in a box, or under one within UNDER (the springs cutting a
@@ -961,26 +959,28 @@ export function makeCamera(E: Live) {
   // whether the course hides B from P: a wall or a post between them, higher
   // than the sight line where it crosses (no allocation, no ray)
   const POST_H = 1.6;
-  let why = ""; // what occluded() last found in the way (the probes')
+  let blocker: Wall | Post | number | "ground" | "" = ""; // what occluded() last found in the way: a solid by its offset in solids
   function occluded(P: THREE.Vector3, B: THREE.Vector3) {
     if (!g.s) return false;
     // the ground and the decor between (from 1.5 out: what the ball sits in is not in the way)
-    if (!lineClear(B, P.x, P.y, P.z, 0)) return (why = "ground"), true;
+    if (!lineClear(B, P.x, P.y, P.z)) return (blocker = "ground"), true;
     for (const w of walls()) {
       if (!inWay(w)) continue;
       const t = segHit(B.x, B.z, P.x, P.z, w.a, w.b); // from the ball towards the camera
       if (t < 0) continue;
       const x = B.x + (P.x - B.x) * t, z = B.z + (P.z - B.z) * t;
-      if (B.y + (P.y - B.y) * t < ground(x, z) + wallH(w)) return (why = "wall " + w.skin), true;
+      if (B.y + (P.y - B.y) * t < ground(x, z) + wallH(w)) return (blocker = w), true;
     }
     for (const p of posts()) {
       if (!p.c) continue;
       const t = rayCircle(B.x, B.z, P.x, P.z, p.c, p.r || 0.5);
-      if (t > 0 && t < 1 && B.y + (P.y - B.y) * t < ground(p.c[0], p.c[1]) + POST_H) return (why = "post " + p.skin), true;
+      if (t > 0 && t < 1 && B.y + (P.y - B.y) * t < ground(p.c[0], p.c[1]) + POST_H) return (blocker = p), true;
     }
-    for (const k of nearSolids()) if (boxT(k, B.x, B.y, B.z, P.x, P.y, P.z) >= 0) return (why = "box " + Array.from(solids.subarray(k, k + 6), (v) => v.toFixed(1)).join(",")), true;
-    return (why = ""), false;
+    for (const k of nearSolids()) if (boxT(k, B.x, B.y, B.z, P.x, P.y, P.z) >= 0) return (blocker = k), true;
+    return (blocker = ""), false;
   }
+  /** What occluded() last found in the way, in the probes' words. */
+  const why = () => (typeof blocker === "string" ? blocker : typeof blocker === "number" ? "box " + Array.from(solids.subarray(blocker, blocker + 6), (v) => v.toFixed(1)).join(",") : ("a" in blocker ? "wall " : "post ") + blocker.skin);
   // the nearest wall, post or solid on the line from (ox, oz) to (cx, cz), as
   // a fraction (1: none); its top (hitTop) for the sight line to clear there
   let hitH = KERB, hitY = NaN, hitOut = 0; // the kerb's height over the ground there, or a solid's top (and where the line leaves it)
@@ -1051,19 +1051,19 @@ export function makeCamera(E: Live) {
   }
   const SWINGS: readonly number[] = [0, 0.45, -0.45, 0.9, -0.9, 1.35, -1.35, 1.8, -1.8];
   const B_ = new THREE.Vector3(); // clearHeading's ball, for room()
-  function clearHeading(B: THREE.Vector3, dist: number, up: number, aiming = false) {
+  function clearHeading(B: THREE.Vector3, dist: number, up: number, manual: boolean) {
     B_.copy(B);
     // first a heading it can look from at its own height, then one it can
     // look from by rising (up to MAX_PITCH)
     // (a tight pen: a unit closer is still the framing, and needs no climb)
     // (straight behind first, by rising if it must: the heading is the lane's
     // axis, or the aim; a swing only when it cannot see from there at all)
-    for (const off of aiming ? [0] : SWINGS)
+    for (const off of manual ? [0] : SWINGS)
       for (const [lim, dd0] of [[up, dist], [up, dist - 1], [Math.tan(MAX_PITCH) * dist, dist]] as const) {
         // straight behind, the board may bring it in (keepInside: closer and
-        // higher), aiming no nearer than AIM_FLAT; swung, only a spot inside
-        // the board at the distance will do
-        const r = off ? dd0 : Math.max(Math.min(dd0, room(0, dd0)), aiming ? AIM_FLAT : 0);
+        // higher), on the player's heading no nearer than AIM_FLAT; swung, only
+        // a spot inside the board at the distance will do
+        const r = off ? dd0 : Math.max(Math.min(dd0, room(0, dd0)), manual ? AIM_FLAT : 0);
         if (r < (off ? dd0 : 2)) continue;
         const dd = r, a = yaw + off, cx = B.x - Math.cos(a) * dd, cz = B.z - Math.sin(a) * dd;
         if (off && !inside(cx, cz)) continue;
@@ -1075,9 +1075,9 @@ export function makeCamera(E: Live) {
     pen = 0;
     // nowhere to see from: cramped straight behind (a ball against an end
     // rail) and much roomier to one side, it looks from that side instead
-    // (not while aiming: the view stays behind the aim, closer in if it must)
+    // (not on the player's heading: the view stays behind it, closer in if it must)
     const r0 = room(0, dist);
-    if (r0 >= 3 || aiming) return 0;
+    if (r0 >= 3 || manual) return 0;
     let best = 0, br = r0;
     for (const off of SWINGS) { const r = room(off, dist); if (r > br + 1e-6) (best = off), (br = r); }
     return br >= 2 * r0 ? best : 0;
@@ -1277,7 +1277,7 @@ export function makeCamera(E: Live) {
     /** A world's camSolids: the pieces' boxes, from the hole built and not yet merged. */
     collect,
     /** ?camlog only: the solids' count, and the ground under (x, z) as the camera has it. */
-    solidsInfo: (x: number, z: number, r = 0) => ({ solids: solids.length / 6, near: nearSolids().length, floor: +floorAt(x, z).toFixed(2), why: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.7)), why), body: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.3)), why),
+    solidsInfo: (x: number, z: number, r = 0) => ({ solids: solids.length / 6, near: nearSolids().length, floor: +floorAt(x, z).toFixed(2), why: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.7)), why()), body: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.3)), why()),
       boxes: r ? nearSolids().filter((k) => Math.hypot((solids[k] + solids[k + 3]) / 2 - x, (solids[k + 2] + solids[k + 5]) / 2 - z) < r).map((k) => Array.from(solids.subarray(k, k + 6), (v) => +v.toFixed(1))) : undefined }),
     /** The mouse over the course (the whole-course view leans with it). */
     hover: onHover,
@@ -1291,7 +1291,7 @@ export function makeCamera(E: Live) {
     },
     settled: () => settled,
     // for the ?camlog probes
-    occluded, camLog, lensWho,
+    occluded, camLog,
     /** The lane's axis at (x, z), as the rest heading reads it. */
     laneAt: (x: number, z: number) => laneHeading(x, z),
     /** The probes' own: the route on (true) or off (false) whatever the world, or the world's again (null). */

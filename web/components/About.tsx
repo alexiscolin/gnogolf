@@ -3,9 +3,9 @@
 import { useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { ADENA_URL, FAUCET, NETWORK, OTHER_URL } from "@/lib/network";
-import { Sheet } from "@/components/ui";
+import { BackIcon, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
-import { REALM_PATH, pkgsPath, storePath } from "@/lib/chain";
+import { REALM_PATH, RULES as LIMITS, pkgsPath, storePath } from "@/lib/chain";
 import { sound } from "@/lib/feel";
 import { optedOut, optOut } from "@/lib/analytics";
 import { courseCount, holesWord, plural } from "@/components/common";
@@ -16,8 +16,7 @@ const GITHUB = "https://github.com/alexiscolin", REPO = `${GITHUB}/gnogolf`;
 const out = { target: "_blank", rel: "noopener noreferrer" } as const;
 const ANALYTICS = !!process.env.NEXT_PUBLIC_POSTHOG_KEY;
 
-// the game's own inked icons (the title's facts): 32×32, .fi ink over
-// paper, one touch of red each
+/** The game's own inked icons (the title's facts): 32×32, .fi ink over paper, one touch of red each. */
 export const ICON = {
   aim: (<><path d="M9 6 L16 16 L23 6" className="fi" /><path d="M16 16 V28" className="fi" /><path d="M9 6 Q16 24 23 6" className="fi fi--band" /><circle cx="16" cy="19" r="3.5" className="fi fi--paper" /></>),
   chain: (<><path d="M8 4 H21 L26 9 V28 H8 Z" className="fi fi--paper" /><path d="M21 4 V9 H26" className="fi" /><path d="M12 14 H22 M12 18 H22 M12 22 H17" className="fi" /><circle cx="22" cy="23" r="3.5" className="fi fi--red" /></>),
@@ -40,17 +39,17 @@ const STEPS: readonly { title: string; text: string; icon: ReactNode }[] = [
     icon: ICON.keep,
   },
 ];
-// what gnoweb shows of the game, to check it plays as it says: the code, where the records are kept (and who may change the rules), the physics, the holes' format, the game as text
+// gnoweb's pages to check the game plays as it says (where the records are kept also says who may change the rules)
 const VERIFY = [["The realm's code", `${REALM_PATH}$source`], ["Where the records are kept", storePath(REALM_PATH)], ["The physics", `${pkgsPath(REALM_PATH)}physics$source`], ["The hole data", `${pkgsPath(REALM_PATH)}course$source`], ["The game as text", REALM_PATH]] as const;
-const FACTS = ["Weather that changes every 5 minutes", "Gnomes to unlock", "Assisted and Pro, ranked apart", "Open source"];
+const FACTS = [`Weather that changes every ${LIMITS.periodMs / 60000} minutes`, "Gnomes to unlock", "Assisted and Pro, ranked apart", "Open source"];
 /** The course's fact, from the chain's holes per cup ("5 cups · 90 holes"); none before it has answered. */
 function courseFact(counts: Readonly<Record<string, number>>) {
   const { cups, holes } = courseCount(counts);
   return cups ? [`${cups} ${plural("cup", cups)} · ${holesWord(holes)}`] : [];
 }
 
-/** The round corner button every screen has: back at the top left, about at the top right. */
-/** No onClick: there but not yet live (the menu's frame while the game loads). */
+/** The round corner button every screen has: back at the top left, about at the top right; with no onClick, there
+ *  but not yet live (the menu's frame while the game loads). */
 function CornerButton({ side, label, onClick, children }: { side: "back" | "about"; label: string; onClick?: () => void; children: ReactNode }) {
   return (
     <button className={`round round--icon screen__${side}`} aria-label={label} title={label} disabled={!onClick} onClick={(e) => (e.stopPropagation(), onClick?.())}>
@@ -65,7 +64,7 @@ export const InfoIcon = () => (
 /** A screen's back button: an inked arrow in the top-left corner. */
 export const BackButton = ({ label, onClick }: { label: string; onClick?: () => void }) => (
   <CornerButton side="back" label={label} onClick={onClick}>
-    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    <BackIcon />
   </CornerButton>
 );
 /** A screen's about button: an inked (i) in the top-right corner. */
@@ -114,27 +113,28 @@ export function FrontScreen({ className, tint = "garden", inner = "", back, onBa
   );
 }
 
-/** A front screen's head: the pill, the outlined title (an h2: the page's h1 is its name, off screen), what stands under them (dare). */
+/** A front screen's head: the pill, the outlined title (an h2: the page's h1 is its name, off screen; Golf.tsx
+ *  focuses it as its screen arrives), what stands under them (dare). */
 export function FrontHead({ eyebrow, title, dare }: { eyebrow?: string; title: ReactNode; dare?: ReactNode }) {
   return (
     <div className="front__head">
       {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-      <h2 className="worlds__title">{title}</h2>
+      <h2 className="worlds__title" tabIndex={-1}>{title}</h2>
       {dare}
     </div>
   );
 }
 
-// the rules as the chain plays them (golf.gno, docs/golf.md) and the card keeps them (lib/card.ts)
+// the rules as the chain plays them (golf.gno) and the card keeps them (lib/card.ts)
 const RULES: readonly (readonly [string, readonly (readonly [string, string])[]])[] = [
   ["On the course", [
     ["Strokes", "Pull back and let go: every shot is a stroke. Hole out in as few as you can; par is the number to beat."],
     ["Water and falls", "In the water or the sea, in lava, a shaft or the void (the Crystal Mines), off a roof or off the board, the ball goes back where you shot from. The stroke counts, nothing more."],
     ["Moving pieces", "On a timed hole the pieces run on a clock: the moment you let go decides where they are."],
-    ["Weather", "It changes every 5 minutes, the same for everyone: calm, wind, fog, rain, storm or snow, and the ball runs with it."],
+    ["Weather", `It changes every ${LIMITS.periodMs / 60000} minutes, the same for everyone: calm, wind, fog, rain, storm or snow, and the ball runs with it.`],
     ["Underground", `The Crystal Mines never get a storm or snow, and name the rest as a mine does: still air (calm), a draught (the wind: it pushes the ball), dripping (the rain: the green and the crystal ice run a little faster, and puddles slow the ball), lights out (the fog: the aim dots stop ${sight(true, false)} units ahead). Two galleries are always dark: your lamp lights the dots ${sight(false, true)} units ahead, ${sight(true, true)} with the lights out.`],
     ["Aim", "Assisted shows the whole aim line, Pro shows none. Each is ranked on its own boards."],
-    ["Limit", "A round stops at 60 strokes: start the hole again."],
+    ["Limit", `A round stops at ${LIMITS.maxRoundStrokes} strokes: start the hole again.`],
   ]],
   ["Your card", [
     ["Your score", "The cup card keeps your latest score on each hole, in this browser: play a hole again and the new score replaces it. Your best stays on the boards once saved."],
@@ -218,7 +218,6 @@ export default function About({ onClose, onRules, web, support = null, counts = 
         <svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
         <span>
           Made by <a href={GITHUB} {...out}><b>alexiscolin</b></a> · <a href={REPO} {...out}>the code on GitHub ↗</a>
-          {/* (lib/analytics.ts: only with its key) */}
           {ANALYTICS && <><br />Audience measured anonymously (PostHog, EU): no cookie across sites, no recordings, no wallet addresses. <NoStats /></>}
         </span>
       </footer>

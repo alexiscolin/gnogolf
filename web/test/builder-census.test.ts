@@ -7,7 +7,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadWorld } from "./scene-harness.ts";
 import { lane, stateOf } from "./builder-fixture.ts";
-import { loadPalette } from "../lib/builder/palette.ts";
+import { entry, loadPalette } from "../lib/builder/palette.ts";
 import { placePiece } from "../lib/builder/edit.ts";
 import { writeDraft } from "../lib/builder/gg1.ts";
 import { FIELD } from "../lib/builder/rules.ts";
@@ -65,4 +65,11 @@ void test("a rail out past the island's sea is hidden; a zone with no area too (
   buildHole({ ...s, zones: [...s.zones, sea, { ...sea, skin: "water", outside: false, poly: undefined, min: [5, 5], max: [5, 9] }] }, { census: (p, drawn) => got.set(key(p), drawn) });
   assert.deepEqual(got.get("wall4"), { by: "hidden", why: "unreached" }, "past the sea: no ball reaches it, nothing drawn");
   assert.deepEqual(got.get(`zone${s.zones.length + 1}`), { by: "hidden", why: "empty" });
+});
+
+void test("a census of another hole leaves the played hole's splashes be: they clip to its own water", async () => {
+  const { state } = await import("../lib/scene/state.ts");
+  const played = buildHole(stateOf(lane("garden", [])));
+  census(lane("garden", [placePiece(entry("*/hazard/water", await loadPalette("garden"))!, "x", [14, 9], { to: [24, 4] })]));
+  assert.ok(state.water === played.userData.terrain.water, "the played hole's water mask, not the pond's");
 });

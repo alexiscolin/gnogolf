@@ -22,7 +22,7 @@ export function Button({ variant, size, keycap, className = "", children, ...pro
   );
 }
 
-/** What only shows in a row of buttons (the Builder's difficulty meter): their height and edge, flat (it is not pressed). size as Button's. */
+/** What only shows in a row of buttons (a gnome card's state in Buy's place, the board's quick shot): their height and edge, flat (it is not pressed). size as Button's. */
 export function Chip({ size = "l", className = "", children, ...props }: HTMLAttributes<HTMLSpanElement> & { size?: ButtonLook["size"] }) {
   return (
     <span className={["chip", size === "l" ? "" : `chip--${size}`, className].filter(Boolean).join(" ")} {...props}>
@@ -31,26 +31,24 @@ export function Chip({ size = "l", className = "", children, ...props }: HTMLAtt
   );
 }
 
-/** Two or more choices side by side, one on: the aim mode, the board's tabs. full: the width of its container, halves equal. */
+/** Two or more choices side by side, one on: the aim mode, the board's tabs. full: the width of its container, halves equal.
+ *  Pressed buttons, each its own Tab stop (radios and tabs would promise arrow keys). */
 interface SegmentedProps<T extends string> {
   options: readonly (readonly [T, ReactNode])[];
   value: T;
   onChange: (v: T) => void;
   label: string;
   full?: boolean;
-  role?: "radiogroup" | "tablist";
   className?: string;
 }
-export function Segmented<T extends string>({ options, value, onChange, label, full = false, role = "radiogroup", className = "" }: SegmentedProps<T>) {
+export function Segmented<T extends string>({ options, value, onChange, label, full = false, className = "" }: SegmentedProps<T>) {
   return (
-    <div className={`seg${full ? " seg--full" : ""} ${className}`.trim()} role={role} aria-label={label}>
+    <div className={`seg${full ? " seg--full" : ""} ${className}`.trim()} role="group" aria-label={label}>
       {options.map(([v, text]) => (
         <button
           key={v}
           type="button"
-          role={role === "tablist" ? "tab" : "radio"}
-          aria-checked={role === "tablist" ? undefined : value === v}
-          aria-selected={role === "tablist" ? value === v : undefined}
+          aria-pressed={value === v}
           className={value === v ? "on" : ""}
           onClick={() => onChange(v)}
         >
@@ -118,6 +116,11 @@ export const VsPar = ({ vs, words = false }: { vs: number; words?: boolean }) =>
 const CloseX = () => (
   <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4 4 16 16M16 4 4 16" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" /></svg>
 );
+/** The arrow of a way back, inked: a screen's corner Back, the Builder's. */
+export const BackIcon = () => (
+  <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+/** A sheet's X: in its top-right corner, or where it is put (inline). */
 export function SheetClose({ onClose, inline = false }: { onClose: () => void; inline?: boolean }) {
   return (
     <button className={"round round--icon round--small" + (inline ? "" : " sheet__close")} aria-label="Close" onClick={onClose}>
@@ -141,7 +144,7 @@ export const useDialogOpen = () => useSyncExternalStore(watch, anyModal, () => f
 let pressed: HTMLElement | null = null;
 if (typeof document !== "undefined")
   document.addEventListener("pointerdown", (e) => void (pressed = e.target instanceof Element ? e.target.closest<HTMLElement>("button, a, summary, [tabindex]") : null), true);
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 /**
  * What every dialog does: focus moves into it when it opens (the dialog
@@ -204,8 +207,10 @@ interface SheetProps {
 export function Sheet({ label, onClose, className = "", role = "dialog", children }: SheetProps) {
   const id = useId();
   const ref = useDialog<HTMLDivElement>(onClose);
+  // a press begun in the sheet and let go over the dim (a text selected by dragging) clicks the dim too: not a tap on it
+  const inside = useRef(false);
   return (
-    <div className="sheet" onClick={onClose}>
+    <div className="sheet" onPointerDown={(e) => (inside.current = e.target !== e.currentTarget)} onClick={() => !inside.current && onClose()}>
       <div ref={ref} tabIndex={-1} className={`sheet__in ${className}`.trim()} role={role} aria-modal="true" aria-label={label} id={id} onClick={(e) => e.stopPropagation()}>
         <SheetClose onClose={onClose} />
         {children}
@@ -235,3 +240,20 @@ export const Dice = () => (
     {[[7.5, 7.5], [16.5, 7.5], [12, 12], [7.5, 16.5], [16.5, 16.5]].map(([x, y]) => <circle key={x * 99 + y} cx={x} cy={y} r="2" />)}
   </svg>
 );
+
+/** A round inked window, its scene clipped to it (an id of its own, so two
+ *  on a screen never share a clip): a cup's emblem, a hole's map, a gnome's face. */
+export function Frame({ className, children }: { className?: string; children?: ReactNode }) {
+  const clip = useId();
+  return (
+    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
+      <defs>
+        <clipPath id={clip}>
+          <circle cx="60" cy="60" r="56" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${clip})`}>{children}</g>
+      <circle cx="60" cy="60" r="56" className="w__ring" />
+    </svg>
+  );
+}

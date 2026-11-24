@@ -20,7 +20,24 @@ export const seeded = (str: string): Rand => {
   };
 };
 
-/** What a hole's own scenery is seeded by: a course hole's name and id, as it always was (an older realm's, saying
+/** A string's hash, k its multiplier: what picks a hole's look by its id, so it stays as it is. */
+export const hashOf = (str: string, k = 31) => {
+  let h = 0;
+  for (const ch of str) h = (h * k + ch.charCodeAt(0)) >>> 0;
+  return h;
+};
+
+/** The items in a random order of this seed, the same on every engine (a sort by a random comparison is not). */
+export function shuffled<T>(xs: readonly T[], rand: Rand) {
+  const a = [...xs];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** What a hole's own scenery is seeded by: a course hole's name and id (an older realm's, saying
  *  nothing of official, one: engine.ts's reading); a built hole's id alone (renamed, in the Builder or at Publish, it
  *  keeps its look). */
 export const lookSeed = (s: Pick<Hole, "name" | "hole" | "official">) => (s.official !== false ? s.name : "") + s.hole;

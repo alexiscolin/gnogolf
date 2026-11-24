@@ -96,7 +96,7 @@ void test("writeDraft says which of the hole's pieces each draft piece became; f
   assert.ok([4, 5, 6, 7].every((i) => g.walls[i].skin === "plank") && g.pulses[0].posts[0].skin === "rock" && g.zones[0].skin === "water");
 });
 
-void test("frame moves a draft by whole grid steps so its extent starts at the margin", () => {
+void test("frame moves a draft so its extent starts at the margin", () => {
   const d = frame({ ...box(20, 10), pieces: rails(7, 9.25, 27, 19.25), tee: [10, 12], pin: [24, 12] });
   assert.deepEqual(d.pieces[0].geometry, { t: "rail", a: [1.5, 1.5], b: [21.5, 1.5] });
   assert.deepEqual([d.tee, d.pin], [[4.5, 4.25], [18.5, 4.25]]);

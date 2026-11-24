@@ -43,8 +43,6 @@ func TestXMLEscape(t *testing.T) {
 	uassert.Equal(t, "a &amp; &lt;b&gt; &quot;c&quot; &#39;d&#39;", xmlEscape(`a & <b> "c" 'd'`))
 }
 
-// ---------------------------------------------------------------- reading
-
 // classic is the plain look written out: every code plain, every colour unset.
 const classic = "01010100000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff"
 
@@ -78,8 +76,9 @@ func with(traits string, f int, v byte) string {
 	return traits[:2*f] + string(hexDigits[v>>4]) + string(hexDigits[v&0xf]) + traits[2*f+2:]
 }
 
-// The tables have a line for each code of the client's vocab (web/lib/gnomes/
-// vocab.ts, props.ts): the counts are the Genesis' tables, which only grow.
+// The tables have a line for each code of the client's vocab
+// (web/lib/gnomes/vocab.ts, props.ts): the counts are the Genesis' tables,
+// which only grow.
 func TestTheArtCoversTheVocab(t *testing.T) {
 	for _, c := range []struct {
 		name   string
@@ -143,20 +142,28 @@ func TestAnEarnedGnomeIsTheGames(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------- goldens
+// A material is the body in its stead (its art starts with !): the plain
+// body is not drawn under it.
+func TestAMaterialStandsInForTheBody(t *testing.T) {
+	body := artCore[strings.IndexByte(artCore, ':')+1 : strings.IndexByte(artCore, '|')]
+	for k := 1; k < artMaterialsN; k++ {
+		uassert.Equal(t, strings.Count(artMaterials(k), body), strings.Count(draw(with(classic, fMaterial, byte(k))), body), "material "+itoa(int64(k)))
+	}
+}
 
 // samples are gnomes of the Genesis (data/gnomes.json): an earned one and
-// one of each tier, the first Common of each archetype, and the heaviest
-// picture of the 729 (Figurehead Fen). Their SVGs are held by their hash
-// (z_portrait_filetest holds one of each tier whole), and their size.
+// one of each tier, the first Common of each archetype, the dearest picture
+// of the 729 to draw (Figurehead Fen), a pattern, and the materials drawn
+// apart (neon's line, lava's eyes, crystal's body). Their SVGs are held by
+// their hash, and their size.
 var samples = []struct {
 	name, traits, tier, sha string
 }{
 	{"The Gnome King", earnedTraits(8), "earned", "776c980f91a2e66f"},
 	{"Mortimer Greenthumb", "010102000101064aff02061000ff0000000000014a00ff010000ff00ff", "rare", "cfae2705d160ac9f"},
-	{"Old Tock", "010103000101003dff00363600ff00000000ff00ff013c020f013d013d", "epic", "7c0d345fa458eb02"},
+	{"Old Tock", "010103000101003dff00363600ff00000000ff00ff013c020f013d013d", "epic", "0c8d069f82e60de0"},
 	{"The Miller", "0101040401011131ff01062600ff000000080000ff00ff080b130b45ff", "legendary", "58018d45340678e7"},
-	{"Figurehead Fen", "0101030002040932ff06345100ff000000000100ff02330c0302330cff", "epic", "9b10db2f8081f3a3"},
+	{"Figurehead Fen", "0101030002040932ff06345100ff000000000100ff02330c0302330cff", "epic", "b0531507c25cc933"},
 	{"Juniper Troutbridge", "0101010001020716ff01083000ff000200010700ff00ff00ff00ff00ff", "common", "ca5a9a4889c6d9ba"},
 	{"Yvette Potting", "0101010001010651ff02152800ff000000084800ff00ff00ff00ff00ff", "common", "e6899478f5b3cd1d"},
 	{"Yarrow Gunwale", "0101010002030800ff00333000ff001200002500ff00ff00ff00ff00ff", "common", "4a75cdf011e03268"},
@@ -171,10 +178,14 @@ var samples = []struct {
 	{"Tuck Anvilby", "01010100060c0f27ff00064e00ff000900003c00ff00ff00ff00ff00ff", "common", "af4ae3c286582fb6"},
 	{"Wick Glimmer", "01010100070e012dff05082300ff003000002900ff00ff00ff00ff00ff", "common", "27220aceb26799c9"},
 	{"Wilf Rainwell", "01010100070d1029ff03152a00ff000200080300ff00ff00ff00ff00ff", "common", "4219c321f2e53d3f"},
+	{"Orrin Hookline", "0101020001020716ff0515310307000000010700ff00ff010700ff00ff", "rare", "1c0194f4941b9368"},
+	{"Neon Nettle", "0101030001010007ff04ff1c00ff00100000ff00ff0341044103410841", "epic", "619ea7ecb140a4af"},
+	{"Lava Gnome", "01010402060c0043ff02432f00ff00000000ff00ff0a440642054443ff", "legendary", "b8fc21659ae2b738"},
+	{"Crystal Gnome", "0101040105090023ff00233800ff00000000ff00ff093b0523043b4222", "legendary", "5a41cbb76c4a216e"},
 }
 
 // maxSVG is what a portrait may weigh: the 729 of the Genesis and the
-// earned are 2.0 to 6.0 KB (media/gnomes/portrait/likeness.mjs measures them all).
+// earned are 1.9 to 5.6 KB.
 const maxSVG = 6 * 1024
 
 func TestPortraitGoldens(t *testing.T) {

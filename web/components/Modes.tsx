@@ -1,9 +1,9 @@
 "use client";
 
-// The first choice, before the cups: play alone, race a player's ghost
-// (ADR-004), or build a hole (the Builder, once out: onBuild). A duel asks whom to race on a screen
-// of its own (Rival), then on which of the holes they have a best on (Ghosts),
-// in place of the cups. Panels of their own, a kart game's modes.
+// The first choice, before the cups: play alone, race a player's ghost, or
+// build a hole (the Builder, once out: onBuild). A duel asks whom to race on a
+// screen of its own (Rival), then on which of the holes they have a best on
+// (Ghosts), in place of the cups. Panels of their own, a kart game's modes.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Emblem, WORLDS } from "@/components/Worlds";
 import { HoleMap, NoMap } from "@/components/HoleMap";
@@ -71,9 +71,9 @@ function useHot() {
 const Stage = ({ skin, act, playing, className = "mode__stage", children }: { skin: Skin; act: Act; playing: boolean; className?: string; children?: ReactNode }) =>
   <span ref={useGnomeStage<HTMLSpanElement>(skin, { act, playing })} className={className}>{children}</span>;
 
+const STRIPES = 8;
 /** A market stall, inked, in the shop panel's colours (behind its gnome: what says "a shop"): its striped awning,
  *  every stripe and scallop painted, on two posts. */
-const STRIPES = 8;
 const Awning = () => {
   const top = (k: number) => 14 + k * (92 / STRIPES), low = (k: number) => 4 + k * (112 / STRIPES); // (the awning widens downward)
   const w = 112 / STRIPES, scallop = (k: number) => `M${low(k)} 30a${w / 2} ${w / 2.2} 0 0 0 ${w} 0z`;
@@ -91,10 +91,6 @@ const Awning = () => {
   );
 };
 
-/** A hole's sketch on its blueprint, inked (behind the Builder's gnome, as the shop's awning: what says "you draw
- *  holes"): the sheet tilted, its grid, the lane round its bend, the ball at its tee, the flag rising out of the
- *  disc over the sheet's top, the pencil out of its side. */
-
 /**
  * A duel's rival, on a screen of their own: a friend's name or address typed
  * (the (i) says where to find one), three picked for the player (today's
@@ -110,19 +106,26 @@ export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, o
   // the course's holes, where a ghost can be
   const holes = useMemo(() => (s.allHoles || []).filter((h) => h.official).map((h) => ({ id: h.id, name: h.name, par: parOf(h) })), [s.allHoles]);
   const picks = useRivalPicks(chain, me, mode);
+  const asking = useRef(false); // (a Race pressed again while the chain answers the first: one at a time)
   const go = async (e: FormEvent) => {
     e.preventDefault();
-    const v = typed.trim();
-    // (a chain that did not answer is not a name it does not know)
-    const addr = isAddress(v) ? v : chain ? await chain.resolveName(v).catch(() => null) : "";
-    if (addr === null) return setNote("The chain did not answer. Try again in a moment.");
-    track("ui", { action: "rival_typed", found: !!addr });
-    if (!addr) return setNote(`No gno.land name “${v}” here. Check the spelling, or pick someone below.`);
-    // a duel is played where their ghost is: someone with no saved round has none (a failed read lets them through)
-    // (their bests go with them: not read twice)
-    const bests = chain && holes.length ? await chain.bestsOf(holes.map((h) => h.id), addr).catch(() => undefined) : undefined;
-    if (bests && !bests.size) return setNote(`${v} has no saved round yet: no ghost to race. Pick someone below.`);
-    onPick(addr, bests, "friend");
+    if (asking.current) return;
+    asking.current = true;
+    try {
+      const v = typed.trim();
+      // (a chain that did not answer is not a name it does not know)
+      const addr = isAddress(v) ? v : chain ? await chain.resolveName(v).catch(() => null) : "";
+      if (addr === null) return setNote("The chain did not answer. Try again in a moment.");
+      track("ui", { action: "rival_typed", found: !!addr });
+      if (!addr) return setNote(`No gno.land name “${v}” here. Check the spelling, or pick someone below.`);
+      // a duel is played where their ghost is: someone with no saved round has none (a failed read lets them through)
+      // (their bests go with them: not read twice)
+      const bests = chain && holes.length ? await chain.bestsOf(holes.map((h) => h.id), addr).catch(() => undefined) : undefined;
+      if (bests && !bests.size) return setNote(`${v} has no saved round yet: no ghost to race. Pick someone below.`);
+      onPick(addr, bests, "friend");
+    } finally {
+      asking.current = false;
+    }
   };
   return (
     <FrontScreen className="front--fit modes" inner="rival" back="Back to the games" onBack={onBack} onAbout={onAbout} eyebrow="Choose your rival" title="Who do we race?">
@@ -134,9 +137,9 @@ export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, o
           <input value={typed} onChange={(e) => (setTyped(e.target.value), setNote(""))} placeholder="A friend: nym-… or g1…" aria-label="Your friend's gno.land name or address" />
           <Button variant="gold" className="rival__go" type="submit" disabled={!typed.trim()}>Race</Button>
         </form>
-        {note && <p className="note note--warn">{note}</p>}
+        {note && <p className="note note--warn" role="alert">{note}</p>}
       </section>
-      {picks && picks.retry && <p className="note note--bad">The chain did not answer. <button className="linkish" onClick={picks.retry}>Try again</button></p>}
+      {picks && picks.retry && <p className="note note--bad" role="alert">The chain did not answer. <button className="linkish" onClick={picks.retry}>Try again</button></p>}
       <ul className="rival__picks">
         {PICKS.map((p, i) => (
           <li key={p.kind}><Pick {...p} first={i} row={picks && picks.rows[i]} reading={!picks} failed={!!(picks && picks.retry)} chain={chain} me={me} gnome={gnome} holes={holes} mode={mode} onPick={onPick} onConnect={p.kind === "self" ? onConnect : undefined} /></li>

@@ -19,7 +19,7 @@ import (
 // unnamed one-stroke finishes store the total below: each finish its best,
 // with the shots that set it (about 50 bytes, for Ghost), its standing, and
 // not its round, which is not kept once holed. The two finishes store 1,625
-// bytes with the wear they leave (v1: 1,976, with a 512-byte wear grid).
+// bytes with the wear they leave.
 func main(cur realm) {
 	h := &course.Simple{W: 32, H: 16, World: "garden", Title: "Finished", Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(4, 8), Substeps: 14, CupRadius: 1.2, Shelter: 0.01,
@@ -36,7 +36,89 @@ func main(cur realm) {
 // holed in 1 strokes
 
 // Storage:
-// gno.land/r/gnogolf/golf/v2: 24
+// gno.land/r/gnogolf/golf/v2: 18
 // gno.land/r/gnogolf/store: 4771
 // gno.land/r/sys/users: 0
 // gno.land/r/test/storedfinish: 0
+
+// Events:
+// [
+//   {
+//     "type": "HolePublished",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished/v1"
+//       },
+//       {
+//         "key": "slot",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished"
+//       },
+//       {
+//         "key": "sha",
+//         "value": "6a820ba05a6cab8eeb1d32366474aaaffcf36709fe0a903ed39756929b7e1a21"
+//       },
+//       {
+//         "key": "by",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c"
+//       },
+//       {
+//         "key": "official",
+//         "value": "false"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   },
+//   {
+//     "type": "Holed",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished/v1"
+//       },
+//       {
+//         "key": "player",
+//         "value": "g1ve5hyum5ta047h6lta047h6lta047h6lw8hsel"
+//       },
+//       {
+//         "key": "strokes",
+//         "value": "1"
+//       },
+//       {
+//         "key": "mode",
+//         "value": "assisted"
+//       },
+//       {
+//         "key": "shots",
+//         "value": "0.0000,1.0000,0"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   },
+//   {
+//     "type": "Holed",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished/v1"
+//       },
+//       {
+//         "key": "player",
+//         "value": "g1wdjkxmmwv3047h6lta047h6lta047h6lcfz24y"
+//       },
+//       {
+//         "key": "strokes",
+//         "value": "1"
+//       },
+//       {
+//         "key": "mode",
+//         "value": "assisted"
+//       },
+//       {
+//         "key": "shots",
+//         "value": "0.0000,1.0000,0"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   }
+// ]

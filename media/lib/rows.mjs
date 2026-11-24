@@ -6,6 +6,8 @@
 // an expression to evaluate in the page (its function runs there, not in Node).
 /* global document, NodeFilter, getComputedStyle */
 
+/** @typedef {{ name: string, box: string, words?: string, by?: string }} Row */
+
 /**
  * In the page: what is out of line in each row, [] when all is: a control's
  * box (height or top) off the first's by over half a pixel, or its words'
@@ -13,9 +15,9 @@
  * elements whose first words share the baseline (none: the controls' own, an
  * icon's sign left out); by, a grid whose row tracks split the controls into
  * rows (a toolbar on two lines).
- * @param {{ name: string, box: string, words?: string, by?: string }[]} rows
+ * @param {Row[]} rows
  */
-export const misaligned = (rows) => `(${((/** @type {typeof rows} */ rows) => {
+export const misaligned = (rows) => `(${((/** @type {Row[]} */ rows) => {
   const ctx = /** @type {CanvasRenderingContext2D} */ (document.createElement("canvas").getContext("2d"));
   const shown = (/** @type {Element} */ e) => e.checkVisibility() && e.getBoundingClientRect().width > 0;
   // the baseline of an element's first words: their line's top, plus its font's ascent

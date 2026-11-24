@@ -1,0 +1,5 @@
+{
+  // holes.ts: a node script run as TypeScript, as scripts/*.ts are
+  "extends": "../../scripts/tsconfig.json",
+  "include": ["*.ts"]
+}

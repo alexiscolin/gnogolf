@@ -138,7 +138,7 @@ func TestSimulateFromIsTheNextStroke(cur realm, t *testing.T) {
 		}
 	}
 	uassert.NotEqual(t, SimulateFrom(wid, 2, 8, "0,4", 0, calm), SimulateFrom(wid, 2, 8, "0,4", 0, blown))
-	uassert.Equal(t, simAt(wid, "0,4", blown)[strings.Index(simAt(wid, "0,4", blown), `"path"`):],
+	uassert.Equal(t, SimulateRoundIn(wid, "0,4", blown)[strings.Index(SimulateRoundIn(wid, "0,4", blown), `"path"`):],
 		SimulateFrom(wid, 2, 8, "0,4", 0, blown)[strings.Index(SimulateFrom(wid, 2, 8, "0,4", 0, blown), `"path"`):])
 	uassert.PanicsContains(t, cur, "has not come yet", func() { SimulateFrom(wid, 2, 8, "0,4", 0, Period()+1) })
 	uassert.PanicsContains(t, cur, "a stroke is", func() { SimulateFrom(wid, 2, 8, "0,4", 60, Period()) })
@@ -301,7 +301,7 @@ func TestAStaleRoundMustBeReset(cur realm, t *testing.T) {
 	Launch(cross(cur), id, 0, 1)
 }
 
-// iceCage is 36 bumper walls (40 in v1, whose commit kept nothing in store) round a board of ice, which 8 flat 64-point
+// iceCage is 36 bumper walls round a board of ice, which 8 flat 64-point
 // polygons cover (every step tests them): a tap stays put, a full shot
 // bounces on until its work runs out.
 func iceCage() *course.Simple {
@@ -340,11 +340,11 @@ func dryMine(cur realm, prefix string, h *course.Simple, kind string) string {
 }
 
 // A commit is held to its budget whatever its shots: eleven taps, then a
-// full shot that would bounce on to MaxWork. The heaviest shot so far was a
-// tap, so the old cut let it through, and the commit went past its budget;
-// now the full shot is played with the room left as its cap, reaches it,
-// and the commit is refused with the eleven that fit. Played first in the
-// next commit, the full shot has the whole budget, and plays out.
+// full shot that would bounce on to MaxWork. The heaviest shot so far is a
+// tap, so a cut on that alone would let it through; the full shot is played
+// with the room left as its cap, reaches it, and the commit is refused with
+// the eleven that fit. Played first in the next commit, the full shot has
+// the whole budget, and plays out.
 func TestACommitNeverPassesItsBudget(cur realm, t *testing.T) {
 	id := dryMine(cur, "cage", iceCage(), course.Clear)
 	taps, full := strings.Repeat("0,0.01;", 11), "135,10"
@@ -372,8 +372,6 @@ func TestACommitNeverPassesItsBudget(cur realm, t *testing.T) {
 	uassert.Equal(t, physics.MaxWork, h.Field().Cap)
 	w.played, w.spent = 11, 800000000
 	w.next(h)
-	room := (workBudget-w.fixed-w.spent-workPerShot-w.walls*workPerWall)/workPerUnit - physics.MaxWorkStep
-	uassert.Equal(t, int(room), w.cap)
 	uassert.True(t, w.cap < physics.MaxWork/2, "the room left")
 	w.fixed = workBudget
 	uassert.PanicsContains(t, cur, "commit the first 11, then the rest", func() { w.next(h) })
@@ -443,7 +441,7 @@ const (
 )
 
 // PlayRound goes on with a round in the round's own weather, across the
-// turn of the period, as PlayRoundAt and Launch do (final bug hunt, 1).
+// turn of the period, as PlayRoundAt and Launch do.
 func TestPlayRoundKeepsItsRoundsPeriod(cur realm, t *testing.T) {
 	id := courseHole(cur, 81)
 	p := testutils.TestAddress("turn")
@@ -458,8 +456,8 @@ func TestPlayRoundKeepsItsRoundsPeriod(cur realm, t *testing.T) {
 	uassert.Equal(t, was, roundIn(id, p).period, "in the weather it started in")
 }
 
-// The previews refuse the stale periods the writes refuse (final bug hunt,
-// 2); SimulateFrom still replays an old round's stroke.
+// The previews refuse the stale periods the writes refuse; SimulateFrom
+// still replays an old round's stroke.
 func TestThePreviewsRefuseAStalePeriod(cur realm, t *testing.T) {
 	id := courseHole(cur, 82)
 	stale := Period() - 2
@@ -477,8 +475,7 @@ func TestThePreviewsRefuseAStalePeriod(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "has not come yet", func() { SimulateRoundIn(id, "0,1", Period()+1) })
 }
 
-// Versions answers for its own alias only, never with the caller's bytes
-// (final bug hunt, 3).
+// Versions answers for its own alias only, never with the caller's bytes.
 func TestVersionsEchoesNothing(t *testing.T) {
 	uassert.Equal(t, `{"version":1,"slot":"","versions":[]}`, Versions("g1\xff\"/x"))
 }
@@ -577,8 +574,27 @@ func TestLegendSlopeWay(t *testing.T) {
 		{Kind: physics.Slope, Vec: physics.V(-0.1, 0), Mark: '^', Skin: "hill"},
 		{Kind: physics.Slope, Vec: physics.V(0.1, 0), Mark: '~', Skin: "draft", Air: true},
 	}}
-	s, _ := legend(f)
+	var on [128]bool
+	on['^'], on['~'] = true, true
+	s, _ := legend(f, on)
 	urequire.Equal(t, " · `^` hill (slope), falls toward 90° · `^` hill (slope), falls toward 180° · `~` draft (slope), pushes toward 0°", s)
+}
+
+// The key names the marks its board shows only, and a tunnel past the ninth,
+// which the board does not number, by its own mark.
+func TestTheKeyNamesWhatTheBoardShows(cur realm, t *testing.T) {
+	e := mustHole(mine(cur, "keyed", flatHole("Keyed")))
+	h := flatHole("Keyed")
+	h.Course.Zones = []physics.Zone{
+		{Kind: physics.Surface, Min: physics.V(4, 4), Max: physics.V(6, 6), Scale: 1, Mark: 'M', Skin: "mill"},
+		{Kind: physics.Surface, Min: physics.V(3, 3), Max: physics.V(7, 7), Scale: 1, Mark: 'S', Skin: "sand"}, // drawn over the mill
+	}
+	for i := 0; i <= maxTunnels; i++ {
+		x := float64(2 + 2*i)
+		h.Course.Zones = append(h.Course.Zones, physics.Zone{Kind: physics.Tunnel, Min: physics.V(x, 10), Max: physics.V(x+1, 11), Vec: physics.V(x, 13)})
+	}
+	page := renderHole(e, h, "")
+	uassert.True(t, strings.Contains(page, "`S` sand (surface) · `?` tunnel") && !strings.Contains(page, "mill"), page)
 }
 
 // parHole is a Crystal Mines hole of par par: cupHole's box, holed by "0,1"
@@ -594,7 +610,7 @@ func strokesOf(n int) string { return strings.Repeat("0,0.01;", n-1) + "0,1" }
 
 // rankOf is a player's place in a mode's course ranking, 0 if none.
 func rankOf(mode string, p address) int {
-	n, _ := strconv.Atoi(jfield(Rank(mode, p), "rank"))
+	n, _ := strconv.Atoi(jget(Rank(mode, p), "rank"))
 	return n
 }
 

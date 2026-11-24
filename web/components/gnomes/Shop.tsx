@@ -3,14 +3,14 @@
 // The gnome shop: the gallery, the one screen it adds to the game (the game's
 // own front screen: About.tsx FrontScreen), its views a tap apart (on sale,
 // a player's own, all; a player's gnomes, read-only), and a gnome in a sheet
-// over it (GnomeSheet). Loaded only when it is opened (Golf.tsx, behind
-// NEXT_PUBLIC_GNOMES), with its styles: the title and the holes' pages carry
-// none of it. Everything it shows is read: the catalogue the site serves, the
-// realm's Collection, Sold, GnomesOf and Worn, the region; each gnome drawn
-// as the thumbnails show him, or as the chain does (the look a sheet's switch
-// picked). One way to each thing: the player's own under Mine (their album its badge, the
-// album itself one line under their team), the search in All alone, a share
-// one button.
+// over it (GnomeSheet). Its own chunk (Game.tsx, behind NEXT_PUBLIC_GNOMES),
+// fetched once a door to it shows, with its styles: the title and the holes'
+// pages carry none of it. Everything it shows is read: the catalogue the site
+// serves, the realm's Collection, Sold, GnomesOf and Worn, the region; each
+// gnome drawn as the thumbnails show him, or as the chain does (the look a
+// sheet's switch picked). One way to each thing: the player's own under Mine
+// (their album its badge, the album itself one line under their team), the
+// search in All alone, a share one button.
 import "@/app/gnomes.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FrontScreen } from "@/components/About";
@@ -67,7 +67,7 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
   const [held, setHeld] = useState<Held["rows"] | null>(null); // (the same, as the realm lists them: the album's; null: not read)
   const [worn, setWorn] = useState<Worn | null>(null);
   const [mineFailed, setMineFailed] = useState(false);
-  const [theirs, setTheirs] = useState<{ who: string; ids: number[]; name: string; rows: Held["rows"]; failed?: true } | null>(null);
+  const [theirsRead, setTheirsRead] = useState<{ who: string; ids: number[]; name: string; rows: Held["rows"]; failed?: true } | null>(null);
   const [now, setNow] = useState(() => Math.floor(chain.now() / 1000));
   const [f, setF] = useState<{ tier?: Listed["tier"]; text: string }>({ text: "" });
   const [shown, setShown] = useState(PAGE);
@@ -105,11 +105,11 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
   useEffect(() => (setMine([]), setHeld(null), setWorn(null), mineLoad()), [shop, chain, me]); // eslint-disable-line react-hooks/exhaustive-deps -- (mineLoad: me's)
   // a player's gnomes, read-only
   const theirsLoad = () => {
-    if (!view.who || view.who === me) return setTheirs(null);
+    if (!view.who || view.who === me) return setTheirsRead(null);
     const who = view.who, still = () => here.current.who === who;
     void Promise.all([shop.allOf(who), chain.nameOf(who).catch(() => "")]).then(
-      ([rows, name]) => still() && (setTheirs({ who, ids: rows.map((r) => Number(r.id)), name, rows }), collectorsOf(chain).know(who, { total: rows.length, rows })),
-      () => still() && setTheirs({ who, ids: [], name: "", rows: [], failed: true }),
+      ([rows, name]) => still() && (setTheirsRead({ who, ids: rows.map((r) => Number(r.id)), name, rows }), collectorsOf(chain).know(who, { total: rows.length, rows })),
+      () => still() && setTheirsRead({ who, ids: [], name: "", rows: [], failed: true }),
     );
   };
   useEffect(theirsLoad, [shop, chain, view.who, me]);
@@ -117,10 +117,12 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
   const mineSet = useMemo(() => new Set(mine), [mine]);
   const myAlbum = useMemo(() => (cat && held ? album(cat.gnomes, cat.earned, held) : null), [cat, held]);
   const seen = useMemo(() => (c && sold ? { c, sold, mine: mineSet, now } : null), [c, sold, mineSet, now]);
-  const viewing = theirs ? "theirs" : view.who === me && me ? "mine" : "all";
+  // the view the address asks, from the first frame (a player's gnomes, the player's own, the sale); theirs, once read for that address
+  const viewing = !view.who ? "all" : view.who === me ? "mine" : "theirs";
+  const theirs = viewing === "theirs" && theirsRead && theirsRead.who === view.who ? theirsRead : null;
   const list = useMemo(() => {
     if (!cat || !seen) return [];
-    if (theirs) return theirs.ids.map((id) => cat.gnomes.find((g) => g.id === id)).filter((g): g is Listed => !!g);
+    if (viewing === "theirs") return theirs ? theirs.ids.map((id) => cat.gnomes.find((g) => g.id === id)).filter((g): g is Listed => !!g) : [];
     const v = viewing === "mine" ? "mine" : "all"; // (theirs: above)
     const out = shelf(cat.gnomes, { view: v, tier: f.tier, text: v === "all" ? f.text : "" }, seen).list;
     return v === "mine" ? teamOrder(out.map((g) => ({ ...g, id: String(g.id) }))).map((g) => ({ ...g, id: Number(g.id) })) : out;
@@ -143,7 +145,7 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
   }, [cat, mine]);
 
   // a shop at first glance: its name, then one line of what is sold (the player's own gnomes and another's keep theirs)
-  const title = theirs ? theirTitle(theirs.name, theirs.who) : viewing === "mine" ? (mine.length ? `Your team of ${mine.length}` : "Your gnomes") : SHOP_HEAD.title;
+  const title = viewing === "theirs" ? theirTitle(theirs ? theirs.name : "", view.who!) : viewing === "mine" ? (mine.length ? `Your team of ${mine.length}` : "Your gnomes") : SHOP_HEAD.title;
   const searching = viewing === "all";
   const albumOf = (owned: Held["rows"], player: string, mine: boolean) => cat && albumShown(SHOP, region ?? null) && (
     <Album cat={cat} owned={owned} given={mine ? myAlbum : null} chain={chain} player={player} mine={mine} onOpen={(o) => onView({ ...view, open: o })} />
@@ -163,13 +165,13 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
       </FrontScreen>
     );
   return (
-    <FrontScreen className={`front--fit shop${theirs || viewing === "mine" ? "" : " shop--sale"}`} back="Back" onBack={onBack} onAbout={onAbout} eyebrow={theirs || viewing === "mine" ? SHOP_HEAD.page : SHOP_HEAD.eyebrow} title={title} dare={!theirs && viewing !== "mine" ? <ShopPitch /> : undefined}>
+    <FrontScreen className={`front--fit shop${viewing === "all" ? " shop--sale" : ""}`} back="Back" onBack={onBack} onAbout={onAbout} eyebrow={viewing === "all" ? SHOP_HEAD.eyebrow : SHOP_HEAD.page} title={title} dare={viewing === "all" ? <ShopPitch /> : undefined}>
       {/* the sale's card in its place from the first frame (ShopFrame), its closing line's room kept until the sale is
           read (none when it says no date): nothing moves as they are read */}
-      {!theirs && viewing !== "mine" && !row && <SaleSlot closes={closingSlot(c) !== "none"} />}
+      {viewing === "all" && !row && <SaleSlot closes={closingSlot(c) !== "none"} />}
       {/* the sale in one line, a little fairway: the sale of the moment, or its end (none: none opened yet); the
           closing date its card's last line */}
-      {!theirs && viewing !== "mine" && line && <SaleLine line={line} closes={c && closingSlot(c) === "line" && <Closes at={c.closesAt} now={now} />} />}
+      {viewing === "all" && line && <SaleLine line={line} closes={c && closingSlot(c) === "line" && <Closes at={c.closesAt} now={now} />} />}
       {/* the player's own: who sees what, and their team to share */}
       {viewing === "mine" && me && mine.length > 0 && (
         <>
@@ -177,12 +179,12 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
           <span className="gshare-row"><ShareOne text={shareWords.team(mine.length, worn ? worn.name : list[0]?.name || "")} link={`g/?who=${me}`} label="Share my team" /></span>
         </>
       )}
-      {theirs && <Button variant="gold" className="btn--cta" onClick={() => onRace(theirs.who)}>Race their ghost</Button>}
-      {/* their album (ADR-011), under their Race, folded; the player's own comes under their team */}
+      {viewing === "theirs" && <Button variant="gold" className="btn--cta" onClick={() => onRace(view.who!)}>Race their ghost</Button>}
+      {/* their album, under their Race, folded; the player's own comes under their team */}
       {theirs && theirs.rows.length > 0 && albumOf(theirs.rows, theirs.who, false)}
       {/* one toolbar: the tiers (their prices and what is left, once) and Mine (the album's count its badge: the one way
           to the player's own) at its left; the search (open, a row of its own under it) and how the gnomes are drawn at its right */}
-      {!theirs && (
+      {viewing !== "theirs" && (
         <>
           <div className="gbar">
             <TierFilter tiers={line && line.at !== "closed" ? line.tiers : []} value={f.tier} onChange={(t) => setF((x) => ({ ...x, tier: t as Listed["tier"] | undefined }))} />
@@ -192,10 +194,11 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
           {searching && <SearchRow search={search} />}
         </>
       )}
-      {/* a read that failed is said, never shown as an empty shelf: the sale's, the player's own, another's */}
-      {error || (viewing === "mine" && mineFailed) || theirs?.failed ? (
-        <div className="gempty" role="alert"><p>The chain did not answer.</p><Button variant="primary" onClick={error ? load : theirs ? theirsLoad : mineLoad}>Try again</Button></div>
-      ) : !seen || !cat || (viewing === "mine" && !held) ? (
+      {/* a read that failed is said, never shown as an empty shelf: the sale's (a refresh that failed keeps the last
+          figures), the player's own, another's */}
+      {(error && !seen) || (viewing === "mine" && mineFailed) || theirs?.failed ? (
+        <div className="gempty" role="alert"><p>The chain did not answer.</p><Button variant="primary" onClick={error && !seen ? load : theirs ? theirsLoad : mineLoad}>Try again</Button></div>
+      ) : !seen || !cat || (viewing === "mine" && !held) || (viewing === "theirs" && !theirs) ? (
         <BlankShelf />
       ) : !list.length ? (
         <div className="gempty">

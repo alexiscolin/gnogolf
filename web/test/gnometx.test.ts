@@ -1,4 +1,4 @@
-// lib/gnomes/tx.ts, the gnomes' signatures (r/gnogolf/gnomes, ADR-007): each one
+// lib/gnomes/tx.ts, the gnomes' signatures (r/gnogolf/gnomes): each one
 // call alone (Buy, Equip), the exact coins with it, the gas the
 // chain was measured to take with room; and the same call as a gnokey line,
 // built from it, never written by hand.

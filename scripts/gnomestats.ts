@@ -10,7 +10,7 @@ import fs from "node:fs";
 // the client's modules as the unit tests load them (".ts" tried, "@/" read)
 import "../web/test/setup.mjs";
 
-const { visualDiff, apart } = await import("../web/lib/gnomes/validate.ts");
+const { visualDiff, apart, MAIN, MIN_APART } = await import("../web/lib/gnomes/validate.ts");
 const { decode } = await import("../web/lib/gnomes/codec.ts");
 type Catalogue = import("../web/lib/gnomes/catalogue.ts").Catalogue;
 
@@ -27,5 +27,5 @@ for (let i = 0; i < looks.length; i++)
 const hist: Record<number, number> = {};
 for (const n of least.values()) hist[n] = (hist[n] ?? 0) + 1;
 console.log("the fewest fields each gnome differs in from another:", Object.entries(hist).map(([n, k]) => `${n}: ${k}`).join(", "));
-console.log(`${refused.length} pairs refused (under 3 fields, or no hat, hat colour, body, pattern, material or prop among them)`);
+console.log(`${refused.length} pairs refused (under ${MIN_APART} fields, or none of ${[...MAIN].join(", ")} among them)`);
 for (const r of refused.slice(0, 12)) console.log("  " + r);

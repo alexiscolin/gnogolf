@@ -1,5 +1,5 @@
 // A token's look as the realm keeps it: one byte a field, written as
-// lowercase hex, the format first (docs/gnomes/design.md, "Trait encoding").
+// lowercase hex, the format first.
 // What a reader does not know it draws plain: a code past its table, a
 // colour past the palette, a field the string is too short to hold. A field
 // added later is appended, so an older reader still reads the ones it knows;

@@ -4,10 +4,9 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
-  makeChain, errorKind, undeclared, isAddress, isHoleId, isSlug, safeEndpoint, pullShot, shotOf, roundShots, RULES, REALM_PATH, pkgsPath, storePath, isRealmPath, DEFAULT_RPC, BYTE_PRICE,
+  makeChain, errorKind, undeclared, isAddress, isHoleId, isSlug, safeEndpoint, pullShot, shotOf, roundShots, RULES, REALM_PATH, pkgsPath, storePath, isRealmPath, DEFAULT_RPC, BYTE_PRICE, landed,
 } from "../lib/chain.ts";
 
-// ------------------------------------------------------------ the wire
 // What a Tendermint node answers, built by hand: no fixture files, since
 // each reply's shape is a one-liner and the tests read better inline.
 
@@ -66,7 +65,7 @@ const ADDR1 = "g1" + "a".repeat(38);
 const ADDR2 = "g1" + "b".repeat(38);
 const ADDR3 = "g1" + "c".repeat(38);
 
-// ------------------------------------------------------------ replies, in the shapes checks.* expects
+// replies, in the shapes checks.* expects
 const HOLES_REPLY = { version: 1, play: "garden/1", successor: "", holes: [{ id: "garden/1" }, { id: "garden/2" }] };
 const STATE_REPLY = { version: 1, hole: "garden/1", board: { w: 10, h: 10 }, start: [0, 0], cup: [5, 5], walls: [], posts: [], zones: [] };
 const SIM_FROM_REPLY = { version: 1, path: [[0, 0], [1, 1]], rest: [1, 1], air: "n", cause: "x", holed: true, bounces: 1 };
@@ -86,7 +85,6 @@ const ROUND_REPLY = {
   path: [[0, 0]], rest: [0, 0], ball: [0, 0],
 };
 
-// ------------------------------------------------------------ pure helpers, no network
 test("errorKind reads a ChainError's tag, undefined for anything else", () => {
   const tagged = Object.assign(new Error("x"), { kind: "down" as const });
   assert.equal(errorKind(tagged), "down");
@@ -139,6 +137,35 @@ test("safeEndpoint keeps a local http(s) override, or gno.land's own https, and 
   assert.equal(safeEndpoint("http://127.0.0.1:36657", DEFAULT_RPC, true), DEFAULT_RPC);
 });
 
+test("safeEndpoint: a production build on a public address keeps its own node, whatever the link says; on this machine it takes it", () => {
+  const env0 = process.env.NODE_ENV, g = globalThis as { location?: unknown };
+  try {
+    (process.env as Record<string, string>).NODE_ENV = "production";
+    g.location = { hostname: "gnogolf.xyz" };
+    assert.equal(safeEndpoint("https://rpc.gno.land", DEFAULT_RPC), DEFAULT_RPC);
+    g.location = { hostname: "localhost" };
+    assert.equal(safeEndpoint("https://rpc.gno.land", DEFAULT_RPC), "https://rpc.gno.land");
+  } finally {
+    if (env0 === undefined) delete process.env.NODE_ENV; else (process.env as Record<string, string>).NODE_ENV = env0;
+    delete g.location;
+  }
+});
+
+test("safeEndpoint: the build's own node and NEXT_PUBLIC_ALLOWED_HOSTS' hosts are taken over https, nothing that only starts like one", () => {
+  try {
+    process.env.NEXT_PUBLIC_ALLOWED_HOSTS = "rpc.example.org, web.example.org";
+    process.env.NEXT_PUBLIC_RPC = "https://node.example.net";
+    assert.equal(safeEndpoint("https://rpc.example.org", DEFAULT_RPC), "https://rpc.example.org");
+    assert.equal(safeEndpoint("https://web.example.org", DEFAULT_RPC), "https://web.example.org");
+    assert.equal(safeEndpoint("https://node.example.net", DEFAULT_RPC), "https://node.example.net");
+    assert.equal(safeEndpoint("http://rpc.example.org", DEFAULT_RPC), DEFAULT_RPC);
+    assert.equal(safeEndpoint("https://rpc.example.org.evil.com", DEFAULT_RPC), DEFAULT_RPC);
+  } finally {
+    delete process.env.NEXT_PUBLIC_ALLOWED_HOSTS;
+    delete process.env.NEXT_PUBLIC_RPC;
+  }
+});
+
 test("pullShot rounds power to maxPower and wraps the angle into [0, 360)", () => {
   const rest = pullShot(0, 800, 600, 0);
   assert.equal(rest.deg, 0);
@@ -187,7 +214,13 @@ test("pkgsPath: the packages beside the realm, in the repo tree and as stage.sh 
   assert.equal(storePath(REALM_PATH), "/r/gnogolf/store");
 });
 
-// ------------------------------------------------------------ makeChain: params, clock, links
+test("landed: yes as soon as the chain shows it; nothing read once the page waiting for it is gone", async () => {
+  let asked = 0;
+  assert.equal(await landed(() => (asked++, Promise.resolve(true)), () => true), true);
+  assert.equal(await landed(() => (asked++, Promise.resolve(true)), () => false), false);
+  assert.equal(asked, 1, "gone: never asked");
+});
+
 test("gasPrice divides price by gas", async () => {
   const chain = makeChain();
   setFetch((url) => {
@@ -258,6 +291,17 @@ test("chainId, now and sync follow the node's clock skew", async () => {
   assert.ok(Math.abs(chain.now() - (before + 5000)) < 1000);
 });
 
+test("chainId: a node that does not answer /status, or answers without a result, is down; a failure asked again", async () => {
+  const chain = makeChain();
+  let reply: unknown = { __status: 502 };
+  setFetch(() => reply);
+  await assert.rejects(chain.chainId(), (e: unknown) => errorKind(e) === "down");
+  reply = {};
+  await assert.rejects(chain.chainId(), (e: unknown) => errorKind(e) === "down");
+  reply = statusReply("dev", new Date().toISOString());
+  assert.equal(await chain.chainId(), "dev");
+});
+
 test("roundURL links a named player's round on a hole, # for a bad hole id or address", () => {
   const chain = makeChain();
   assert.equal(chain.roundURL("garden/1", ADDR1), new URL(`${REALM_PATH}:garden/1/${ADDR1}`, chain.web + "/").href);
@@ -284,7 +328,6 @@ test("sourceURL: a package hole's gnoweb source, a data hole's data page, # othe
   assert.equal(chain.sourceURL(null), "#");
 });
 
-// ------------------------------------------------------------ holes(): the sessionStorage cache
 test("holes() fetches and caches the list under a per-rpc, per-realm key", async () => {
   const chain = makeChain();
   let calls = 0;
@@ -350,7 +393,6 @@ test("holes() reads a name the VM quoted the Go way (\\U…), a \\\\U left alone
   assert.equal(list[1].name, "a\\U000f0000"); // a backslash of the name's own, then a U: not an escape
 });
 
-// ------------------------------------------------------------ reads validated by checks.*
 test("state reads one hole's geometry", async () => {
   const chain = makeChain();
   setFetch((url) => {
@@ -554,21 +596,20 @@ test("dayCandidates: DayCandidates' page as asked (after, limit), each row a hol
   setFetch((url) => (assert.equal(decoded(url).expr.replace(/^.*DayCandidates/, "DayCandidates"), `DayCandidates("g1x", 25)`), qevalReply(reply)));
   assert.deepEqual(await chain.dayCandidates("g1x", 25), reply);
   reply = { version: 1, rows: [{ ...row, born: "7" }], next: "" };
-  await assert.rejects(chain.dayCandidates("g1x", 25));
+  await assert.rejects(chain.dayCandidates("g1x", 25), (e) => errorKind(e) === "chain");
 });
 
-// ------------------------------------------------------------ boards, and the mode guard
-test("leaderboard defaults to assisted mode, and normalizes anything that isn't 'pro'", async () => {
+test("courseLeaderboard defaults to assisted mode, and normalizes anything that isn't 'pro'", async () => {
   const chain = makeChain();
-  setFetch((url) => { assert.ok(decoded(url).expr.includes('Leaderboard("assisted")')); return qevalReply(BOARD_REPLY); });
-  assert.equal((await chain.leaderboard()).rows[0].player, ADDR1);
-  await chain.leaderboard("nonsense-mode"); // still "assisted": the handler above would throw on anything else
+  setFetch((url) => { assert.ok(decoded(url).expr.includes('CourseLeaderboard("assisted", 0, 10)')); return qevalReply(COURSE_BOARD_REPLY); });
+  assert.equal((await chain.courseLeaderboard()).rows[0].player, ADDR1);
+  await chain.courseLeaderboard(0, 10, "nonsense-mode"); // still "assisted": the handler above would throw on anything else
 });
 
-test("leaderboard sends 'pro' through unchanged", async () => {
+test("courseLeaderboard sends 'pro' through unchanged", async () => {
   const chain = makeChain();
-  setFetch((url) => { assert.ok(decoded(url).expr.includes('Leaderboard("pro")')); return qevalReply({ ...BOARD_REPLY, mode: "pro" }); });
-  await chain.leaderboard("pro");
+  setFetch((url) => { assert.ok(decoded(url).expr.includes('CourseLeaderboard("pro", 0, 10)')); return qevalReply({ ...COURSE_BOARD_REPLY, mode: "pro" }); });
+  await chain.courseLeaderboard(0, 10, "pro");
 });
 
 test("bests truncates a player list to 50 names before sending it", async () => {
@@ -624,9 +665,9 @@ test("ghost reads a best with its round, null for none, and never asks for a bad
   reply = null;
   assert.equal(await chain.ghost("garden/1", "pro", ADDR1), null);
   reply = { ...GHOST, strokes: 0 };
-  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), "a best of 0 strokes is no best");
+  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), (e) => errorKind(e) === "chain", "a best of 0 strokes is no best");
   reply = { ...GHOST, strokes: 1 };
-  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), "one shot a stroke");
+  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), (e) => errorKind(e) === "chain", "one shot a stroke");
   reply = { ...GHOST, mode: "assisted" };
   assert.equal(await chain.ghost("garden/1", "pro", ADDR1), null, "not the mode asked for: none");
   assert.equal(await chain.ghost("garden/1", "pro", 'g1") + x'), null);
@@ -705,7 +746,6 @@ test("round reads a player's round under way, is null when there is none, refuse
   await assert.rejects(chain.round("garden/1", ADDR1), (e) => errorKind(e) === "chain");
 });
 
-// ------------------------------------------------------------ names: resolveName, nameOf, namesOf, nameReg, nameProblem
 test("resolveName short-circuits an invalid name, no network call", async () => {
   const chain = makeChain();
   setFetch(() => { throw new Error("should not be called"); });
@@ -721,11 +761,11 @@ test("resolveName resolves a registered name to its address, '' for none", async
   assert.equal(await chain.resolveName("nobody"), "");
 });
 
-test("bestsOf: one read, each hole's bests; only the holes asked, strictly read; none for a bad address, no network call", async () => {
+test("bestsOf: one read, each hole's bests (the hole read once for both modes); only the holes asked, strictly read; none for a bad address, no network call", async () => {
   const chain = makeChain();
   setFetch(() => { throw new Error("should not be called"); });
   assert.equal((await chain.bestsOf(["garden/1/v1"], "not-an-address")).size, 0);
-  setFetch((url) => { assert.ok(decoded(url).expr.includes(`BestOf(h, "pro", address("${ADDR1}"))`)); return strReply("garden/1/v1 3 0\ngarden/2/v1 0 4\nnot/asked 2 2\n"); });
+  setFetch((url) => { const x = decoded(url).expr; assert.ok(x.includes(`e := readHole(h); p, a := bestStrokes(bestOfPlayer(e, modeOf("pro"), "${ADDR1}")), bestStrokes(bestOfPlayer(e, modeOf("assisted"), "${ADDR1}"))`), x); return strReply("garden/1/v1 3 0\ngarden/2/v1 0 4\nnot/asked 2 2\n"); });
   assert.deepEqual([...(await chain.bestsOf(["garden/1/v1", "garden/2/v1"], ADDR1))], [["garden/1/v1", { pro: 3, assisted: 0 }], ["garden/2/v1", { pro: 0, assisted: 4 }]]);
   // a line not as written (no best, too many strokes, not a number, a field more) is dropped
   const odd = ["garden/1/v1 0 0", "garden/2/v1 61 0", "garden/3/v1 x 2", "garden/4/v1 -1 2", "garden/5/v1 02 2", "garden/6/v1 2 2 2", "garden/7/v1 2"];
@@ -913,7 +953,6 @@ test("nameProblem: a name already taken, or a lookalike of one, or free", async 
   assert.equal(await chain.nameProblem("nesquimo"), "");
 });
 
-// ------------------------------------------------------------ the reply pipeline itself: refusal, unquote, down/retry
 test("a VM panic's own sentence is what the page shows, not the Go trace", async () => {
   const chain = makeChain();
   setFetch(() => refusedReply("panic: golf: too many shots in one commit\ngoroutine 1 [running]:\n..."));

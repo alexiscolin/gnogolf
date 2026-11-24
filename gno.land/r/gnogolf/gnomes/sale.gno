@@ -6,12 +6,12 @@ import (
 	"time"
 )
 
-// A series is sold in one sale (ADR-013): the owner opens all of its ids at
-// once, from a start (a day back to a year ahead), its first hours for
-// players only (a record in store), at the prices of the day it was opened. A sale is never changed, and withdrawn
-// only before it starts (CancelSale), so once on sale a series stays on sale
-// at its prices: a later SetPrice moves the sales yet to open, never
-// undercuts anyone who bought.
+// A series is sold in one sale: the owner opens all of its ids at once,
+// from a start (a day back to a year ahead), its first hours for players
+// only (a record in store), at the prices of the day it was opened. A sale
+// is never changed, and withdrawn only before it starts (CancelSale), so
+// once on sale a series stays on sale at its prices: a later SetPrice moves
+// the sales yet to open, never undercuts anyone who bought.
 type sale struct {
 	series       string            // its series' name, one sale a series
 	start        int64             // block time, unix seconds
@@ -69,7 +69,7 @@ func openSale(name string, start, playerHours int64) error {
 		return err
 	}
 	if playerHours < 0 || playerHours > maxHours {
-		return errors.New("gnomes: a player window is 0 to 168 hours")
+		return errors.New("gnomes: a player window is 0 to " + itoa(maxHours) + " hours")
 	}
 	if saleOf(name) >= 0 {
 		return errors.New("gnomes: series " + name + " is on sale already")
@@ -79,10 +79,10 @@ func openSale(name string, start, playerHours int64) error {
 	return nil
 }
 
-// CancelSale withdraws series name's sale before it starts: the owner's way
-// back from a wrong start or window. The series is on no sale again, free
-// to open anew. A sale under way, or one with a gnome sold, is never
-// withdrawn: a buyer may have counted on it. Owner only.
+// CancelSale withdraws series name's sale before it starts, when none of
+// its gnomes can have sold: the owner's way back from a wrong start or
+// window. The series is on no sale again, free to open anew. A sale under
+// way is never withdrawn: a buyer may have counted on it. Owner only.
 func CancelSale(cur realm, name string) {
 	assertOwner(0, cur)
 	s, err := cancelSale(name)
@@ -97,8 +97,8 @@ func cancelSale(name string) (sale, error) {
 	if i < 0 {
 		return sale{}, errors.New("gnomes: series " + name + " is on no sale")
 	}
-	s, c := sales[i], catalogue[seriesNamed(name)]
-	if now() >= s.start || soldIn(c.first, c.last) > 0 {
+	s := sales[i]
+	if now() >= s.start {
 		return s, errors.New("gnomes: series " + name + " is on sale since " + dateOf(s.start) +
 			": a sale is withdrawn only before it starts")
 	}

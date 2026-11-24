@@ -2,169 +2,186 @@
 
 # Gnogolf
 
-A 3D mini-golf game on [gno.land](https://gno.land). The holes live on-chain,
-and so does the physics: the chain plays every shot.
+[![check](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg)](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml)
 
-**Race anyone's ghost, verified on-chain.** Every best round on the boards is
-a ghost you can take turns against, stroke for stroke: a rival picked for
-the day, a player at your level, a friend, or yourself. The chain kept it, so nobody
-can fake one, and there is no game server: the chain is the referee. Next:
-**build a hole, own it forever**, the contract side is ready and closed
-behind a switch, the in-game editor comes with the second release.
-[The pitch, in one page](docs/pitch.md).
+3D mini-golf where the chain rolls the ball. You pull back, you let go, and a
+realm on [gno.land](https://gno.land) plays the shot. There is no game
+server, and no way to fake a score.
+
+**[Play at gnogolf.xyz](https://gnogolf.xyz).** It's free and you don't need
+a wallet. [The pitch, in one page](docs/pitch.md).
+
+## The game
+
+- **Five cups, 90 holes.** Garden, Island, Mushroom Town and Mountain, then
+  the Crystal Mines, the expert cup. Windmills, trams, a volcano, and pieces
+  you have to time.
+- **Weather.** Wind, rain, fog, storm, snow. It turns every five minutes of
+  chain time and is the same for everyone, so a hole you know by heart plays
+  differently in a storm.
+- **Ghost duels.** Every best round on the boards is a ghost you can race,
+  stroke for stroke: a rival picked for the day, a player at your level, a
+  friend, or yourself. It's their real round, replayed by the chain.
+- **Boards.** One per hole, and a ranking over the whole course. They list
+  players with a gno.land name, which you can take without leaving the game.
+  A bot check keeps machine-made rounds off them
+  ([docs/leaderboards.md](docs/leaderboards.md)).
+- **Dares.** A saved round gives you a link: whoever opens it races your
+  ghost.
+- **Gnomes and badges** to unlock as you play.
+
+Still behind a switch, and in this repo: the **Builder** (draw a hole, hole
+it in every weather that moves the ball, publish it, own it) and the **gnome
+collection** (720 gnomes to buy, and nine to earn).
 
 ## How it works
 
-You pull back like a slingshot and let go. The client sends that decision (an
-angle, a power, the moment you let go) and the `golf` realm rolls the ball
-itself. Nobody ever sends "I scored 2": a recorded round is the chain's own
-replay of your shots, and anyone can replay it again.
+The client never sends "I scored 2". It sends what you decided (an angle, a
+power, the moment you let go) and the `golf` realm rolls the ball with its
+own physics. A round on the boards is the chain's replay of your shots, and
+anyone can replay it again.
 
-- Playing is free. A shot's preview is a read-only query, so you need no wallet
-  to play the whole course.
-- Keeping a score takes one transaction per hole (more for a long round),
-  signed with [Adena](https://www.adena.app/), or with gnokey: the game gives
-  the command to paste in a terminal, and confirms the save on the chain by
-  the key's address (typed once, kept in the browser). The name, a Claim and a tip can go the same way. A
-  finished round isn't kept on chain, only your best, so a save costs a
-  storage deposit only the first time you finish a hole: about 0.29 GNOT for
-  your first hole on the course, about 0.10 for each hole after, nothing for
-  a replay, plus about 0.05 GNOT of fees a transaction.
-- The boards list players with a gno.land name, so a script can't flood them
-  with throwaway addresses. You can take a name without leaving the game, in
-  the same signature that ranks the rounds you saved before it. Rounds saved
-  without a name are still kept, and shown apart under each board.
-- A bot check reads the boards twice a day and takes off them the rounds
-  that look machine-made, never a player for playing well; a hidden player
-  is told why, and can say it's a mistake
-  ([docs/leaderboards.md](docs/leaderboards.md), "Bot check").
-- A hole's board ranks by strokes. The course ranking counts the holes you
-  finished, then your score against par over them (your best on each, less
-  its par, added up), then who got there first: a hole at par counts the same
-  whatever its par. Each record shows the weather it was played in.
-- You can read a hole's code on gnoweb before you play it.
-- A saved round dares your friends: your share link has them race your best
-  as a see-through ghost, stroke for stroke. The ghost is your real round,
-  replayed by the chain in the weather you had, so it can't be faked, and
-  racing it costs only free reads ([ADR-004](adr/adr-004-duels.md)).
-- Or pick a rival yourself: after the title, choose Duel, then whose ghost
-  (a friend's name or address, or anyone on the board), then one of their
-  ghosts, listed hole by hole with their best to beat. The ghost wears
-  another gnome than yours, and each turn is called out: yours, then theirs.
-  On a board or in Friends, "Race here" starts at once on the hole you're on
-  (their ghost there), and "Their holes" lists their ghosts to pick one.
-- Badges (an ace, all six weathers, a duel won…) are kept in your browser
-  and stamped on the cup card, on the hole each was earned on. New game
-  clears them with your scores; the gnomes you unlocked stay.
-- Support, the chip by the network banner (on a phone, in About), sends an optional 1, 5 or 10
-  GNOT tip: a plain bank send to the golf realm's `Owner()` as read on the
-  chain, confirmed in Adena or gnokey. Playing stays free. On mainnet, while
-  GNOT can't be sent, there is no Support chip.
-- Visits are measured anonymously (PostHog EU, no banner); the About sheet
-  says so and turns it off in one click
-  ([docs/analytics.md](docs/analytics.md)). The font is served by the site
-  itself.
+- Playing costs nothing: a shot's preview is a read-only query.
+- Keeping a score is one transaction a hole (more for a long round), signed
+  with [Adena](https://www.adena.app/) or pasted to `gnokey`. The chain keeps
+  only your best, so the storage deposit is paid once per hole: about 0.29
+  GNOT for your first, about 0.10 for each one after, plus about 0.05 of fees
+  a transaction.
+- The page runs the realm's own code, built to wasm, to draw the aim line
+  and set the ball off the moment you let go. It checks its sources against
+  the chain's first, and every answer after.
+- A hole is data on the chain, not code. You can read one on gnoweb before
+  you play it.
+- Visits are counted anonymously, and About turns that off in one click
+  ([docs/analytics.md](docs/analytics.md)).
 
-There are four cups of 18 holes (Garden, Island, Mushroom Town, Mountain),
-then the Crystal Mines, the expert cup: 18 long holes of three to
-five minutes each (par 158), their pars set by what a good player can do in the
-worst weather ([ADR-005](adr/adr-005-crystal-mines.md), "As built"). It is
-open from the start like the four, and its holes count in the course ranking
-like any other, once published. A cup always starts from its first hole, with a fresh round. The
-menu's Mode goes back to Solo or Duel, All cups to the cups (a duel's ghosts
-in a duel), and Gnome to the gnome picker. Some holes move, so timing is part of the shot. Every hole has
-weather (wind, rain, fog, storm, snow; the Crystal Mines have theirs underground,
-still air, a draught, dripping and lights out, never a storm or snow), which
-changes every five minutes of chain time and is the same for everyone.
+## Run it
 
-## Running it locally
-
-You need a `gnolang/gno` checkout next to this repo, Go, and Node.
-
-**1. The chain.** The game deploys on onyx (`onyx-1`, mainnet's code), so the
-tools are built from the tag `chain/onyx` (a worktree of the checkout, which
-stays on its own branch), into the folder the scripts look in
-(`GNO_TOOLCHAIN`, `~/.cache/gno-toolchains/onyx` unless set). Each finds its
-`GNOROOT`, that worktree, by itself:
+You need Go, Node 22.15 or later, and a
+[gnolang/gno](https://github.com/gnolang/gno) checkout next to this repo. The
+game runs on onyx (`onyx-1`, mainnet's code), so the tools are built from the
+tag `chain/onyx`, into the folder the scripts look in:
 
 ```sh
-t=${GNO_TOOLCHAIN:-~/.cache/gno-toolchains/onyx}
+t=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 git -C ../gno worktree add ../gno-onyx chain/onyx
 (cd ../gno-onyx/gnovm && go build -o $t/gno ./cmd/gno)
 (cd ../gno-onyx/gno.land && go build -o $t/gnokey ./cmd/gnokey)
 (cd ../gno-onyx/contribs/gnodev && go build -o $t/gnodev .)
-export PATH=$t:$PATH
-gnodev local -empty-blocks -empty-blocks-interval 5   # from this repo's root
+(cd web && npm ci)
 ```
 
-That gives you gnoweb on `http://127.0.0.1:8888` and the RPC on
-`http://127.0.0.1:26657`, the web client's default. Three things we learned
-the hard way:
-
-- **Keep `-empty-blocks`.** Without it gnodev only makes a block when a
-  transaction arrives, so its clock stops. The weather changes every five
-  minutes of chain time, and a frozen clock makes every new round look like
-  its weather is already over.
-- **Keep port 26657.** Adena's built-in `dev` network points there, with
-  chain id `dev`. Run the node anywhere else and Adena can't sign for it (it
-  won't add a second `dev` network).
-- **Open `http://127.0.0.1:8888/r/sys/namereg/v0` once.** gnodev loads
-  packages lazily, and registering a name straight after a restart fails
-  until the registrar has been loaded. Onyx and mainnet deploy it at genesis,
-  so this is local only.
-
-**2. The holes.** The course is data (`data/holes.txt`), and only golf's owner
-can publish it. Under gnodev that's the deploy key, `test1`, which your
-gnokey needs once (`gnokey add test1 --recover`, with the mnemonic gnodev
-prints at start):
+### Everything, in one command
 
 ```sh
-scripts/publishdata.sh test1   # one gnokey call of Publish a hole, then a check of every slot
+scripts/try-local.sh
 ```
 
-It asks the key's password once. A slot already up to date is skipped, so a
-failed run can just be run again; `scripts/publishdata.sh -verify` is the
-check alone. To save a round from the game, fund your Adena account from
-`test1` with `gnokey maketx send`.
+A local chain with the 90 holes, the gnome shop and the Builder, two
+throwaway wallets, and the site built with the shop, the Builder and the
+community holes on. It prints the links and what to try; `TAILNET=0` keeps
+it on this machine. [docs/try-local.md](docs/try-local.md) has the rest.
 
-**3. The web client.**
+### By hand
+
+**The chain**, from this repo's root:
+
+```sh
+export PATH=$t:$PATH
+gnodev local -empty-blocks -empty-blocks-interval 5
+```
+
+gnoweb is on `http://127.0.0.1:8888` and the RPC on `http://127.0.0.1:26657`,
+where the client looks. Three things we learned the hard way:
+
+- **Keep `-empty-blocks`.** Without it gnodev only makes a block when a
+  transaction arrives, so its clock stops, and every new round looks like its
+  weather is already over.
+- **Keep port 26657.** Adena's built-in `dev` network points there, and it
+  won't add a second one.
+- **Open `http://127.0.0.1:8888/r/sys/namereg/v0` once.** gnodev loads
+  packages lazily, and taking a name straight after a restart fails until the
+  registrar is loaded.
+
+**The holes.** The course is data (`data/holes.txt`) and only golf's owner
+publishes it. Under gnodev that's `test1`, which your gnokey needs once
+(`gnokey add test1 --recover`, with the mnemonic gnodev prints):
+
+```sh
+scripts/publishdata.sh test1   # skips the slots already up to date
+```
+
+To save a round from the game, fund your Adena account from `test1` with
+`gnokey maketx send`.
+
+**The client.**
 
 ```sh
 cd web
-npm install
-npm run dev     # development server
-npm run build   # static export to web/out/, host it anywhere
-npm run typecheck && npm run lint && npm run selfcheck   # selfcheck fails if the client's copy of the realm's rules drifts
+npm run dev     # the game on http://localhost:3000
+npm run build   # a static site in web/out
 ```
 
-The client takes its config from the URL: `?hole=garden/7` or
-`?cup=garden&hole=7`, `?screen=cups` for the cups screen, and in a dev or local build `?rpc=` and `?web=` (a
-production build served from a public host ignores them and plays
-`NEXT_PUBLIC_RPC` and `NEXT_PUBLIC_WEB`).
-`NEXT_PUBLIC_CLIPS=1` at build time offers a clip of the holing shot in the
-hole-finished card ([ADR-003](adr/adr-003-sharing.md); `?clips` in a dev build).
-`NEXT_PUBLIC_POSTHOG_KEY` turns on anonymous audience measurement (PostHog EU,
-[docs/analytics.md](docs/analytics.md)); unset, as in local dev, nothing loads.
+A build for a public host needs `NEXT_PUBLIC_REALM`, `NEXT_PUBLIC_RPC`,
+`NEXT_PUBLIC_WEB` and `NEXT_PUBLIC_NETWORK` (`netlify.toml` lists them).
+Without them the site plays a chain on the visitor's own machine.
 
-`scripts/check.sh` runs the Gno tests with that `gno` (or the one `GNO`
-names), which fetches the packages the tests import from gno.land (mainnet,
-the code onyx runs) into `$GNO_TOOLCHAIN/gnohome`, a cache of its own. With
-no `gno` there it fails; `SKIP_GNO=1 scripts/check.sh` checks the client
-alone, and says so.
+## Dev mode
 
-The assisted aim's preview runs the realm's physics in the page
-(`web/lib/sim/golf.wasm`, committed, so a deploy needs no Go). After changing
-the physics, the course or the golf realm's simulation, rebuild it with
-`npm run wasm` (TinyGo 0.42.0: `brew install tinygo-org/tools/tinygo`) and
-commit it; `check.sh` fails until you do.
+What the URL opens. `npm run dev` answers to all of it; a row says when
+another build does.
+
+| In the URL | What it does |
+|---|---|
+| `?hole=garden/7`, `?cup=garden&hole=7` | opens a hole; with `&screen=pick`, its gnome picker (any build) |
+| `?screen=cups` | straight to the cups; also `modes`, `rival`, `community` (any build) |
+| `?rpc=`, `?web=` | another node, another gnoweb (a dev or local build): this machine's, or over https a `*.gno.land` host, the build's own or one in `NEXT_PUBLIC_ALLOWED_HOSTS` |
+| `?play` | skips the title |
+| `?shot=angle,power` | fires a shot on load |
+| `?demo=angle,power;angle,power` | plays these shots once the game starts |
+| `?weather=wind,rain,fog,storm` | shows that forecast without asking the chain |
+| `?world=island` | dresses the hole in another world's look |
+| `?traits=<hex>`, `?rivaltraits=<hex>` | plays as a collection gnome, dresses every ghost in one |
+| `?clips` | offers a clip of the holing shot (`npm run dev` only) |
+| `/g/?geo=blocked` | the shop as a blocked region sees it |
+
+The switches of a build, set in the environment (`web/.env.example`):
+
+- `NEXT_PUBLIC_BUILDER=1`: the Builder, at `/build` on a computer.
+- `NEXT_PUBLIC_GNOMES=1`: the gnome shop, at `/g`.
+- `NEXT_PUBLIC_COMMUNITY=1`: the community's holes beside the cups.
+- `NEXT_PUBLIC_CLIPS=1`: a clip of the holing shot on the finished card.
+- `NEXT_PUBLIC_TEST_HOOKS=1`: the hooks above in a production build served
+  locally, on a page opened with `?camlog`.
+- `NEXT_PUBLIC_POSTHOG_KEY`: the audience measurement. Unset, nothing loads.
+
+## Checks
+
+```sh
+scripts/check.sh              # everything that must pass before a commit
+SKIP_GNO=1 scripts/check.sh   # the client alone
+scripts/check.sh --smoke      # then a played round, on a local chain and npm run dev
+```
+
+`check.sh` runs the types and the linter, the Gno tests with their gas and
+storage goldens, the holes' fingerprints, the packages staged as a deploy
+takes them, the gnomes' portraits, catalogue and looks, the scene's builds
+against their golden, the wasm against the realm byte for byte, and the unit
+tests with their coverage floor. Besides the
+toolchain it needs TinyGo 0.42.0
+(`brew install tinygo-org/tools/tinygo`, with binaryen's `wasm-opt`) and
+Chrome (`CHROME` says where).
+
+After changing the physics, the course or the golf realm's simulation,
+rebuild the wasm with `npm run wasm` and commit it: `check.sh` fails until
+you do.
 
 ## Writing a hole
 
 A hole is geometry: a `course.Simple`, encoded as data and published with
-`golf.PublishMine(slug, hexData, note)`, once the owner opens publishing
-(`SetPublishing`; closed at launch, until the Builder). It becomes a community hole: playable,
-and recorded on its own board, but in no cup and not in the rankings. No hole runs code of its own:
-golf decodes the data and plays it with its own physics.
+`golf.PublishMine(slug, hexData, note)` once the owner opens publishing
+(closed at launch, until the Builder). It becomes a community hole: playable,
+with a board of its own, in no cup and not in the rankings.
 
 ```go
 var me = &course.Simple{
@@ -198,78 +215,62 @@ var hexData = hex.EncodeToString([]byte(course.Encode(me)))
 ```
 
 Its id is `<your address>/<slug>/v1`, and only you can add versions to it. A
-`Skin` is only a hint: a client that doesn't know `"hedge"` draws a plain wall.
-`build` is `gno.land/p/gnogolf/physics/build`, the wall builders; the course's
-holes also finish with `author.Fit` (`gno.land/p/gnogolf/course/author`). Both
-are for writing holes only: nothing on chain needs them.
-The course's own holes, in `gno.land/r/gnogolf/`, are the best examples.
+`Skin` is a hint: a client that doesn't know `"hedge"` draws a plain wall.
+The course's own holes, in `gno.land/r/gnogolf/`, are the best examples, and
+[docs/course.md](docs/course.md) is the contract.
 
-**Or draw it in the Builder**, at `/build` on a computer (behind
-`NEXT_PUBLIC_BUILDER=1` until it is out), in the Garden, the Island, Mushroom
-Town or the Mountain (the Crystal Mines stay the game's): a palette of each world's pieces, a
-board where nothing the chain would refuse can be placed (a piece that would
-break the hole is red with the reason and does not drop; a drag stops at the
-last place it may go), the hole in 3D as players will see it, and the chain's
-own checks run in the page (`builder.wasm`, built from the realm's sources). It
-then has you hole it in each weather that moves the ball, in the game itself,
-each round replayed by the chain's code; only then does it publish, with Adena
-or a gnokey command, the cost shown first. On a phone, `/build` lists holes to
-play and says the Builder is for a computer.
+Or draw it in the Builder: a palette of each world's pieces, a board where
+nothing the chain would refuse can be placed, the hole in 3D as players will
+see it, and the chain's own checks run in the page. It has you hole it in
+each weather that moves the ball before it publishes, the cost shown first.
 
 ## Who can change what
 
-The golf realm has one role, its owner (the account that deployed it). The
-owner publishes the course's holes and their new versions. A new version
-archives the old one: still playable, its records kept, but out of the
-course-wide ranking. The owner can also open or close community publishing
-(closed at launch), hide a community hole from the lists (for abuse; it stays
-playable), set the game's link, name a successor realm once, and hand the role
-on or give it up for good.
+The golf realm has one role, its owner. The owner publishes the course's
+holes and their new versions (an old version stays playable, with its
+records), opens or closes community publishing, can hide a community hole
+from the lists for abuse, and can hand the role on or give it up for good.
 
-The owner can't edit or delete a hole, a round or a score, can't touch
-anyone's community hole, the weather or the physics. The records live in a
-realm of their own, `store`, apart from the rules: its owner can propose new
-rules, which take over three days after their code is on chain (anyone can
-read it first), and can stop every save at once for a bug (the reads go on)
-and start the same rules again, never write a record.
-The details are in [docs/golf.md](docs/golf.md#who-can-change-what).
+The owner can't edit or delete a hole, a round or a score, and can't touch
+the weather or the physics. The records live in a realm of their own,
+`store`: new rules take over three days after their code is on chain, where
+anyone can read it first. [The details](docs/golf.md#who-can-change-what).
 
 ## Repo layout
 
 ```
-gno.land/p/gnogolf/physics   2D rolling-ball engine
+gno.land/p/gnogolf/physics   the 2D rolling-ball engine
 gno.land/p/gnogolf/course    the hole contract and the weather
-gno.land/p/gnogolf/weblink   the rule a link an owner sets follows (golf/v2's, shared)
-gno.land/p/gnogolf/jsonq     a string quoted as JSON (golf/v2's jstr, shared)
-gno.land/r/gnogolf/store     the records: every hole, round, best, board and standing
-gno.land/r/gnogolf/golf/v2   the rules: rounds, previews, boards, gnoweb page (the only writer of store)
+gno.land/p/gnogolf/weblink   the rule an owner's link follows
+gno.land/p/gnogolf/jsonq     a string quoted as JSON
+gno.land/r/gnogolf/store     the records: holes, rounds, bests, boards
+gno.land/r/gnogolf/golf/v2   the rules: rounds, previews, boards, the gnoweb page
 gno.land/r/gnogolf/golf      v1, the rules before: on onyx, its records copied into v2
-gno.land/r/gnogolf/gnomes    the gnomes: the catalogue, a sale a series, the earned ones (ADR-007, ADR-013)
+gno.land/r/gnogolf/gnomes    the gnome collection: the catalogue, the sale, the earned ones
 gno.land/r/gnogolf/<hole>    each course hole's source
-web/                         Next.js + three.js client (static export)
-web/lib/builder              the hole Builder's logic: the palette, the draft, the checks, test mode, publishing
-web/lib/sim                  golf.wasm (the aim previews) and builder.wasm (the Builder), built by scripts/wasm.sh
-web/lib/gnomes               the gnomes: the catalogue's pure reads, the looks, the shop
-data/holes.txt               the course as data, one line per slot
-data/gnomes/                 the gnome catalogue's sources, which make data/gnomes.json (ADR-008)
+web/                         the client: Next.js and three.js, a static export
+web/lib/engine, web/lib/scene   the game and its 3D, plain TypeScript, no React
+web/lib/builder              the Builder: the palette, the draft, the checks, test mode, publishing
+web/lib/sim                  golf.wasm (the aim line) and builder.wasm (the Builder's checks)
+web/lib/gnomes               the gnomes: the catalogue, the looks, the shop
+scripts/                     checks, deploys, the local playground, the end-to-end runs
+media/                       the trailer, the share pictures, the gnomes' portraits
+data/                        the course and the gnome catalogue, as data
 ```
 
-On a chain, the deployed packages sit under their owner's name and the game's
-sub-path: `p/<ns>/gnogolf/physics`, `p/<ns>/gnogolf/course`,
-`p/<ns>/gnogolf/weblink`, `p/<ns>/gnogolf/jsonq`, `r/<ns>/gnogolf/store`,
-`r/<ns>/gnogolf/golf/v2` and `r/<ns>/gnogolf/gnomes` (and v1 on onyx).
-`scripts/stage.sh <ns>` stages them so (`MAINNET=1`: without v1 and the import
-of its records), and `scripts/importv1.sh` copies onyx's v1 records into v2.
+On a chain the packages sit under their owner's name: `p/<ns>/gnogolf/…` and
+`r/<ns>/gnogolf/…`. `scripts/stage.sh <ns> <out>` stages them so
+(`MAINNET=1` leaves out v1 and the import of its records).
 
 ## Docs
 
 - [docs/pitch.md](docs/pitch.md): the game in one page, to share.
+- [CLIENT.md](CLIENT.md): how to write a client.
+- [docs/golf.md](docs/golf.md): the realm's API, and how it's updated after the deploy.
 - [docs/physics.md](docs/physics.md): the physics, usable by other Gno games.
 - [docs/course.md](docs/course.md): the hole contract, timed pieces, weather.
-- [docs/golf.md](docs/golf.md): the realm's API, and how it's updated after the deploy.
-- [docs/leaderboards.md](docs/leaderboards.md): the boards, the ghost duels, and the bot check.
-- [CLIENT.md](CLIENT.md): how to write a client.
+- [docs/leaderboards.md](docs/leaderboards.md): the boards, the ghost duels, the bot check.
+- [docs/gnomes/design.md](docs/gnomes/design.md): the rules every gnome is made to.
 - [docs/analytics.md](docs/analytics.md): the anonymous audience measurement.
-- [docs/gnomes/design.md](docs/gnomes/design.md): the gnome collection: the rules every gnome is made to.
-- [docs/try-local.md](docs/try-local.md): the whole game on this machine, to try by hand.
+- [docs/try-local.md](docs/try-local.md): the whole game on this machine.
 - [adr/](adr/): the architecture decisions.

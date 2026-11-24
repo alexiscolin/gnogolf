@@ -47,3 +47,11 @@ void test("every variable the production build asks for or refuses is in netlify
   const header = toml.slice(0, toml.indexOf("[build]"));
   assert.deepEqual(named.filter((k) => !new RegExp(`\\b${k}\\b`).test(header)), []);
 });
+
+void test("web/.env.example names the variables netlify.toml lists for a deploy, no more, no fewer", () => {
+  const toml = fs.readFileSync(new URL("../../netlify.toml", import.meta.url), "utf8");
+  const deploy = toml.slice(0, toml.indexOf("# Never set here")); // (the playground's follow it, never a deploy's)
+  const example = fs.readFileSync(new URL("../.env.example", import.meta.url), "utf8");
+  const names = (s: string) => [...new Set(s.match(/NEXT_PUBLIC_[A-Z_]+/g))].sort();
+  assert.deepEqual(names(example), names(deploy));
+});

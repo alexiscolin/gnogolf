@@ -20,6 +20,7 @@ import { entry as entryIn, type PaletteEntry } from "./palette";
 import type { ValidateOptions } from "./pipeline";
 import type { Issue } from "./checks";
 import { nextId, type Draft, type Piece, type V } from "./draft";
+import { same } from "./session";
 import { moveSide, painted, PAINT_OFF, SIDE_HAND, SIDE_LOCKED, strokeCells, toggleSide, type Green, type PaintMode, type Side } from "./surface";
 
 /** What the pointer pressed on: a piece, a handle of the selected one, the tee or the cup, the green under the brush or one of its sides (painting); null for the board. */
@@ -33,6 +34,8 @@ export interface Env {
   selected: string | null;
   /** the grid's step: 0.5, or 0.25 with Alt held */
   step: number;
+  /** how far a press may wander and still be a click: a few pixels at the board's zoom, in board units */
+  slop: number;
   /** painting: the way, and the green as it stands (surface.ts owned) */
   paint?: { mode: PaintMode; green: Green } | null;
 }
@@ -152,8 +155,8 @@ export function makeGesture(out: Out) {
       }
       const d = g;
       if (!d) return null;
-      // (a press that never went further than a quarter of a step: a click, its let-go no edit)
-      d.moved ||= Math.hypot(at[0] - d.from[0], at[1] - d.from[1]) > e.step / 4;
+      // (a press that never went further than the slop: a click, its let-go no edit)
+      d.moved ||= Math.hypot(at[0] - d.from[0], at[1] - d.from[1]) > e.slop;
       const on = (v: V) => snap(v, e.step, d.start.tee);
       if (d.t === "piece") {
         const p = d.start.pieces.find((q) => q.id === d.id)!, moved = movePiece(p, on([at[0] - d.grab[0], at[1] - d.grab[1]]));
@@ -184,9 +187,9 @@ export function makeGesture(out: Out) {
         return click ? (out.onPaint({ cells: d.green.cells, open: toggleSide(d.green.open, d.side) }, d.side.open ? undefined : SIDE_LOCKED), { painted: true }) : null;
       }
       if (e.armed && !d) {
-        const p = ghostOf(e, at), why = canPlace(e.draft, p, e.full);
+        const p = ghostOf(e, at), next = { ...e.draft, pieces: [...e.draft.pieces, p] }, why = canPlace(e.draft, p, e.full, undefined, next);
         if (why.length) return { refused: refusalOf(why[0]) };
-        out.onSet(frame({ ...e.draft, pieces: [...e.draft.pieces, p] }));
+        out.onSet(frame(next));
         out.onSelect(p.id);
         if (!keep) out.onDisarm(); // Shift keeps it armed: several in a row
         return { placed: p.id };
@@ -228,7 +231,3 @@ export function makeGesture(out: Out) {
     },
   };
 }
-
-/** Whether an edit left the hole as it was: every field of it the same, a number to a millionth (a drag away and back adds float dust). */
-const same = (a: Draft, b: Draft) => JSON.stringify(a, millionth) === JSON.stringify(b, millionth);
-const millionth = (_: string, v: unknown) => (typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v);

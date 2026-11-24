@@ -2,10 +2,11 @@
 // track looping the loop twice over two lava chasms, loop A onto the ore
 // chute's ledge between them and loop B off its end, the points before the
 // first set for it one tick in six, else the track runs on into the chasm;
-// then the gallery hooks round hard, down past a kicker that jumps a lava channel onto
-// an ore pile, and back up through stalagmites to a green inside the hook, a
-// lava pool behind the cup. The stairs, a railed rubble flight beside the
-// chasms, and the plank bridge beside the channel take longer and are safe.
+// then the gallery hooks round hard, down past a kicker that jumps a lava
+// channel onto an ore pile, and back up through stalagmites to a green inside
+// the hook, a lava pool behind the cup. The stairs, a railed rubble flight
+// beside the chasms, and the plank bridge beside the channel take longer and
+// are safe.
 package mines11
 
 import (

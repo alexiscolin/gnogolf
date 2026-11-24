@@ -1,27 +1,26 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The Builder's starter path, timed (the GUI spec's B6): a new player in a
-// headless Chrome against a dev server with the Builder on, from /build to a
-// proved hole on the Publish form. It opens /build (the first run: the
-// Garden's dogleg and its hints, which the first drag puts away), drags a
-// Bumper onto the starter, presses Play, pastes the address the hole is
-// proved under on the start card Play opens on (before round 1), holes each
-// weather (a round's shots replayed in the weathers left first: one it holds
-// in is not played), each round
-// found as scripts/starters.ts finds one, through the page's own test chain,
-// builder.wasm; each shot fired as an aim would fire it, through the game's
-// ?camlog hook, and counted as one drag; each next weather starting on its
-// own under its title card, "Round 2 of 3: Wind"), and presses Publish on the summary card the
-// last one ends on. It reports the wall time and the clicks, drags and
-// fields typed in, and fails over 5 minutes or over B6's budget (4 clicks
-// since Play and Hole it are one: 5 before; 2 with Adena already sharing
-// an account with the site). Without a local chain the Publish form says
-// the chain is unread: it still counts as reached (B6).
+// The Builder's starter path, timed: a new player in a headless Chrome
+// against a dev server with the Builder on, from /build to a proved hole on
+// the Publish form. It opens /build (the first run: the Garden's dogleg and
+// its hints, which the first drag puts away), drags a Bumper onto the
+// starter, presses Play, pastes the address the hole is proved under on the
+// start card Play opens on (before round 1), and holes each weather: a round
+// found by search through the page's own test chain (builder.wasm), each
+// shot fired as an aim would fire it, through the game's ?camlog hook, and
+// counted as one drag; a round's shots are replayed in the weathers left
+// first (one it holds in is not played), and each next weather starts on its
+// own under its title card ("Round 2 of 3: Wind"). Then it presses Publish
+// on the summary card the last one ends on. It reports the wall time and the
+// clicks, drags and fields typed in, and fails over 5 minutes or over its
+// budget (4 clicks; 2 with Adena already sharing an account with the site).
+// Without a local chain the Publish form says the chain is unread: it still
+// counts as reached.
 //
 //   APP=http://localhost:3471 node --experimental-strip-types scripts/builderwalk.ts
 //
 // WIDTH and HEIGHT set the window (1280x800); NOSUBTLE=1 takes crypto.subtle
 // away, as a page on plain http from another machine is. At the first run it checks
-// that the three hints and the three steps' words are each in the window, on
+// that the four hints and the three steps' words are each in the window, on
 // top (nothing drawn over them), and readable (4.5:1 on their ground at
 // least), and that the hints are gone once a piece is dragged.
 //
@@ -53,7 +52,7 @@ const stand = SEED
   : null;
 const env = stand ? stand.seedEnv(SEED) : null;
 const LIMIT_MS = 5 * 60_000;
-/** B6's budget for the starter path: Play, the address the hole is proved under (pasted: its field shown, then used), Publish. */
+/** The starter path's budget: Play, the address the hole is proved under (pasted: its field shown, then used), Publish. */
 const BUDGET = { clicks: 4, typed: 1 };
 const AUTHOR = env ? env[KEY] : "g1" + "q".repeat(38);
 
@@ -92,7 +91,7 @@ try {
     const ground = (el) => { for (let e = el; e; e = e.parentElement) { const bg = getComputedStyle(e).backgroundColor; if (!/rgba\\(.*, 0\\)$/.test(bg) && bg !== "transparent") return bg; } return "rgb(255, 255, 255)"; };
     const parts = [...document.querySelectorAll(".bhint"), ...[...document.querySelectorAll(".stepper .step button")].map((b) => b.querySelector("span") || b)];
     const bad = [];
-    if (parts.length < 6) bad.push("only " + parts.length + " parts (3 hints, 3 steps)");
+    if (parts.length < 7) bad.push("only " + parts.length + " parts (4 hints, 3 steps)");
     for (const el of parts) {
       const r = el.getBoundingClientRect(), name = (el.textContent || "").trim().slice(0, 30), cs = getComputedStyle(el);
       if (!r.width || !r.height || cs.display === "none" || cs.visibility !== "visible" || +cs.opacity < 0.9) { bad.push(name + ": not shown"); continue; }
@@ -176,6 +175,7 @@ async function holeOne(): Promise<string> {
     await until(`!!window.__g && !!document.querySelector(".tmode__chip--now:not(.tmode__chip--done)") && document.querySelector(".tmode__score strong")?.textContent === "0" && !document.querySelector(".tmode__won")`, "a weather to play", 90_000);
     const kind = await c.js<string>(`document.querySelector(".tmode__chip--now .weather__say").textContent`);
     await sleep(1500);
+    // each shot the one ending nearest the cup, within 40 degrees of it, until one holes (6 at most)
     const round = await c.js<[number, number][] | null>(`(async () => {
       const g = window.__g, id = g.current(), p = await g.chain.period(), s = await g.chain.state(id);
       const pin = s.cup, shots = [];
@@ -211,7 +211,6 @@ async function holeOne(): Promise<string> {
 
 /** Publish pressed on the summary: the form and its checks, the budget, and (SEED) published for real. */
 async function publishAndCheck() {
-  try {
   // Publish: the form, the name shown
   await click(onCard(/^Publish →$/), "Publish →");
   await until(`!!document.querySelector(".pub")`, "the Publish form");
@@ -247,10 +246,4 @@ async function publishAndCheck() {
   console.log("builderwalk: ok");
   c.kill();
   process.exit(0);
-  } catch (e) {
-  console.error(`builderwalk: ${e instanceof Error ? e.message : String(e)}`, JSON.stringify(count), JSON.stringify(c.errors).slice(0, 800));
-  console.error("state", JSON.stringify(await c.ev(`({ pub: document.querySelector(".pub")?.textContent.replace(/\\s+/g, " ").slice(-400), chips: [...document.querySelectorAll(".tmode__chip")].map((x) => x.className + " " + x.textContent), score: document.querySelector(".tmode__score")?.textContent, won: document.querySelector(".tmode__won")?.textContent, notes: [...document.querySelectorAll(".tmode__notes p")].map((x) => x.textContent), step: document.querySelector("[aria-current=step]")?.textContent })`)));
-  c.kill();
-  process.exit(1);
-  }
 }

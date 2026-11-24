@@ -1,7 +1,7 @@
 // @ts-check
 // The Builder's video, for social media: node media/builder/promo.mjs [--record] [--shoot [--only=a,b]] [--edit]
 //
-// The trailer's tone (media/promo/render.mjs, v11): its music ("Dizzy Racing", CC0, 175 BPM, its last 30 s), its
+// The trailer's tone (media/promo/render.mjs, v11): its music ("Dizzy Racing", CC0, 175 BPM, its last 40 s), its
 // titles (big rounded words in ink, a word in gold or red, landing on a beat), cut on the beat. The news first, on the
 // cards' paper (the cover: the first frame, whole); then play: three fun
 // holes built of the Builder's own pieces (holes.ts: checked, proved, published on the local chain under AUTHOR), filmed
@@ -9,14 +9,14 @@
 // close up, a word each (its trap dropped and grown, snowmen by the cup, played), then the same hole in 3D; a friend
 // dared to beat it, never near the cup; mainnet soon and its surprise: the collection's gnomes on the tee, one after another; the logo, the slogan, the call on the music's last hit.
 //
-// --record: the Builder's take (a headless Chrome against a site with the Builder on, APP: the playground's by
-// default; its frames and marks in WORK); --shoot: the 3D shots (render.mjs --cut=builder --frames; --only=name,…
-// some again); --edit: the cut, from the last take and shots; none: all three. -> media/builder/gnogolf-builder.mp4
-// (1920x1080, H.264 and AAC) and its first frame as gnogolf-builder-cover.jpg.
+// --record: the Builder's take (a headless Chrome against APP, a site with the Builder on; its frames and marks in
+// WORK); --shoot: the 3D shots (render.mjs --cut=builder --frames; --only=name,… some again); --edit: the cut, from
+// the last take and shots; none: all three. -> media/builder/gnogolf-builder.mp4 (1920x1080, H.264 and AAC) and its
+// first frame as gnogolf-builder-cover.jpg.
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts
 //   then publish holes.json's holes (PublishMine, as AUTHOR), then
-//   APP=http://100.64.12.34:5181 node media/builder/promo.mjs
-// Needs: Node 22+, Google Chrome, /opt/homebrew/bin/ffmpeg, the music (media/promo/CREDITS.txt).
+//   APP=https://… node media/builder/promo.mjs
+// Needs: Node 22.15+, Google Chrome, /opt/homebrew/bin/ffmpeg, the music (media/promo/CREDITS.txt).
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -35,8 +35,6 @@ const MUSIC = path.join(HERE, "..", "promo", "music", "dizzy_racing.flac"), MUSI
 const W = 1280, H = 720, DPR = 1.5;
 // the author the holes are published under: gnodev's test1 (a well-known dev key, on the local chain)
 const AUTHOR = process.env.AUTHOR || "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
-
-// ------------------------------------------------------------------ the take
 
 // the drawn pointer: an arrow following the page's own pointer events, pressed smaller
 const POINTER = `addEventListener("DOMContentLoaded", () => {
@@ -203,16 +201,14 @@ async function record() {
     if (c.errors.length) console.log("page errors:", c.errors.slice(0, 5));
     c.kill();
   }
-  console.log(`take: ${frames.length} frames over ${(frames.at(-1)[0] - frames[0][0]).toFixed(1)} s`);
+  console.log(`take: ${frames.length} frames over ${(frames[frames.length - 1][0] - frames[0][0]).toFixed(1)} s`);
 }
-
-// ------------------------------------------------------------------ the cut
 
 // the cut on the music's beat grid (175 BPM; the last hit, beat 109.5, on the end card's call). Each stretch is one of:
 // - shot: the game's own 3D, filmed by the trailer's rig (media/promo/render.mjs, its frames at these beats): a hole
 //   published (holes.ts), its camera, the weather drawn, a one-stroker found in the chain's weather now (ace), timed to
-//   drop in the cup at dropAt seconds into the stretch (render.mjs logs when it sinks: sink, that time, is what the
-//   titles land on; dropAt is moved by what they differ);
+//   drop in the cup at dropAt seconds into the stretch; the titles land on when it sank (render.mjs's sinks.json, sink
+//   until it is filmed), and dropAt is moved by what the two differ;
 // - from/to: the Builder's take between two marks (seconds after them) played to fill its beats, cropped to [x, y, w]
 //   of its window (16:9);
 // - stills: the take's frames at those marks, an equal share of the beats each (hard cuts), cropped alike;
@@ -234,6 +230,7 @@ const MORPH = (() => {
   const spread = (/** @type {any[]} */ gs, n) => Array.from({ length: n }, (_, i) => gs[Math.floor(((i + 0.5) * gs.length) / n)]);
   return [...spread(of("epic"), 8), ...of("legendary")].map((g) => g.traits);
 })();
+/** @type {{ shot?: any, card?: boolean, from?: [string, number], to?: [string, number], stills?: [string, number][], beats: number[], crop?: number[], on?: string, w?: number, titles: any[] }[]} */
 const CUT = [
   // the cover (X shows a video's first frame): the news on the cards' paper, all there from the first frame
   { card: true, beats: [0, 3], titles: [
@@ -302,7 +299,7 @@ const CUT = [
 const HIT = 109.5, LEN = 116.5, MUSIC_AT = +(MUSIC_END - HIT * BEAT).toFixed(3);
 const F = (/** @type {number} */ beat) => Math.round(beat * BEAT * FPS);
 const RENDER = path.join(HERE, "..", "promo", "render.mjs"), SHOTS = path.join(HERE, "..", "promo", "shots-builder.json");
-const FILMED = path.join(os.tmpdir(), "gnogolf-promo"); // (render.mjs's WORK: its frames and the shots' sounds)
+const FILMED = path.join(os.tmpdir(), "gnogolf-promo-builder"); // (render.mjs's WORK for this cut: its frames, the shots' sounds and sinks)
 
 /** The 3D shots for render.mjs (shots-builder.json): each at its stretch's beats, its hole's id, its first stroke a one-stroker found then. */
 const shotsOf = () => CUT.filter((s) => s.shot).map((s) => ({ ...s.shot, hole: `${AUTHOR}/${s.shot.hole}/v1`, beats: s.beats, fire: s.shot.fire ?? (s.shot.ace ? [{ deg: 0, power: 5, at: 0 }] : undefined) }));
@@ -474,16 +471,11 @@ function base(/** @type {any[]} */ cut, /** @type {[number, string][]} */ frames
 function shoot() {
   fs.writeFileSync(SHOTS, JSON.stringify(shotsOf(), null, 1) + "\n");
   const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7).split(",");
-  const log = execFileSync(process.execPath, [RENDER, "--cut=builder", "--frames", ...(only ? [`--only=${only.join(",")}`] : [])], { env: { ...process.env, APP }, encoding: "utf8" });
-  process.stdout.write(log);
-  const file = path.join(WORK, "sinks.json"), sinks = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
-  for (const s of shotsOf()) if (!only || only.includes(s.name)) delete sinks[s.name]; // (a shot not seen to sink: its sink in the cut)
-  for (const [, name, t] of log.matchAll(/^ {2}([\w-]+): the ball sinks at ([\d.]+) s/gm)) sinks[name] = Number(t);
-  fs.writeFileSync(file, JSON.stringify(sinks));
+  execFileSync(process.execPath, [RENDER, "--cut=builder", "--frames", ...(only ? [`--only=${only.join(",")}`] : [])], { env: { ...process.env, APP }, stdio: "inherit" });
 }
 
 async function edit() {
-  const sinks = fs.existsSync(path.join(WORK, "sinks.json")) ? JSON.parse(fs.readFileSync(path.join(WORK, "sinks.json"), "utf8")) : {};
+  const sinks = fs.existsSync(path.join(FILMED, "sinks.json")) ? JSON.parse(fs.readFileSync(path.join(FILMED, "sinks.json"), "utf8")) : {};
   const { frames, marks, spots } = JSON.parse(fs.readFileSync(path.join(WORK, "take.json"), "utf8")), cut = cutOf(marks, sinks);
   await overlay(cut);
   base(cut, frames, marks, spots);

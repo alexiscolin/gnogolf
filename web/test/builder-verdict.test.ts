@@ -8,7 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { host, hexOf, lane, rail } from "./builder-fixture.ts";
+import { host, hexOf, lane } from "./builder-fixture.ts";
 import "./scene-harness.ts";
 import { judge, NOT_BUILDER } from "../lib/builder/verdict.ts";
 import { canonicalHex } from "../lib/builder/proof.ts";
@@ -67,7 +67,6 @@ void test("threat: bytes a Builder would not write for the same hole (a field of
   assert.deepEqual(await okFor(direct(box({ friction: 0.5 }))), { ok: false, why: `${NOT_BUILDER} Its data is not as the Builder writes it.` });
   const off = await okFor(direct(box({ walls: [...box().walls, { a: [10.1, 6.5], b: [14.5, 6.5] }] })));
   assert.equal(off.ok, false, "a rail end off the quarter grid: the chain takes it, the Builder never writes it");
-  void rail;
 });
 
 void test("threat: huge or garbage data never reaches the decoder", async () => {

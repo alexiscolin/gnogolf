@@ -1,5 +1,5 @@
-// Colour as people see it, for the collection's readability rules
-// (docs/gnomes/design.md, "Readable at ball size"): OKLab, where a distance
+// Colour as people see it, for the collection's readability rules:
+// OKLab, where a distance
 // is about how different two colours look.
 
 /** A colour in OKLab: lightness 0..1, and its two hues. */

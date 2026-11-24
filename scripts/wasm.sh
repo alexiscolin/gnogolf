@@ -8,8 +8,8 @@
 # And web/lib/sim/builder.wasm, the hole builder's (web/lib/builder/wasm.ts):
 # the same, plus PublishMine's checks and author.Fit (Check and Fit,
 # scripts/wasm/r/gnogolf/golf/local_builder.go), built with -tags builder
-# from a second extraction with more roots, so golf.wasm, which every player
-# loads, stays byte for byte what it was.
+# from a second extraction with more roots, so none of them reaches
+# golf.wasm, which every player loads.
 #
 # The Go sources are the .gno files, as they are, in a Go module named
 # gno.land (scripts/wasm/go.mod), so their import paths stay what they are:
@@ -49,30 +49,37 @@
 # and what it prints is fixed by its spec (shortest, or correctly rounded).
 # The proof is the parity test, scripts/wasmparity.ts, which --check runs.
 #
-# TinyGo, not Go's own wasm port: 70 KB gzipped against 700 (Go's runtime
-# alone is 570). -scheduler none and the wasip1 target: no JS glue but three
-# imports (fd_write, proc_exit, random_get), and no goroutine machinery.
+# TinyGo, not Go's own wasm port: 84 KB gzipped against 700 (Go's runtime
+# alone is 570). -scheduler none and the wasip1 target: no JS glue but two
+# imports (fd_write, random_get), and no goroutine machinery.
 #
 # Reproducible: TinyGo and its Go are pinned (TINYGO_VERSION, GOTOOLCHAIN),
 # no debug information. --check rebuilds into a scratch folder, fails if the
 # committed golf.wasm is not that build, then runs the parity test.
 #
 # GNO is the onyx gno binary (default: the toolchain's, in GNO_TOOLCHAIN: see
-# check.sh), for its GNOROOT; TINYGO the tinygo binary (default: in PATH).
+# check.sh), for its GNOROOT; TINYGO the tinygo binary (default: in PATH, else
+# tinygo-0.42.0/bin/tinygo beside the toolchain's folder), which finds
+# binaryen's wasm-opt in PATH or WASMOPT.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 here=$root/scripts/wasm
 realm=gno.land/r/gnogolf/golf/v2 # the rules the site plays
 toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 GNO=${GNO:-$toolchain/gno}
-TINYGO=${TINYGO:-tinygo}
 TINYGO_VERSION=0.42.0
+TINYGO=${TINYGO:-$(command -v tinygo || echo "$(dirname "$toolchain")/tinygo-$TINYGO_VERSION/bin/tinygo")}
 export GOTOOLCHAIN=go1.26.0
 if ! "$TINYGO" version 2>/dev/null | grep -q "^tinygo version $TINYGO_VERSION "; then
 	echo "wasm.sh: TinyGo $TINYGO_VERSION is needed (brew install tinygo-org/tools/tinygo, or set TINYGO); found: $("$TINYGO" version 2>&1 || true)" >&2
 	exit 1
 fi
-gnoroot=$(GNOHOME=$toolchain/gnohome "$GNO" env GNOROOT | sed 's/^GNOROOT="\(.*\)"$/\1/')
+if ! "$TINYGO" env WASMOPT >/dev/null; then
+	echo "wasm.sh: TinyGo needs binaryen's wasm-opt, in PATH or WASMOPT" >&2
+	exit 1
+fi
+gnoroot=$(GNOHOME=$toolchain/gnohome "$GNO" env GNOROOT)
+gnoroot=$(echo "$gnoroot" | sed 's/^GNOROOT="\(.*\)"$/\1/')
 
 rm -rf "$here/p" "$here/gnovm"
 gnomath() { sed -e 's#^import "math"$#import "gno.land/gnovm/math"#' -e 's#^\(	*\)"math"$#\1"gno.land/gnovm/math"#'; }
@@ -136,7 +143,10 @@ sources sources_builder.go builder "$builder"
 
 (cd "$here" && GOOS=wasip1 GOARCH=wasm go vet ./... && GOOS=wasip1 GOARCH=wasm go vet -tags builder ./...)
 out=$root/web/lib/sim
-[ "${1:-}" = "--check" ] && out=$(mktemp -d)
+if [ "${1:-}" = "--check" ]; then
+	out=$(mktemp -d)
+	trap 'rm -rf "$out"' EXIT
+fi
 # golf.wasm, the aim preview every player loads; builder.wasm, the same and
 # the hole builder's calls (-tags builder: main_builder.go, local_builder.go)
 build() { # build <name> <tag> <the realm's files>
@@ -146,7 +156,7 @@ build() { # build <name> <tag> <the realm's files>
 }
 build golf "" "$golf"
 build builder builder "$builder"
-# builder.wasm's budget (ADR-006)
+# builder.wasm's budget
 if [ "$size" -gt 300000 ] || [ "$gz" -gt 130000 ]; then
 	echo "wasm.sh: builder.wasm is over 300 KB, or 130 KB gzipped" >&2
 	exit 1
@@ -159,6 +169,5 @@ if [ "${1:-}" = "--check" ]; then
 			exit 1
 		fi
 	done
-	rm -rf "$out"
 	cd "$root/web" && node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../scripts/wasmparity.ts
 fi

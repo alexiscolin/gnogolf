@@ -15,13 +15,11 @@
 // gnome by its depth key and paints them in that order.
 import fs from "node:fs";
 import { gnomePage, DESIGNS } from "./extract.mjs";
-import { rasterize, maskOf, erode, dilate, trace, simplify, pathOf, areaOf, project, toUnits, unitsAt, LIT_SRGB, N, SIZE } from "./raster.mjs";
+import { rasterize, maskOf, erode, dilate, trace, simplify, pathOf, areaOf, project, toUnits, unitsAt, LIT_SRGB, N, SIZE, VIEW_DEPTH } from "./raster.mjs";
 
 const OUT = new URL("../../../gno.land/r/gnogolf/gnomes/art.gno", import.meta.url);
 const check = process.argv.includes("--check");
 
-// ---------------------------------------------------------------- colours
-//
 // A slot is a colour of the gnome's own: a trait field. Each is drawn in a
 // colour of its own no palette or mesh has (two sets, to tell a slot from a
 // mesh's fixed colour), and once left unset (what the client draws then:
@@ -35,8 +33,6 @@ const SET_B = Object.fromEntries(Object.entries(SET_A).map(([k, v]) => [k, v + 0
 const INK = 0x144134;
 const hex = (/** @type {number} */ v) => v.toString(16).padStart(6, "0");
 
-// ---------------------------------------------------------------- the light
-//
 // A shape's fill is its colour under a lit top (LIT_SRGB, applied by the
 // realm); where the light on it falls under SHADE[k] of that, an overlay of
 // black darkens it (the classes .d and .e of the SVG, the second inside the
@@ -46,7 +42,6 @@ const SHADE = [0.8, 0.6];
 const DARK_1 = 0.12, DARKEST = 0.25;
 const OVERLAY = [DARK_1, Math.round((1 - (1 - DARKEST) / (1 - DARK_1)) * 1000) / 1000];
 
-// ---------------------------------------------------------------- tracing
 // how far a traced outline may stray (raster pixels) and the smallest speck drawn (pixels²): a
 // fill's, its light's (looser: soft edges), and its marks' to start from
 const FILL = { tol: 1.6, min: 12 }, LIGHT = { tol: 3, min: 60 }, MARKS = { tol: 1.6, min: 16 };
@@ -304,13 +299,11 @@ async function markDefault(/** @type {Drawn} */ d, /** @type {number} */ i, /** 
 
 /** @type {{ id: number, tier: string, traits: string }[]} the catalogue: the Legendaries' hats, the materials' colours */
 const catalogue = JSON.parse(fs.readFileSync(`${DESIGNS}/data/gnomes.json`, "utf8")).gnomes;
-/** A field of a token's traits (format 1's bytes: docs/gnomes/design.md, "The trait encoding"). */
+/** Field f of a token's traits: its byte f in format 1. */
 const field = (/** @type {string} */ traits, /** @type {number} */ f) => parseInt(traits.slice(2 * f, 2 * f + 2), 16);
 const F_HAT = 6, F_BODY = 11, F_MATERIAL = 21, F_MATERIAL_COLOUR = 22, F_PROP = 27;
 
-// ---------------------------------------------------------------- the traits
-//
-// Each against the plain gnome in the cone hat, beardless: what it adds.
+// The traits, each against the plain gnome in the cone hat, beardless: what it adds.
 const PLAIN = { beard: "none" };
 /** @type {string[]} the eyes' meshes: their colour is the slot E */
 const eyes = [];
@@ -440,8 +433,6 @@ await table("trails", vocab.TRAILS, async (t) => {
   return (await shapesOf(d, d.A.map((_, i) => i), { ground: true })).join("|");
 });
 
-// ---------------------------------------------------------------- the frame
-//
 // The thumbnails' ground: a disc of the tier's plinth colour under him,
 // ringed once for a Rare, twice for an Epic or a Legendary, rayed for a
 // Legendary (gnome-showcase.ts), and his shadow (makeBall's shade).
@@ -460,12 +451,11 @@ const rays = Array.from({ length: 16 }, (_, k) => {
 const frame = {
   plinth: ellipse(0.72),
   rings: [ellipse(0.805), ellipse(0.905)],
-  ringWidth: Math.round(unitsAt(0.05, 4.9) * 2) / 2,
+  ringWidth: Math.round(unitsAt(0.05, VIEW_DEPTH) * 2) / 2,
   shade: ellipse(0.55, 0.011),
   rays: pathOf(rays),
 };
 
-// ---------------------------------------------------------------- art.gno
 const quote = (/** @type {string} */ s) => {
   if (s.includes("`")) throw new Error("portrait: a backquote in the art");
   return "`" + s + "`";
@@ -493,9 +483,8 @@ package gnomes
 
 // The portrait's art (svg.gno draws with it): every trait of format 1 as
 // the game draws it, traced from the thumbnails' camera. A table is a
-// function of a code, in its vocab's order (docs/gnomes/design.md, "The
-// trait encoding"); its art is shapes split by "|", each
-// "<key><kind><colour>:<path>" (svg.gno, "Shapes"). Append only, as the
+// function of a code, in the order of the client's vocab; its art is shapes
+// split by "|", each "<key><kind><colour>:<path>". Append only, as the
 // vocab is.
 
 // artPalette is the collection's colours by code, six hex digits each;

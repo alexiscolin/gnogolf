@@ -127,8 +127,8 @@ var (
 	heart   = lake
 	landN   = physics.V(73, 24.5) // the north-east landing, where the drift comes down
 	landS   = physics.V(48, 70.5) // the south landing, at the rim path's end
-	// Act I, the drift: up the lake's west shore and along its north shore to
-	// the north-east landing
+	// the drift: up the lake's west shore and along its north shore to the
+	// north-east landing
 	drift  = spline(2, physics.V(9, 62.5), physics.V(6.5, 48), physics.V(10, 30), physics.V(20, 14.5), physics.V(38, 11.5), physics.V(55, 13.5), physics.V(66, 16.5), physics.V(71, 20.5))
 	driftW = widths(2, 2, 2, 2, 2, 2, 2, 2.2, 2.4)
 )
@@ -217,10 +217,10 @@ func ground() []physics.Vec2 {
 		dn[1:10],
 		build.Arc(physics.V(46.5, 10.6), 2.3, deg(180), deg(360), 4), // the side stope
 		dn[10:],
-		arc(landN, 4.5, dn[len(dn)-1], onLake(rimX, rimY, 330), 4),              // round the landing
-		ring(rimX, rimY, 330, 444, 29),                                          // the rim path's rail
+		arc(landN, 4.5, dn[len(dn)-1], onLake(rimX, rimY, 330), 4),             // round the landing
+		ring(rimX, rimY, 330, 444, 29),                                         // the rim path's rail
 		arc(landS, 3.5, onLake(rimX, rimY, 84), meet(lakeX, lakeY, 110, 0), 5), // round the south landing
-		ring(lakeX-1, lakeY-1, 110, 290, 20)[1:],                                // the lava's far shore
+		ring(lakeX-1, lakeY-1, 110, 290, 20)[1:],                               // the lava's far shore
 		arc(landN, 4.5, onLake(lakeX, lakeY, 290), ds[len(ds)-1], 2),
 		rev(ds)[1:len(ds)-1],
 		arc(station, 5.5, ds[0], physics.V(14.3, 66.5), 2),

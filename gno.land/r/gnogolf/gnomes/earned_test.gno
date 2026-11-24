@@ -94,7 +94,7 @@ func cupHoles(f *fakeRows, world string, n int) []string {
 func withRows(t *testing.T, rlm realm) *fakeRows {
 	fresh(t, rlm)
 	f := newFake()
-	rows = f
+	golfRows = f
 	return f
 }
 
@@ -236,6 +236,20 @@ func TestWhatDoesNotCount(cur realm, t *testing.T) {
 	uassert.False(t, ok)
 }
 
+// A world of more than a page of slots (store's 300) is refused, not proven
+// from its first page.
+func TestACupTooLargeForThePageRefuses(cur realm, t *testing.T) {
+	f := withRows(t, cur)
+	ids := cupHoles(f, "garden", maxCupSlots+1)
+	for _, id := range ids[:maxCupSlots] {
+		best(f, id, "assisted", alice.String(), 3)
+	}
+	urequire.PanicsContains(t, cur, "cup too large for the proof", func() { prove("wizard", alice.String()) })
+	f.c["slots"].Remove("0garden/301")
+	ok, _, _ := prove("wizard", alice.String())
+	uassert.True(t, ok, "300 slots, one page: proven")
+}
+
 func TestNewRulesProveNothing(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	f.writer = "gno.land/r/gnogolf/golf/v3"
@@ -303,9 +317,9 @@ func TestNewRulesRefuseTheMint(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "rules changed", func() { MintEarned(cross(cur), "wizard") })
 }
 
-// New rules (store's writer moved, ADR-012): every proof refuses until the
-// owner accepts them, and only store's current writer can be accepted; then
-// the same player's proof passes again, and what was minted stays minted once.
+// New rules (store's writer moved): every proof refuses until the owner
+// accepts them, and only store's current writer can be accepted; then the
+// same player's proof passes again, and what was minted stays minted once.
 func TestTheOwnerAcceptsOnlyStoresNewRules(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	for _, id := range cupHoles(f, "garden", 18) {
@@ -365,7 +379,7 @@ func TestAnEarnedGnomeIsBoundToItsPlayer(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "bound to its player", func() { Approve(cross(cur), bob, id) })
 	// (the hook's panic aborts the transfer, and on chain the whole call with
 	// the ledger's write; the harness does not revert what a recovered call
-	// wrote, as golf's z_worst_shot notes, so the state is not checked here)
+	// wrote, so the state is not checked here)
 	urequire.AbortsContains(t, cur, "bound to its player", func() { TransferFrom(cross(cur), alice, bob, id) })
 
 }
@@ -415,9 +429,9 @@ func TestEarnedIDsAreAboveEveryCatalogue(t *testing.T) {
 	uassert.Equal(t, int64(1_000_001), int64(firstEarned))
 }
 
-// Earned gnomes have their own switch, apart from the
-// sale's, open at deploy: the owner can stop MintEarned for a fault in the
-// proof without pausing the sale, and the sale's switch never stops it.
+// Earned gnomes have their own switch, apart from the sale's, open at
+// deploy: the owner can stop MintEarned for a fault in the proof without
+// pausing the sale, and the sale's switch never stops it.
 func TestEarnedGnomesHaveTheirOwnSwitch(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	for _, id := range cupHoles(f, "garden", 18) {
@@ -432,6 +446,7 @@ func TestEarnedGnomesHaveTheirOwnSwitch(cur realm, t *testing.T) {
 	uassert.True(t, MintOpen(), "the sale's switch is its own")
 	uassert.True(t, strings.Contains(Collection(), `"open":true,"earnedOpen":false,`), Collection())
 	has(t, Render(""), "Earned gnomes are paused.")
+	uassert.True(t, strings.Contains(Proof("wizard", alice), `"reason":"paused"`), Proof("wizard", alice))
 	testing.SetRealm(asUser(alice, nil))
 	urequire.AbortsContains(t, cur, "gnomes: earned gnomes are paused: none is minted until the owner resumes them",
 		func() { MintEarned(cross(cur), "wizard") })

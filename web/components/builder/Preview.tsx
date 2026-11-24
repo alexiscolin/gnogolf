@@ -1,12 +1,10 @@
 "use client";
 
-// The hole in 3D (the GUI spec's B2, top right): the game's own buildHole on
-// the hole as a player's client gets it (HoleState of the canonical bytes,
-// builder.wasm), framed from above as the overview frames it. What it shows
-// is what will be published. Drawn again whenever the checked hole changes.
-// Turning slowly round its middle on its own (not while dragged, nor out of
-// sight, nor for reduced motion); turned by a drag, zoomed by the wheel; a
-// double click frames it again. Said under it.
+// The publish step's hole in 3D: the game's own buildHole on the hole as a
+// player's client gets it (the HoleState of its canonical bytes), framed as
+// the overview frames it, so what it shows is what will be published. It
+// turns slowly on its own (not while dragged, out of sight or under reduced
+// motion); a drag turns it, the wheel zooms, a double click frames it again.
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { applyRig, laneBox, makeRenderer, makeScene, overviewRig, setLighting } from "@/lib/scene/camera";
@@ -22,7 +20,7 @@ const FRAMED: Readonly<{ yaw: number; pitch: number; zoom: number }> = { yaw: 0,
 const SPIN = (2 * Math.PI) / 60_000;
 
 /** capture: set to a function that draws the view now and gives its canvas (read it in the same task: a share card). */
-export default function Preview({ state, fresh, capture }: { state: Hole | null; fresh: boolean; capture?: { current: (() => HTMLCanvasElement | null) | null } }) {
+export default function Preview({ state, capture }: { state: Hole | null; capture?: { current: (() => HTMLCanvasElement | null) | null } }) {
   const box = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement | null>(null);
   const three = useRef<{ renderer: THREE.WebGLRenderer; scene: ReturnType<typeof makeScene>; camera: THREE.PerspectiveCamera; course: THREE.Object3D | null } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -73,7 +71,7 @@ export default function Preview({ state, fresh, capture }: { state: Hole | null;
       setLighting(scene, "day");
       three.current = { renderer, scene, camera: new THREE.PerspectiveCamera(30, 1, 3, 420), course: null };
     } catch {
-      setFailed(true); // no WebGL here: the board still says it all
+      setFailed(true); // no WebGL here: a sentence in its place
     }
     return () => {
       const t = three.current;
@@ -130,7 +128,7 @@ export default function Preview({ state, fresh, capture }: { state: Hole | null;
       }}
       onPointerUp={() => void (drag.current = null)} onPointerCancel={() => void (drag.current = null)}
       onDoubleClick={() => ((orbit.current = { ...FRAMED }), turned())}>
-      <span className="pill">{state ? (fresh ? "3D · in sync" : "3D · catching up") : "3D · waiting for the checks"}</span>
+      <span className="pill">{state ? "3D · in sync" : "3D · waiting for the checks"}</span>
       <span className="preview__how" aria-hidden="true">Drag to turn · scroll to zoom</span>
     </div>
   );

@@ -45,8 +45,8 @@ func inLane(h *course.Simple, p physics.Vec2) bool {
 	return in
 }
 
-// Shots that used to leave the lane through an acute corner's tip: the gap
-// between the square caps of its two walls.
+// No shot leaves the lane through an acute corner's tip, the gap between the
+// square caps of its two walls.
 func TestNoShotLeavesThroughATip(t *testing.T) {
 	for _, c := range []struct {
 		realm        string
@@ -68,8 +68,8 @@ func TestNoShotLeavesThroughATip(t *testing.T) {
 	}
 }
 
-// Moves that used to cut through a free wall end from afar, diagonally in at
-// its missing end face: one substep on the hole's walls.
+// No move cuts through a free wall end from afar, diagonally in at its
+// missing end face: one substep on the hole's walls.
 func TestNoMoveCutsAFreeEnd(t *testing.T) {
 	for _, c := range []struct {
 		realm      string
@@ -92,8 +92,8 @@ func TestNoMoveCutsAFreeEnd(t *testing.T) {
 }
 
 // A piece that comes back between strokes pushes a resting ball out, never
-// across one of the hole's own walls: mountain9's bars alternate
-// every stroke, and hole2's mole pops up by an inner corner.
+// across one of the hole's own walls: mountain9's bars alternate every
+// stroke, and hole2's mole pops up by an inner corner.
 func TestAPieceNeverPushesTheBallThroughAWall(t *testing.T) {
 	for _, c := range []struct {
 		realm  string
@@ -163,7 +163,7 @@ func TestNoTwoHillsOverlap(t *testing.T) {
 				}
 				together := false
 				for tick := 0; tick < 1024 && !together; tick++ {
-					together = on(tick, a) && on(tick, b)
+					together = physics.There(tick, a.Every, a.On, a.Phase) && physics.There(tick, b.Every, b.On, b.Phase)
 				}
 				if !together {
 					continue
@@ -178,11 +178,6 @@ func TestNoTwoHillsOverlap(t *testing.T) {
 			}
 		}
 	}
-}
-
-// on is whether a timed zone is there at tick, as physics times it.
-func on(tick int, z physics.Zone) bool {
-	return z.Every <= 0 || ((tick+z.Phase)%z.Every+z.Every)%z.Every < z.On
 }
 
 // No course hole has dry ground a ball can reach off its board: from the
@@ -260,6 +255,42 @@ func TestNoDryGroundOffTheBoard(t *testing.T) {
 				seen[m] = true
 				if clear(at(m)) {
 					q = append(q, m)
+				}
+			}
+		}
+	}
+}
+
+// The text board blanks what no ball can reach as the 3D client does, fenced
+// by the walls that stay: The Mill's three tunnel mouths, between its timed
+// sail and its wall, are drawn with their exits.
+func TestTheBoardKeepsWhatATimedWallCrosses(t *testing.T) {
+	h := courseHoleData(t, "gno.land/r/gnogolf/hole4")
+	b := board(newEntry("garden/4/v1", h.Title, h.Par(), h.World, h.Order), h, h.Field(), nil, course.Forecast{})
+	for _, d := range []string{"1", "2", "3"} {
+		if strings.Count(b, d) < 2 {
+			t.Fatalf("tunnel %s shows its exit, not its mouth:\n%s", d, b)
+		}
+	}
+}
+
+// The text board draws every course hole's zones on the cells whose centre
+// each holds, as the physics sees it (physics.Zone.Contains).
+func TestTheBoardDrawsZonesAsThePhysicsHoldsThem(t *testing.T) {
+	for _, d := range courseData {
+		h := courseHoleData(t, d[1])
+		for i := range h.Course.Zones {
+			z := &h.Course.Zones[i]
+			g := make([][]rune, h.H)
+			for y := range g {
+				g[y] = make([]rune, h.W)
+			}
+			drawZone(g, z, 'z')
+			for y := range g {
+				for x := range g[y] {
+					if p := physics.V(float64(x)+0.5, float64(y)+0.5); (g[y][x] == 'z') != z.Contains(p) {
+						t.Fatalf("%s: zone %d drawn wrong at %v", d[0], i, p)
+					}
 				}
 			}
 		}

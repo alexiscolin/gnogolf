@@ -1,6 +1,6 @@
 "use client";
 
-// A player's collector rank, beside their name wherever they appear (ADR-011):
+// A player's collector rank, beside their name wherever they appear:
 // the boards' rows and cards, a duel's ghost, the rivals, the picker, a
 // player's gnomes. Worked out from what they hold (lib/gnomes/collection.ts:
 // one page a player, kept for the visit), drawn once known, inline after the
@@ -11,13 +11,14 @@ import { useEffect, useSyncExternalStore, type ReactNode } from "react";
 import type { Chain } from "@/lib/chain";
 import { SHOP } from "@/lib/gnomes/shop";
 import { collectorsOf, collectorsVersion, onCollectors, rankOf, rankTitle, rankWords, ranksShown, type Rank, type RankId } from "@/lib/gnomes/collection";
+import { SHAPE as TIER } from "./parts";
 
-// a rank's shape, read in grey too: a disc, a diamond, a star, a crown
+// a rank's shape, read in grey too: the tiers' disc, diamond and crown, a star for gold
 const SHAPE: Record<RankId, ReactNode> = {
-  bronze: <circle cx="8" cy="8" r="5" />,
-  silver: <path d="M8 2 14 8 8 14 2 8z" />,
+  bronze: TIER.common,
+  silver: TIER.rare,
   gold: <path d="M8 1.8 9.8 6l4.5.4-3.4 3 1 4.4L8 11.5l-3.9 2.3 1-4.4-3.4-3L6.2 6z" />,
-  legendary: <path d="M2 12 3 5l3 3 2-5 2 5 3-3 1 7z" />,
+  legendary: TIER.legendary,
 };
 
 /** A rank as a badge: its shape on its metal, and its name (said in full, or "Gold" with "Collector" for a reader). */

@@ -22,11 +22,10 @@
 // gate on them (gateOf: "" plays, "unchecked", "unheld"). The author plays
 // and sees their own meanwhile (the account connected, the address this
 // browser knows, a publish sent from it: keepOwn).
-import { isVersion, type Chain } from "./chain";
+import { isVersion, whichOf, type Chain, type Which } from "./chain";
 import { authorOf, knownAuthor } from "./builder/holes";
 import { inTurn } from "./duel";
-import { bytesOf, sha256 } from "./sha";
-import { fnv1a } from "./sky";
+import { bytesOf, sha256, sha256Bytes } from "./sha";
 import { takenDown } from "./takedown";
 import type { DayRow, HoleRow } from "./types";
 import type { Verdict } from "./builder/verdict";
@@ -62,11 +61,6 @@ const store = (key: string, v: string) => {
 };
 /** The UTC day of a time (ms), "2026-10-22": the day's pick's, its point's. */
 export const utcDay = (now: number) => new Date(now).toISOString().slice(0, 10);
-
-/** Which chain's realm: what this browser keeps of a hole is kept under it (a version's verdict, when an alias was first
- *  published), its id, its genesis (a chain reseeded under the same id is another) and the realm. */
-type Which = Pick<Chain, "chainId" | "genesis" | "realm">;
-const whichOf = async (chain: Which) => `${await chain.chainId()}|${await chain.genesis()}|${chain.realm}`;
 
 /** What judging reads of a chain: a hole's data, its author's best, and which chain's realm it is (a version's verdict is kept by its id there). */
 export type Judging = Pick<Chain, "holeData" | "bests"> & Which;
@@ -157,9 +151,6 @@ export async function gateOf(chain: Judging, id: string, deps: JudgeDeps = build
   const [v, held] = await Promise.all([verdictOf(chain, id, deps), heldFor(chain, id, self)]);
   return !v.ok ? "unchecked" : held ? "" : "unheld";
 }
-/** gateOf for a link: nothing against one not read now (it is loaded, and said not to load or to lead nowhere). */
-export const linkGate = (chain: Judging, id: string, deps: JudgeDeps = builder, self?: string | null): Promise<Gate> =>
-  gateOf(chain, id, deps, self).catch(() => "");
 
 /** Whether this browser already knows a version passes the rules, null if not (never a judging: the phone's /build
  *  screen loads no builder.wasm). */
@@ -207,11 +198,11 @@ export function aliasOf(h: Pick<HoleRow, "id" | "slot">) {
 
 // the characters of an address after its "g1" (bech32's), in their byte order
 const BECH32 = "023456789acdefghjklmnpqrstuvwxyz";
-/** Where in alias order the UTC day's pick starts: the day's hash (sky.ts fnv1a, the realm's) spelled as an address
+/** Where in alias order the UTC day's pick starts: the day's hash (sha-256) spelled as an address
  *  ("g1" and 13 of its characters), so any alias, of any author, is as likely to follow it. */
 export function dayPoint(now: number): string {
-  const h = fnv1a(utcDay(now));
-  return "g1" + Array.from({ length: 13 }, (_, i) => BECH32[Number((h >> BigInt(5 * (12 - i))) & 31n)]).join("");
+  const h = sha256Bytes(new TextEncoder().encode(utcDay(now)));
+  return "g1" + Array.from(h.subarray(0, 13), (b) => BECH32[b & 31]).join("");
 }
 
 /** How many candidates one DayCandidates read takes. */

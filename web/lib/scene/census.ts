@@ -22,7 +22,7 @@ export type Drawn =
   | { by: "bar"; draw: "table" | "world" | "fallback"; key: string }
   /** read as part of a tram line (a hand-only composition) */
   | { by: "tram" }
-  /** the plain form an unknown skin falls back to (CLIENT.md, rule 2) */
+  /** the plain form an unknown skin falls back to */
   | { by: "fallback" }
   /** not drawn: out in the sea, out of reach, a zone with no area, a timed wall that is not one of a bar's four, or what
    *  stands beside it (the mountain's snow cannon, a serac's tower) with no room for it off the lane, or standing between

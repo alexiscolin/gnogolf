@@ -1,6 +1,5 @@
-// The shop's words the law asks for, as the copy draft writes them
-// (the legal pack's draft shop copy, a draft for lawyer review; its
-// Japanese is the reference, this is its English): the final confirmation
+// The shop's words the law asks for (the Japanese is the reference, this is
+// its English): the final confirmation
 // before the wallet opens (最終確認画面: every term, two separate boxes never
 // pre-ticked, a button that names the obligation to pay), the receipt, the
 // trust strip. The seller is the build's (NEXT_PUBLIC_SELLER_*,
@@ -8,7 +7,7 @@
 // what is missing anywhere else.
 import { aboutGnot as about } from "../adena";
 import { shortAddr } from "../chain";
-import { dateParts, gnot, totalOf, utcDate, type Bill } from "./shop";
+import { dateParts, gnot, tierName, totalOf, utcDate, type Bill } from "./shop";
 
 const env = (v: string | undefined, placeholder: string) => (v && v.trim()) || placeholder;
 /** Who sells (特定商取引法に基づく表記; the EU's trader): name, geographical address, e-mail. */
@@ -25,13 +24,13 @@ export const LINKS = {
 };
 export const TERMS_VERSION = env(process.env.NEXT_PUBLIC_TERMS_VERSION, "[version, date]");
 
-/** Box A, always shown (§1.2): its link is the Terms of Sale. */
+/** Box A, always shown: its link is the Terms of Sale. */
 export const BOX_A = "I am 18 or older, and I accept the Terms of Sale. I understand a gnome is a cosmetic item, not an investment, and that it may lose all resale value.";
-/** Box B, its own (§1.2): the consent to delivery at once and the loss of the 14-day withdrawal (EU/UK; shown to everyone). */
+/** Box B, its own: the consent to delivery at once and the loss of the 14-day withdrawal (EU/UK; shown to everyone). */
 export const BOX_B = "I want my gnome delivered now, before the 14-day withdrawal period ends, and I understand that I therefore lose my right of withdrawal once it is delivered.";
-/** Under the order button (§1.3). */
+/** Under the order button. */
 export const SIGN_NOTE = "Your wallet will open and ask you to sign. Signing is your order. It cannot be undone.";
-/** The trust strip, under a buy button (§4). */
+/** The trust strip, under a buy button. */
 export const TRUST = ["Cosmetic only: same ball, same physics.", "You pick the exact gnome; nothing is random.", "Not an investment. No promise of value or resale."];
 /** What each tier's price stands for on the course, said under a sheet's price when it is the tier's own. */
 export const PAR: Record<string, readonly [ugnot: number, words: string]> = {
@@ -39,10 +38,9 @@ export const PAR: Record<string, readonly [ugnot: number, words: string]> = {
 };
 /** Why a price is that number, in golf ("Why 36 GNOT? It's the par of nine holes."), "" for a price not its tier's own. */
 export const parLine = (tier: string, price: number) => (Object.hasOwn(PAR, tier) && PAR[tier][0] === price ? `Why ${gnot(price)} GNOT? ${PAR[tier][1]}` : "");
-/** Words the shop never uses (§5), lower case. */
+/** Words the shop never uses, lower case. */
 export const BANNED = ["invest ", "investment opportunity", "floor", "returns on", "roi", "profit", "appreciate", "will go up", "last chance", "only "];
 
-const TIER: Record<string, string> = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary", earned: "Earned" };
 /** A time in Japan's (UTC+9), as the copy says it: "Mon 14 Dec, 03:00 JST". */
 export function jstDate(unix: number) {
   const p = dateParts(unix + 9 * 3600);
@@ -62,14 +60,14 @@ const salePeriod = (closesAt: number, now: number) =>
 /** An order: the gnome, the address, the sale's closing, and its bill's figures (shop.ts bill: its total the one the button says too). */
 interface Order extends Pick<Bill, "price" | "deposit" | "fee" | "total"> { name: string; id: number; tier: string; n: number; address: string; closesAt: number; now: number }
 type Term = [label: string, term: string];
-/** The order, term by term (§1.1), grouped for reading and none left out: its total first; what is paid (the item,
+/** The order, term by term, grouped for reading and none left out: its total first; what is paid (the item,
  *  its price, the deposit and fee "about", the payment); then the terms (delivery, sale period, cancellation, nature,
  *  seller). */
 export function review(o: Order): { total: Term; pay: Term[]; terms: Term[] } {
   return {
     total: ["Total", `${gnot(o.total)} GNOT at most`],
     pay: [
-      ["Item", `${o.name} (#${o.id}, ${TIER[o.tier] || o.tier}), ${o.n} ${o.n === 1 ? "item" : "items"}`],
+      ["Item", `${o.name} (#${o.id}, ${tierName(o.tier)}), ${o.n} ${o.n === 1 ? "item" : "items"}`],
       ["Price", `${gnot(o.price)} GNOT`],
       ["Other costs", `Storage deposit about ${about(o.deposit)} GNOT (held by the chain, returned if you burn the gnome) + network fee about ${about(o.fee)} GNOT. Neither is paid to us.`],
       ["Payment", "Paid now, in GNOT, from your own wallet, in the transaction you sign."],
@@ -83,7 +81,7 @@ export function review(o: Order): { total: Term; pay: Term[]; terms: Term[] } {
     ],
   };
 }
-/** The order's button (§1.3), the bill's total in it (the review's own figure). */
+/** The order's button, the bill's total in it (the review's own figure). */
 export const orderButton = (total: number) => `Order with obligation to pay (${gnot(total)} GNOT): sign in wallet`;
 /** The chain's part of a buy in one line, under a sheet's price, from the review's own bill: "+ ≈0.5 GNOT chain
  *  costs: a 0.43 deposit, returned if you ever destroy (burn) the gnome" (the deposit held by the chain, never paid to
@@ -91,12 +89,12 @@ export const orderButton = (total: number) => `Order with obligation to pay (${g
 export const chainCosts = ({ deposit, fee }: Pick<Bill, "deposit" | "fee">) => `+ ≈${gnot(totalOf(deposit, fee))} GNOT chain costs: a ${gnot(totalOf(deposit))} deposit, returned if you ever destroy (burn) the gnome`;
 
 interface Receipt extends Order { at: number; hash: string; realm: string; chainId: string; consents: readonly string[] }
-/** The receipt (§3), a line each: what the buyer prints or saves. consents: the boxes shown and ticked, word for word. */
+/** The receipt, a line each: what the buyer prints or saves. consents: the boxes shown and ticked, word for word. */
 export function receipt(r: Receipt) {
   return [
     `Seller: ${SELLER.name}, ${SELLER.address}, ${SELLER.email}`,
     `Date and time: ${r.at ? stamp(r.at) : "(the block's, on the chain)"}`,
-    `Item: ${r.name}, #${r.id}, ${TIER[r.tier] || r.tier}. Contract ${r.realm}`,
+    `Item: ${r.name}, #${r.id}, ${tierName(r.tier)}. Contract ${r.realm}`,
     `Price paid: ${gnot(r.price)} GNOT (+ network fee ${about(r.fee)} GNOT, storage deposit ${about(r.deposit)} GNOT held by the chain)`,
     `Delivered to: ${r.address}`,
     `Sale period: ${salePeriod(r.closesAt, r.now)}`,

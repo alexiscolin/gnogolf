@@ -76,9 +76,9 @@ export function surfaceAudit(E: Live, step = 0.5) {
       }
     });
   });
-  // the chain's pieces there: the hole's hazards and the stroke's (not the weather's)
+  // the chain's pieces there: the hazards acting now, the hole's, the forecast's and the stroke's
   // (a surface, a tunnel's mouth, a puddle, are lane: only a hazard is not)
-  const zones = [...s.zones, ...E.zones().filter((z) => !s.zones.includes(z))].filter((z) => z.kind === "hazard");
+  const zones = E.zones().filter((z) => z.kind === "hazard");
   const zoneAt = (x: number, z: number) => zones.find((q) => inZone(q, x, z)) || null;
   const rows: (string | number)[][] = [];
   for (let x = step / 2; x < W; x += step)
@@ -100,6 +100,12 @@ export function surfaceAudit(E: Live, step = 0.5) {
 }
 
 const firstMat = (o: THREE.Object3D): THREE.Material => { const m = (o as THREE.Mesh).material; return Array.isArray(m) ? m[0] : m; };
+/** The colour a mesh is drawn in, as hex: its material's, times its first vertex's where the material takes vertex colours (the mines' parts: solid(), paint() over the white relief()). */
+const colorOf = (o: THREE.Object3D) => {
+  const m = firstMat(o) as THREE.Material & { color?: THREE.Color; vertexColors?: boolean }, cols = (o as THREE.Mesh).geometry.attributes.color;
+  if (!m.color) return "";
+  return (m.vertexColors && cols ? new THREE.Color().fromBufferAttribute(cols, 0).multiply(m.color) : m.color).getHexString();
+};
 
 /** What a ray straight down at (x, z) meets in the course, top first: each hit's height, mesh and its ancestors' kinds (the audit's close look). */
 export function whatAt(E: Live, x: number, z: number) {
@@ -119,14 +125,6 @@ export function whatAt(E: Live, x: number, z: number) {
 const byOf = (o: THREE.Object3D, top: THREE.Object3D) => { for (let p: THREE.Object3D | null = o; p && p !== top; p = p.parent) if (p.name) return p.name; return ""; };
 
 /**
- * The glows of the course (additive, or see-through and unlit or emissive,
- * not writing depth) against its solids: each glow's sphere, the nearest
- * solid surface to its centre but its own lamp's (under its parent: the
- * course kept in pieces, ?camlog), whether it tests depth, its render order. A glow
- * whose sphere reaches into a solid is drawn on that solid's face: a pool of
- * light through the rock, the timber (the audit's GLOW class).
- */
-/**
  * The lamps drawn lit: every visible unlit (basic) or glowing material of the
  * course in a world's lantern colour (the mines': MINES.lantern), as [owner, material type, colour]. Under
  * "Lights out" (the mines' cv.lamps(false)) none should be left.
@@ -145,6 +143,14 @@ export function lamps(E: Live, lantern: number) {
   return out;
 }
 
+/**
+ * The glows of the course (additive, or see-through and unlit or emissive,
+ * not writing depth) against its solids: each glow's sphere, the nearest
+ * solid surface to its centre but its own lamp's (under its parent: the
+ * course kept in pieces, ?camlog), whether it tests depth, its render order. A glow
+ * whose sphere reaches into a solid is drawn on that solid's face: a pool of
+ * light through the rock, the timber (the audit's GLOW class).
+ */
 export function glows(E: Live) {
   const course = E.g.course;
   if (!course) return null;
@@ -224,12 +230,12 @@ export function clearance(E: Live) {
   course.updateMatrixWorld(true);
   const RAILS = new Set(["9aa3ad", "2b2733"]), out: (string | number)[][] = [], v = new THREE.Vector3();
   // (over a hazard the ground is not the lane's: a void, a shaft, lava, the rail may run down into it)
-  const holes = [...E.g.s!.zones, ...E.zones()].filter((z) => z.kind === "hazard");
+  const holes = E.zones().filter((z) => z.kind === "hazard");
   let seen = 0;
   course.traverseVisible((x) => {
     if (!(x instanceof THREE.Mesh) || x instanceof THREE.InstancedMesh) return;
-    const o = x as THREE.Mesh, m = firstMat(o) as THREE.Material & { color?: THREE.Color };
-    if (!m || md(m).hull || !m.color || !RAILS.has(m.color.getHexString())) return;
+    const o = x as THREE.Mesh, m = firstMat(o);
+    if (!m || md(m).hull || !RAILS.has(colorOf(o))) return;
     const pos = o.geometry.attributes.position;
     for (let i = 0; i < pos.count; i += 6) {
       v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld);
@@ -258,7 +264,7 @@ export function rideClearance(E: Live) {
   course.updateMatrixWorld(true);
   const rc = new THREE.Raycaster(), down = new THREE.Vector3(0, -1, 0), ball = new THREE.Object3D(), out: (string | number)[][] = [];
   const own = (o: THREE.Object3D) => byOf(o, course) === "rides" || ud(o).live;
-  const liquids = [...E.g.s!.zones, ...E.zones()].filter((q) => q.kind === "hazard" && /lava|water|sump|spring|pool|tide|lake|sea/.test(q.skin));
+  const liquids = E.zones().filter((q) => q.kind === "hazard" && /lava|water|sump|spring|pool|tide|lake|sea/.test(q.skin));
   let seen = 0;
   for (const [z, tube] of tubes) {
     const ride = tube.userData && tube.userData.ride;
@@ -266,7 +272,7 @@ export function rideClearance(E: Live) {
     for (let i = 0; i <= 60; i++) {
       const k = i / 60, u = Math.min(1, Math.max(0, ride.ease ? ride.ease(k) : k));
       ball.visible = true;
-      tube.getPointAt(u, ball.position);
+      tube.getPoint(u, ball.position);
       ride.at?.(k, ball);
       if (!ball.visible) continue;
       seen++;
@@ -490,7 +496,7 @@ export function moverClip(E: Live, tol = 0.06, sweep = false) {
     const who = byOf(mv, course) || "(world)";
     // (a cart, its ore's colour in it: swept along its axis of travel, ±6 in half units, its load and all: CART_SWEEP)
     let cart = false;
-    mv.traverse((q) => void (cart ||= q instanceof THREE.Mesh && (firstMat(q) as THREE.Material & { color?: THREE.Color }).color?.getHex() === 0x3b3048));
+    mv.traverse((q) => void (cart ||= q instanceof THREE.Mesh && colorOf(q) === "3b3048"));
     const ax = new THREE.Vector3().setFromMatrixColumn(mv.matrixWorld, 0).setY(0).normalize(), shifts = sweep && cart ? Array.from({ length: 25 }, (_, k) => (k - 12) * 0.5) : [0];
     mv.traverseVisible((x) => {
       if (!(x instanceof THREE.Mesh) || x instanceof THREE.InstancedMesh) return;
@@ -530,12 +536,11 @@ export function trackOverHazard(E: Live) {
   if (!course || !s) return null;
   const { meshes, at } = triangles(E), v = new THREE.Vector3(), out: (string | number)[][] = [], seen = new Set<string>();
   const HAZ = /lava|water|sump|spring|pool|shaft|void|crumble|lake|tide|sea/;
-  const zones = [...s.zones, ...E.zones()].filter((z) => z.kind === "hazard" && HAZ.test(z.skin));
+  const zones = E.zones().filter((z) => z.kind === "hazard" && HAZ.test(z.skin));
   const RAILS = new Set(["9aa3ad", "a4aab6", "6e7382"]);
   const railLike = (o: THREE.Mesh) => {
-    const m = firstMat(o) as THREE.Material & { color?: THREE.Color; polygonOffset?: boolean };
-    const col = m.color ? m.color.getHexString() : "";
-    return RAILS.has(col) || (!!m.polygonOffset && (col === "3a3d48" || col === "74492a"));
+    const col = colorOf(o);
+    return RAILS.has(col) || (firstMat(o).polygonOffset && (col === "3a3d48" || col === "74492a"));
   };
   const hazOf = (x: number, z: number) => zones.find((q) => inZone(q, x, z));
   course.traverseVisible((x) => {

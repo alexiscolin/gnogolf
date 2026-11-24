@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 import { surfaceAudit, whatAt, glows, movers, clearance, rideClearance, draws, renderQuality, moverClip, trackOverHazard } from "../lib/engine/audit.ts";
+import { solid } from "../lib/scene/mines-toon.ts";
 import type { TubePath } from "../lib/scene/data.ts";
 import type { Live } from "../lib/engine/types.ts";
 import type { Zone } from "../lib/types.ts";
@@ -128,11 +129,9 @@ test("movers: each live piece as drawn, its outermost live group only, hidden wi
   assert.equal(movers({ g: { course: null } } as unknown as Live), null);
 });
 
-// ---- the rides' and the pieces' checks (the same small course, a piece or two more each)
-
-/** A box w × h × d centred at (x, y, z), in a material of colour c (a named group round it if named). */
+/** A box w × h × d centred at (x, y, z), of colour c as the mines build their parts (solid(): in its vertices, over the white relief()), a named group round it if named. */
 function box(w: number, h: number, d: number, x: number, y: number, z: number, c = 0x777777, name = "") {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshToonMaterial({ color: c }));
+  const m = solid(new THREE.BoxGeometry(w, h, d), c);
   m.position.set(x, y, z);
   if (!name) return m;
   const g = new THREE.Group();
@@ -177,6 +176,17 @@ test("rideClearance: a ride's ball under a rock hidden, under a glow seen throug
   assert.deepEqual([...kinds("lava fall")], ["DROWNED"]);
   assert.equal(cart[cart.length - 1], -1, "its pieces put back at rest");
   assert.equal(rideClearance({ g: { course: new THREE.Group() } } as unknown as Live), null, "no tubes");
+});
+
+test("rideClearance: a curved ride's ball where the replay draws it, at the curve's own point ease(k)", () => {
+  const { E, course } = rig();
+  const c = new THREE.CatmullRomCurve3([new THREE.Vector3(1, 0.5, 1), new THREE.Vector3(1.5, 0.5, 1), new THREE.Vector3(5, 0.5, 2), new THREE.Vector3(9, 0.5, 2)]) as unknown as TubePath & { userData: unknown };
+  const seen: THREE.Vector3[] = [], ease = (k: number) => k * k;
+  c.userData = { ride: { ms: 1000, ease, at: (k: number, ball: THREE.Object3D) => void (k >= 0 && seen.push(ball.position.clone())) } };
+  course.userData.tubes = new Map([[zone({ kind: "tunnel", min: [0, 0], max: [1, 1], skin: "adit" }), c]]);
+  rideClearance(E);
+  assert.equal(seen.length, 61);
+  seen.forEach((p, i) => assert.ok(p.distanceTo(c.getPoint(ease(i / 60))) < 1e-9, `frame ${i}: ${p.distanceTo(c.getPoint(ease(i / 60))).toFixed(4)} off`));
 });
 
 test("draws: the course's draws by owner, and each of the rides' own", () => {

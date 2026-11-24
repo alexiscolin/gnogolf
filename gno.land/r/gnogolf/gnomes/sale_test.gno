@@ -121,11 +121,10 @@ func TestASaleKeepsItsPrices(cur realm, t *testing.T) {
 	Buy(cross(cur), "721")
 }
 
-// A start in milliseconds (or any far one) was taken, and a
-// sale is never changed: its start then held every genesis close after it,
-// thousands of years off. A sale starts from a day back to a year ahead, in
-// unix seconds, so the close is never held hostage, and the window's end
-// cannot overflow.
+// A sale is never changed, so a start in milliseconds (or any far one)
+// would hold every genesis close after it, thousands of years off. A sale
+// starts from a day back to a year ahead, in unix seconds: the close is
+// never held hostage, and the window's end cannot overflow.
 func TestASaleStartsWithinADayBackAndAYearAhead(cur realm, t *testing.T) {
 	noSale(t, cur)
 	testing.SetRealm(asUser(deployer, nil))

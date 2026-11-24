@@ -10,7 +10,7 @@
 #   r/gnogolf/golf     ->  r/<ns>/gnogolf/golf      the v1 rules, on onyx
 #   r/gnogolf/store    ->  r/<ns>/gnogolf/store     the records
 #   r/gnogolf/golf/v2  ->  r/<ns>/gnogolf/golf/v2   the rules that write them
-#   r/gnogolf/gnomes   ->  r/<ns>/gnogolf/gnomes    the gnomes (ADR-007), reading store
+#   r/gnogolf/gnomes   ->  r/<ns>/gnogolf/gnomes    the gnomes, reading store
 #
 #   scripts/stage.sh nym-alexiscolin000 /tmp/stage           onyx
 #   MAINNET=1 scripts/stage.sh nym-alexiscolin000 /tmp/stage mainnet

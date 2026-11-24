@@ -7,7 +7,7 @@
 // behind and to the right, as in the garden, so the lane is never hidden.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"; // the skyline
-import { C, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
+import { C, T, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
 import { bakeLocal, look, weatherLooks } from "./bake";
 import { animate } from "./state";
 import { timeOf } from "./camera";
@@ -20,17 +20,24 @@ import { STREET_Y } from "./pieces";
 import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
-export const T = {
-  cobble: 0xcdbb9f, cobbleDark: 0xa99578, curb: 0xe2d6c0, quay: 0xa89c8a,
-  wall: 0xf6ead3, wallWarm: 0xf1d9b8, roofFar: 0xe2c9c4, roofFarCap: 0xd4b3b5,
-  caps: [C.cap, 0xf2a93b, 0x9b7fd1, 0xc98b5a, 0x5b6fb5],
-  lampLit: 0xffd98a, lampOff: 0xe9e2cf, iron: 0x3d4a45, awningA: C.cap, awningB: C.cream,
-};
 const CANAL = { x0: -ISLAND.x - 6.5, x1: -ISLAND.x - 1.5 }; // down the left, just off the plot
+/** Whether the lane runs over the rooftops (a `roof` zone). */
+const roofed = (s: Pick<Hole, "zones">) => s.zones.some((z) => z.skin === "roof");
 /** How far down this hole's town stands: a lane over the rooftops (a `roof`
  *  zone) looks down on the streets, so the square and all round it are at
  *  street level (base, edging and decor are moved down by it as a whole). */
-const sunk = (s: Pick<Hole, "zones">) => ((s.zones || []).some((z) => z.skin === "roof") ? STREET_Y - GRASS : 0);
+const sunk = (s: Pick<Hole, "zones">) => (roofed(s) ? STREET_Y - GRASS : 0);
+/** The plot: the board, out to its walls where they reach past its nominal size, as [x0, z0, x1, z1]. */
+const plot = (s: Hole) => {
+  let x0 = 0, z0 = 0, x1 = s.board.w, z1 = s.board.h;
+  for (const w of s.walls) for (const p of [w.a, w.b]) {
+    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
+    z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]);
+  }
+  return [x0, z0, x1, z1] as const;
+};
+/** The curb round the plot (base): its width, its height, how far out from the walls it stands (clear of the rim timbers). */
+const CURB = { w: 0.6, h: 0.55, out: 0.6 };
 const MAST_Z = -2.1; // the lantern strings' masts: between the tram's rails and the board's curb
 /** Where the lantern strings cross the board (their masts at x - 1.5). */
 const stringXs = (W: number) => { const xs: number[] = []; for (let x = W * 0.16; x < W - 1; x += Math.max(8, W / 4)) xs.push(x); return xs; };
@@ -66,7 +73,6 @@ function base(s: Hole, box: THREE.Box3) {
   const W = s.board.w, H = s.board.h;
   // far wider than the plot: in town the ground does not end at the island
   const X0 = box.min.x - 40, X1 = box.max.x + 40, Z0 = box.min.z - 40, Z1 = box.max.z + 18;
-  const roofed = (s.zones || []).some((z) => z.skin === "roof");
   const tex = cobbles().clone();
   tex.needsUpdate = true;
   tex.repeat.set((X1 - X0) / 7, (Z1 - Z0) / 7); // a cobble is about a ball across
@@ -75,7 +81,7 @@ function base(s: Hole, box: THREE.Box3) {
   // (the shape is drawn with y = -z, so turning it flat puts it face up)
   const V = (x: number, z: number) => new THREE.Vector2(x, -z);
   const sq = new THREE.Shape([V(X0, Z0), V(X0, Z1), V(X1, Z1), V(X1, Z0)]);
-  if (roofed) sq.holes.push(new THREE.Path([V(0, 0), V(W, 0), V(W, H), V(0, H)]));
+  if (roofed(s)) sq.holes.push(new THREE.Path([V(0, 0), V(W, 0), V(W, H), V(0, H)]));
   const sqGeo = new THREE.ShapeGeometry(sq);
   // UVs from the world, so the cobbles keep their size
   const uv = sqGeo.attributes.uv, pos = sqGeo.attributes.position;
@@ -116,13 +122,9 @@ function base(s: Hole, box: THREE.Box3) {
   // the plot is whatever the walls enclose, which may reach past the board's
   // nominal size: the curb and the lawn go round that, or walls would stand
   // outside the square's curb, on the cobbles
-  let x0 = 0, z0 = 0, x1 = W, z1 = H;
-  for (const w of s.walls || []) for (const p of [w.a, w.b]) {
-    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
-    z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]);
-  }
+  const [x0, z0, x1, z1] = plot(s);
   const PW = x1 - x0, PH = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  if (!roofed) {
+  if (!roofed(s)) {
     const under = new THREE.Mesh(new THREE.PlaneGeometry(PW + 1.2, PH + 1.2), flat(rough.lo));
     under.rotation.x = -Math.PI / 2;
     under.position.set(cx, GRASS + 0.12, cz);
@@ -131,8 +133,7 @@ function base(s: Hole, box: THREE.Box3) {
   // the plinth the green stands on: a stone step round the board
   // — a ring round it, not a slab under it: what hangs below the green (wall
   // skirts, the rough's plants) is the board's, and its top stays below 0
-  const R = 0.6, hgt = 0.55;
-  const E = 0.6; // clear of the rim timbers' outer face
+  const { w: R, h: hgt, out: E } = CURB;
   for (const [w, d, x, z] of [
     [PW + 2 * (R + E), R, cx, z0 - E - R / 2], [PW + 2 * (R + E), R, cx, z1 + E + R / 2],
     [R, PH + 2 * E, x0 - E - R / 2, cz], [R, PH + 2 * E, x1 + E + R / 2, cz],
@@ -149,35 +150,36 @@ function base(s: Hole, box: THREE.Box3) {
 function edging(s: Hole) {
   const g = new THREE.Group();
   const rand = seeded("town-edge" + s.hole);
-  const W = s.board.w, H = s.board.h;
+  const W = s.board.w, [, z0, , z1] = plot(s);
+  const mid = CURB.out + CURB.w / 2; // the curb's middle, out from the plot
   // drain grates in the square, a step off the plinth
   for (let x = 3; x < W - 2; x += 9 + rand() * 4)
-    for (const z of [-1.3, H + 1.3]) {
+    for (const z of [z0 - mid - 0.7, z1 + mid + 0.7]) {
       const grate = drawn(box3(0.9, 0.05, 0.5), flat(T.iron));
       grate.position.set(x, GRASS + 0.08, z);
       g.add(grate);
     }
-  g.add(flowerBoxes(W, H, rand));
+  g.add(flowerBoxes(W, z0 - mid, z1 + mid, rand));
   g.position.y = sunk(s);
   return g;
 }
 
-// flower boxes sit on the curb ring round the board (see base): a few per side
-function flowerBoxes(W: number, H: number, rand: Rand) {
+// flower boxes on the curb (see base), along its back and its front: a few per side
+function flowerBoxes(W: number, back: number, front: number, rand: Rand) {
   const g = new THREE.Group();
   const box = (x: number, z: number, rot: number) => {
     const b = drawn(box3(1.2, 0.3, 0.4), flat(C.wood));
-    b.position.set(x, GRASS + 0.55 + 0.15, z);
+    b.position.set(x, GRASS + CURB.h + 0.15, z);
     b.rotation.y = rot;
     g.add(b);
     for (let i = 0; i < 3; i++) {
       const f = tflower(rand);
       f.scale.multiplyScalar(0.55);
-      f.position.set(x + Math.cos(rot) * (i - 1) * 0.35, GRASS + 0.85, z - Math.sin(rot) * (i - 1) * 0.35);
+      f.position.set(x + Math.cos(rot) * (i - 1) * 0.35, GRASS + CURB.h + 0.3, z - Math.sin(rot) * (i - 1) * 0.35);
       g.add(f);
     }
   };
-  for (let x = 5; x < W - 4; x += 11 + rand() * 3) box(x, -0.3, 0), box(x + 4, H + 0.3, 0);
+  for (let x = 5; x < W - 4; x += 11 + rand() * 3) box(x, back, 0), box(x + 4, front, 0);
   return g;
 }
 
@@ -185,8 +187,6 @@ function flowerBoxes(W: number, H: number, rand: Rand) {
 function berms() {
   return { group: new THREE.Group(), height: () => 0 };
 }
-
-// ------------------------------------------------------------ the buildings
 
 // the town's bush: three low-poly puffs (the garden's is round and heavy,
 // and the town has hundreds of them in its beds and pots)
@@ -220,8 +220,8 @@ function tbush(rand: Rand) {
 // a plain box, for the small and the many (benches, stalls, planks)
 const box3 = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
 /** A drum standing on something: its wall (outlined) and its top, no bottom
- *  (what it stands on hides it, and it was a quarter of the triangles; the top
- *  is not outlined — seen from above, the wall's outline rings it as before). */
+ *  (what it stands on hides it, and it is a quarter of the triangles; the top
+ *  is not outlined — seen from above, the wall's outline rings it). */
 function drum(rTop: number, rFoot: number, h: number, n: number, material: THREE.Material) {
   const g = drawn(new THREE.CylinderGeometry(rTop, rFoot, h, n, 1, true), material);
   const top = new THREE.Mesh(new THREE.CircleGeometry(rTop, n, -Math.PI / 2).rotateX(-Math.PI / 2), material); // (thetaStart: on the wall's corners)
@@ -420,7 +420,7 @@ function stall(rand: Rand, night: boolean) {
     p.position.set(-0.75 + i * 0.5, 1.42, 0.63);
     down.add(p);
   }
-  g.add(night ? look(down, "clear", "wind", "wet") : look(down, "wet")); // and shut for the night
+  g.add(night ? look(down, "clear", "wet") : look(down, "wet")); // and shut for the night
   return g;
 }
 
@@ -775,7 +775,7 @@ const HAZE = 0xf1d6c6;
 function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   const g = new THREE.Group();
   // all of it one mesh, the colours in the vertices: hundreds of far houses
-  // for one draw call (a material per shade was a draw call per shade)
+  // for one draw call (a material per shade is a draw call per shade)
   // Only what a camera can see is built: every camera is over the board, so
   // a far house is only ever seen from the square's side — its walls and cap
   // are the two thirds turned that way (+z, turned round for the right-hand
@@ -831,8 +831,6 @@ function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   return g;
 }
 
-// ------------------------------------------------------------------- decor
-
 function decor(s: Hole) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
@@ -844,11 +842,7 @@ function decor(s: Hole) {
   const { free, reserve } = placer();
   // the board and a step round it are the lane's
   // (the walls may reach past the board's nominal size: keep clear of them too)
-  let bx0 = 0, bz0 = 0, bx1 = W, bz1 = H;
-  for (const w of s.walls || []) for (const p of [w.a, w.b]) {
-    bx0 = Math.min(bx0, p[0]); bx1 = Math.max(bx1, p[0]);
-    bz0 = Math.min(bz0, p[1]); bz1 = Math.max(bz1, p[1]);
-  }
+  const [bx0, bz0, bx1, bz1] = plot(s);
   const onBoard = (x: number, z: number, r: number) => x > bx0 - 1.9 - r && x < bx1 + 1.9 + r && z > bz0 - 1.9 - r && z < bz1 + 1.9 + r;
   const place = <T extends THREE.Object3D>(m: T, x: number, z: number, r: number, rot = 0) => {
     if (!free(x, z, r) || onBoard(x, z, r)) return null;
@@ -954,7 +948,7 @@ function decor(s: Hole) {
   g.add(bunting(new THREE.Vector3(X0 + 2, GRASS, -4.6), new THREE.Vector3(X1 - 2, GRASS, -4.6)));
   g.add(bridge(H * 0.5));
   // every still glow (windows, doors, lamps, stalls) as one set of points:
-  // a sprite each was a draw call each
+  // a sprite each is a draw call each
   g.updateMatrixWorld(true);
   const moving = (o: THREE.Object3D) => { for (let p = o.parent; p; p = p.parent) if (ud(p).live) return true; return false; };
   const glows: THREE.Object3D[] = [];
@@ -988,13 +982,11 @@ function decor(s: Hole) {
 const rough = {
   lo: 0x6f9f7e, hi: 0x86b58f, // a park lawn inside the walls: the green heart of the square
   // mostly pots and flowers; a bush now and then (a bush is three spheres,
-  // and a park of them was a third of the town's triangles)
+  // and a park of them is a third of the town's triangles)
   plant: (rand: Rand) => { const k = rand(); return k < 0.4 ? pot(rand) : k < 0.85 ? tflower(rand) : tbush(rand); },
 };
 
 
-// --------------------------------------------------------- on-lane pieces
-//
 // What the town's holes put on the lane, drawn in town's look. Each matches
 // its physics footprint: a post's circle, a bar's box, a zone's rectangle or
 // ellipse. course.ts asks piece(kind, item, t, s) for every post, wall and
@@ -1129,8 +1121,6 @@ function awningAcross(len: number, thick: number) {
   return g;
 }
 
-// --------------------------------------------------------- the Grand Plaza
-//
 // town18's own pieces: a brick floor with its patches (herringbone, a marble
 // rosette) and the tram rails set in it, a bandstand, a clock obelisk, round
 // market stalls and pigeons. Each stands on its physics footprint: a post's
@@ -1212,8 +1202,7 @@ const marbleTex = () => paving("marble", 256, (x, rand, n) => {
 });
 
 // a flat sheet over pts, lift above the ground; tile > 0 repeats the texture
-// every tile units of the board, 0 stretches it over the zone once. over
-// pulls it forward in depth, over what it lies on
+// every tile units of the board, 0 stretches it over the zone once
 function sheet(pts: readonly Vec2[], z: Zone, t: Terrain, mat: THREE.Material, tile: number, lift: number) {
   const [x0, z0] = z.min, [x1, z1] = z.max;
   const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, zz]) => new THREE.Vector2(x, -zz))));
@@ -1446,13 +1435,11 @@ const PLAZA_POSTS: Record<string, (r: number, rand: Rand, night: boolean) => THR
   pigeon: (r, rand) => pigeons(r, rand),
 };
 
-// ------------------------------------------------------------- the skate park
-//
 // town6: concrete ramps (the ground itself rises: terrain.ts), a funbox, a
 // ledge down the middle and a grind rail. The park's floor is concrete, not a
 // lawn (green below).
 const CONCRETE = 0xd0cbc1, STEEL = 0x8e9aa3;
-const skatePark = (s: Hole) => (s.zones || []).some((z) => z.skin === "quarter pipe");
+const skatePark = (s: Hole) => s.zones.some((z) => z.skin === "quarter pipe");
 /** The lane's stripes: poured concrete in a skate park, the default lawn elsewhere. */
 const green = (s: Hole): readonly [number, number] | null => (skatePark(s) ? [0xcfcac1, 0xcac5bc] : null);
 
@@ -1503,8 +1490,6 @@ function funboxEdge(z: Zone, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------- the rooftops
-//
 // town15: planks laid from roof to roof over the street, and a cat asleep on one.
 
 /** A plank bridge over the street: boards across the way, two stringers under them. */
@@ -1739,8 +1724,6 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
   return undefined;
 }
 
-// ------------------------------------------------------------- the swing bridge
-//
 // town10: a canal across the lane, and a bridge that is down on one stroke
 // and up on the next (the chain's pulse zones: a "bridge" surface or a
 // "canal" hazard over the same strip, per stroke, not per tick). Drawn as a
@@ -1768,7 +1751,7 @@ function swingRig(s: Hole): THREE.Group {
   const x0 = rig.position.x, H = s.board.h;
   // the deck is as wide as the lane where it crosses (its walls, clipped to the canal)
   let lo = Infinity, hi = -Infinity;
-  for (const w of s.walls || []) {
+  for (const w of s.walls) {
     const [ax, az] = w.a, [bx, bz] = w.b;
     for (const x of [x0, x0 + CW, ax, bx]) {
       if (x < x0 || x > x0 + CW || x < Math.min(ax, bx) || x > Math.max(ax, bx) || ax === bx) continue;
@@ -1879,8 +1862,8 @@ function swingRig(s: Hole): THREE.Group {
 
 /** A stroke's pieces town draws itself: the swing bridge, down or up (its rig is the hole's). */
 function extras(ex: Extras, s: Hole) {
-  const bridge = (ex.zones || []).find((z) => z.skin === "bridge");
-  const canal = (ex.zones || []).find((z) => z.skin === "canal");
+  const bridge = ex.zones.find((z) => z.skin === "bridge");
+  const canal = ex.zones.find((z) => z.skin === "canal");
   const z = bridge || canal, rig = rigs.get(s);
   if (!z || !rig) return undefined;
   rig.set(!bridge, z);

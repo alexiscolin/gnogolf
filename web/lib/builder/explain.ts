@@ -1,7 +1,8 @@
-// The chain's refusals in plain words (the builder's design, "Error
-// messages"): each L2 refusal is shown so, with the realm's own sentence
+// The chain's refusals in plain words:
+// each L2 refusal is shown so, with the realm's own sentence
 // under it, for an author to search. An unknown sentence is shown as it is.
 import { LIMITS } from "./gg1";
+import { own } from "../own";
 import type { Issue } from "./checks";
 
 const COUNTS: Record<string, keyof typeof LIMITS> = { walls: "walls", posts: "posts", zones: "zones", "polygon points": "polyTotal", pulses: "pulses", skins: "skins" };
@@ -33,7 +34,7 @@ export function explain(sentence: string, counts: Partial<Record<keyof typeof LI
     "golf: a community hole's name and note carry no web address": "The name or the note looks like a web address. Write \"St. Andrews\", not \"St.Andrews\".",
     "golf: publishing community holes is not open yet": "Publishing is not open yet. Your draft is kept.",
   };
-  return Object.hasOwn(plain, s) ? plain[s] : s;
+  return own(plain, s) ?? s;
 }
 
 // a piece's name that is ground, not a thing (two of them: two patches), or already a plural (two sets)
@@ -50,7 +51,7 @@ export function two(name: string): string {
 }
 
 /**
- * A check's sentence in the player's words (the GUI spec's B1): what is
+ * A check's sentence in the player's words: what is
  * wrong, named by its pieces, and what to do, without the place in numbers
  * (Show me frames it) or the rule's code (a tooltip, for us). A sentence of
  * no known shape is kept, its numbers dropped.

@@ -1,4 +1,4 @@
-// L3, the proof (the design's "Test mode and par"): the hole, holed in one
+// L3, the proof: the hole, holed in one
 // period of each weather that moves the ball, replayed the way a save is
 // cut, by the realm's own code on the local chain. What it proves is keyed
 // by the hole's canonical data with no name and no par: renaming the hole
@@ -12,6 +12,7 @@ import type { Draft, Proof } from "./draft";
 import type { LocalChain } from "./localchain";
 import type { BuilderHost } from "./wasm";
 import type { SimulateFrom, Vec2 } from "../types";
+import { messageOf } from "../words";
 
 export type { Proof };
 
@@ -95,7 +96,7 @@ export async function replayed(chain: LocalChain, r: Played): Promise<{ proof: P
     const commits = await chainSplit(chain, { id, shots, period, ...work }, period);
     return { proof: { ...r, shots: [...shots], commits, strokes: shots.length, maxWork }, gas: commits.map(([from, to]) => gasOf(work, from, to)) };
   } catch (e) {
-    return e instanceof Error ? e.message : String(e);
+    return messageOf(e);
   }
 }
 

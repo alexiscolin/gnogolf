@@ -19,11 +19,11 @@ var (
 )
 
 // The treasury is where the money goes, an address apart from the owner's
-// key: every sale, the royalty and Sweep's strays. It
-// is the deployer at deploy. The owner moves it in two steps: SetTreasury
-// offers it, and the new address takes it with AcceptTreasury, signed from
-// that address itself, so a mistyped one never receives a sale. A gnokey
-// multisig or a hardware wallet's address can hold it (ADR-007).
+// key: every sale, the royalty and Sweep's strays. It is the deployer at
+// deploy. The owner moves it in two steps: SetTreasury offers it, and the
+// new address takes it with AcceptTreasury, signed from that address
+// itself, so a mistyped one never receives a sale. A gnokey multisig or a
+// hardware wallet's address can hold it.
 var (
 	treasury        address
 	pendingTreasury address // the address SetTreasury offered it to, "" if none
@@ -71,7 +71,7 @@ func isOwner(caller address) bool { return owner != "" && caller == owner }
 // assertOwner panics unless the caller of the crossing function whose cur
 // is rlm is the owner.
 func assertOwner(_ int, rlm realm) {
-	if !isOwner(rlm.Previous().Address()) {
+	if !rlm.IsCurrent() || !isOwner(rlm.Previous().Address()) {
 		panic(errNotOwner)
 	}
 }
@@ -155,15 +155,15 @@ func SetSiteURL(cur realm, url string) {
 }
 
 // Sweep sends the treasury whatever ugnot the realm holds: coins sent to it
-// by a plain transfer, which no call keeps (a sale's go on in its own call).
-// Owner only.
+// outside a sale, by a plain transfer or attached to any other call (a
+// sale's go on in its own call). Owner only.
 func Sweep(cur realm) {
 	assertOwner(0, cur)
-	held := banker.NewReadonlyBanker().GetCoin(cur.Address(), payDenom)
-	if held <= 0 {
+	amount := banker.NewReadonlyBanker().GetCoin(cur.Address(), payDenom)
+	if amount <= 0 {
 		return
 	}
 	banker.NewBanker(banker.BankerTypeRealmSend, cur).
-		SendCoins(cur.Address(), treasury, chain.NewCoins(chain.NewCoin(payDenom, held)))
-	chain.Emit("Swept", "amount", itoa(held), "to", treasury.String())
+		SendCoins(cur.Address(), treasury, chain.NewCoins(chain.NewCoin(payDenom, amount)))
+	chain.Emit("Swept", "amount", itoa(amount), "to", treasury.String())
 }

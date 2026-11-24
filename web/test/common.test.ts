@@ -164,10 +164,14 @@ test("a dare to the whole course carries only the dare", () => {
   onPage("", () => assert.equal(dareLink("not an address"), ""));
 });
 
-test("what the next stroke is for, called out before it: an ace, eagle, birdie, par, bogey, then how far over", () => {
+test("what the next stroke is for, called out before it: an ace, albatross, eagle, birdie, par, bogey, then how far over", () => {
   assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((n) => strokeFor(n, 4)), ["For an ace!", "For eagle!", "For birdie!", "For par!", "For bogey", "1 over par", "2 over par"]);
   assert.equal(strokeFor(1, 2), "For an ace!");
   assert.equal(strokeFor(2, 2), "For par!");
+  // what the win card then says (golfTerm)
+  assert.equal(strokeFor(2, 5), "For albatross!");
+  assert.equal(golfTerm(2, 5), "Albatross!");
+  assert.equal(strokeFor(6, 9), "For albatross!");
 });
 
 test("byStanding orders the course as the realm does: most holes, then the best score against par", () => {

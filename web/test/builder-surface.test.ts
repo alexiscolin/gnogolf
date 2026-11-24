@@ -214,7 +214,7 @@ void test("a stroke that changes no cell (painted inside the green, erased off i
   const g = makeGesture({ onPreview: noop, onCommit: noop, onCancel: noop, onSet: noop, onSelect: noop, onDisarm: noop, onBin: noop, onPaint: () => void sent++ });
   const xs = green.cells.map((c) => c[0]), ys = green.cells.map((c) => c[1]);
   const mid: V = [(Math.min(...xs) + Math.max(...xs) + 1) / 2, (Math.min(...ys) + Math.max(...ys) + 1) / 2];
-  const env = (mode: "grow" | "shrink") => ({ draft: d, quick: o, full: o, armed: null, selected: null, step: 0.5, paint: { mode, green } });
+  const env = (mode: "grow" | "shrink") => ({ draft: d, quick: o, full: o, armed: null, selected: null, step: 0.5, slop: 0.125, paint: { mode, green } });
   const stroke = (mode: "grow" | "shrink", at: V) => (g.down(env(mode), at, { t: "brush" }), g.move(env(mode), at), g.up(env(mode), at));
   assert.equal(stroke("grow", mid), null, "grown inside: nothing");
   assert.equal(stroke("shrink", [mid[0], Math.max(...ys) + 20]), null, "shrunk where no green is: nothing");

@@ -1,4 +1,4 @@
-// The hub's JSON, as this page reads it: what gno.land/r/gnogolf/golf prints
+// The hub's JSON, as this page reads it: what gno.land/r/gnogolf/golf/v2 prints
 // (state.gno, weather.gno). Every object the realm returns carries "version".
 // lib/chain.ts is the one place these are parsed; the rest of the client takes
 // them as typed.
@@ -15,7 +15,7 @@ export type MutVec2 = [number, number];
 /** An aim mode: the realm ranks each apart. */
 export type Mode = "assisted" | "pro";
 
-/** A cup (a world): "garden", "island", "town", "mountain" on the course. */
+/** A cup (a world): "garden", "island", "town", "mountain", "mines" on the course. */
 export type World = string;
 
 interface Versioned {
@@ -116,8 +116,8 @@ export interface HoleState extends Versioned {
   work?: { walls: number; pieces: number; setup: number };
 }
 
-/** A round, as Round gives it without its path. */
-interface RoundRow extends Versioned {
+/** Round(): one player's round, its last stroke replayed; null when there is none. */
+export interface Round extends Versioned {
   player: string;
   /** where it lies (3 decimals), and the same ball exactly */
   ball: Vec2;
@@ -127,10 +127,6 @@ interface RoundRow extends Versioned {
   mode: Mode;
   /** "angle,power[,tick]" joined by ";" */
   shots: string;
-}
-
-/** Round(): one player's round, its last stroke replayed; null when there is none. */
-export interface Round extends RoundRow {
   path: readonly Vec2[];
   air: string;
   cause: string;
@@ -168,6 +164,8 @@ export interface Extras extends Versioned {
   zones: readonly Zone[];
   /** the client's own: the next strokes' extras, for a world that looks ahead (worlds.ts ahead) */
   ahead?: readonly (Extras | null)[];
+  /** the client's own: the stroke they are for, so a world that moves on from the stroke before knows which one that is */
+  stroke?: number;
 }
 
 /** One hole as Holes() lists it. */
@@ -212,7 +210,7 @@ export interface Versions extends Versioned {
 
 export interface StrokesRow {
   player: string;
-  /** their gno.land name, as the boards give it (Leaderboard, CourseLeaderboard, HoleLeaderboard); none from the other reads or an older realm */
+  /** their gno.land name, as the boards give it (CourseLeaderboard, HoleLeaderboard); none from the other reads or an older realm */
   name?: string;
   strokes: number;
 }
@@ -230,14 +228,6 @@ export interface Saved {
 export interface StandingRow extends StrokesRow {
   holes: number;
   par: number;
-}
-
-/** Leaderboard(): a mode's course-wide top ten. */
-export interface Leaderboard extends Versioned {
-  mode: Mode;
-  /** the course's current holes */
-  holes: number;
-  rows: readonly StandingRow[];
 }
 
 /** Bests(): these players' best rounds on one hole. */

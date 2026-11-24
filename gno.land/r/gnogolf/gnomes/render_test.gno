@@ -16,6 +16,7 @@ func TestThePagesGnowebShows(cur realm, t *testing.T) {
 	fresh(t, cur)
 	home := Render("")
 	has(t, home, "# Gnogolf Gnomes")
+	has(t, home, "unless one is announced later (at least 7 days ahead).")
 	has(t, home, "## Sale")
 	has(t, home, "| genesis | 1–720 | "+dateOf(sales[0].start)+" | 36 / 72 / 336 / 1296 GNOT | 0 of 720 |")
 
@@ -50,9 +51,9 @@ func TestTheHomeSaysTheClose(cur realm, t *testing.T) {
 }
 
 func TestGNOTIsWrittenPlainly(t *testing.T) {
-	uassert.Equal(t, "36 GNOT", gnot(36_000_000))
-	uassert.Equal(t, "815.85 GNOT", gnot(815_850_000))
-	uassert.Equal(t, "0.000001 GNOT", gnot(1))
+	uassert.Equal(t, "36", gnot(36_000_000))
+	uassert.Equal(t, "815.85", gnot(815_850_000))
+	uassert.Equal(t, "0.000001", gnot(1))
 }
 
 // Behind the rows' rule, the page escapes a name as Markdown wherever it

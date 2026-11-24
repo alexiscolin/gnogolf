@@ -105,7 +105,7 @@ func TestASeriesIsBounded(cur realm, t *testing.T) {
 // A name is shown by gnoweb as Markdown, by a wallet as text, by a market as
 // JSON: it is letters, digits, spaces and - ' . alone, in valid UTF-8, so
 // none can turn into a link, an image, markup or text running backwards.
-// The injection payloads first, the bidi and other invisible runes after.
+// Markup and link payloads first, the bidi and other invisible runes after.
 func TestANameIsLettersAndPlainMarks(cur realm, t *testing.T) {
 	fresh(t, cur)
 	for _, name := range []string{
@@ -129,8 +129,8 @@ func TestANameIsLettersAndPlainMarks(cur realm, t *testing.T) {
 	}
 }
 
-// Traits are the designer's encoding, opaque here: printable ASCII alone,
-// so they too are valid UTF-8 wherever they go.
+// Traits are the designer's encoding: printable ASCII alone, so they too
+// are valid UTF-8 wherever they go.
 func TestTraitsArePrintableASCII(cur realm, t *testing.T) {
 	fresh(t, cur)
 	for _, traits := range []string{"v0.\xff", "v0.é", "v0.\u202e", "v0\x7f"} {

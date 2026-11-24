@@ -1,27 +1,19 @@
 "use client";
 
-// The editor (the GUI spec's B1 and B2): the header, the palette, the board
-// with its checks docked under it, the selected piece and the player's
-// view. The draft lives in a session (its history; a drag one step); every
-// change is checked by the whole pipeline (pipeline.ts validate, the render
-// census included) 150 ms after the last, and nothing that breaks the hole
-// is ever made: the board, the inspector and the keys all ask first
-// (edit.ts). The ball shows in Build too: quick shots pulled on the board,
-// played on the hole as it is (quickshot.ts), and the meter's best line;
-// never a proof. Play (T) plays the hole over the editor (kept open below
-// it: the same zoom, selection and history after): with the author's
-// address, each round a try at the next weather not holed, its proof kept
-// in the draft (TestMode); the difficulty's change said as it comes ("par 3
-// → 4"), and a ghost ball runs the meter's line after a drop. The green is
-// painted on the board (B: Paint, Erase; surface.ts), each stroke one step
-// through the same gate as every edit (edit.ts gate), refused with why. One
-// tool in hand at a time: a piece armed, or the paint.
+// The editor: the header, the palette, the board with its checks docked
+// under it, the selected piece and the player's view. The draft lives in a
+// session (its history; a drag is one step). The whole pipeline, render
+// census included, checks the hole once changes pause, and nothing that
+// breaks it is ever made: the board, the inspector, the keys and the paint
+// all go through edit.ts's gate first. Quick shots and the meter's
+// line are never a proof: Play (T) makes the proofs, over the editor, which
+// stays open below it (the same zoom, selection and history after).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { useFlash } from "@/components/common";
 import { census } from "@/lib/builder/drawn";
 import { canPlace, toWorld, copyPiece, dropEnd, fixOf, gate, movePiece, placeNear, placePiece, removePiece, roomFor, whereOf, clampMove } from "@/lib/builder/edit";
-import { brokenLine, CHECKING, gauges, meterFace, NO_GL, offAtLimit, pieceGauges, playWhenAsked, sameShape, testGate } from "@/lib/builder/editor";
+import { brokenLine, CHECKING, gauges, meterFace, offAtLimit, pieceGauges, playWhenAsked, sameShape, testGate } from "@/lib/builder/editor";
 import { stageRenderer } from "@/lib/builder/stage";
 import { retitle, slugOf as slugOfTitle } from "@/lib/builder/templates";
 import { frame } from "@/lib/builder/gg1";
@@ -63,7 +55,7 @@ import { FLAT, fromPlane, TILT, type Look } from "@/lib/builder/view";
 const CHECK_MS = 150;
 /** How long after a clean check the difficulty meter is asked (about 400 ms after the last change). */
 const METER_MS = 250;
-/** The Builder's worlds, for the header's "…" menu. */
+/** The Builder's worlds, for the header's world menu. */
 const WORLDS = Object.keys(FIELD);
 /** Quick shots kept on the board: the latest and three faded. */
 const SHOTS_KEPT = 4;
@@ -91,20 +83,20 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   /** a file opened as it is: why it is broken, said until it passes ("" none) */
   opened?: string;
 }) {
-  // one session (its undo history) while the editor is open: a step saved and handed back is not a new draft (its key opens a new one)
+  // one session (its undo history) a mount: the saved step the parent hands back is not a new draft (a new key remounts)
   const [session] = useState(() => makeSession(first));
   const others = useMemo(() => new Set(taken), [taken.join(" ")]); // eslint-disable-line react-hooks/exhaustive-deps -- (a list each render: its addresses)
   const [, bump] = useState(0);
   const [again, setAgain] = useState(false); // the hints asked for again (the header's "?")
   const draft = session.now(), kept = session.kept();
-  // the hole as kept, as checked: the same object while only its proofs or par change (a round holed in play is no
-  // reason to validate, census and meter it again mid-game); every check, key and meter answer is of it
+  // the hole as kept, for the checks, the key and the meter: the same object while only its proofs or par change (a
+  // round holed in Play is no reason to check and measure it all again mid-game)
   const shapeOf = useRef(kept);
   if (!sameShape(shapeOf.current, kept)) shapeOf.current = kept;
   const shape = shapeOf.current;
-  const [palette, setPalette] = useState<readonly PaletteEntry[] | null>(null);
-  // the world the palette is of (a switch hands it over with the draft: nothing unmounts to load it again)
-  const paletteWorld = useRef("");
+  // each world's palette once loaded: a world switch or an undo across worlds finds it here, nothing unmounts to load it
+  const [palettes, setPalettes] = useState<ReadonlyMap<string, readonly PaletteEntry[]>>(new Map());
+  const palette = palettes.get(draft.world) ?? null;
   // its load failed (offline, an old deploy's chunk gone), and each Try again (the world's loader forgets a failed load)
   const [unloaded, setUnloaded] = useState(false), [tries, setTries] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -143,9 +135,9 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const [shots, setShots] = useState<QuickShot[]>([]);
   const [aim, setAim] = useState<QuickShot | null>(null);
   const [lineOn, setLineOn] = useState(false);
-  // the meter's par last measured (a change said a moment by the chip: "par 3 → 4"); a drop that held, waiting for the
-  // ghost ball's run on the hole it made ("next": the change it makes, bound as it is kept; any other change since drops
-  // it); the run, a moment
+  // the meter's par last measured (a change said a moment under the meter: "par 3 → 4"); a drop that held, waiting for
+  // the ghost ball's run on the hole it made ("next": the change it makes, bound as it is kept; any other change since
+  // drops it); the run, a moment
   const lastPar = useRef(0), [parBump, setParBump] = useFlash(1800, ""), landed = useRef<Draft | "next" | null>(null);
   const [roll, setRoll] = useFlash<{ path: V[][]; n: number } | null>(1300, null);
   // the keys line at the board's foot, a browser's first visit only (and the rest of it); the player's view large (P)
@@ -154,8 +146,8 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const [look, setLook] = useState<Look>(FLAT);
   // a timed piece's blinking played, in the inspector and on the board (its pause holds both)
   const [blinking, setBlinking] = useState(true);
-  // Play (T): the hole as kept, its canonical bytes and proof key, played over the editor (kept open: the same zoom, selection and history after)
-  // (the author it opened with: one Adena shares late never swaps a game under way; the address given in play does)
+  // Play (T): the hole as kept, its canonical bytes and proof key, and the author it opened with (one Adena shares late
+  // never swaps a game under way; the address given in play does)
   const [playing, setPlaying] = useState<{ hex: string; key: string; author: string | null } | null>(null), [want, setWant] = useState(playFirst);
   // the last try's round that holed (no address yet), left on the board as a dotted trail (played again as the hole changes);
   // its shots kept until the address is given, then replayed once in each weather (TestMode's onTried drops them)
@@ -174,11 +166,10 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
 
   // the world's palette, loaded with its module
   useEffect(() => {
-    if (palette && paletteWorld.current === draft.world) return;
+    if (palette) return;
     let stale = false;
-    setPalette(null);
     setUnloaded(false);
-    void loadPalette(draft.world).then((p) => !stale && ((paletteWorld.current = draft.world), setPalette(p)), () => !stale && setUnloaded(true));
+    void loadPalette(draft.world).then((p) => !stale && setPalettes((m) => new Map(m).set(draft.world, p)), () => !stale && setUnloaded(true));
     return () => void (stale = true);
   }, [draft.world, tries]); // eslint-disable-line react-hooks/exhaustive-deps -- (palette: read, not a reason to load)
 
@@ -186,7 +177,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const quick: ValidateOptions | null = useMemo(() => palette && { host, palette, slug: draft.slug || undefined }, [host, palette, draft.slug]);
   const full: ValidateOptions | null = useMemo(() => quick && { ...quick, census }, [quick]);
 
-  // the whole pipeline on the hole as kept (a drag's own checks are the board's), 150 ms after the last change; the 3D from its canonical bytes
+  // the whole pipeline on the hole as kept, CHECK_MS after the last change (a drag's own checks are the board's)
   useEffect(() => {
     if (!full) return;
     const t = setTimeout(() => {
@@ -223,7 +214,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
     shotSeen.current = shots.at(-1);
     if (shotsShown.at(-1)?.holed) sound("cup");
   }, [shots, aim, shotsShown]);
-  // the meter's answer for the hole as kept: a change of par said a moment by the chip, with a chime (up: lower, harder);
+  // the meter's answer for the hole as kept: a change of par said a moment under the meter, with a chime (up: lower, harder);
   // after a drop that held, the ghost ball runs its line (the answer for the hole the drop made, never a later one's)
   useEffect(() => void (landed.current = landed.current === "next" ? shape : null), [shape]);
   useEffect(() => {
@@ -275,13 +266,14 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const commit = () => (session.commit(), refresh());
   const cancel = () => (session.cancel(), refresh());
 
-  /** A one-step edit, made only if the gate lets it through (census and all; the hole as kept, its errors as checked already); refused: why, or what to say instead. */
-  const tryEdit = (next: Draft | null, fail: string, refused?: string) => {
-    if (!next || !full) return say(fail);
+  /** A one-step edit, made only if the gate lets it through (census and all; the hole as kept, its errors as checked already); refused: why, or what to say instead. Whether it was made. */
+  const tryEdit = (next: Draft | null, fail: string, refused?: string): boolean => {
+    if (!next || !full) return (say(fail), false);
     const before = checked?.of === shape && draft === kept ? checked.v.issues.filter((i) => i.severity === "error") : undefined;
     const r = gate(draft, next, full, before);
-    if ("why" in r) return say(refused ?? r.why);
+    if ("why" in r) return (say(refused ?? r.why), false);
     set(r);
+    return true;
   };
   const piece = draft.pieces.find((p) => p.id === selected) ?? null;
   const turn = () => {
@@ -292,12 +284,11 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
     if (why.length) return say(refusalOf(why[0]));
     set({ ...draft, pieces: draft.pieces.map((p) => (p.id === piece.id ? t : p)) });
   };
-  // a copy, or the keyboard's drop, past the Builder's limits: refused with why (the ghost says it on the board)
+  // a copy with no room near, or past the Builder's limits: refused with why
   const copy = () => piece && quick && tryEdit(copyPiece(draft, piece.id, quick), roomFor(draft, piece) || "No room near it for a copy.");
   // deleted: the focus to the board (Tab goes on to its pieces), not lost with the Inspector's button
   const remove = () => {
-    if (!piece) return;
-    tryEdit(removePiece(draft, piece.id), "");
+    if (!piece || !tryEdit(removePiece(draft, piece.id), "")) return;
     setSelected(null);
     requestAnimationFrame(() => document.querySelector<HTMLElement>(".board")?.focus());
   };
@@ -344,8 +335,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
       if ("refused" in r) return say(`The ${w} has no ${r.refused.join(", ")}.`);
       if ("why" in r) return say(`Not in the ${w}: ${r.why}`);
       // (its pieces with it, in the same render: the board and the column stay mounted, the hole built once)
-      paletteWorld.current = w;
-      setPalette(p);
+      setPalettes((m) => new Map(m).set(w, p));
       set(r);
     }, () => say(`The ${w}'s pieces could not load: try again.`)); // (offline, a deploy mid-flight: the hole stays where it is)
   };
@@ -449,58 +439,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   // the first run's hints: gone at the first drag (a piece taken from the palette, one carried on the board, the paint taken up)
   useEffect(() => void (hints && (tool || binShown) && onHinted()), [hints, tool, binShown, onHinted]);
   return (
-    <main className={`bench tint--${draft.world}`}>
-      <Header title={draft.title} address={{ slug: draft.slug, fixed: !!draft.proofs.length }} world={draft.world} worlds={WORLDS} step="edit"
-        steps={{ edit: { locked: "", done: false }, play: { locked: playOff && playOff !== CHECKING ? (gl ? playOff : NO_GL) : "", done: proved }, publish: { locked: shut, done: false } }}
-        action={proved ? { text: "Publish", onClick: publish } : { text: "Play", key: "T", off: playOff, onClick: play }}
-        meter={meterFace(clean, est, shape)} lineOn={lineOn} onLine={guess || lineOn ? () => setLineOn((on) => !on) : undefined} bump={parBump}
-        history={{ undo: () => (session.undo(), refresh()), redo: () => (session.redo(), refresh()), canUndo: session.canUndo(), canRedo: session.canRedo() }}
-        onTitle={(t) => (session.edit((k) => frame(retitle(k, t, others))), refresh(), addressKept(t))} onWorld={world} onStep={(s) => (s === "play" ? play() : s === "publish" && proved && publish())} onBack={onBack} onHelp={() => setAgain(true)}
-        onRoll={() => (sound("blip"), session.edit((k) => frame(retitle(k, suggestName(k.world, seed, dice), others))), setDice((n) => n + 1), refresh())} />
-      {palette && quick && full ? (
-        <>
-          <Palette world={draft.world} palette={palette} armed={armed} off={off} bin={binShown} onArm={arm} chosen={looks} paint={{ mode: paint, off: paintOff, onMode: toPaint }} />
-          <div className="centre">
-            {/* the proofs an edit dropped, an undo away (the edit undone, they are the hole's again) */}
-            {toast && !sameShape(kept, toast.back) && (
-              <p className="btoast" role="status">{toast.text}
-                <Button size="s" type="button" onClick={() => (undoTo(toast.back), setToast(null))}>Undo</Button>
-              </p>
-            )}
-            {opened && errors.length > 0 && <p className="bbroken" role="status">{opened}</p>}
-            <Board draft={draft} quick={quick} full={full} selected={selected} armed={armed} step={fine ? 0.25 : 0.5} bad={bad} pan={pan} frameAsk={frameAsk}
-              onSelect={setSelected} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onBin={(id) => tryEdit(removePiece(draft, id), "")} onCarry={setBinShown} onDisarm={disarm} said={said} show={show} look={look} scene={{ state: checked?.state ?? null, of: checked?.of ?? null, paused: !blinking, keep: blinking && piece?.clock.k === "substep", eye }}
-              keys={keysLine} onLanded={() => void (landed.current = "next")} roll={roll}
-              paint={{ mode: paint, green, onPaint: paintTo }}
-              ball={{
-                played: shotsShown, trail: trailed, last: shots.at(-1) ?? null, aimed: aim ? shotsPlayed.at(-1) ?? null : null,
-                line: lineOn && guess && est?.of === shape && draft === kept ? { path: guess.path, heat: guess.heat } : null,
-                onAim: setAim, onShot: (q) => (sound("putt"), setAim(null), setShots((s) => [...s, q].slice(-SHOTS_KEPT))),
-              }} />
-            <Checks broken={brokenLine({ errors: errors.length, proved, rounds: rounds && key?.of === shape && rounds.key === key.key ? rounds : null })} gauges={[...pieceGauges(draft), ...(v?.hole && v.cost && v.hex ? gauges(v.hole, v.cost, v.hex.length / 2) : [])]}
-              issues={v?.issues ?? []} busy={!fresh} onShow={(id) => (setSelected(id), setShow((s) => ({ id, n: (s?.n ?? 0) + 1 })))} onFix={fix} />
-          </div>
-          {/* the right side: the player's view on top, still; the piece's settings under it, scrolling in themselves */}
-          <div className="bside">
-            {gl && <div className="col col--still"><PlayerView eye={eye} large={large} onLarge={setLarge} /></div>}
-            <aside className="col" aria-label="The selected piece">
-              <h2 className="col__head">Piece settings</h2>
-              {/* painting with no piece selected: how the paint goes, in its place */}
-              {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
-                onChoose={(tile, id) => setChosen({ world: draft.world, looks: { ...looks, [tile]: id } })} />}
-              {/* the first run's hints, in order, under the empty settings: never over the hole, the 3D or one another */}
-              {hints && !piece && <Hints world={draft.world} onDone={onHinted} />}
-            </aside>
-          </div>
-        </>
-      ) : (
-        unloaded ? (
-          <div className="bench__wait" role="alert">
-            <p>The {draft.world}&apos;s pieces could not load: check the connection.</p>
-            <Button type="button" onClick={() => setTries((n) => n + 1)}>Try again</Button>
-          </div>
-        ) : <p className="bench__wait" aria-busy="true">Loading the {draft.world}&apos;s pieces…</p>
-      )}
+    <>
       {playing && (
         <div className={`tbench tbench--play tint--${draft.world}`}>
           {/* (a new game once the address is given: its rounds the author's from then on) */}
@@ -511,7 +450,61 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
             onRound={(r) => (setTried(r), setTrail(roundOf(host, kept, r)))} onLeave={() => setPlaying(null)} onPublish={() => (setPlaying(null), publish())} />
         </div>
       )}
-      {again && palette && <Hints world={draft.world} glossary={{ world: draft.world, palette }} onDone={() => (setAgain(false), onHinted())} />}
-    </main>
+      {/* inert under Play, out of Tab's and a screen reader's reach (Play sits beside it: inert would take it too) */}
+      <main className={`bench tint--${draft.world}`} inert={!!playing}>
+        <Header title={draft.title} address={{ slug: draft.slug, fixed: !!draft.proofs.length }} world={draft.world} worlds={WORLDS} step="edit"
+          steps={{ edit: { locked: "", done: false }, play: { locked: playOff === CHECKING ? "" : playOff, done: proved }, publish: { locked: shut, done: false } }}
+          action={proved ? { text: "Publish", onClick: publish } : { text: "Play", key: "T", off: playOff, onClick: play }}
+          meter={meterFace(clean, est, shape)} lineOn={lineOn} onLine={guess || lineOn ? () => setLineOn((on) => !on) : undefined} bump={parBump}
+          history={{ undo: () => (session.undo(), refresh()), redo: () => (session.redo(), refresh()), canUndo: session.canUndo(), canRedo: session.canRedo() }}
+          onTitle={(t) => (session.edit((k) => frame(retitle(k, t, others))), refresh(), addressKept(t))} onWorld={world} onStep={(s) => (s === "play" ? play() : s === "publish" && proved && publish())} onBack={onBack} onHelp={() => setAgain(true)}
+          onRoll={() => (sound("blip"), session.edit((k) => frame(retitle(k, suggestName(k.world, seed, dice), others))), setDice((n) => n + 1), refresh())} />
+        {palette && quick && full ? (
+          <>
+            <Palette world={draft.world} palette={palette} armed={armed} off={off} bin={binShown} onArm={arm} chosen={looks} paint={{ mode: paint, off: paintOff, onMode: toPaint }} />
+            <div className="centre">
+              {/* the proofs an edit dropped, an undo away (the edit undone, they are the hole's again) */}
+              {toast && !sameShape(kept, toast.back) && (
+                <p className="btoast" role="status">{toast.text}
+                  <Button size="s" type="button" onClick={() => (undoTo(toast.back), setToast(null))}>Undo</Button>
+                </p>
+              )}
+              {opened && errors.length > 0 && <p className="bbroken" role="status">{opened}</p>}
+              <Board draft={draft} quick={quick} full={full} selected={selected} armed={armed} step={fine ? 0.25 : 0.5} bad={bad} pan={pan} frameAsk={frameAsk}
+                onSelect={setSelected} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onBin={(id) => tryEdit(removePiece(draft, id), "")} onCarry={setBinShown} onDisarm={disarm} said={said} show={show} look={look} scene={{ state: checked?.state ?? null, of: checked?.of ?? null, paused: !blinking, keep: blinking && piece?.clock.k === "substep", eye }}
+                keys={keysLine} onLanded={() => void (landed.current = "next")} roll={roll}
+                paint={{ mode: paint, green, onPaint: paintTo }}
+                ball={{
+                  played: shotsShown, trail: trailed, last: shots.at(-1) ?? null, aimed: aim ? shotsPlayed.at(-1) ?? null : null,
+                  line: lineOn && guess && est?.of === shape && draft === kept ? { path: guess.path, heat: guess.heat } : null,
+                  onAim: setAim, onShot: (q) => (sound("putt"), setAim(null), setShots((s) => [...s, q].slice(-SHOTS_KEPT))),
+                }} />
+              <Checks broken={brokenLine({ errors: errors.length, proved, rounds: rounds && key?.of === shape && rounds.key === key.key ? rounds : null })} gauges={[...pieceGauges(draft), ...(v?.hole && v.cost && v.hex ? gauges(v.hole, v.cost, v.hex.length / 2) : [])]}
+                issues={v?.issues ?? []} busy={!fresh} onShow={(id) => (setSelected(id), setShow((s) => ({ id, n: (s?.n ?? 0) + 1 })))} onFix={fix} />
+            </div>
+            {/* the right side: the player's view on top, still; the piece's settings under it, scrolling in themselves */}
+            <div className="bside">
+              {gl && <div className="col col--still"><PlayerView eye={eye} large={large} onLarge={setLarge} /></div>}
+              <aside className="col" aria-label="The selected piece">
+                <h2 className="col__head">Piece settings</h2>
+                {/* painting with no piece selected: how the paint goes, in its place */}
+                {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} kept={kept} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
+                  onChoose={(tile, id) => setChosen({ world: draft.world, looks: { ...looks, [tile]: id } })} />}
+                {/* the first run's hints, in order, under the empty settings: never over the hole, the 3D or one another */}
+                {hints && !piece && <Hints world={draft.world} />}
+              </aside>
+            </div>
+          </>
+        ) : (
+          unloaded ? (
+            <div className="bench__wait" role="alert">
+              <p>The {draft.world}&apos;s pieces could not load: check the connection.</p>
+              <Button type="button" onClick={() => setTries((n) => n + 1)}>Try again</Button>
+            </div>
+          ) : <p className="bench__wait" aria-busy="true">Loading the {draft.world}&apos;s pieces…</p>
+        )}
+        {again && palette && <Hints world={draft.world} glossary={{ world: draft.world, palette, onClose: () => (setAgain(false), onHinted()) }} />}
+      </main>
+    </>
   );
 }

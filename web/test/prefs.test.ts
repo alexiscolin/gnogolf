@@ -14,8 +14,6 @@ afterEach(() => {
   delete (navigator as unknown as Record<string, unknown>).connection;
 });
 
-// ---- camera ----
-
 test("CAM_ORDER starts with classic", () => {
   assert.equal(CAM_ORDER[0], "classic");
 });
@@ -59,8 +57,6 @@ test("saveCam: swallows a storage that throws", () => {
   }
 });
 
-// ---- the Builder's Inspector ----
-
 test("detailsOpen: open until the player folds it, kept for the visit (sessionStorage), open again if storage throws", () => {
   assert.equal(detailsOpen(), true);
   saveDetailsOpen(false);
@@ -78,8 +74,6 @@ test("detailsOpen: open until the player folds it, kept for the visit (sessionSt
     delete (sessionStorage as unknown as Record<string, unknown>).setItem;
   }
 });
-
-// ---- gnome ----
 
 test("hadGnome: false before any pick, true after", () => {
   assert.equal(hadGnome(), false);
@@ -134,8 +128,6 @@ test("savedGnome: a storage that throws falls back to the first gnome", () => {
   }
 });
 
-// ---- earned ----
-
 test("earned: empty when nothing was stored", () => {
   assert.deepEqual(earned(), []);
 });
@@ -171,8 +163,6 @@ test("remember: swallows a storage that throws", () => {
     delete (localStorage as unknown as Record<string, unknown>).setItem;
   }
 });
-
-// ---- stillsOnly ----
 
 test("stillsOnly: true when storage cannot be read (the Low tier unknown, stills are the safe side)", () => {
   (globalThis as Record<string, unknown>).matchMedia = () => ({ matches: false });

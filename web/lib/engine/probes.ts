@@ -31,6 +31,18 @@ const ndcTop = new THREE.Vector3(), ndcBot = new THREE.Vector3(), headAt = new T
 /** E: the engine's live state; cam: its camera controller. */
 export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDrawn, fx }: Inner) {
   const { g, camera, scene, ground, band, publish } = E;
+  const lensWho: Record<number, number> = {};
+  // a point on screen as the camera is now, in CSS px, and 1 if it is in front of the camera
+  const px = (v: THREE.Vector3) => (v.project(camera), [Math.round(((v.x + 1) / 2) * innerWidth), Math.round(((1 - v.y) / 2) * innerHeight), v.z < 1 ? 1 : 0]);
+  // a box's corners on screen: [x0, y0, x1, y1] in CSS px
+  const screenRect = (box: THREE.Box3) => {
+    const r = [1e9, 1e9, -1e9, -1e9];
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      const [sx, sy] = px(new THREE.Vector3(x, y, z));
+      r[0] = Math.min(r[0], sx); r[1] = Math.min(r[1], sy); r[2] = Math.max(r[2], sx); r[3] = Math.max(r[3], sy);
+    }
+    return r;
+  };
   return {
     /** For screenshots only (?won): the win card as if the hole was just holed. */
     fakeWin(strokes = 2) {
@@ -52,20 +64,18 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
       for (let k = 1; k < 8; k++) { const t = k / 8, x = B.x + (P.x - B.x) * t, z = B.z + (P.z - B.z) * t; out.line.push([+(B.y + 0.7 + (P.y - B.y - 0.7) * t).toFixed(2), +ground(x, z).toFixed(2)]); }
       return out;
     },
-    /** ?camlog only: the meshes in view now, by their parent's name (what draws). */
+    /** ?camlog only: the meshes in view now, counted by type, radius, distance and vertices (what draws). */
     inView: () => {
       const f = new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
       const out: Record<string, number> = {};
       scene.traverseVisible((o) => {
         if (!isDrawn(o)) return;
         if (o.frustumCulled !== false && o.geometry && !f.intersectsObject(o)) return;
-        let k = o.name || "", p = o.parent;
-        while (!k && p) (k = p.name || ud(p).kind || ""), (p = p.parent);
         if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere();
         const sphere = o.geometry.boundingSphere!;
         const c = sphere.center.clone().applyMatrix4(o.matrixWorld), r = sphere.radius * o.matrixWorld.getMaxScaleOnAxis();
         const pos = o.geometry.getAttribute("position") as THREE.BufferAttribute | undefined;
-        k = `${o.type} r${Math.round(r)} d${Math.round(c.distanceTo(camera.position))} v${pos ? pos.count : 0}${o instanceof THREE.InstancedMesh ? " inst" + o.count : ""}`;
+        const k = `${o.type} r${Math.round(r)} d${Math.round(c.distanceTo(camera.position))} v${pos ? pos.count : 0}${o instanceof THREE.InstancedMesh ? " inst" + o.count : ""}`;
         out[k] = (out[k] || 0) + 1;
       });
       return out;
@@ -95,7 +105,7 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
             const geo = hit.object.geometry;
             if (!geo.boundingSphere) geo.computeBoundingSphere();
             const r = Math.round(geo.boundingSphere!.radius * hit.object.matrixWorld.getMaxScaleOnAxis());
-            cam.lensWho[r] = (cam.lensWho[r] || 0) + 1;
+            lensWho[r] = (lensWho[r] || 0) + 1;
           }
         }
       return near / 25;
@@ -124,7 +134,7 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
       return out;
     },
     /** ?camlog only: the radius of what the lens probe hit, counted. */
-    lensWho: () => cam.lensWho,
+    lensWho: () => lensWho,
     /** ?camlog only: the third-person heading now, in radians (what a pull starting now is measured from). */
     camYaw: () => cam.yaw(),
     gliding: () => cam.gliding(),
@@ -160,12 +170,12 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
     replayPath: (path: readonly Vec2[], air: string, cause: string, tick = 0) => ((g.flying = true), (g.tick0 = tick), rp.replay(path, false, air, cause).finally(() => (g.flying = false))),
     /** The ball over the ground, and the step of the replay (with the chain's air flags) it is on. */
     ballLift: () => ({ lift: +(E.ball.position.y - E.ground(E.ball.position.x, E.ball.position.z)).toFixed(3), y: +E.ball.position.y.toFixed(3), flying: !!g.flying, at: g.replaying ? g.replaying.at : -1, flags: g.replaying ? g.replaying.flags : null }),
-    /** ?camlog only: the pull as it stands. */
     /** ?camlog only: the aim previews drawn so far and when the last was, and the page's own simulations' times (lib/sim), ms. */
     aimDrawn,
     aimShot: () => ({ angle: E.shot.angle, power: E.shot.power }),
     simMs: () => simMs.slice(),
     simChecks: () => ({ ...simChecks, on: simReady(g.id) }),
+    /** ?camlog only: the pull as it stands. */
     pullState: () => ({ power: +E.shot.power.toFixed(2), deg: E.shot.deg, aiming: !!g.aiming, band: band.visible, flying: !!g.flying, strokes: g.strokes }),
     /** ?camlog only: the scene's objects: all, empty groups, drawables, matrices recomposed each frame. */
     census: () => {
@@ -225,7 +235,6 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
       // (a course without its live pieces' tick, as a test's, has nothing to run)
       if (g.course) for (const o of [g.course, ...g.course.children]) ud(o).tick?.(now);
     },
-    /** ?camlog only: the ball as drawn: where, whether seen, riding a tube, its scale. */
     /** What a ball falling off the lane at (x, z) lands in, as the world draws it there (worlds.ts pit). */
     pit: (x: number, z: number) => (g.s ? worldOf(g.s).pit?.(g.s, x, z) ?? null : null),
     /** The gnome's pose: its body's up and its roll axis (its local x) in the world, the whole ball's own rotation, the last fall's ending. */
@@ -234,6 +243,7 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
       const up = new THREE.Vector3(0, 1, 0).applyQuaternion(q), ax = new THREE.Vector3(1, 0, 0).applyQuaternion(q), f = rp.fell();
       return { up: up.toArray().map((v) => +v.toFixed(3)), axis: ax.toArray().map((v) => +v.toFixed(3)), rot: [E.ball.rotation.x, E.ball.rotation.y, E.ball.rotation.z].map((v) => +v.toFixed(3)), fell: f && { skin: f.skin, end: f.end, ago: Math.round(performance.now() - f.at) } };
     },
+    /** ?camlog only: the ball as drawn: where, whether seen, riding a tube, its scale. */
     ballAt: () => ({ p: E.ball.position.toArray().map((v) => +v.toFixed(3)), visible: E.ball.visible, tube: !!g.inTube, scale: +E.ball.scale.x.toFixed(2), seen: !cam.occluded(camera.position, headAt.copy(E.ball.position).setY(E.ball.position.y + 0.7)) }),
     /** ?camlog only: the render against the physics over a grid (audit.ts). */
     surfaceAudit: (step?: number) => surfaceAudit(E, step),
@@ -255,33 +265,21 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
     camPose: () => camera.position.toArray(),
     /** The Far rig: the orbit share it has room for, its pitch blend, its distance. */
     farOrbit: () => g.far && { orbit: +g.far.orbit.toFixed(2), tilt: g.far.tilt, dist: +g.far.dist.toFixed(1) },
-    // the Far view's lane box (laneBox, as the engine frames it): its corners on screen, as the camera is now: [x0, y0, x1, y1] in CSS px
     /** The hole as a test plays it: its id, its cup, the ball, its world. */
     holeNow: () => g.s && { id: g.id, cup: g.s.cup, ball: [g.ball.x, g.ball.y], world: g.s.world || "garden" },
     /** Where the cup and the gnome are on screen, in CSS px: the cup's centre (and whether it is in front),
      *  and the box of all of him (hat, piece, prop). */
     onScreen: () => {
       if (!g.s) return null;
-      const px = (v: THREE.Vector3) => (v.project(camera), [Math.round(((v.x + 1) / 2) * innerWidth), Math.round(((1 - v.y) / 2) * innerHeight), v.z < 1 ? 1 : 0]);
       const cup = px(new THREE.Vector3(g.s.cup[0], E.ground(g.s.cup[0], g.s.cup[1]), g.s.cup[1]));
-      const box = new THREE.Box3().setFromObject(E.ball), r = [1e9, 1e9, -1e9, -1e9];
-      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
-        const [sx, sy] = px(new THREE.Vector3(x, y, z));
-        r[0] = Math.min(r[0], sx); r[1] = Math.min(r[1], sy); r[2] = Math.max(r[2], sx); r[3] = Math.max(r[3], sy);
-      }
-      return { cup, gnome: r, w: innerWidth, h: innerHeight };
+      return { cup, gnome: screenRect(new THREE.Box3().setFromObject(E.ball)), w: innerWidth, h: innerHeight };
     },
     fx,
+    // the Far view's lane box (laneBox, as the engine frames it): its corners on screen, as the camera is now: [x0, y0, x1, y1] in CSS px
     boardFrame: () => {
       if (!g.s) return null;
-      const b = g.s.board, box = laneBox(g.s, E.ground), r = [1e9, 1e9, -1e9, -1e9], q = new THREE.Vector3();
-      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
-        q.set(x, y, z).project(camera);
-        const px = ((q.x + 1) / 2) * innerWidth, py = ((1 - q.y) / 2) * innerHeight;
-        r[0] = Math.min(r[0], px); r[1] = Math.min(r[1], py); r[2] = Math.max(r[2], px); r[3] = Math.max(r[3], py);
-      }
-      const d = camera.getWorldDirection(q);
-      return { r: r.map(Math.round), w: innerWidth, h: innerHeight, pitch: Math.round((Math.asin(-d.y) * 180) / Math.PI), view: g.view, cam: g.cam, board: [b.w, b.h], box: [box.min.toArray(), box.max.toArray()].map((v) => v.map((n) => +n.toFixed(2))) };
+      const b = g.s.board, box = laneBox(g.s, E.ground), r = screenRect(box), d = camera.getWorldDirection(ndcTop);
+      return { r, w: innerWidth, h: innerHeight, pitch: Math.round((Math.asin(-d.y) * 180) / Math.PI), view: g.view, cam: g.cam, board: [b.w, b.h], box: [box.min.toArray(), box.max.toArray()].map((v) => v.map((n) => +n.toFixed(2))) };
     },
   };
 }

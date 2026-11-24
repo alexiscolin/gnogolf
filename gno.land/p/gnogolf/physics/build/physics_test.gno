@@ -111,8 +111,6 @@ func TestRoundBallKeepsItsRadiusFromWalls(t *testing.T) {
 	}
 }
 
-// A fast ball does not jump over a narrow zone: a substep is walked in short
-// moves, and the water in the middle of a 10-unit stride still catches it.
 func TestRoundZoneHasNoCorners(t *testing.T) {
 	z := physics.Zone{Min: physics.V(0, 0), Max: physics.V(10, 4), Round: true}
 	if !z.Contains(physics.V(5, 2)) || z.Contains(physics.V(0.3, 0.3)) {
@@ -120,6 +118,8 @@ func TestRoundZoneHasNoCorners(t *testing.T) {
 	}
 }
 
+// A fast ball does not jump over a narrow zone: a substep is walked in short
+// moves, and the water in the middle of a 10-unit stride still catches it.
 func TestFastBallMeetsANarrowZone(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(40, 10)),
@@ -144,14 +144,15 @@ func TestBallInACornerStaysIn(t *testing.T) {
 	}
 }
 
-// Two lively bumpers facing each other cannot speed a ball up without end.
+// Two lively bumpers facing each other cannot speed a ball up without end: a
+// kick is held to SpeedCap, in the substep of the hit too.
 func TestBumpersCannotPumpForever(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(32, 16)),
-		Posts:    []physics.Post{{Circle: physics.Circle{C: physics.V(9, 4), R: 1.4}, Bounce: 1.3}, {Circle: physics.Circle{C: physics.V(9, 12), R: 1.4}, Bounce: 1.3}},
+		Posts:    []physics.Post{{Circle: physics.Circle{C: physics.V(4, 8), R: 1.4}, Bounce: 1.3, Skin: "bumper"}, {Circle: physics.Circle{C: physics.V(28, 8), R: 1.4}, Bounce: 1.3, Skin: "bumper"}},
 		Friction: 0.95, Bounce: 1, Radius: 0.5,
 	}
-	sh := f.Step(physics.V(9, 7), physics.V(0, -8), 30)
+	sh := f.Step(physics.V(26, 8), physics.V(8, 0), 30)
 	for i := 1; i < len(sh.Path); i++ {
 		if d := sh.Path[i].Sub(sh.Path[i-1]).Len(); d > physics.SpeedCap+1e-6 {
 			t.Fatalf("a substep of %v is faster than the cap", d)
@@ -170,7 +171,7 @@ func TestNoBounceAddsSpeed(t *testing.T) {
 		}
 		for _, a := range []float64{0, 0.2, 0.5, 1.2, 2.5, 3.1} {
 			v0 := physics.FromPolar(a, 3)
-			start := physics.V(20, 10).Sub(physics.FromPolar(a, 6)) // aimed at the bumper
+			start := physics.V(20, 10).Sub(physics.FromPolar(a, 6)) // aimed at the post
 			sh := f.Step(start, v0, 40)
 			top := v0.Len() + 1e-6
 			for i := 1; i < len(sh.Path); i++ {
@@ -182,7 +183,7 @@ func TestNoBounceAddsSpeed(t *testing.T) {
 	}
 }
 
-// A ball that stops inside the water is sent back now, not on the next stroke.
+// A ball that stops in the water goes back at once, not on the next stroke.
 func TestBallThatStopsInWaterIsResolved(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(32, 16)),
@@ -587,6 +588,18 @@ func TestABallAtRestUnderATimedHazardMeetsIt(t *testing.T) {
 	}
 }
 
+// A ball at rest in a timed tunnel's mouth (a blowhole) is taken, whenever in
+// its period the stroke happened to end.
+func TestABallAtRestInATimedTunnelIsTaken(t *testing.T) {
+	blowhole := physics.Zone{Kind: physics.Tunnel, Min: physics.V(20, 0), Max: physics.V(30, 10), Vec: physics.V(50, 5), Every: 12, On: 4, Phase: 5}
+	f := &physics.Field{Walls: Box(physics.V(0, 0), physics.V(60, 10)), Zones: []physics.Zone{blowhole}, Friction: 0.86, Radius: 0.5}
+	for tick := 0; tick < 12; tick++ {
+		if s := physics.WithTick(f, tick).Step(physics.V(24, 5), physics.Vec2{}, 1); s.Rest() != physics.V(50, 5) || len(s.Path) != 2 {
+			t.Fatalf("tick %d: a ball at rest in the blowhole was not taken: %v", tick, s.Path)
+		}
+	}
+}
+
 // A timed bar that comes back on the ball pushes it out: a wall never stands
 // on the ball.
 func TestATimedBarArrivingOnTheBallPushesItOut(t *testing.T) {
@@ -675,7 +688,7 @@ func TestOnlyTheCrestLaunches(t *testing.T) {
 	if sh := f.Step(physics.V(15, 16), physics.V(2, 3), 30); flew(sh) {
 		t.Fatalf("a ball leaving the ramp by its side took off")
 	}
-	// fast, but mostly across: its speed up the ramp is under JumpSpeed
+	// fast, but mostly across: its speed up the ramp is too low to take off
 	if sh := f.Step(physics.V(17, 8), physics.V(1.2, 5), 30); flew(sh) {
 		t.Fatalf("a ball crossing the ramp on a slant took off")
 	}
@@ -776,6 +789,45 @@ func TestAFlightOutlivesTheStroke(t *testing.T) {
 	}
 }
 
+// A landing is a contact with the ground: the speed along loses
+// LandFriction·(1+GroundBounce)·vz, and a rebound above HopSpeed flies on at
+// what is left.
+func TestALandingBrakesAndHops(t *testing.T) {
+	const g = 0.5
+	s := steep(g).Step(physics.V(9, 0), physics.V(6.2, 0), 60)
+	k := -1
+	for i, a := range s.Air {
+		if a {
+			k = i
+			break
+		}
+	}
+	if k < 0 || !s.Air[k+1] {
+		t.Fatalf("no flight of two substeps: %v", s.Air)
+	}
+	v := s.Path[k+1].Sub(s.Path[k]).X // in the air: its speed, unchanged
+	sin := g / physics.G
+	vz := v * sin / math.Sqrt(1-sin*sin)
+	want := v - physics.LandFriction*(1+physics.GroundBounce)*vz
+	for i := k + 2; i < len(s.Path); i++ {
+		if d := s.Path[i].Sub(s.Path[i-1]).X; s.Air[i] && math.Abs(d-want) < 1e-9 {
+			return
+		}
+	}
+	t.Fatalf("no hop at %v after landing at %v: path %v, air %v", want, v, s.Path, s.Air)
+}
+
+// A hill no steeper than MinRamp is a lawn's undulation: a fast ball rolls
+// over its crest, where one a hair steeper flies.
+func TestAGentleHillLaunchesNothing(t *testing.T) {
+	if s := steep(physics.MinRamp).Step(physics.V(9, 0), physics.V(6, 0), 60); flew(s) {
+		t.Fatalf("a %v hill launched the ball: %v", physics.MinRamp, s.Air)
+	}
+	if s := steep(physics.MinRamp+0.01).Step(physics.V(9, 0), physics.V(6, 0), 60); !flew(s) {
+		t.Fatalf("a %v hill did not launch the ball", physics.MinRamp+0.01)
+	}
+}
+
 // A ball coming along a wall's line from well past its end meets the end
 // cap, however far the move before it started: it never slides on inside
 // the wall.
@@ -835,9 +887,8 @@ func crossed(ws []physics.Wall, path []physics.Vec2) int {
 	return -1
 }
 
-// A ball aimed at the tip of an acute corner meets the tip: the square caps
-// of the two walls left a gap in front of it, and a ball in the gap went
-// through the solid.
+// A ball aimed at the tip of an acute corner meets the tip: it never slips
+// between the two walls' ends into the solid.
 func TestAnAcuteTipIsSolid(t *testing.T) {
 	for _, deg := range []float64{45, 60, 63, 75, 85} {
 		half := deg / 2 * math.Pi / 180
@@ -860,8 +911,7 @@ func TestAnAcuteTipIsSolid(t *testing.T) {
 	}
 }
 
-// A ball coming diagonally at a free wall end from afar meets the end: the
-// square cap had no end face to stop it.
+// A ball coming diagonally at a free wall end from afar meets its round cap.
 func TestAFreeEndCannotBeCutFromAfar(t *testing.T) {
 	ws := []physics.Wall{{Seg: physics.Segment{physics.V(0, 0), physics.V(5, 0)}}}
 	f := &physics.Field{Walls: ws, Friction: 0.9, Bounce: 0.8, Radius: 0.5}

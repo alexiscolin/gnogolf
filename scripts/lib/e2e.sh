@@ -58,19 +58,23 @@ args() {
 }
 # ok <step> <expected> <key> <pkg> <func> [args...]: the call must go through
 ok() {
-	local s=$1 e=$2 k=$3 p=$4 f=$5
+	local s=$1 e=$2 k=$3 p=$4 f=$5 rc c
 	shift 5
-	if tx "$k" "$p" "$f" "$@"; then row "$s" "$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]" "$e" "went through" 0 "$GAS"
-	else row "$s" "$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]" "$e" "refused: $(why)" 1 "$GAS"; fi
+	tx "$k" "$p" "$f" "$@"
+	rc=$? c="$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]"
+	if [ $rc = 0 ]; then row "$s" "$c" "$e" "went through" 0 "$GAS"
+	else row "$s" "$c" "$e" "refused: $(why)" 1 "$GAS"; fi
 }
 # no <step> <panic substring> <key> <pkg> <func> [args...]: refused, with that panic
 no() {
-	local s=$1 e=$2 k=$3 p=$4 f=$5 w
+	local s=$1 e=$2 k=$3 p=$4 f=$5 w rc c
 	shift 5
-	if tx "$k" "$p" "$f" "$@"; then row "$s" "$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]" "refused: $e" "went through" 1 "$GAS"; return; fi
+	tx "$k" "$p" "$f" "$@"
+	rc=$? c="$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]"
+	if [ $rc = 0 ]; then row "$s" "$c" "refused: $e" "went through" 1 "$GAS"; return; fi
 	w=$(printf %s "$TXOUT" | grep -o "$e" | head -1)
-	if [ -n "$w" ]; then row "$s" "$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]" "refused: $e" "refused: $(why)" 0 "${GAS:-}"
-	else row "$s" "$k: ${p##*/}.$f($(args "$@"))${SEND:+ send $SEND} [$VIA]" "refused: $e" "refused otherwise: $(why)" 1 "${GAS:-}"; fi
+	if [ -n "$w" ]; then row "$s" "$c" "refused: $e" "refused: $(why)" 0 "${GAS:-}"
+	else row "$s" "$c" "refused: $e" "refused otherwise: $(why)" 1 "${GAS:-}"; fi
 }
 # is <step> <call> <expected> <got>: a read or a balance, compared
 is() { if [ "$3" = "$4" ]; then row "$1" "$2" "$3" "$4" 0; else row "$1" "$2" "$3" "$4" 1; fi; }

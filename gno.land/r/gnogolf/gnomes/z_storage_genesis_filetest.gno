@@ -33,11 +33,11 @@ func main(cur realm) {
 	testing.SetRealm(testing.NewUserRealm(buyer))
 }
 
-// genesis is 720 rows "id|tier|name|traits" laid out as the catalogue is
-// (spec §2): seven worlds, each its 72 Commons, then its
-// Rares (21 in the first four, 20 after), its Epics (10 in the first two, 9
-// after) and its Legendary; traits as long as format 1's (58 hex digits),
-// names as long as a typical one.
+// genesis is 720 rows "id|tier|name|traits" laid out as the catalogue is:
+// seven worlds, each its 72 Commons, then its Rares (21 in the first four,
+// 20 after), its Epics (10 in the first two, 9 after) and its Legendary;
+// traits as long as format 1's (58 hex digits), names as long as a typical
+// one.
 func genesis() string {
 	var b strings.Builder
 	id := 1
@@ -71,4 +71,4 @@ func genesis() string {
 // gno.land/r/test/storedgenesis: 0
 
 // Gas:
-// 1395818582
+// 1343291842

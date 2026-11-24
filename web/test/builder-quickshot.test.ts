@@ -1,7 +1,7 @@
-// Quick shots (lib/builder/quickshot.ts): a shot pulled back on the board in Edit, played in calm
-// weather by builder.wasm's round and from, its path in the board's own
-// units, and played again on the hole as it changes. Never a proof: nothing
-// of it reaches the draft.
+// Quick shots (lib/builder/quickshot.ts): a shot pulled back on the board in
+// Edit, played in calm weather by builder.wasm's round and from, its path in
+// the board's own units, and played again on the hole as it changes. Never a
+// proof: nothing of it reaches the draft.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { host, lane } from "./builder-fixture.ts";

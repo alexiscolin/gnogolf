@@ -1,11 +1,6 @@
-/* The front screens: the title, the cups, the gnome picker and a cup won,
-   one look: a calm fade in the world's colours under even halftone dots,
-   the inked frame round the screen, and the style on the cards: glossy inked frames, paper panels, gold
-   for the call to action, and everything
-   moving a transform or an opacity: the compositor's work, not the page's.
-   The live scene behind the title is lib/scene/title.ts. */
-
-/* ------------------------------------------------------------ the system */
+/* The front screens (the title, the cups, the gnome picker, a cup won), one look: the world's colours under even
+   halftone dots, the inked frame round the screen, glossy inked cards on paper, gold for the call to action. All
+   motion is a transform or an opacity: the compositor's work, not the page's. */
 
 /* the backdrop's colour, registered so a new world's cross-fades in */
 @property --s0 { syntax: "<color>"; inherits: true; initial-value: #fff3df; }
@@ -26,7 +21,6 @@
   --c1: #7fe8a8; --c2: #1f9a6a;
   --stage: #d3e8c8; /* the picker's card behind the gnome: a flat, muted colour of the world */
   --art: linear-gradient(180deg, #7ec8ff, #ffd6a8);
-  --sky: var(--s0); /* flat, toon: the world's light colour under the dots */
   --dots: radial-gradient(circle, rgba(var(--ink-rgb), .09) 1.7px, transparent 2.1px) 0 0 / 14px 14px;
   --panel-dots: radial-gradient(rgba(var(--ink-rgb), .14) 1.6px, transparent 2px) 0 0 / 16px 16px; /* a panel's, bolder (a cup's card, a game's, a cup's band) */
   --glow: #ffe066; --glow-rgb: 255, 224, 102;
@@ -38,7 +32,6 @@
   --fs-name: clamp(15px, 1.4vw, 18px);
   --fs-pill: 15px;
   /* space: the vertical rhythm, small to large */
-  --gap-s: 8px;
   --gap-l: clamp(18px, 3vh, 30px);
   --gap-xl: clamp(24px, 4.5vh, 48px);
   --gap-grid: clamp(14px, 2vw, 28px); /* between a row's cards */
@@ -75,8 +68,8 @@
 /* the backdrop: the world's fade under an even halftone (::before), and the
    game's first frame round the screen (::after) */
 .front { background: var(--s0); overflow: auto; }
-.front::before, .victory::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: var(--dots), var(--sky); }
-.title__sky { background: var(--dots), var(--sky); }
+.front::before, .victory::before { content: ""; position: fixed; inset: 0; pointer-events: none; background: var(--dots), var(--s0); }
+.title__sky { background: var(--dots), var(--s0); }
 .front::after, .victory::after, .screen--title::after {
   content: ""; position: fixed; inset: 16px; pointer-events: none;
   border: 3px solid var(--green); border-radius: 10px;
@@ -93,7 +86,7 @@
    foot the network's chips (their row and --chip-room, the last row's room, the same) sit on it, never on a
    card's Buy or a band's words; on a phone the head's row too (Back, the mode, About). Over the screen's parts,
    under its head (the shop's, in that row on a phone), its frame and its corner buttons */
-.front__veil::before, .front__veil::after { content: ""; position: fixed; z-index: 5; left: 0; right: 0; pointer-events: none; background: var(--dots), var(--sky); background-attachment: fixed; }
+.front__veil::before, .front__veil::after { content: ""; position: fixed; z-index: 5; left: 0; right: 0; pointer-events: none; background: var(--dots), var(--s0); background-attachment: fixed; }
 .front__veil::after { display: none; bottom: 0; height: calc(var(--chip-room) + 12px); mask-image: linear-gradient(transparent, #000 20px); }
 body:has(.netbanner) .front__veil::after { display: block; }
 .front__veil::before { display: none; top: 0; height: 96px; mask-image: linear-gradient(#000 calc(100% - 14px), transparent); }
@@ -118,16 +111,10 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
    gnome's (flat: they only show), the gnome shop's sale (gnomes.css .wcard) */
 .world__info, .screen--title .title__facts li, .front .aimset--compact, .worlds--v2 .community, .newgnome, .wcard { background: var(--paper); border: var(--edge); border-radius: var(--r-card); }
 .world__info, .wcard { box-shadow: var(--shadow-btn); }
-/* the call to action: gold, inked, on its shadow (Button's "gold": the title's
-   start and the picker's pick, globals.css .btn--cta; a duel's Race: the
-   picks', the hole cards', a friend's, a board row's) */
-.btn--gold, .rival__go {
-  background: var(--gold-grad); color: var(--ink); border: var(--edge-bold);
-}
 /* the picker's pick, a size under the title's start */
 .front .btn--play { font-size: clamp(18px, 2vw, 22px); padding: 12px 34px; }
 
-/* ------------------------------------------------------------ the title */
+/* the title */
 
 .screen--title {
   background: var(--s0);
@@ -188,7 +175,7 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   transform: rotate(-2deg);
 }
 
-/* the call to action: gold, big, breathing (its size over the picker's .screen .btn--play) */
+/* the call to action: gold, big, breathing (its size over the picker's .front .btn--play) */
 .screen--title .btn--start {
   font-size: clamp(24px, 3vw, 34px);
   padding: 16px 40px 18px 48px;
@@ -225,6 +212,8 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 @media (max-height: 720px) {
   .screen--title .title__facts { display: none; }
 }
+/* a phone on its side: the logo smaller, Tap to start inside the frame (upright, the rule under it) */
+@media (max-height: 480px) { .screen--title .title__art { width: 46vh; } }
 /* upright: the logo smaller */
 @media (max-aspect-ratio: 1/1) {
   .screen--title .title__art { width: min(94vw, 42vh); }
@@ -235,7 +224,7 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   .screen--title .title__facts li { font-size: 14px; padding: 5px 10px; }
 }
 
-/* ------------------------------------------------------------ the cups */
+/* the cups */
 
 .worlds--v2 .worlds__in { width: min(1680px, 94vw); }
 .front__head { position: relative; display: grid; justify-items: center; gap: 4px; margin-bottom: clamp(14px, 2.6vh, 30px); }
@@ -266,7 +255,6 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   transition: transform var(--t-pop) var(--spring);
 }
 .world__info { display: grid; justify-items: center; gap: 6px; width: 100%; padding: 14px 8px 8px; }
-/* the standing reads first, the green under it supports it */
 /* the standing on one line in every state: on a narrow card the strokes
    without their word, as the won badge says them */
 .worlds--v2 .world__info { container-type: inline-size; }
@@ -343,21 +331,16 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 .cband__name .tag { font-size: 12px; }
 .cband__stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; font-weight: 700; color: var(--ink-soft); }
 .cband__stats b { font-size: 20px; color: var(--ink); }
-.cband__new { font-size: 14px; font-weight: 700; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cband__go { padding: 8px 16px; border: var(--edge-bold); border-radius: var(--pill); background: var(--gold); font-weight: 800; white-space: nowrap; box-shadow: 0 3px 0 var(--ink); }
 @media (max-width: 700px) {
   .cband { grid-template-columns: auto 1fr; padding-right: 14px; }
   .cband__art { width: 88px; }
   .cband__go { grid-column: 1 / -1; justify-self: stretch; text-align: center; }
 }
-/* their screen: the list as wide as the cups' row */
-.worlds--community .community { width: min(1200px, 100%); max-width: none; margin-top: 0; } /* (the screen centres its children: a width of its own, not its content's) */
-.community__none { margin: var(--sp-4) 0 0; font-weight: 700; color: var(--ink-soft); }
 /* the cup's diorama in a round inked window, as a game's panel shows its gnome */
 /* sized by the window's height too, so a laptop's cards end clear of the network banner */
 .worlds--v2 .world__art { width: min(80%, 20vh); margin: 4px auto 0; aspect-ratio: 1 / 1; border-radius: 50%; }
 .worlds--v2 .world[disabled] .world__art img { filter: grayscale(.85) opacity(.75); }
-.worlds--v2 .community { padding: 10px 14px; } /* flat: a list to read */
 /* a cup with no still baked yet: its emblem is the window */
 .worlds--v2 .world__art--emblem { border: 0; background: none; }
 .world__art--emblem > svg { display: block; width: 100%; height: 100%; }
@@ -425,8 +408,7 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 .mode__soon { position: absolute; top: 16px; right: 12px; margin: 0; transform: rotate(4deg); background: var(--hat); color: var(--paper); font-size: 17px; padding: 6px 16px; box-shadow: var(--shadow-btn); } /* (the hat's red on the builder's gold: it reads from across the room) */
 @media (max-width: 700px) {
   /* a phone: the panels stacked, wide, the gnomes on the left */
-  .modes__list { grid-template-columns: 1fr; gap: 12px; }
-  .modes__list { padding-top: 12px; }
+  .modes__list { grid-template-columns: 1fr; gap: 12px; padding-top: 12px; }
   .mode { aspect-ratio: auto; min-height: 150px; grid-template-columns: 46% 1fr; grid-template-rows: 1fr auto; align-content: center; padding: 12px 0;
     background: radial-gradient(circle at 23% 50%, var(--c1) 0 50px, var(--ink) 50px 52.5px, transparent 53px), var(--panel-dots), var(--c2); }
   .mode__stage { grid-row: 1 / 3; margin-top: -10px; }
@@ -439,6 +421,10 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   .modes__list--four .mode { aspect-ratio: auto; min-height: 124px; }
   .modes__list--four .mode__name { font-size: 28px; }
 }
+/* where the screen scrolls from its top (globals.css: its column 16 in, on the frame's line), the cards 12 in from it,
+   clear of the frame (16 in, 3 wide); a phone's frame is 8 in, so the column's 16 clears it */
+@media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) { .modes__list { width: min(100% - 24px, var(--front-w)); } }
+@media (max-width: 600px) { .modes__list { width: 100%; } }
 /* the game chosen, big, beside Back: its panel's colour, inked (over the screens, under the sheets) */
 .modetag {
   position: fixed; top: 34px; left: 96px; z-index: var(--z-screen); padding: 2px 16px 6px; border: var(--edge-bold); border-radius: var(--pill);
@@ -463,7 +449,7 @@ body:has(.sheet) .modetag { visibility: hidden; }
 .screen.front--fit { display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding: clamp(28px, 5vh, 48px) clamp(28px, 4vw, 64px) 48px; } /* (clear of the frame at the sides too; the block as tall as it needs, in the middle: its last frame gives up height, and scrolls, only when the window is short) */
 body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) + 16px); }
 @media (min-height: 880px) { body:has(.netbanner) .screen.front--fit { padding-top: calc(var(--chip-room) + 16px); } } /* (room to spare: the block in the page's middle, not just above the banner) */
-.worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window) */ /* (the screen's room, its padding off: 100vw overflowed it, a sideways scroll) */
+.worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window; the screen's room inside its padding: 100vw would scroll sideways) */
 .rival .front__head { margin: 0; }
 @media (max-height: 720px) { .front--fit .front__head > .eyebrow { display: none; } }
 /* where the cups' screen scrolls from its top (globals.css): the head under the
@@ -513,7 +499,7 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 .rival__name { grid-area: name; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 4px 0; font-size: clamp(22px, 2.3vw, 30px); font-weight: 700; line-height: 1.1; }
 .rival__line { grid-area: line; padding: 0 4px; }
 .rival__pick:disabled .rival__line { grid-column: 1 / -1; white-space: nowrap; } /* (no Race: its line takes the width, one line) */
-/* Race: the call to action's gold (above), a pill on its drop */
+/* Race: the call to action's gold (globals.css .btn--gold), a pill on its drop */
 .rival__go { padding: 6px 22px 7px; border-radius: var(--pill); font-size: 18px; font-weight: 700; box-shadow: var(--shadow-btn); }
 .rival__go::after { content: " ▸"; }
 /* a board row's, small (globals.css .lb li) */
@@ -548,7 +534,7 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 /* anyone on the board, clear of the picks: its heading and the way to the
    whole board (All players →), then its frame (the board's own list,
    globals.css .lb--full ol): stickers, four a row, in equal columns, centred
-   (the scrollbar's gutter kept on both sides; room for a sticker's place, over its corner) */
+   (the scrollbar's gutter kept on both sides) */
 .rival__board { flex: 0 1 auto; min-height: 160px; display: flex; flex-direction: column; width: 100%; margin-top: clamp(0px, 1.2vh, 12px); }
 .rival__boardhead { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; } /* (a phone: the link under the heading) */
 .rival__boardhead .rival__h { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -564,7 +550,7 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 .rival__board ol.lb__blank .sticker { min-height: 40px; padding: 6px 14px 6px 22px; }
 .rival__board ol.lb__blank .sticker__face { display: none; }
 .rival__board ol.lb__blank > li:nth-child(n+5) { display: none; }
-/* a player as a sticker (the rival board's, the records to beat): their face, their place over its corner, name, a line */
+/* a player as a sticker (the rival board's, the records to beat): their face, why it is there over its corner, name, a line */
 .sticker {
   position: relative; display: grid; grid-template: auto auto / auto minmax(0, 1fr); column-gap: 12px; align-items: center; width: 100%; min-height: 72px; padding: 8px 14px 8px 8px;
   border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); color: var(--ink); font: inherit; text-align: left; box-shadow: var(--shadow-btn);
@@ -572,17 +558,18 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 :is(.lb, .podium__row) li:nth-child(odd) > .sticker { rotate: -1deg; } :is(.lb, .podium__row) li:nth-child(even) > .sticker { rotate: 1deg; } /* stuck on by hand */
 li.me > .sticker { background: var(--ink); color: var(--paper); }
 .sticker__face { grid-row: 1 / 3; width: 54px; height: 54px; }
-.sticker .podium__medal { --m: 26px; position: absolute; top: -8px; left: -8px; }
 .sticker__who { align-self: end; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-name); font-weight: 700; }
 .sticker__sub { align-self: start; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; opacity: .75; } /* (one line, as its name: a card never grows) */
-/* a sticker or a hole card that is a button: it lifts under the pointer, sinks pressed, rings in focus */
-button.sticker, .ghost { cursor: pointer; transition: transform var(--t-pop) var(--spring), box-shadow .2s; }
-button.sticker:hover, .ghost:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 3px var(--glow), 0 8px 0 var(--ink); }
-button.sticker:active, .ghost:active { transform: translateY(var(--press)); box-shadow: 0 1px 0 var(--ink); }
-button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: var(--ring-shadow), var(--shadow-btn); }
-/* a place nobody holds yet, a hole card still read: drawn blank, dashed */
+/* a card that is a button (a sticker, a hole card, a gnome's card, the collection's door, a Builder starter): it lifts
+   under the pointer, sinks pressed, rings in focus */
+button.sticker, .ghost, .gcard, .gcollect--door, .bholes__start { cursor: pointer; transition: transform var(--t-pop) var(--spring), box-shadow .2s; }
+button.sticker:hover, .ghost:hover, .gcard:hover, .gcollect--door:hover, .bholes__start:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 3px var(--glow), 0 8px 0 var(--ink); }
+button.sticker:active, .ghost:active, .gcard:active, .gcollect--door:active, .bholes__start:active { transform: translateY(var(--press)); box-shadow: 0 1px 0 var(--ink); }
+button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcollect--door:focus-visible, .bholes__start:focus-visible { outline: none; box-shadow: var(--ring-shadow), var(--shadow-btn); }
+/* a place nobody holds yet, a hole card still read: drawn blank, dashed, its number over the corner */
 :is(.sticker, .ghost).podium__ghost { border-style: dashed; border-color: rgba(var(--ink-rgb), .25); background: transparent; box-shadow: none; pointer-events: none; }
-.podium__ghost .podium__medal, .podium__ghost .rival__map { opacity: .45; }
+.podium__ghost .podium__medal { --m: 26px; position: absolute; top: -8px; left: -8px; opacity: .45; }
+.podium__ghost .rival__map { opacity: .45; }
 .podium__ghost i { width: 60%; }
 /* the cups' records to beat: the stickers, smaller */
 .podium .sticker { padding: 6px 12px 6px 6px; }
@@ -617,7 +604,6 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
 @media (max-width: 600px) {
   /* a phone: the head under the corner row, its title alone; the friend's bar one row, its heading said to a reader only */
   .front--fit .front__head > .eyebrow { display: none; }
-  .front .worlds__title { font-size: 34px; }
   .rival__friend { flex-wrap: wrap; gap: 6px; padding: 6px; }
   .rival__friend > .rival__h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .rival__friend .friends__add { flex: 1 1 0; min-width: 0; gap: 6px; }
@@ -693,15 +679,15 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
 }
 /* (the motion itself: the global switch, globals.css; the card still, not grown) */
 @media (prefers-reduced-motion: reduce) {
-  .worlds--v2 .world:hover:not([disabled]), .worlds--v2 .world:focus-visible, .mode:hover:not([disabled]), .mode:focus-visible, button.sticker:hover, .ghost:hover { transform: none; }
+  .worlds--v2 .world:hover:not([disabled]), .worlds--v2 .world:focus-visible, .mode:hover:not([disabled]), .mode:focus-visible, button.sticker:hover, .ghost:hover, .gcard:hover, .gcollect--door:hover, .bholes__start:hover { transform: none; }
 }
 
-/* ------------------------------------------------------------ the picker */
+/* the picker */
 
 /* top to bottom: the pill and the name (the one heading), the gnome on a
    flat card in the cup's muted colour with his dots (a locked gnome's unlock
    band across him), the aim as one bounded unit, the button */
-.screen--pick .eyebrow { margin-bottom: var(--gap-s); }
+.screen--pick .eyebrow { margin-bottom: var(--sp-2); }
 .screen--pick .pick__name { font-size: clamp(30px, 3.8vw, 46px); margin: 0 0 var(--gap-l); }
 /* the aim: one ink-outlined unit, its label and switch in a row, its meaning
    in ink under them, sized for the longer of its two lines (both stacked, one shown) */
@@ -752,9 +738,12 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
 .screen--pick .pick__tile {
   position: relative; display: grid; grid-template-rows: 1fr auto; width: var(--pick-w); height: calc(var(--pick-w) * 1.12);
 }
+/* a short window's tile (a dare or the collection above it) never smaller than the plain one on a phone on its side
+   (36vh: 140px), so its dots stay at its foot, clear of the gnome (a phone keeps its own sizes: above) */
+@media (min-width: 601px) { .screen--pick .pick__tile { width: max(var(--pick-w), 140px); height: calc(max(var(--pick-w), 140px) * 1.12); } }
 .screen--pick .pick__tile > .pick__canvas { width: 100%; height: 100%; min-height: 0; }
-/* locked: the gnome greyed as he always was (the filter on his canvas's
-   mount, not on the tile), and what earns him on an ink band across him */
+/* locked: the gnome greyed (the filter on his canvas's mount, not on the
+   tile), and what earns him on an ink band across him */
 .screen--pick .pick__tile > .pick__canvas--locked { filter: brightness(.15) saturate(0); opacity: .7; }
 .pick__lock {
   position: absolute; z-index: 2; left: -8%; right: -8%; top: 60%; margin: 0; padding: 8px 12%;
@@ -773,7 +762,7 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
   .pick__lock { font-size: 15px; padding: 6px 12%; }
 }
 
-/* ------------------------------------------------------------ a cup won */
+/* a cup won */
 
 /* the front's own backdrop with the cup's card over it: its glossy frame,
    its emblem on top, the paper panel inside */
@@ -782,10 +771,9 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
   background: var(--s0);
   animation: fade .3s;
 }
-.victory__in { z-index: 1; }
 .victory__cheer { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; } /* behind the card: the words stay clear */
 .victory__in {
-  position: relative; width: min(760px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
+  position: relative; z-index: 1; width: min(760px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto;
   display: grid; justify-items: center; gap: 10px; padding: 18px clamp(14px, 3vw, 30px) 22px; text-align: center;
   background: var(--paper); border: var(--edge-bold); border-radius: var(--r-panel);
   box-shadow: 0 0 0 8px var(--c1), 0 0 0 11px var(--ink), 0 16px 0 3px var(--ink), 0 26px 40px rgba(10, 20, 40, .35);

@@ -78,8 +78,7 @@ export interface GameState {
   pts: number[];
   works: number[];
   rest: Vec2 | null;
-  /** the last shot's heading (radians), and the clock tick it was let go at */
-  lastAim?: number | null;
+  /** the clock tick the last shot was let go at */
   tick0?: number;
   inTube?: boolean;
   /** the camera's pose during a ride (a set piece carrying the ball), or none */
@@ -117,7 +116,7 @@ export interface Live {
   readonly band: Band;
   readonly causes: Causes;
   readonly mood: Mood;
-  readonly publish: () => boolean;
+  readonly publish: () => void;
   readonly screen: () => View;
   readonly ground: Height;
   readonly lift: (p: Vec2) => THREE.Vector3;
@@ -141,7 +140,6 @@ export interface Live {
   readonly clock: number;
   readonly cut: number;
   readonly mode: Mode;
-  readonly strokeZones: readonly Zone[];
   /** the stroke's own pieces on a timed hole (and the next strokes', a world's ahead), as the chain gave them */
   readonly strokeExtras?: Extras | null;
   /** the stroke's own pieces on a timed hole (buildExtras), or null (the game's own: a replay's copy has none) */
@@ -199,7 +197,6 @@ export interface Snapshot {
   errorKind: ErrorKind | null;
   failed: string | null;
   view: "overview" | "ball";
-  gfx: GfxMode;
   tier: Tier;
   rival: number | null;
   rivalIn: boolean;

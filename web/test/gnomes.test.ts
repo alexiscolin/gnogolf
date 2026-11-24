@@ -173,6 +173,7 @@ test("catalogue: a gallery's filters and a token's trait list", () => {
   assert.ok(rows.some((r) => r.trait === "Material" && r.value === "Metal"));
   assert.ok(!traitRows(PLAIN).some((r) => ["Material", "Trail", "Holing", "Prop", "Piece"].includes(r.trait)), "nothing that is not there");
   assert.equal(traitRows({ ...PLAIN, beard: "none" }).find((r) => r.trait === "Beard")!.value, "Clean-shaven");
+  assert.equal(traitRows({ ...PLAIN, archetype: "stormwatch" }).find((r) => r.trait === "Archetype")!.value, "Storm watcher");
 });
 
 test("validate: the catalogue passes every rule", () => {
@@ -247,7 +248,7 @@ test("rows: what the realm receives decodes to the catalogue's traits, id for id
   assert.match(checkRows(row("common", g.traits, 1, "é".repeat(25)), 1).join(), /name/, "48 bytes, not 48 characters");
   assert.match(checkRows(row("common", `${g.traits}|x`), 1).join(), /not id\|tier\|name\|traits/, "a | in the traits: a field too many");
   // the realm's rule (rows.gno plainName, printable), case for case as its own test holds them (rowcases_test.gno):
-  // the injection payloads refused, accented letters taken; each name case as a row too
+  // markup and hidden characters refused, accented letters taken; each name case as a row too
   const gno = fs.readFileSync(new URL("../../gno.land/r/gnogolf/gnomes/rowcases_test.gno", import.meta.url), "utf8");
   const cases = /const rowCases = `\n([^`]*)`/.exec(gno)![1].trim().split("\n").map((l) => /^(name|traits) (ok|no) (".*")$/.exec(l)!);
   assert.ok(cases.length > 20 && cases.every(Boolean), "the realm's cases, read");
@@ -281,6 +282,12 @@ test("generate: the same data and seed make the same gnomes; too little data say
   // every hand design is a prop of the table, every Legendary's piece a legend one
   for (const d of epics) assert.ok(PROP_DESIGNS[d.prop] && !("legend" in PROP_DESIGNS[d.prop]), d.prop);
   for (const d of legs) assert.ok("legend" in PROP_DESIGNS[d.prop], d.prop);
+});
+
+test("generate: a generated line keeps off the hand designs' lines, as a name does off their names", () => {
+  const s = config.series[0], { recipe, epics, legs } = dataOf(s.id), line = catalogue.gnomes[0].line;
+  const made = generateSeries(s, recipe, [{ ...epics[0], line }, ...epics.slice(1)], legs, []);
+  assert.equal(made.filter((g) => g.line === line).length, 1);
 });
 
 test("colour: OKLab lightness and distance as the eye sees them", () => {

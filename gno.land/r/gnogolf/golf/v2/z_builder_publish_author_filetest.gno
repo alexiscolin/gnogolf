@@ -37,9 +37,9 @@ func main(cur realm) {
 // g1dejhwcm0d4jhyh6lta047h6lta047h6lpuf6sf/lane/v1
 
 // Storage:
-// gno.land/r/gnogolf/golf/v2: 24
+// gno.land/r/gnogolf/golf/v2: 18
 // gno.land/r/gnogolf/store: 6137
 // gno.land/r/test/builderpublishv2author: 0
 
 // Gas:
-// 37856569
+// 37848715

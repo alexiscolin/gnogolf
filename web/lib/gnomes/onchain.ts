@@ -136,14 +136,13 @@ export function portraitOf(answer: string): string | null {
 /** The on-chain portraits of a visit: get, a gnome's (null for none, never a rejection); known, what is already
  *  read (undefined: not yet), for a screen to draw at once. */
 export interface Portraits { get: (id: number) => Promise<string | null>; known: (id: number) => string | null | undefined }
-/** Portraits read with read (a gnome's id to the realm's answer), each once, most at a time (4); a read that fails
+/** Portraits read with read (a gnome's id to the realm's answer), each once, four at a time; a read that fails
  *  is not kept, and is asked again the next time. */
-export function portraits(read: (id: number) => Promise<string>, most = 4): Portraits {
+export function portraits(read: (id: number) => Promise<string>): Portraits {
   const kept = new Map<number, string | null>(), asked = new Map<number, Promise<string | null>>(), queue: (() => void)[] = [];
-  const cap = Math.max(1, most | 0);
   let busy = 0;
   const next = () => {
-    for (; busy < cap && queue.length; busy++) queue.shift()!();
+    for (; busy < 4 && queue.length; busy++) queue.shift()!();
   };
   const get = (id: number): Promise<string | null> => {
     if (kept.has(id)) return Promise.resolve(kept.get(id) ?? null);

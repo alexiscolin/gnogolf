@@ -1,4 +1,4 @@
-// The rival of a ghost duel (ADR-004): another player's best, replayed stroke
+// The rival of a ghost duel: another player's best, replayed stroke
 // by stroke on a see-through gnome of its own, after each of the player's.
 //
 // Nothing about the player's round changes: the ghost is drawn only, the two
@@ -55,7 +55,7 @@ export function makeRival(E: Live, { showClock, restTimed, told, warm, gnome, ch
   const R: Live = {
     g: cg, camera: E.camera, scene, chain: E.chain, aim: E.aim, band: E.band, causes: E.causes, screen: E.screen, ground: E.ground, lift: E.lift, zones: E.zones, log: false, quiet: true,
     mood: { joy() {}, shake() {}, hop: () => 0, tick() {} },
-    publish: () => true, tickNow: () => null, landing: () => null,
+    publish() {}, tickNow: () => null, landing: () => null,
     stop: () => cut++,
     showAt: showClock,
     get ball() { return ball!; },
@@ -64,7 +64,6 @@ export function makeRival(E: Live, { showClock, restTimed, told, warm, gnome, ch
     get shot() { return E.shot; },
     get clock() { return E.clock; },
     get mode() { return E.mode; },
-    get strokeZones() { return E.strokeZones; },
   };
   const rp = makeReplay(R);
 

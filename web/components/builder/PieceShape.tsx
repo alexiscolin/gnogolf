@@ -3,7 +3,7 @@
 // box, ellipse or polygon; a tunnel's way out dashed to a ring, a hill's
 // push as an arrow, as the board draws it.
 import { barCorners } from "@/lib/builder/gg1";
-import { middleOf } from "@/lib/builder/edit";
+import { middleOf } from "@/lib/builder/handles";
 import type { Piece, V } from "@/lib/builder/draft";
 import { fillOf } from "./look";
 

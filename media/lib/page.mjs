@@ -44,8 +44,9 @@ export async function bundledPage(entry, { cwd, name, define = {}, motion = fals
  */
 export async function webpUnder(shot, max, q) {
   let out = Buffer.alloc(0);
-  for (; q >= 0.3; q -= 0.06) {
-    out = Buffer.from((await shot(q.toFixed(2))).split(",")[1], "base64");
+  // (in hundredths: 0.9 less 0.06 ten times in floats is under 0.3)
+  for (let c = Math.round(q * 100); c >= 30; c -= 6) {
+    out = Buffer.from((await shot((c / 100).toFixed(2))).split(",")[1], "base64");
     if (out.length <= max) break;
   }
   return out;

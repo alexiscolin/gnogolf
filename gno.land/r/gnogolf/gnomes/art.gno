@@ -4,9 +4,8 @@ package gnomes
 
 // The portrait's art (svg.gno draws with it): every trait of format 1 as
 // the game draws it, traced from the thumbnails' camera. A table is a
-// function of a code, in its vocab's order (docs/gnomes/design.md, "The
-// trait encoding"); its art is shapes split by "|", each
-// "<key><kind><colour>:<path>" (svg.gno, "Shapes"). Append only, as the
+// function of a code, in the order of the client's vocab; its art is shapes
+// split by "|", each "<key><kind><colour>:<path>". Append only, as the
 // vocab is.
 
 // artPalette is the collection's colours by code, six hex digits each;

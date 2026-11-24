@@ -5,6 +5,7 @@
 // The climates are the realm's (gno.land/p/gnogolf/course/course.gno climates),
 // which scripts/selfcheck.ts holds this table to.
 import type { SkyKind } from "./card";
+import { own } from "./own";
 
 export const CLIMATES: Readonly<Record<string, readonly (readonly [number, SkyKind])[]>> = {
   garden: [[55, ""], [20, "wind"], [15, "rain"], [10, "fog"]],
@@ -24,7 +25,7 @@ export function fnv1a(s: string) {
 /** The kind of a hole's weather in a period (id: the hole's version, "garden/2/v1"). */
 export function skyOf(id: string, world: string, period: number): SkyKind {
   let roll = Number(fnv1a(`${id}#${period}`) % 100n);
-  for (const [percent, kind] of CLIMATES[world] || CLIMATES.garden) {
+  for (const [percent, kind] of own(CLIMATES, world) ?? CLIMATES.garden) {
     if (roll < percent) return kind;
     roll -= percent;
   }

@@ -3,10 +3,10 @@
 // (bounce, grip, grade) and its push's way, its clock and timing; each kept
 // within its entry's ranges, the geometry on the grid (handles.ts). Whether
 // the hole still holds is the inspector's to ask (edit.ts canPlace).
-import { clampTo, placePiece, START_SUBSTEPS, whereOf } from "./edit";
-import { setHandle } from "./handles";
+import { placePiece, START_SUBSTEPS, whereOf } from "./edit";
+import { clampTo, setHandle } from "./handles";
 import type { Clock, PaletteEntry, Range } from "./palette";
-import type { Draft, Piece, Pulse, V } from "./draft";
+import { withoutEmptyPulses, type Draft, type Piece, type Pulse, type V } from "./draft";
 
 /** A size the inspector shows: its name, value and range. */
 export interface Size {
@@ -79,12 +79,12 @@ const timing = (t: Pulse): Pulse => {
 /** A new pulse: on one stroke in three. */
 const NEW_PULSE: Pulse = { every: 3, on: 1, phase: 0 };
 
-/** The draft with piece id on clock k, if its entry takes it: a timed piece starts on half of a 40-substep cycle, a pulsed one in the first pulse (made if there is none). */
+/** The draft with piece id on clock k, if its entry takes it: a timed piece starts on half of a 40-substep cycle, a pulsed one in the first pulse (made if there is none); a pulse it leaves empty dropped. */
 export function withClock(d: Draft, id: string, k: Clock, e: PaletteEntry): Draft {
   if (!e.clocks.includes(k)) return d;
   const pulses = k === "stroke" && !d.pulses.length ? [NEW_PULSE] : d.pulses;
   const clock: Piece["clock"] = k === "substep" ? { k, ...START_SUBSTEPS } : k === "stroke" ? { k, pulse: 0 } : { k: "fixed" };
-  return { ...d, pulses, pieces: d.pieces.map((p) => (p.id === id ? { ...p, clock } : p)) };
+  return withoutEmptyPulses({ ...d, pulses, pieces: d.pieces.map((p) => (p.id === id ? { ...p, clock } : p)) });
 }
 
 /** The draft with piece id's timing set, within TIMING: its own for a timed piece, its pulse's for a pulsed one (every piece of that pulse with it). */

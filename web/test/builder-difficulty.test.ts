@@ -17,14 +17,14 @@ import { writeHole } from "../lib/builder/gg1.ts";
 import { FIELD } from "../lib/builder/rules.ts";
 import { hostileHoles } from "./hostile.ts";
 import type { Draft } from "../lib/builder/draft.ts";
-import type { GHole } from "../lib/builder/types.ts";
+import type { GHole, HoleIn } from "../lib/builder/types.ts";
 
 await loadWorld("garden");
 const { census } = await import("../lib/builder/drawn.ts");
 const { validate } = await import("../lib/builder/pipeline.ts");
 const { asDraft } = await import("../lib/builder/importing.ts");
 
-const said = (e: Estimate) => `${LEVELS[e.level]}, par ${e.par || "–"}, ${e.shots} shots in ${e.ms} ms${e.cut ? " (cut)" : ""}`;
+const said = (e: Estimate) => `${LEVELS[e.level!]}, par ${e.par || "–"}, ${e.shots} shots in ${e.ms} ms${e.cut ? " (cut)" : ""}`;
 /** The budget's time, with room for the shot that crossed it. */
 const LATE = BUDGET.ms + 250;
 
@@ -66,7 +66,7 @@ void test("the course holes of the Builder's worlds: each measured within the bu
     const e = await estimateHole(host, hex);
     assert.ok(e, slot);
     assert.ok(e.shots <= BUDGET.shots && e.ms < LATE, `${slot}: ${said(e)}`);
-    tally[e.level]++;
+    tally[e.level!]++;
     if (e.par && Math.abs(e.par - g.par) <= 1) near.push(slot);
     if (e.ms > heaviest.ms) heaviest = { slot, ms: e.ms, shots: e.shots };
     const r = await asDraft(hex, host, census);
@@ -87,7 +87,7 @@ void test("the course holes of the Builder's worlds: each measured within the bu
 void test("the golden set's broken holes, refused by the rules: measured without a throw", async () => {
   for (const [what, make] of cases) {
     const e = await estimate(host, make());
-    if (e) assert.ok(LEVELS[e.level], what);
+    if (e) assert.ok(LEVELS[e.level!], what);
   }
 });
 
@@ -96,7 +96,7 @@ void test("the hostile holes, in every Builder world: measured without a throw, 
   for (const world of Object.keys(FIELD)) {
     const f = FIELD[world];
     for (const s of hostileHoles(world)) {
-      const hex = writeHole({ w: s.board.w, h: s.board.h, title: "", par: s.par, tee: s.start, pin: s.cup, world, order: 0, ...f, walls: s.walls, posts: s.posts, zones: s.zones, pulses: [] });
+      const hex = writeHole({ w: s.board.w, h: s.board.h, title: "", par: s.par, tee: s.start, pin: s.cup, world, order: 0, ...f, walls: s.walls, posts: s.posts, zones: s.zones, pulses: [] } as unknown as HoleIn);
       const fit = host.fit(hex, "");
       const e = await estimateHole(host, fit.ok ? fit.hex : hex);
       if (!e) continue;
@@ -132,12 +132,12 @@ void test("a hole made very hard on purpose: the rules let it through, the meter
 
 void test("one narrow gap alone, or one rare window alone: at least Medium, the piece named", async () => {
   const gap = (await estimate(host, { ...lane("garden", [rail("w1", [14, 0], [14, 7.25]), rail("w2", [14, 8.5], [14, 16])], 40, 16), pin: [37, 13] }))!;
-  assert.ok(gap.level >= 1, said(gap));
+  assert.ok(gap.level! >= 1, said(gap));
   assert.equal(gap.reasons.find((r) => r.piece === "w1")?.text, "The gap between two walls is only 1.3 balls wide: most shots will catch an edge.");
   const wide = (await estimate(host, { ...lane("garden", [rail("w1", [14, 0], [14, 7.25]), rail("w2", [14, 9.25], [14, 16])], 40, 16), pin: [37, 13] }))!;
   assert.equal(wide.level, 0, `a gap of two balls: ${said(wide)}`);
   const timed = (await estimate(host, { ...lane("garden", [rail("w3", [26, 0], [26, 4]), rail("w4", [26, 8], [26, 16]), gate(4, 3)], 40, 16), pin: [37, 13] }))!;
-  assert.ok(timed.level >= 2, said(timed));
+  assert.ok(timed.level! >= 2, said(timed));
   assert.equal(timed.reasons.find((r) => r.piece === "gate")?.text, "The plank lets the ball by only 1/4 of the time.");
 });
 

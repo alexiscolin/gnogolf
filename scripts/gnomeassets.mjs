@@ -4,7 +4,7 @@
 // thumbnail (media/gnomes/thumbs/<id>.webp) and the Legendaries' turntables
 // (media/gnomes/turntables/<id>.webp) copied to web/public/gnomes/ and
 // web/public/gnomes/turn/, and the catalogue as the screens read it,
-// web/public/gnomes/catalogue.json: the series' names and plans, each gnome's id, series, tier,
+// web/public/gnomes/catalogue.json: the series' names, each gnome's id, series, tier,
 // home, archetype, name, line and traits, and the earned kinds (the skins
 // are not sent: the client draws them from the traits). Only what changed
 // is written; web/public/gnomes/ is not committed (web/.gitignore).
@@ -29,13 +29,12 @@ function mirror(/** @type {URL} */ from, /** @type {URL} */ to) {
   return n;
 }
 
-/** @type {{ series: { id: string, name: string, first: number, plan: { home: string, first: number, last: number }[] }[],
+/** @type {{ series: { id: string, name: string }[],
  *  gnomes: { id: number, series: string, tier: string, home: string, archetype: string, name: string, line: string, traits: string }[],
  *  earned: { kind: number, unlock: string, name: string, line: string, traits: string }[] }} */
 const c = JSON.parse(fs.readFileSync(at("data/gnomes.json"), "utf8"));
 const shelf = JSON.stringify({
-  version: 1,
-  series: c.series.map((s) => ({ id: s.id, name: s.name, first: s.first, plan: s.plan.map(({ home, first, last }) => ({ home, first, last })) })),
+  series: c.series.map(({ id, name }) => ({ id, name })),
   gnomes: c.gnomes.map(({ id, series, tier, home, archetype, name, line, traits }) => ({ id, series, tier, home, archetype, name, line, traits })),
   earned: c.earned.map(({ kind, unlock, name, line, traits }) => ({ kind, unlock, name, line, traits })),
 });

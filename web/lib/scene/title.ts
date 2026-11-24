@@ -60,22 +60,19 @@ export function golden(scene: LitScene, world: string) {
  *  as the move closes in: round the board (orbit), or round the frame's point
  *  of interest, looking at the ground there (height: the course's). */
 export function cupCam(camera: THREE.PerspectiveCamera, b: Board, c: CupFrame, a: number, k: { r: number; h: number }, height: (x: number, z: number) => number) {
-  if (!c.at) return orbit(camera, b, a, { r: (c.r ?? 1) * k.r, h: (c.h ?? 1) * k.h }, false, c.y ?? -1.5);
+  if (!c.at) return orbit(camera, b, a, { r: (c.r ?? 1) * k.r, h: (c.h ?? 1) * k.h }, c.y ?? -1.5);
   const [x, z] = c.at, y = c.y ?? height(x, z), d = c.d ?? 50, el = ((c.el ?? 30) * Math.PI) / 180, flat = d * Math.cos(el) * k.r;
   camera.position.set(x + Math.cos(a) * flat, y + d * Math.sin(el) * k.h, z + Math.sin(a) * flat);
   camera.lookAt(x, y, z);
 }
 
 /** A ring round the board: the cup card's camera at angle a. */
-export function orbit(camera: THREE.PerspectiveCamera, b: Board, a: number, { r = 1, h = 1 } = {}, portrait = false, lift = 4) {
-  const k = portrait ? 1.35 : 1;
-  const rx = (b.w * 0.55 + 30) * r * k, rz = (b.h * 0.55 + 36) * r * k;
-  const cx = b.w / 2, cz = b.h / 2, y = (16 + Math.max(b.w, b.h) * 0.22) * h * k;
+function orbit(camera: THREE.PerspectiveCamera, b: Board, a: number, { r, h }: { r: number; h: number }, lift: number) {
+  const rx = (b.w * 0.55 + 30) * r, rz = (b.h * 0.55 + 36) * r;
+  const cx = b.w / 2, cz = b.h / 2, y = (16 + Math.max(b.w, b.h) * 0.22) * h;
   camera.position.set(cx + Math.cos(a) * rx, y, cz + Math.sin(a) * rz);
   camera.lookAt(cx, lift, cz);
 }
-
-// ------------------------------------------------------------- the gnomes
 
 function golfBall() {
   const g = new THREE.Group();
@@ -210,8 +207,6 @@ function frameCast(camera: THREE.PerspectiveCamera, c: ReturnType<typeof makeCas
   camera.setViewOffset(a, 1, (-x0 * a) / 2, y0 / 2, a, 1);
 }
 
-// ------------------------------------------------------------- the stage
-
 
 export async function holeOf(world: string, given?: Hole) {
   const s = given || HOLES[world] || HOLES.garden;
@@ -238,13 +233,13 @@ export async function makeTitle(canvas: HTMLCanvasElement, { world = "garden", h
   golden(scene, world);
   const camera = new THREE.PerspectiveCamera(40, 1, 0.5, 600);
 
-  let alive = true, raf = 0, last = 0, blurred = false, portrait = false, t0 = performance.now() - at * 1000;
   const { s, course } = await holeOf(world);
-  if (!alive) return null;
   scene.add(course);
   const cast = makeCast(s, course, world);
   scene.add(cast.group);
   const flag = course.userData.flag;
+  // the story's clock from here: the world's loading and the build are not part of it
+  let alive = true, raf = 0, last = 0, blurred = false, portrait = false, t0 = performance.now() - at * 1000;
 
   function resize() {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight;

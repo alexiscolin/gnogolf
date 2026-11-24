@@ -1,5 +1,5 @@
-// A draft through every check the builder makes, cheapest first (the
-// design's validation pipeline): L0, each piece within its palette entry;
+// A draft through every check the builder makes, cheapest first:
+// L0, each piece within its palette entry;
 // the hole's extent before it is fitted (E1, E1b); fit, the chain's own
 // (a refusal: L2); the editor's checks on the hole as fit gives it, each
 // issue named by the draft piece it is about (E2 to E8, E10, E13 to E15);
@@ -7,7 +7,7 @@
 // the render census (E12); the chain's PublishMine checks (L2), the data's
 // size (E9) and its work (E11). The issues are the issues list's; canPlace
 // and the board's clamps read the same rules (edit.ts).
-import { checkHole, KERB_GAP, LOOSE, work, WORK_WARN, type Issue } from "./checks";
+import { checkHole, crosses, KERB_GAP, LOOSE, work, WORK_WARN, type Issue } from "./checks";
 import { explain } from "./explain";
 import { BOARD, LIMITS, MARGIN, barCorners, frame, keyOf, piecesBy, writeDraft } from "./gg1";
 import { pieceName } from "./names";
@@ -115,18 +115,13 @@ function extent(d: Draft): Issue[] {
   return out;
 }
 
-/** Whether segments cross at a point inside both. */
-function crosses(a: V, b: V, c: V, e: V) {
-  const o = (p: V, q: V, r: V) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
-  const d1 = o(c, e, a), d2 = o(c, e, b), d3 = o(a, b, c), d4 = o(a, b, e), t = 1e-9;
-  return ((d1 > t && d2 < -t) || (d1 < -t && d2 > t)) && ((d3 > t && d4 < -t) || (d3 < -t && d4 > t));
-}
 /** Whether a point lies strictly inside a convex outline (its edges, in order). */
-const within = (q: V, sides: readonly [V, V][]) => {
+export const within = (q: V, sides: readonly [V, V][]) => {
   const s = sides.map(([a, b]) => (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]));
   return s.every((x) => x > 1e-9) || s.every((x) => x < -1e-9);
 };
-const segSeg = (a: V, b: V, c: V, e: V) => (crosses(a, b, c, e) ? 0 : Math.min(segDist(a[0], a[1], c, e), segDist(b[0], b[1], c, e), segDist(c[0], c[1], a, b), segDist(e[0], e[1], a, b)));
+/** The distance between segments a→b and c→e: 0 where they cross. */
+export const segSeg = (a: V, b: V, c: V, e: V) => (crosses(a, b, c, e) ? 0 : Math.min(segDist(a[0], a[1], c, e), segDist(b[0], b[1], c, e), segDist(c[0], c[1], a, b), segDist(e[0], e[1], a, b)));
 
 /** A draft's bar, once: the piece, its corners (build.Bar's), its sides in order, its middle. */
 type Bar = { p: Piece & { geometry: { t: "bar"; a: V; b: V; thick: number } }; c: V[]; sides: [V, V][]; mid: V };
@@ -139,19 +134,18 @@ const barsOf = (d: Draft): Bar[] =>
 /** A draft's fixed rails. */
 const railsOf = (d: Draft) => d.pieces.filter((p): p is Piece & { geometry: { t: "rail"; a: V; b: V } } => p.geometry.t === "rail" && p.clock.k === "fixed");
 /** Whether the palette lets p lie on or in q (as: q's kind as overlaps names it, "wall" a rail's or a bar's), or q on p. */
-const mayOverlap = (palette: readonly PaletteEntry[]) => (p: Piece, q: Piece, as: string) => {
+export const mayOverlap = (palette: readonly PaletteEntry[]) => (p: Piece, q: Piece, as: string) => {
   const kp = entryIn(p.entry, palette)?.kind;
   return !!entryIn(p.entry, palette)?.overlaps?.includes(as) || !!entryIn(q.entry, palette)?.overlaps?.includes(kp === "rail" || kp === "bar" ? "wall" : kp ?? "");
 };
 
-/** The draft's own rules on its bars: out of the lane (E10), crossing another bar (E13), against a rail (E15). */
+/** The draft's own rules on its bars: out of the lane (E10), crossing another bar or a rail (E13), against a rail (E15). */
 function bars(d: Draft, h: GHole, palette: readonly PaletteEntry[], refs: Map<string, PieceRef[]>, all: readonly Bar[]): Issue[] {
-  const out: Issue[] = [], { reaches } = reach(h, LOOSE(h)), may = mayOverlap(palette);
-  const barList = all.filter(({ p }) => p.clock.k !== "stroke"), rails = railsOf(d);
-  barList.forEach(({ p, sides, mid }, i) => {
+  const out: Issue[] = [], { reaches } = reach(h, LOOSE(h)), may = mayOverlap(palette), rails = railsOf(d);
+  all.forEach(({ p, sides, mid }, i) => {
     const g = p.geometry;
     if (!reaches(mid, Math.hypot(g.b[0] - g.a[0], g.b[1] - g.a[1]) / 2 + g.thick + h.ballR + CELL)) out.push(err("E10", `${cap(pieceName(p))} at ${pt(mid)} is outside the lane: no ball reaches it`, p, mid));
-    for (const q of barList.slice(i + 1)) {
+    for (const q of all.slice(i + 1)) {
       if (!may(p, q.p, "wall") && sides.some(([a, b]) => q.sides.some(([c, e]) => crosses(a, b, c, e)))) out.push({ ...err("E13", `${cap(pieceName(p))} crosses ${pieceName(q.p)} at ${pt(mid)}`, p, mid), also: refs.get(q.p.id) ?? [] });
     }
     const onRails = entryIn(p.entry, palette)?.overlaps?.includes("wall");
@@ -310,6 +304,5 @@ export function about(i: Issue, id: string, refs: Map<string, PieceRef[]>): bool
 export const atFault = (v: Pick<Validated, "issues" | "refs">, ids: readonly string[]): Set<string> =>
   new Set(ids.filter((id) => v.issues.some((i) => i.severity === "error" && about(i, id, v.refs))));
 
-/** The id a draft is shown under in the builder's own wasm (its test mode has its real one). */
 /** The id a full check loads the draft under (its census, its state). */
 export const DRAFT_ID = "draft/v1";

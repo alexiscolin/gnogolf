@@ -13,12 +13,16 @@ import (
 
 // The gnomes of Gnogolf as GRC721 tokens. The ball is a gnome: a player
 // buys the one they choose from the catalogue, at its sale's price, and
-// equips it. The realm holds no funds: a sale's payment goes to the treasury
-// in the same call. The catalogue is data the owner publishes a series at a time
-// (catalogue.gno), each sold in one sale (sale.gno). This file is the state.
+// equips it. A sale's payment goes to the treasury in the same call: the
+// realm keeps only coins sent to it outside a sale, which Sweep forwards.
+// The catalogue is data the owner publishes a series at a time
+// (catalogue.gno), each sold in one sale (sale.gno). This file holds the
+// core state; setUp resets every file's.
 var (
-	Token     *grc721.Token    // the read side: name, symbol, owners, balances, approvals
-	Royalties *royalty.Royalty // EIP-2981, read side
+	// Not exported: grc721's Token hands any realm a teller (RealmTeller)
+	// that approves past token.gno's rules, an earned gnome too.
+	token     *grc721.Token    // the read side: name, symbol, owners, balances, approvals
+	royalties *royalty.Royalty // EIP-2981, read side
 )
 
 // The rest of the state. Nothing of it is returned by reference: the
@@ -34,8 +38,7 @@ var (
 	soldTier  [len(tiers)]int64 // sold per tier, every series
 	sold      []byte            // a bit per catalogue id, bit id-1 set once sold, for good (a burn does not clear it)
 
-	// bptrees, which pack many rows a node: an avl node was measured at
-	// about 2 KB of deposit a row (z_storage_buy)
+	// bptrees, which pack many rows a node: avl costs about 2 KB of deposit a row
 	bought   *bptree.BPTree // buyer -> [len(tiers)]int64, for the lifetime cap
 	inWindow *bptree.BPTree // "<series> <buyer>" -> [len(tiers)]int64, for the player cap
 	equipped *bptree.BPTree // player -> token id
@@ -43,14 +46,15 @@ var (
 
 func init(cur realm) { setUp(0, cur, ownerAtDeploy(unsafe.OriginCaller(), runtime.ChainID())) }
 
-// setUp starts the collection empty, the catalogue unpublished, the sale
-// closed and the earned gnomes open, owned by deployer: the token, its extensions, its royalty to the
-// owner. rlm is this realm's live cur, which grc721 records as the token's
-// home. The tests call it again for a fresh collection.
+// setUp starts the collection empty and owned by deployer (the token, its
+// extensions, its royalty to the owner), the catalogue unpublished, the
+// sale closed and the earned gnomes open. rlm is this realm's live cur,
+// which grc721 records as the token's home. The tests call it again for a
+// fresh collection.
 func setUp(_ int, rlm realm, deployer address) {
-	Token, ledger = grc721.NewToken(tokenName, tokenSymbol, 0, rlm)
+	token, ledger = grc721.NewToken(tokenName, tokenSymbol, 0, rlm)
 	teller = ledger.CallerTeller()
-	Royalties, royaltyLedger = royalty.NewRoyalty(ledger, royaltyBps)
+	royalties, royaltyLedger = royalty.NewRoyalty(ledger, royaltyBps)
 	ledger.RegisterExtension(holdings{})
 	if deployer.IsValid() {
 		if err := royaltyLedger.SetDefaultRoyalty(deployer, royaltyBps); err != nil {
@@ -65,7 +69,7 @@ func setUp(_ int, rlm realm, deployer address) {
 	catalogue, sales, soldTier, sold = nil, nil, [len(tiers)]int64{}, nil
 	closeAt, rules = 0, rulesAtDeploy
 	bought, inWindow, equipped, held = seeded(), seeded(), seeded(), seeded()
-	earned, kindOf, nextEarned, earnedOpen, rows = seeded(), seeded(), firstEarned, true, storeReader{}
+	earned, kindOf, nextEarned, earnedOpen, golfRows = seeded(), seeded(), firstEarned, true, storeReader{}
 }
 
 // MintOpen reports whether sales are taken.

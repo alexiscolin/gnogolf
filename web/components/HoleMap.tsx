@@ -4,7 +4,7 @@
 // (Worlds.tsx). Flat SVG: no WebGL, as many on a screen as it needs.
 import { useEffect, useId, useState } from "react";
 import type { Chain } from "@/lib/chain";
-import { Frame } from "@/components/Worlds";
+import { Frame } from "@/components/ui";
 import { mapFit, mapView, mapZone, pathD, railRuns, type MapHole, type MapKind } from "@/lib/duel";
 import { BALL_R, cupRadius, inSea } from "@/lib/terrain";
 import type { Vec2, Zone } from "@/lib/types";

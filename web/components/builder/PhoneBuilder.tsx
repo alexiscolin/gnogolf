@@ -1,12 +1,10 @@
 "use client";
 
-// /build on a phone, a touch screen or under 900 px (the GUI spec's B6): the
-// Builder is for a computer, a link to open it there, and holes to play
-// (playing stays on the phone). Nothing of the editor is imported here, nor
-// builder.wasm (test/builder-route.test.ts holds it so): so it judges no
-// community hole, and lists only those this browser has already passed
-// (lib/community.ts knownOnly); the game's cups screen judges and lists the rest.
-// The author's own holes come with who played them (useRewards.ts), as on a computer.
+// /build on a phone, a touch screen or under 900 px: a link to open the
+// Builder on a computer, and holes to play here. Neither the editor nor
+// builder.wasm is imported (test/builder-route.test.ts holds it so), so it
+// judges no community hole: it lists only those this browser already passed,
+// and the game's cups screen lists the rest.
 import "@/app/title.css";
 import "@/app/build/phone.css";
 import { useEffect, useMemo, useState } from "react";
@@ -67,7 +65,7 @@ export default function PhoneBuilder() {
       <div className="worlds__in bphone__in">
         <FrontHead eyebrow="The Builder" title="For a computer" />
         <p className="bphone__lead">Drawing a hole takes a mouse and a keyboard. Playing them works right here.</p>
-        <Button variant="primary" className="btn--wide" onClick={() => void copy(window.location.href)}>{copied ? "Copied: open it on your computer" : "Copy the link for my computer"}</Button>
+        <Button variant="primary" className="btn--wide" onClick={() => void copy(window.location.href)}><span aria-live="polite">{copied ? "Copied: open it on your computer" : "Copy the link for my computer"}</span></Button>
         {mine.length > 0 && (
           <section className="bphone__list" aria-label="Your holes">
             <h3 className="h-section">Your holes</h3>

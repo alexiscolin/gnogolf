@@ -1,4 +1,4 @@
-// The palette as the author reads it (the GUI spec's B3): its entries put
+// The palette as the author reads it: its entries put
 // together by what they do, one tile each, with what it does in two or three
 // words and its looks to choose from (a pond: a lagoon, a tidepool, a
 // fountain or a canal; each look still its own entry, as the chain stores
@@ -38,7 +38,7 @@ function byWhatTheyDo(entries: readonly PaletteEntry[], from = ""): Tile[] {
 
 /**
  * A palette as tiles: the world's own first (commonOf's, each its common
- * entry as its first look, named as the GUI spec names it, then the rest by
+ * entry as its first look, named plainly, then the rest by
  * group), and the pieces it borrows (palette.ts HOME) apart, by what they do,
  * under "From other worlds".
  */
@@ -47,7 +47,6 @@ export function tilesOf(palette: readonly PaletteEntry[]): { first: Tile[]; more
   const first: Tile[] = [];
   for (const { name, entry } of commonOf(palette)) {
     const t = all.find((x) => x.looks.includes(entry))!;
-    if (first.includes(t)) continue;
     first.push({ ...t, name, looks: [entry, ...t.looks.filter((e) => e !== entry)] });
   }
   const rest = all.filter((t) => !first.some((f) => f.key === t.key));
@@ -88,7 +87,7 @@ export function armedByKey(palette: readonly PaletteEntry[], n: number, chosen: 
 }
 
 /** The palette's folding sections, each open at first or not: "More pieces" and "From other worlds" folded (the four a first hole needs in sight, the column unscrolled), each group ("group/Walls") open once "More pieces" is. */
-export const FOLDS: Readonly<Record<string, boolean>> = { more: false, others: false };
+const FOLDS: Readonly<Record<string, boolean>> = { more: false, others: false };
 export type Fold = "more" | "others" | `group/${Group}`;
 const foldKey = (k: Fold) => `gnogolf.builder.fold.${k}`;
 const atFirst = (k: Fold) => FOLDS[k] ?? true;

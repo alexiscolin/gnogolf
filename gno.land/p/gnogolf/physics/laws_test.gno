@@ -5,7 +5,8 @@ import (
 	"testing"
 )
 
-// The laws of the model, one test each: rolling, hills, contacts, flight.
+// The laws of the model: rolling, hills, contacts, hazards and the work a
+// stroke costs.
 
 // flat is an open green of the course's usual Friction.
 func flat() *Field { return &Field{Friction: 0.87, Radius: 0.5} }
@@ -353,8 +354,8 @@ func TestATimedSegmentIsNeverCrossed(t *testing.T) {
 
 // A stroke costs at most MaxWork (and one step past it): a hostile field of
 // bumper walls across the whole board, the steepest hill and polygons under
-// every move, which rolled on for ever, ends there, and says so in its Work.
-// A course stroke is far from it.
+// every move, which would roll on for ever, ends there, and says so in its
+// Work. A course stroke is far from it.
 func TestAStrokeCostsAtMostMaxWork(t *testing.T) {
 	var ws []Wall
 	for i := 0; i < 160; i++ {

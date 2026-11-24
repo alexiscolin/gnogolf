@@ -1,11 +1,10 @@
 "use client";
 
-// The Builder's one decision before anything of it loads (the GUI spec's
-// B0): on a computer the editor; on a phone, a touch screen or under 900 px
-// the phone's screen, and the editor's code and builder.wasm are never
-// downloaded (each is a chunk of its own, reached only here, by
-// next/dynamic). A window narrowed past 900 px later swaps the editor out
-// (its draft is kept in the browser as it goes).
+// The Builder's one decision before anything of it loads: the editor on a
+// computer; on a phone, a touch screen or under 900 px the phone's screen,
+// and neither the editor's code nor builder.wasm is downloaded (each is its
+// own chunk, reached only through next/dynamic here). A window narrowed later
+// swaps the editor out; its draft is already kept in the browser.
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { builderOn, onComputer, PHONE_QUERY } from "@/lib/builder/route";
@@ -30,7 +29,7 @@ export default function Gate() {
       </main>
     );
   }
-  // the page's name, off screen (a screen's title is its h2, as the game's: app/intro.tsx)
+  // the page's name, off screen: a screen's visible title is its h2, as in the game
   return (
     <>
       <h1 className="sr-only">The Builder</h1>

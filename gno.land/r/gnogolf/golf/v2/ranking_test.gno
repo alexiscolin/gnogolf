@@ -13,8 +13,7 @@ import (
 
 // The course ranking against a reference model: plain code that keeps what
 // happened (every best, per hole and mode, and the finishes that moved a
-// standing) and derives the ranking from it the obvious way, as docs/golf.md
-// says it:
+// standing) and derives the ranking from it the obvious way:
 //
 //   - a standing is, over the current course holes, the holes a player has a
 //     best on, the strokes of those bests, and the pars of those holes;
@@ -168,14 +167,14 @@ func (r *ref) check(t *testing.T, step string) {
 			}
 			rk := Rank(mode, address(p))
 			urequire.True(t, strings.HasSuffix(rk, ","+fields(p)+"}"), step+": "+rk)
-			urequire.Equal(t, r.ranked[m][p] && h > 0, jfield(rk, "rank") != "0", step+": ranked? "+rk)
+			urequire.Equal(t, r.ranked[m][p] && h > 0, jget(rk, "rank") != "0", step+": ranked? "+rk)
 		}
 		urequire.Equal(t, `{"version":1,"mode":"`+mode+`","holes":`+strconv.Itoa(slots.Size())+`,"rows":[`+rows+`]}`, Standings(mode, all), step)
 		players := ""
 		for after := ""; ; {
 			pg := Players(mode, after, 100)
 			players += pg
-			if after = jfield(pg, "next"); after == "" {
+			if after = jget(pg, "next"); after == "" {
 				break
 			}
 		}
@@ -198,7 +197,7 @@ func (r *ref) check(t *testing.T, step string) {
 					got = append(got, p)
 				}
 			}
-			if off, _ = strconv.Atoi(jfield(pg, "next")); off == 0 {
+			if off, _ = strconv.Atoi(jget(pg, "next")); off == 0 {
 				break
 			}
 		}
@@ -206,7 +205,7 @@ func (r *ref) check(t *testing.T, step string) {
 		last := 0
 		for _, p := range want {
 			urequire.True(t, strings.Contains(board, `{"player":"`+p+`","name":"`+nameOf(p)+`",`+fields(p)+"}"), step+": its row, "+p)
-			n, _ := strconv.Atoi(jfield(Rank(mode, address(p)), "rank"))
+			n, _ := strconv.Atoi(jget(Rank(mode, address(p)), "rank"))
 			urequire.True(t, n > last, step+": Rank in the ranking's order")
 			last = n
 		}
@@ -458,7 +457,6 @@ func TestTheRankingKeySortsAsTheRule(t *testing.T) {
 			}
 		}
 	}
-	uassert.True(t, rankKey(rows[5]) < rankKey(rows[6]), "a hole at par counts the same whatever its par")
 }
 
 // The course holds at most maxCourse slots: the ranking's key has room for

@@ -1,4 +1,4 @@
-// The community's holes as the Builder lists them (the GUI spec's B5 and B6):
+// The community's holes as the Builder lists them:
 // an author's own, and everyone else's, each at its latest version, never a
 // course hole, never one the site took down (takedown.ts).
 import { GNOKEY_ADDR_KEY } from "../adena";
@@ -36,7 +36,7 @@ export function remixId(search: string): string | null {
   return isVersion(id) && authorOf(id) ? id : null;
 }
 
-/** The node the Builder reads (and its gnoweb): the page's ?rpc= and ?web= as the game takes them, else the build's. */
+/** The node the game and the Builder read (and its gnoweb): the page's ?rpc= and ?web=, else the build's. */
 export function endpoints(search: string) {
   const p = new URLSearchParams(search);
   const rpc = safeEndpoint(p.get("rpc"), buildRpc()), web = safeEndpoint(p.get("web"), buildWeb());

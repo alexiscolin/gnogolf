@@ -1,5 +1,5 @@
 // What golf.wasm's and builder.wasm's hosts share (scripts/wasm.sh builds
-// both): an instance with the three WASI imports TinyGo asks for, a call's
+// both): an instance with the two WASI imports TinyGo asks for, a call's
 // strings written into its buffer, its answer read back, and a refusal kept.
 // A refusal is "panic: " and the realm's sentence: TinyGo prints it, then
 // traps, so the caller keeps what it printed and starts a new instance next

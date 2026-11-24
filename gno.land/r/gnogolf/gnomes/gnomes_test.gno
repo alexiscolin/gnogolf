@@ -41,11 +41,11 @@ func published(_ *testing.T, rlm realm) {
 // skip moves block time on by at least seconds (a block is 5 seconds).
 func skip(seconds int64) { testing.SkipHeights(seconds/5 + 1) }
 
-// placeholderGenesis stands in for the designer's catalogue (data/gnomes.json),
-// laid out as it is: seven worlds, each its 72 Commons, then
-// its Rares, its Epics and its Legendary (the first worlds take what is left
-// over: 21 Rares, then 20; 10 Epics, then 9). Names "Gnome <id>", traits
-// "v0.<id>", as opaque here as on chain.
+// placeholderGenesis stands in for the designer's catalogue
+// (data/gnomes.json), laid out as it is: seven worlds, each its 72 Commons,
+// then its Rares, its Epics and its Legendary (the first worlds take what is
+// left over: 21 Rares, then 20; 10 Epics, then 9). Names "Gnome <id>",
+// traits "v0.<id>".
 func placeholderGenesis() string {
 	var b strings.Builder
 	id := int64(1)
@@ -80,9 +80,18 @@ func placeholderRows(first int64, supply [len(tiers)]int64) string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
+// genesisTotal is the size of the genesis: its tiers added up.
+func genesisTotal() int64 {
+	n := int64(0)
+	for _, s := range genesisSupply {
+		n += s
+	}
+	return n
+}
+
 func TestThePlaceholderIsLaidOutAsTheCatalogue(cur realm, t *testing.T) {
 	fresh(t, cur)
-	for _, w := range [][5]int64{ // first, last Common, last Rare, last Epic, the Legendary (spec §2)
+	for _, w := range [][5]int64{ // first, last Common, last Rare, last Epic, the Legendary
 		{1, 72, 93, 103, 104}, {105, 176, 197, 207, 208}, {209, 280, 301, 310, 311},
 		{312, 383, 404, 413, 414}, {415, 486, 506, 515, 516}, {517, 588, 608, 617, 618}, {619, 690, 710, 719, 720},
 	} {
@@ -154,8 +163,6 @@ func legend() int64 { return nthOfTier(topTier, 0) }
 // topTier is the last tier, the Legendaries'.
 const topTier = len(tiers) - 1
 
-// --- the config
-
 func TestTheGenesisIs720Gnomes(t *testing.T) {
 	want := map[string]int64{"common": 504, "rare": 144, "epic": 65, "legendary": 7}
 	total := int64(0)
@@ -164,7 +171,6 @@ func TestTheGenesisIs720Gnomes(t *testing.T) {
 		total += genesisSupply[i]
 	}
 	uassert.Equal(t, int64(720), total, "10x a par-72 course")
-	uassert.Equal(t, int64(720), genesisTotal())
 }
 
 func TestThePricesAtDeployAreTheDecidedOnes(t *testing.T) {

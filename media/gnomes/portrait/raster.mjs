@@ -19,10 +19,12 @@ const dot = (/** @type {V3} */ a, /** @type {V3} */ b) => a[0] * b[0] + a[1] * b
 const cross = (/** @type {V3} */ a, /** @type {V3} */ b) => /** @type {V3} */ ([a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]);
 const unit = (/** @type {V3} */ a) => { const l = Math.hypot(...a); return /** @type {V3} */ ([a[0] / l, a[1] / l, a[2] / l]); };
 
-// the showcase's camera: 26° high, looking at (0, 0.8, 0) from 4.9 away, three-quarters from his front
+// the showcase's camera: 26° high, looking at (0, 0.8, 0) from VIEW_DEPTH away, three-quarters from his front
+/** The camera's distance to its target, the body's centre. */
+export const VIEW_DEPTH = 4.9;
 const TARGET = /** @type {V3} */ ([0, 0.8, 0]);
 const BACK = unit([0.68, 0.36, 0.72]);
-const EYE = /** @type {V3} */ ([TARGET[0] + BACK[0] * 4.9, TARGET[1] + BACK[1] * 4.9, TARGET[2] + BACK[2] * 4.9]);
+const EYE = /** @type {V3} */ ([TARGET[0] + BACK[0] * VIEW_DEPTH, TARGET[1] + BACK[1] * VIEW_DEPTH, TARGET[2] + BACK[2] * VIEW_DEPTH]);
 const FWD = /** @type {V3} */ ([-BACK[0], -BACK[1], -BACK[2]]);
 const RIGHT = unit(cross(FWD, [0, 1, 0]));
 const UP = cross(RIGHT, FWD);
@@ -37,8 +39,6 @@ export function project(/** @type {V3} */ p) {
 export const toUnits = (/** @type {V3} */ p) => { const [x, y] = project(p); return [x / SS, y / SS]; };
 /** How many SVG units a world length is, at a depth. */
 export const unitsAt = (/** @type {number} */ len, /** @type {number} */ z) => (len * FOCAL * N) / 2 / z / SS;
-/** The depth of the body's centre (where the depth keys are measured from). */
-export const VIEW_DEPTH = 4.9;
 
 // the game's day light (camera.ts makeScene): a sky over a green ground, a sun from above right
 const lin = (/** @type {number} */ c) => { const v = c / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
@@ -54,7 +54,7 @@ function light(/** @type {V3} */ n, /** @type {number[]} */ levels) {
 }
 const TOON = [104, 178, 255];
 /** The light on a lit top (a surface facing up, in the brightest band): what a colour's own fill is drawn under. */
-export const LIT = light([0, 1, 0], TOON).rgb;
+const LIT = light([0, 1, 0], TOON).rgb;
 /** Each channel's factor from a colour to its lit fill, in sRGB (≈ the linear factor ^ 1/2.2). */
 export const LIT_SRGB = LIT.map((c) => (c / Math.PI) ** (1 / 2.2));
 
@@ -261,10 +261,10 @@ export function simplify(/** @type {number[][]} */ ring, /** @type {number} */ t
 export const areaOf = (/** @type {number[][]} */ r) => r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + (p[0] * q[1] - q[0] * p[1]); }, 0) / 2;
 
 /** Rings (raster pixels) as SVG path data in units, relative moves, whole numbers. */
-export function pathOf(/** @type {number[][][]} */ rings, /** @type {[number, number]} */ shift = [0, 0]) {
+export function pathOf(/** @type {number[][][]} */ rings) {
   let d = "";
   for (const r of rings) {
-    const pts = r.map(([x, y]) => [Math.round(x / SS + shift[0]), Math.round(y / SS + shift[1])]);
+    const pts = r.map(([x, y]) => [Math.round(x / SS), Math.round(y / SS)]);
     const kept = pts.filter((p, i) => i === 0 || p[0] !== pts[i - 1][0] || p[1] !== pts[i - 1][1]);
     if (kept.length < 3) continue;
     d += `M${kept[0][0]} ${kept[0][1]}l`;

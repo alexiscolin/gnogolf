@@ -5,10 +5,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { host, lane, rail } from "./builder-fixture.ts";
-import { build } from "./scene-harness.ts";
+import "./scene-harness.ts";
 import { clampEnd, clampHandle, copyPiece, dragCheck, dropEnd, dropHandle, dropMove, errorsOf, newErrors, pieceLabel, placeNear, placePiece, removePiece, toWorld } from "../lib/builder/edit.ts";
 import { handlesOf, notTurned, setHandle, snap, turnPiece } from "../lib/builder/handles.ts";
 import { frame } from "../lib/builder/gg1.ts";
+import { makeGesture } from "../lib/builder/gesture.ts";
 import { makeSession, settle } from "../lib/builder/session.ts";
 import { centreOn, gridLines, K_MAX, pinch, zoomAt } from "../lib/builder/view.ts";
 import { loadPalette } from "../lib/builder/palette.ts";
@@ -21,7 +22,6 @@ const ctx = { host, palette: garden, census };
 const entry = (id: string) => garden.find((e) => e.id === id)!;
 const put = (id: string, e: string, at: [number, number], p: Parameters<typeof placePiece>[3] = {}) => placePiece(entry(e), id, at, p);
 const errors = (d: Draft) => validate(d, ctx).issues.filter((i) => i.severity === "error");
-void build;
 /** The board's own quarters (these pieces in no framed hole: the tee's grid is the board's). */
 const O: V = [0, 0];
 
@@ -70,7 +70,8 @@ void test("turnPiece: a quarter turn about its middle, on the grid", () => {
   const rock = put("p", "*/post/rock", [5, 5]);
   assert.deepEqual(turnPiece(rock, O).geometry, rock.geometry, "a round thing: unchanged");
   // what R and Turn say of a piece turning leaves the same: never a silent key
-  assert.equal(notTurned(rock, O), "A round piece looks the same turned: nothing to turn.");
+  assert.equal(notTurned(rock, O), "It looks the same turned: nothing to turn.");
+  assert.equal(notTurned(put("w", "*/hazard/water", [10, 6]), O), "It looks the same turned: nothing to turn.", "a square pond: never called round");
   assert.equal(notTurned(plank, O), "");
 });
 
@@ -84,6 +85,9 @@ void test("nextId, copyPiece, removePiece: a fresh name; a copy where it may go,
   const proved = { ...d, proofs: [{ key: "k", id: "x", kind: "", period: 1, shots: [], commits: [], strokes: 1, maxWork: 1 }] };
   const r = removePiece(proved, "p1");
   assert.deepEqual([r.pieces.some((p) => p.id === "p1"), r.proofs], [false, proved.proofs]);
+  const pulsed: Draft = { ...d, pieces: [...d.pieces, { ...put("b1", "*/bar/plank", [12, 14]), clock: { k: "stroke", pulse: 0 } }, { ...put("b2", "*/bar/plank", [18, 14]), clock: { k: "stroke", pulse: 1 } }], pulses: [{ every: 3, on: 1, phase: 0 }, { every: 4, on: 2, phase: 1 }] };
+  const left = removePiece(pulsed, "b1");
+  assert.deepEqual([left.pulses, left.pieces.find((p) => p.id === "b2")!.clock], [[{ every: 4, on: 2, phase: 1 }], { k: "stroke", pulse: 0 }], "the pulse it leaves empty dropped, the other's piece still in its own");
   assert.equal(copyPiece(d, "nope", ctx), null);
 });
 
@@ -160,7 +164,25 @@ void test("an edit as the editor makes it pays one census: the draft's own error
   assert.equal(drawn, 3, "three edits, three censuses");
 });
 
-void test("dragCheck: a drag (or the armed ghost) is checked again only when its snapped place changes; the hole without the piece once a drag", () => {
+void test("a piece placed, from the palette or by the keyboard, pays one census: the editor's check of the hole as kept is the drop's own", () => {
+  let drawn = 0;
+  const full = { ...ctx, census: (...a: Parameters<typeof census>) => (drawn++, census(...a)) }, quick = { host, palette: garden };
+  const d = lane("garden", [put("p", "*/post/rock", [12, 5])]), rock = entry("*/post/rock");
+  validate(d, full); // (the editor's check of the draft as it was)
+  drawn = 0;
+  const placed = placeNear(d, rock, [20, 10], quick, full); // (the keyboard's: Editor dropArmed)
+  assert.ok(placed && !("why" in placed));
+  validate(frame(placed.draft), full); // (kept, then checked as kept)
+  assert.equal(drawn, 1, "the keyboard's drop");
+  let kept: Draft | null = null;
+  const g = makeGesture({ onSet: (x) => (kept = frame(x)), onSelect: () => {}, onDisarm: () => {}, onPreview: () => {}, onCommit: () => {}, onCancel: () => {}, onBin: () => {}, onPaint: () => {} });
+  drawn = 0;
+  assert.ok("placed" in (g.up({ draft: d, quick, full, armed: rock, selected: null, step: 0.5, slop: 0.125 }, [20, 10]) ?? {}));
+  validate(kept!, full);
+  assert.equal(drawn, 1, "the palette's drop");
+});
+
+void test("dragCheck: a drag (or the armed ghost) is checked once for each snapped place it takes, and each entry armed; the hole without the piece once a drag", () => {
   let fits = 0;
   const counted = { ...host, fit: (...a: Parameters<typeof host.fit>) => (fits++, host.fit(...a)) };
   const quick = { host: counted, palette: garden };
@@ -175,6 +197,10 @@ void test("dragCheck: a drag (or the armed ghost) is checked again only when its
   const onRail = { ...p, geometry: { t: "post" as const, c: [13.5, 1.5] as [number, number], r: 0.8 } };
   assert.ok(check.piece(onRail).length > 0);
   assert.equal(fits, first + 1, "a new place: one check, the baseline kept");
+  check.piece({ ...onRail, entry: "*/post/rock" });
+  assert.equal(fits, first + 2, "another entry armed at that place: checked for its own");
+  assert.deepEqual(check.piece(p), []);
+  assert.equal(fits, first + 2, "back to a place checked already (a hand on a grid line): no check");
   assert.deepEqual(check.end("pin", d.pin), []);
   const atEnd = fits;
   check.end("pin", [...d.pin]);

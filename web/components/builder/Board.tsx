@@ -1,41 +1,20 @@
 "use client";
 
-// The board (the GUI spec's B2): the hole from above on its grid. The wheel
-// and the pinch zoom it and a drag on empty space pans it, never the page.
-// Nothing invalid is ever dropped (the hole-builder spec's prevention): the
-// armed entry's ghost follows the pointer, snapped, green with its name and
-// place where it may go, red with why where not, and a drop on red drops
-// nothing; a piece, a handle, the tee or the cup dragged shows the same
-// colours as it goes and, let go where it may not stay, stops at the last
-// place on its way where it may (edit.ts clampMove, clampHandle, clampEnd).
-// Live, the checks run without the render census (fast); a drop or a
-// release is checked with it; a refusal said by the pointer is gone at the
-// next press (never left over another gesture). A pull from the ball by the
-// tee (or, Shift held, anywhere on the board) plays a quick shot
-// (quickshot.ts: from the tee, or from the ball where the last stopped), its
-// path drawn, the last three faded, all played again as the hole changes;
-// the board says it is no proof. The meter's best line is drawn when the
-// header's difficulty chip asks; after a drop that held, a ghost ball runs
-// it once (a second, never with reduced motion). The keys most used are
-// said at its foot on a browser's first visit. The green is painted too
-// (surface.ts, gesture.ts; its tools the palette's, B): Paint, a drag paints
-// cells in under the brush (surface.ts BRUSH, three cells a side, its square
-// under the pointer), in straight legs (gesture.ts alongAxis; Shift: as the
-// hand goes), Erase paints them out, a side of its outline dragged moves the whole side, a side clicked
-// opens or shuts it; the stroke drawn at once as one ghost, judged once a
-// frame at most (green, or red with why), let go one step, judged by the
-// editor's gate (refused: said at the board's foot). A side hovered says
-// what it does, or why it stays as it is (locked). The tee and the cup are
-// dragged in either mode (pressed on, the end's; anywhere else, a stroke).
-// From the keyboard, Tab reaches the sides (one stop, the arrows' side
-// after), an arrow moves the focused one a cell, Enter or Space opens or
-// shuts it; painting itself takes the pointer.
+// The board: the hole from above on its grid, zoomed by the wheel or a pinch
+// and panned by a drag on empty space, never the page. Nothing invalid is
+// ever dropped: the armed piece's ghost is green where it may go and red with
+// why where not, and a piece, a handle or an end dragged where it may not
+// stay stops at the last place on its way where it may (edit.ts clampMove,
+// clampHandle, clampEnd). As the pointer moves the checks skip the render
+// census; a drop is checked with it. The board also plays quick shots (never
+// a proof), draws the meter's line and paints the green (gesture.ts,
+// surface.ts), each stroke one step through the editor's gate.
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
-import { middleOf, pieceLabel, whereOf } from "@/lib/builder/edit";
+import { pieceLabel, whereOf } from "@/lib/builder/edit";
 import { commonShift } from "@/lib/builder/editor";
 import { boxIn, centreOn, FLAT, frameView, fromPlane, islandIn, gridLines, matrixOf, pinch, relook, toBoard, toPlane, toScreen, zoomAt, type Look, type View } from "@/lib/builder/view";
 import { BOARD, MARGIN } from "@/lib/builder/gg1";
-import { handlesOf, type HandleKey } from "@/lib/builder/handles";
+import { handlesOf, middleOf, type HandleKey } from "@/lib/builder/handles";
 import { type PaletteEntry } from "@/lib/builder/palette";
 import type { ValidateOptions } from "@/lib/builder/pipeline";
 import type { Draft, Piece, V } from "@/lib/builder/draft";
@@ -117,7 +96,7 @@ export interface Ball {
   /** the latest's spec (where the next may start from: its rest, unless it holed) */
   last: QuickShot | null;
   aimed: Played | null;
-  /** the meter's line on the hole as kept, when the header's chip shows it (null: not shown, or none: measuring, an error, a drag) */
+  /** the meter's line on the hole as kept, when the header's meter shows it (null: not shown, or none: measuring, an error, a drag) */
   line: Pick<Shown, "path" | "heat"> | null;
   onAim: (s: QuickShot | null) => void;
   onShot: (s: QuickShot) => void;
@@ -152,8 +131,8 @@ function boardOf(d: Draft, s: Hole | null | undefined): { w: number; h: number }
 
 export default function Board(props: BoardProps) {
   const { draft, quick, full, selected, armed, step, bad } = props, look = props.look ?? FLAT;
-  // in 3D where this browser has WebGL (the Builder's one context: stage.ts), else the 2D board as it was;
-  // its context lost, in 2D until it is back (the scene kept, to draw again then)
+  // in 3D where this browser has WebGL (the Builder's one context: stage.ts), else in 2D; its context lost, in 2D
+  // until it is back (the scene kept, to draw again then)
   const [in3d] = useState(() => !!props.scene && !!stageRenderer());
   const gl = useSyncExternalStore(onStage, stageUp) && in3d;
   const waker = useRef<(() => void) | null>(null);
@@ -273,7 +252,7 @@ export default function Board(props: BoardProps) {
   // Show me: the piece in the middle of the board
   useEffect(() => {
     const p = props.show && draft.pieces.find((q) => q.id === props.show!.id);
-    if (p && size.w) setView((v) => v && centreOn(v, toPlane(middleOf(p), look), { w: size.w, h: size.h - 56 }));
+    if (p && size.w) setView((v) => v && centreOn(v, toPlane(middleOf(p), look), { w: size.w, h: size.h - DOCK.bottom }));
   }, [props.show?.n]); // eslint-disable-line react-hooks/exhaustive-deps -- (asked, not as the draft changes)
   // a re-framed draft moved as a whole: the view follows, nothing jumps
   useEffect(() => {
@@ -325,7 +304,7 @@ export default function Board(props: BoardProps) {
     const r = box.current!.getBoundingClientRect();
     return toBoard(view, look, [e.clientX - r.left, e.clientY - r.top]);
   };
-  const env: Env = { draft, quick, full, armed, selected, step, paint: mode && green ? { mode, green } : null };
+  const env: Env = { draft, quick, full, armed, selected, step, slop: 4 / view.k, paint: mode && green ? { mode, green } : null };
 
   /** A side from the keyboard: an arrow moves it a cell (along its way out, the arrow as it points on the screen), Enter or Space opens or shuts it; the author's wall on it: neither, why said. */
   function onSideKey(e: RKeyboardEvent<SVGGElement>, i: number) {
@@ -528,7 +507,7 @@ export default function Board(props: BoardProps) {
             <animateMotion dur="1s" fill="freeze" path={rollPath} />
           </circle>
         )}
-        {ghost && <g className="board__ghost" pointerEvents="none"><PieceShape p={ghost.p} state={ghost.why ? "bad" : "ghost"} /></g>}
+        {ghost && <g className={`board__ghost${ghost.why ? " board__ghost--no" : ""}`} pointerEvents="none"><PieceShape p={ghost.p} state={ghost.why ? "bad" : "ghost"} /></g>}
         {/* the brush under the pointer: the cells a press paints (or erases), exactly; none over a side or an end */}
         {mode && green && <rect ref={brush} className={`board__brush board__brush--${mode}${side || end ? " board__brush--off" : ""}`} x={-1e3} y={-1e3} width={BRUSH} height={BRUSH} pointerEvents="none" />}
         {/* the stroke as one ghost: the green it makes, and its walls */}
@@ -553,7 +532,7 @@ export default function Board(props: BoardProps) {
       </svg>
       {ball && (aiming || ball.played.length > 0 || ball.trail.length > 0) && <Chip size="s" className="board__quick" role="status">Quick shot: just to try</Chip>}
       {props.said && <p className="board__said" role="alert">{props.said}</p>}
-      {/* the keys a first hole needs, at the board's foot (the GUI spec's B1) */}
+      {/* the keys a first hole needs, at the board's foot */}
       {props.keys && !props.said && <p className="board__keys" aria-hidden="true">{KEY_LINE.map((k, i) => <Fragment key={k.key}>{i ? " " : ""}<span><kbd>{k.key.replace("mod", MOD)}</kbd> {k.short}</span></Fragment>)}</p>}
       {/* by the pointer: the ghost's name and place or why not, a drag's, or a refusal just made (once, shaken) */}
       {/* (painting, it says nothing to a screen reader as it goes: the result is said, by the editor) */}

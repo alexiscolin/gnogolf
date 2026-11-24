@@ -16,17 +16,18 @@ import { buttonClass } from "@/components/button";
 import { GnokeyTx } from "@/components/Gnokey";
 import { messageOf } from "@/components/common";
 import { ADENA_URL, GNOT_URL } from "@/lib/network";
+import { reducedMotion } from "@/lib/device";
 import { hasAdena, onOurNode, resultOf, PRICE, type SendError } from "@/lib/adena";
 import { sendGnome, gnokeyGnome, gnomeCall, GNOME_TX } from "@/lib/gnomes/tx";
 import { BYTE_PRICE, errorKind, wait, type Chain } from "@/lib/chain";
 import { worldName } from "@/lib/card";
 import { traitRows, type Listed } from "@/lib/gnomes/catalogue";
 import { decode } from "@/lib/gnomes/codec";
-import { bill, gnot, landing, whyNot, shareWords, type CanBuy, type Collection, type GnomeRow, type Shop } from "@/lib/gnomes/shop";
+import { bill, gnot, landing, saleWhyNot, tierName, whyNot, shareWords, type CanBuy, type Collection, type GnomeRow, type Shop } from "@/lib/gnomes/shop";
 import { BOX_A, BOX_B, LINKS, SIGN_NOTE, TRUST, chainCosts, orderButton, parLine, receipt, review } from "@/lib/gnomes/legal";
 import { tokenSkin } from "@/lib/gnomes/wear";
 import { portraitsOf, type Look } from "@/lib/gnomes/onchain";
-import { LookSwitch, ShareOne, TierChip, Tile, tierName } from "./parts";
+import { LookSwitch, ShareOne, TierChip, Tile } from "./parts";
 
 type Account = { address: string; chainId: string };
 
@@ -80,7 +81,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
   // the order button pressed before both boxes: the first one left, brought into view and focused (never ticked for them)
   const toBox = () => {
     const el = (!ticks.a ? boxA : boxB).current;
-    if (el) (el.scrollIntoView({ block: "center", behavior: "smooth" }), el.focus({ preventScroll: true }));
+    if (el) (el.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" }), el.focus({ preventScroll: true }));
   };
   // the bill's figures: read with the gnome (his price's chain costs) and again when the order is reviewed (the balance)
   const [costs, setCosts] = useState<{ price: number; storage: number; balance: number | null; chainId: string | null; ours: boolean | null } | null>(null);
@@ -95,7 +96,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
   const read = () => {
     setUnread(false);
     void shop.gnome(g.id).then(setRow, () => (setRow(null), setUnread(true)));
-    if (me) void shop.canBuy(me, [g.id]).then(setCan, () => setCan(null));
+    if (me) void shop.canBuy(me, [g.id]).then(setCan, () => (setCan(null), setWant(false)));
     readCosts();
   };
   useEffect(read, [g.id, me]); // eslint-disable-line react-hooks/exhaustive-deps -- (shop: the same for the visit)
@@ -105,7 +106,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
   const tx = gnomeCall.buy([g.id], Math.max(1, price));
   const cost = costs && bill({ price, bytes: tx.bytes, storagePrice: costs.storage, gas: tx.gas, gasPrice: costs.price, balance: costs.balance });
   const order = me && cost && { name: g.name, id: g.id, tier: g.tier, n: 1, price, deposit: cost.deposit, fee: cost.fee, total: cost.total, address: me, closesAt: c.closesAt, now };
-  const why = can && row && !row.sold ? whyNot(can, c, g, now) : null;
+  const why = row && !row.sold ? (can ? whyNot(can, c, g, now) : saleWhyNot(c, g, now)) : null;
 
   const toReview = () => (setStep({ at: "review" }), readCosts());
   // connected for the order: on to it once the chain has said he can be bought (else his sheet says why)
@@ -114,8 +115,15 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
     setWant(false);
     if (!row.sold && !whyNot(can, c, g, now)) toReview();
   }, [want, me, row, can]); // eslint-disable-line react-hooks/exhaustive-deps -- (the rest: this gnome's, this visit's)
-  // someone was first: who, read again (their gnomes a tap away)
-  const taken = () => (setStep({ at: "taken" }), read());
+  // Buy said already sold: someone was first (who, read again: their gnomes a tap away), or the buyer's own order
+  // landed after all (a block late, another tab): his, as settle finds him
+  async function taken() {
+    setStep({ at: "read", hash: "", height: 0 });
+    const now = await shop.gnome(g.id).catch(() => null);
+    if (now) setRow(now);
+    if (me && landing(now, me) === "mine") return (onChanged(), setStep({ at: "done", hash: "", height: 0, when: null }));
+    setStep({ at: "taken" });
+  }
 
   async function buy() {
     if (!me || !costs) return;
@@ -128,7 +136,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
     } catch (e) {
       const err = e as SendError;
       if (err.cancelled) setStep({ at: "review", note: <p className="note note--bad" role="status">Cancelled in Adena: nothing was sent.</p> });
-      else if (/already sold/.test(err.message)) taken();
+      else if (/already sold/.test(err.message)) void taken();
       else if (err.maybe) setStep({ at: "unsure", hash: err.hash, why: err.message });
       else setStep({ at: "review", note: <p className="note note--bad" role="alert">{err.message}</p> });
     }
@@ -136,8 +144,14 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
   // the chain's word: the transaction's result by its hash, else the owner it now shows
   async function readBack(hash: string, height: number) {
     for (let i = 0; i < 6; i++) {
+      let got: string | null;
       try {
-        const got = await resultOf(chain, hash);
+        got = await resultOf(chain, hash);
+      } catch (e) {
+        // the buy itself refused, nothing bought: the order again, with the chain's reason
+        return /already sold/.test(messageOf(e)) ? taken() : setStep({ at: "review", note: <p className="note note--bad" role="alert">{messageOf(e)}</p> });
+      }
+      try {
         const now = await shop.gnome(g.id);
         if ((got != null && got.includes(String(g.id))) || (now && now.owner === me)) {
           const when = await chain.blockTime(height).then((ms) => Math.floor(ms / 1000), () => null); // (the receipt says it in seconds)
@@ -146,7 +160,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
           return setStep({ at: "done", hash, height, when });
         }
       } catch (e) {
-        if (errorKind(e) === "chain") return /already sold/.test(messageOf(e)) ? taken() : setStep({ at: "unsure", hash, why: messageOf(e) });
+        if (errorKind(e) === "chain") return setStep({ at: "unsure", hash, why: messageOf(e) });
       }
       await wait(1500);
     }
@@ -220,7 +234,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
         </div>
       ) : owner ? null : unread ? (
         <div className="gsheet__foot"><p className="note note--bad" role="alert">The chain did not answer.</p>{act(<Button variant="primary" className="btn--wide" onClick={read}>Try again</Button>)}</div>
-      ) : region && !account && hasAdena() ? (
+      ) : region && !account && hasAdena() && !why ? (
         <div className="gsheet__foot">
           {want && wallet.error && <p className="note note--bad" role="alert">{wallet.error}</p>}
           {act(<Button variant="chain" className="btn--wide" disabled={!row || wallet.busy} onClick={() => (setWant(true), onConnect())}>{wallet.busy ? "Waiting for Adena…" : "Connect Adena to buy"}</Button>)}

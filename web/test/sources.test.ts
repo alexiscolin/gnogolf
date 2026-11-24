@@ -11,7 +11,7 @@ const files: Record<string, string> = {
   "gno.land/r/gnogolf/golf/v2/golf.gno": 'package golf\nimport "gno.land/p/gnogolf/physics"',
   "gno.land/r/gnogolf/golf/v2/state.gno": "package golf // the store",
 };
-const chainOf = (on: Record<string, string>) => ({ realm, file: (p: string) => Promise.resolve(on[p] ?? "") });
+const chainOf = (on: Record<string, string>) => ({ realm, chainId: () => Promise.resolve("dev"), genesis: () => Promise.resolve("A"), file: (p: string) => Promise.resolve(on[p] ?? "") });
 // the files as stage.sh deploys them: under the realm's namespace, its imports rewritten
 const deployed = (over: Record<string, string> = {}): Record<string, string> =>
   Object.fromEntries(Object.entries({ ...files, ...over }).map(([p, t]) => [

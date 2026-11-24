@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { Feel } from "../lib/feel.ts";
+import type { Feel, SoundName } from "../lib/feel.ts";
 
 // lib/feel.ts only builds real sound when `window` and `AudioContext` exist
 // (see its `audio()`), and wires a few browser event listeners at import
@@ -8,6 +8,10 @@ import type { Feel } from "../lib/feel.ts";
 // check what the fakes "sound" like.
 const calls = { osc: 0, gain: 0, filter: 0, bufSrc: 0 };
 const oscs: { frequency: Param }[] = []; // every oscillator made, in order (a tone's pitch)
+const gains: { gain: Param }[] = []; // every gain made, in order (the rain bed's loudness)
+const filters: { Q: Param; frequency: Param }[] = []; // every filter made, in order (a noise's band)
+const sources: { buffer: unknown; loop: boolean; at?: number[] }[] = []; // every buffer source made, in order: its buffer, start()'s when, offset and duration
+const buffers: number[] = []; // every buffer made: its length, in samples
 let contexts = 0, closed = 0;
 class Param {
   value = 0;
@@ -23,10 +27,10 @@ class FakeAudioContext {
   destination = {};
   constructor() { contexts++; }
   createOscillator() { calls.osc++; const o = { type: "sine", frequency: new Param(), ...linkable() }; oscs.push(o); return o; }
-  createGain() { calls.gain++; return { gain: new Param(), ...linkable() }; }
-  createBiquadFilter() { calls.filter++; return { type: "", Q: new Param(), frequency: new Param(), ...linkable() }; }
-  createBuffer(_ch: number, len: number) { return { getChannelData: () => new Float32Array(len) }; }
-  createBufferSource() { calls.bufSrc++; return { buffer: null, loop: false, ...linkable() }; }
+  createGain() { calls.gain++; const g = { gain: new Param(), ...linkable() }; gains.push(g); return g; }
+  createBiquadFilter() { calls.filter++; const f = { type: "", Q: new Param(), frequency: new Param(), ...linkable() }; filters.push(f); return f; }
+  createBuffer(_ch: number, len: number) { buffers.push(len); return { getChannelData: () => new Float32Array(len) }; }
+  createBufferSource() { calls.bufSrc++; const s = { buffer: null, loop: false, ...linkable(), at: undefined as number[] | undefined, start: (...at: number[]) => void (s.at = at) }; sources.push(s); return s; }
   resume() { this.state = "running"; return Promise.resolve(); }
   suspend() { this.state = "suspended"; return Promise.resolve(); }
   close() { closed++; return Promise.resolve(); }
@@ -73,6 +77,17 @@ test("setFeel('sound', false/true) gates whether a sound actually plays", () => 
   setFeel("sound", true);
   sound("blip");
   assert.equal(calls.osc, before + 1, "sound back on: plays again");
+});
+
+test("setFeel('sound', false/true) in the rain: the rain fades out, then plays again", () => {
+  ambience({ rain: true });
+  const bed = gains[gains.length - 1];
+  assert.equal(bed.gain.value, 0.06);
+  setFeel("sound", false);
+  assert.equal(bed.gain.value, 0, "sound off: the rain fades out");
+  setFeel("sound", true);
+  assert.equal(bed.gain.value, 0.06, "sound back on: the rain again");
+  ambience({});
 });
 
 test("buzz: vibrates only while the vibe pref is on", () => {
@@ -136,13 +151,13 @@ test("hush: still lets a sound through right after a gesture (menu clicks off-co
 });
 
 test("sound: every named sound plays without throwing, an unknown name is a no-op", () => {
-  const names = [
+  const names: SoundName[] = [
     "putt", "knock", "boing", "splash", "stretch", "sand", "ice", "puddle", "flowers", "thud", "whoosh", "pop", "win",
     "select", "blip", "start", "cup",
   ];
   for (const name of names) assert.doesNotThrow(() => sound(name), name);
   const before = { ...calls };
-  sound("not-a-real-sound");
+  sound("not-a-real-sound" as SoundName);
   assert.deepEqual(calls, before, "unknown sound: nothing created");
 });
 
@@ -213,4 +228,20 @@ test("freshAudio: the next sound makes a context of its own, the old one closed"
   assert.equal(closed, shut + 1);
   sound("blip");
   assert.equal(contexts, made + 1);
+});
+
+test("noise: each sound a stretch of its own length from one buffer of white noise, in its own band; the rain bed loops it", () => {
+  winHandlers.pointerdown();
+  freshAudio(); // (a new context: its noise is made with its first sound)
+  const [b0, s0, f0] = [buffers.length, sources.length, filters.length];
+  sound("whoosh"), sound("sand"), sound("blast");
+  ambience({ rain: true });
+  ambience({});
+  assert.equal(buffers.length, b0 + 1, "one buffer for them all");
+  const made = sources.slice(s0), seconds = buffers[b0] / 44100;
+  assert.ok(made.every((s) => s.buffer === made[0].buffer));
+  // each: how long it plays, its band's Q, where its band ends
+  assert.deepEqual(made.map((s, i) => [s.at?.[2], filters[f0 + i].Q.value, filters[f0 + i].frequency.value]), [[0.5, 1.5, 1600], [0.1, 1.1, 500], [0.06, 2, 1400], [0.08, 0.5, 2400], [1.2, 0.6, 90], [undefined, 0.4, 1400]]);
+  for (const { at } of made.slice(0, -1)) assert.ok(at![1] >= 0 && at![1] + at![2] <= seconds, `a stretch it holds whole: from ${at![1]}`);
+  assert.equal(made[made.length - 1].loop, true, "the rain bed loops it");
 });

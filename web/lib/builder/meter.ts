@@ -50,7 +50,7 @@ export function makeMeter(onEstimate: (of: Draft, e: Shown | null) => void): Met
   };
   worker.onmessage = ({ data: r }: MessageEvent<Reply>) => {
     if ("job" in r) return (waiting.get(r.n)?.(r), void waiting.delete(r.n));
-    // (an answer with err is none: its wasm did not load, tried again on the next ask)
+    // (none shown when its wasm did not load: tried again on the next ask)
     if (r.run === run && asked) onEstimate(asked, r.shown);
   };
   // the worker gone (it could not run here): the draft asked said not measured, and every one after (never "measuring" for ever)

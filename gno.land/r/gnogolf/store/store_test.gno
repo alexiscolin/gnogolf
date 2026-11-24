@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	bptree "gno.land/p/nt/bptree/v0"
 	"gno.land/p/nt/testutils/v0"
 	"gno.land/p/nt/uassert/v0"
 	"gno.land/p/nt/urequire/v0"
@@ -20,16 +21,20 @@ var (
 	next  = strings.TrimSuffix(self, "store") + "golf/v3"
 )
 
-// each test starts from the deploy: the owner set, v2 the writer, nothing proposed
+// fresh is the deploy, for each test: the owner set, v2 the writer, nothing
+// proposed or paused, the collections made at init and empty.
 func fresh() {
-	owner, pending, writer, proposed, at = boss, "", rules, "", 0
+	owner, pending, writer, proposed, at, paused = boss, "", rules, "", 0, ""
+	colls = map[string]*bptree.BPTree{}
 	for _, n := range standard {
-		colls[n].Set("probe", "x") // (a tree in use: cleared below)
-		colls[n].Remove("probe")
+		colls[n] = seeded()
 	}
 }
 
-// (testing.SetRealm acts on the frame that calls it: called in each test's own body)
+// (testing.SetRealm acts on the frame that calls it: each test calls it in
+// its own body, never through a helper.)
+
+// skip moves block time on by at least seconds (a block is 5 seconds).
 func skip(seconds int64) { testing.SkipHeights(seconds/5 + 1) }
 
 func TestTheFirstWriterIsTheRulesBesideStore(t *testing.T) {
@@ -67,6 +72,10 @@ func TestBatchAndItsBounds(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "set or del", func() { Batch(cross(cur), []string{"put", "boards", "a", "1"}) })
 	urequire.AbortsContains(t, cur, "no collection", func() { Set(cross(cur), "nope", "a", "1") })
 	urequire.AbortsContains(t, cur, "256 bytes", func() { Set(cross(cur), "boards", strings.Repeat("k", 257), "1") })
+	// "" is the seed each collection starts with: no write reaches it
+	urequire.AbortsContains(t, cur, "256 bytes", func() { Set(cross(cur), "boards", "", "1") })
+	urequire.AbortsContains(t, cur, "256 bytes", func() { Remove(cross(cur), "boards", "") })
+	urequire.AbortsContains(t, cur, "256 bytes", func() { Batch(cross(cur), []string{"del", "boards", "", ""}) })
 	urequire.AbortsContains(t, cur, "64 KiB", func() { Set(cross(cur), "boards", "k", strings.Repeat("v", 64<<10+1)) })
 	big := []string{}
 	for i := 0; i < 65; i++ {
@@ -76,7 +85,6 @@ func TestBatchAndItsBounds(cur realm, t *testing.T) {
 	Make(cross(cur), "extra")
 	Set(cross(cur), "extra", "k", "v")
 	urequire.AbortsContains(t, cur, "not taken", func() { Make(cross(cur), "extra") })
-	Remove(cross(cur), "boards", "b")
 }
 
 func TestPagesIndexAndPlaces(cur realm, t *testing.T) {
@@ -107,9 +115,6 @@ func TestPagesIndexAndPlaces(cur realm, t *testing.T) {
 	uassert.Equal(t, "", PageAt("ranks", math.MaxInt, 2), "nor wrapped round to the seed")
 	k, _ = At("ranks", math.MaxInt)
 	uassert.Equal(t, "", k)
-	for _, k := range []string{"a", "b", "c", "d", "e"} {
-		Remove(cross(cur), "ranks", k)
-	}
 }
 
 func TestNewRulesTakeOverThreeDaysLaterOnTheirOwn(cur realm, t *testing.T) {
@@ -118,6 +123,8 @@ func TestNewRulesTakeOverThreeDaysLaterOnTheirOwn(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "only the owner", func() { Propose(cross(cur), next) })
 	testing.SetRealm(testing.NewUserRealm(boss))
 	urequire.AbortsContains(t, cur, "the rules are a realm", func() { Propose(cross(cur), "gno.land/p/x") })
+	urequire.AbortsContains(t, cur, "the rules are a realm", func() { Propose(cross(cur), "gno.land/r/x)[y](z") })
+	urequire.AbortsContains(t, cur, "the rules are a realm", func() { Propose(cross(cur), "gno.land/r/a/../b") })
 	urequire.AbortsContains(t, cur, "the rules are a realm", func() { Propose(cross(cur), self) })
 	Propose(cross(cur), next)
 	p, when := Proposed()
@@ -153,7 +160,6 @@ func TestNewRulesTakeOverThreeDaysLaterOnTheirOwn(cur realm, t *testing.T) {
 	v, _ := Get("meta", "k")
 	uassert.Equal(t, "new", v, "the data kept: the new rules read on from it")
 	uassert.Equal(t, next, writer, "made the writer at its first write")
-	Remove(cross(cur), "meta", "k")
 }
 
 func TestCancelAndPauseAndRenounce(cur realm, t *testing.T) {
@@ -189,7 +195,6 @@ func TestCancelAndPauseAndRenounce(cur realm, t *testing.T) {
 	uassert.Equal(t, rules, Writer(), "resumed at once: the same rules")
 	testing.SetRealm(testing.NewCodeRealm(rules))
 	Set(cross(cur), "meta", "k", "v")
-	Remove(cross(cur), "meta", "k")
 	testing.SetRealm(testing.NewUserRealm(boss))
 	urequire.AbortsContains(t, cur, "not paused", func() { Resume(cross(cur)) })
 	Pause(cross(cur))

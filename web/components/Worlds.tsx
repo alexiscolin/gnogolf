@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { HoleRow } from "@/lib/types";
 import { CUPS, CUP_NAMES, vsPar, type Cup, type CupTotal, type cupTotals } from "@/lib/card";
 import { sound } from "@/lib/feel";
 import { stillsOnly } from "@/lib/prefs";
 import { CLIP, Green, canHover, cupStill, stillsReady, warmClips } from "@/components/Title";
 import { FrontScreen } from "@/components/About";
-import { Button, VsPar } from "@/components/ui";
+import { Button, Frame, VsPar } from "@/components/ui";
 import { plural } from "@/components/common";
-import type { Chain } from "@/lib/chain";
-import Community from "@/components/Community";
 import { Sketch } from "@/components/Sketch";
 import { authorOf } from "@/lib/builder/holes";
 import "@/app/title.css";
@@ -30,25 +28,8 @@ export const WORLDS: readonly { id: Cup; name: string; tag: string }[] = CUPS.ma
 /** A cup by its id: the garden's when it is none of them. */
 export const worldOf = (id: string | null | undefined) => WORLDS.find((w) => w.id === id) || WORLDS[0];
 
-/** A round inked window, its scene clipped to it (an id of its own, so two
- *  on a screen never share a clip): a cup's emblem, a hole's map, a gnome's face. */
-export function Frame({ className, children }: { className?: string; children?: ReactNode }) {
-  const clip = useId();
-  return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <defs>
-        <clipPath id={clip}>
-          <circle cx="60" cy="60" r="56" />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${clip})`}>{children}</g>
-      <circle cx="60" cy="60" r="56" className="w__ring" />
-    </svg>
-  );
-}
-
+/** A cup's emblem, a little scene in the game's own inked, flat style (any other id: the Builder's blueprint). */
 export function Emblem({ id }: { id: string }) {
-  // each a little scene in the game's own inked, flat style
   if (id === "garden")
     return (
       <Frame>
@@ -221,11 +202,8 @@ interface WorldsProps {
   onRestore?: () => void;
   restoring?: boolean;
   community?: readonly HoleRow[];
-  onCommunity?: (id: string) => void;
-  /** the chain: each community hole judged by the Builder's rules before it is listed, its map, its players, whether its author has holed it */
-  chain?: Pick<Chain, "bests" | "blockTime" | "dayCandidates" | "ghost" | "holeData" | "chainId" | "genesis" | "realm" | "state" | "savedOn"> | null;
-  /** the player's address, if known: their own community holes listed before they hold a best on them */
-  me?: string | null;
+  /** the community's holes on their own screen (the band under the cups) */
+  onCommunity?: () => void;
   /** the course's records to beat, under the cups */
   podium?: ReactNode;
   /** a cup's next hole to play, said on its card once begun */
@@ -236,11 +214,10 @@ interface WorldsProps {
 const NOT_PLAYED: Pick<CupTotal, "done" | "strokes" | "par" | "clean"> = { done: 0, strokes: 0, par: 0, clean: false };
 let shownOnce = false;
 
-export default function Worlds({ counts = {}, stats, current, onPick, onBack, onAbout, onReset, onResetAll, onRestore, restoring = false, community = [], onCommunity = () => {}, chain = null, me = null, podium, racing, next = () => undefined }: WorldsProps) {
+export default function Worlds({ counts = {}, stats, current, onPick, onBack, onAbout, onReset, onResetAll, onRestore, restoring = false, community = [], onCommunity = () => {}, podium, racing, next = () => undefined }: WorldsProps) {
   const [wipe, setWipe] = useState<string | null>(null); // what was asked to be cleared, before the second tap
   const [resets, setResets] = useState(false); // the little reset menu at the top
   const [hot, setHot] = useState<string | null>(null); // the cup under the pointer or the focus: the backdrop takes its colours
-  const [holes, setHoles] = useState(false); // the community's holes on a screen of their own (the band under the cups)
   // the cards fade in once their stills are decoded (300 ms at most): never an empty disc
   const [ready, setReady] = useState(() => shownOnce);
   useEffect(() => {
@@ -258,38 +235,33 @@ export default function Worlds({ counts = {}, stats, current, onPick, onBack, on
     setWipe(null);
     setResets(false);
   };
-  // the reset menu, in the corner row beside About
+  // the reset menu, in the corner row beside About; Escape in it closes it, focus back on its button (not the
+  // screen's Escape, which goes back a screen)
   const resetMenu = (played.length > 0 || onRestore) && (
-    <div className="resets">
+    <div className="resets" onKeyDown={(e) => resets && e.key === "Escape" && (e.stopPropagation(), setResets(false), e.currentTarget.querySelector("button")?.focus())}>
       <button className="round round--pill" aria-label="Scores" aria-expanded={resets} onClick={() => (sound("blip"), setResets((o) => !o), setWipe(null))}>
         Scores ▾
       </button>
       {resets && (
-        <div className="resets__menu" role="menu">
+        <div className="resets__menu">
           {onRestore && (
-            <Button role="menuitem" size="s" className="resets__restore" disabled={restoring} aria-busy={restoring} onClick={() => (sound("blip"), onRestore())}>
+            <Button size="s" className="resets__restore" disabled={restoring} aria-busy={restoring} onClick={() => (sound("blip"), onRestore())}>
               {restoring ? "Reading the chain…" : "Get my saved holes back"}
             </Button>
           )}
           {played.map((w) => (
-            <Button key={w.id} role="menuitem" size="s" className={wipe === w.id ? "btn--danger" : ""} onClick={() => clear(w.id, () => onReset(w.id))}>
+            <Button key={w.id} size="s" className={wipe === w.id ? "btn--danger" : ""} onClick={() => clear(w.id, () => onReset(w.id))}>
               {wipe === w.id ? "Sure? Tap again" : w.name}
             </Button>
           ))}
           {played.length > 0 && (
-            <Button role="menuitem" size="s" className={wipe === "all" ? "btn--danger" : ""} onClick={() => clear("all", onResetAll)}>
+            <Button size="s" className={wipe === "all" ? "btn--danger" : ""} onClick={() => clear("all", onResetAll)}>
               {wipe === "all" ? "Sure? Badges go too" : "Every cup"}
             </Button>
           )}
         </div>
       )}
     </div>
-  );
-  // the community's screen: every hole, ordered, by world, the day's on top; back to the cups
-  if (holes) return (
-    <FrontScreen className="worlds--v2 worlds--community" tint="garden" back="Back to the cups" onBack={() => (sound("blip"), setHoles(false))} onAbout={onAbout} eyebrow="Holes by players · not ranked" title="Community holes" dare={racing}>
-      <Community community={community} chain={chain} me={me} onPlay={onCommunity} />
-    </FrontScreen>
   );
   return (
     <FrontScreen className="worlds--v2" tint={hot || current || "garden"} back="Back to the games" onBack={onBack} onAbout={onAbout} eyebrow="Choose your cup" title="Where do we play?" dare={racing} corner={resetMenu}>
@@ -344,16 +316,15 @@ export default function Worlds({ counts = {}, stats, current, onPick, onBack, on
         })}
       </ul>
       {/* anyone can register a hole: those outside the course are playable here, in no cup and on no ranking */}
-      {community.length > 0 && <CommunityBand community={community} onOpen={() => (sound("select"), setHoles(true))} />}
+      {community.length > 0 && <CommunityBand community={community} onOpen={() => (sound("select"), onCommunity())} />}
     </FrontScreen>
   );
 }
 
 /** The community's holes as a long band under the cups, a card of another kind (a blueprint, not a diorama; not
- *  ranked): how many holes, by how many makers, in how many worlds, the newest named; a tap opens their screen. */
+ *  ranked): how many holes, by how many makers, in how many worlds; a tap opens their screen. */
 function CommunityBand({ community, onOpen }: { community: readonly HoleRow[]; onOpen: () => void }) {
   const makers = new Set(community.map((h) => authorOf(h.id)).filter(Boolean)).size, worlds = new Set(community.map((h) => h.world)).size;
-  const newest = community[0];
   return (
     <button className="cband" onClick={onOpen} aria-label={`Community holes: ${community.length} ${plural("hole", community.length)} by ${makers} ${plural("maker", makers)}, not ranked. See them all`}>
       <span className="cband__art"><Sketch /></span>
@@ -364,7 +335,6 @@ function CommunityBand({ community, onOpen }: { community: readonly HoleRow[]; o
           <span><b>{makers}</b> {plural("maker", makers)}</span>
           <span><b>{worlds}</b> {plural("world", worlds)}</span>
         </span>
-        {newest && <span className="cband__new">Newest: {newest.name || newest.slot}</span>}
       </span>
       <span className="cband__go" aria-hidden="true">See them all ▸</span>
     </button>

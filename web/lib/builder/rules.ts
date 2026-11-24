@@ -3,6 +3,7 @@
 // the physics' own back (step.gno, course.gno) and fails on any drift.
 
 import { cap, CUPS, theWorld, worldName } from "../card";
+import { own } from "../own";
 import { CLIMATES } from "../sky";
 
 /** A sentence or a name with its first letter up, a world's name alone and in a sentence (card.ts): as the game says them. */
@@ -24,7 +25,7 @@ export const kicks = (skin: string) => KICKS.some((k) => skin.includes(k));
 export const MAX_BOUNCE = 0.75;
 /** physics.MinRamp: the gentlest hill (|Vec|) that launches a ball off its crest. */
 export const MIN_RAMP = 0.12;
-/** physics.MaxMove: a zone a fast ball cannot step over is at least this deep along its way. */
+/** physics.MaxMove: the longest move at a substep's starting speed (a push or a bumper's kick inside it lengthens the moves after). */
 export const MAX_MOVE = 1.5;
 /** physics.SpeedCap: the fastest a ball goes, per substep, whatever kicked it or ran it downhill. */
 export const SPEED_CAP = 8;
@@ -40,7 +41,7 @@ export const MAX_PAR = 19;
 export const MIN_SHOT_WORK = 800_000;
 /** The weathers a hole is proven in: every kind of its world's climate but fog (which only hides the far end); "" is clear. The mines take the garden's, as the chain does. */
 export function required(world: string): string[] {
-  return (Object.hasOwn(CLIMATES, world) ? CLIMATES[world] : CLIMATES.garden).map(([, k]) => k as string).filter((k) => k !== "fog");
+  return (own(CLIMATES, world) ?? CLIMATES.garden).map(([, k]) => k as string).filter((k) => k !== "fog");
 }
 /** The weather's skins (course.WithWeather, and the puddles it lays): never a piece's. */
 export const WEATHER = ["wind", "rain", "fog", "storm", "snow", "puddle"] as const;

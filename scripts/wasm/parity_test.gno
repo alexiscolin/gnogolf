@@ -177,8 +177,8 @@ func (r *lcg) shot() string {
 // calls it, on every hole of wasmHoles and wasmMutations changes of its
 // data, with slugs and notes it refuses, and on holes past GG1's bounds or
 // at the work limits (wpLimits, in every shard); and author.Fit then Encode
-// on each hole at two margins. Each answer is printed whole: the refusal, or
-// "ok" and what builder.wasm's check says of the hole.
+// on each hole at the course's margin. Each answer is printed whole: the
+// refusal, or "ok" and what builder.wasm's check says of the hole.
 func TestBuilderParity(cur realm, t *testing.T) {
 	setOwner(deployer)
 	testing.SetRealm(testing.NewUserRealm(deployer))
@@ -273,12 +273,18 @@ func wpUnusedSkin() string {
 // work limits; Encode writes what it is given, Decode is the one to refuse.
 func wpLimits() []*course.Simple {
 	past := []func(h *course.Simple){
-		func(h *course.Simple) { h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.951, 0)}} },
-		func(h *course.Simple) { h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.95, 0)}} },
+		func(h *course.Simple) {
+			h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.951, 0)}}
+		},
+		func(h *course.Simple) {
+			h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.95, 0)}}
+		},
 		func(h *course.Simple) { h.Course.Walls[0].Every, h.Course.Walls[0].On = 2, 3 },
 		func(h *course.Simple) { h.Course.Walls[0].Every, h.Course.Walls[0].On = course.MaxTiming+1, 1 },
 		func(h *course.Simple) { h.Course.Walls[0].Bounce = 1.51 },
-		func(h *course.Simple) { h.Course.Posts = []physics.Post{{Circle: physics.Circle{C: physics.V(9, 8), R: 8.01}}} },
+		func(h *course.Simple) {
+			h.Course.Posts = []physics.Post{{Circle: physics.Circle{C: physics.V(9, 8), R: 8.01}}}
+		},
 		func(h *course.Simple) { h.CupRadius = 2.01 },
 		func(h *course.Simple) { h.Strokes = 20 },
 		func(h *course.Simple) { h.Substeps = course.MaxSubsteps + 1 },

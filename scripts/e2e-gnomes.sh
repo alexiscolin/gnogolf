@@ -9,9 +9,8 @@
 # locker, the treasury moved and a stray coin swept to it, the site link, the
 # close, an earned gnome, the token reads and the page, and the portraits:
 # every catalogue gnome's drawn, and what TokenURI costs a tier, held to
-# URIMAX (ADR-007's figure on a chain). Each step is a call
-# and what it must give; the table of them goes to OUT, a markdown file,
-# with the gas each transaction used.
+# URIMAX. Each step is a call and what it must give; the table of them goes
+# to OUT, a markdown file, with the gas each transaction used.
 #
 #   scripts/e2e-gnomes.sh                      everything with gnokey
 #   MCP=1 scripts/e2e-gnomes.sh                the owner's calls and the reads through gnomcp
@@ -23,8 +22,9 @@
 # the others are generated each run). Nothing reads or writes another
 # keybase, and no chain but that gnodev is ever named.
 #
-# It takes a few minutes: the one wait is the close's minute of chain time
-# (and up to six weather periods, if the ace on garden/3 needs one).
+# It takes a few minutes: its waits are the player window's end, WINDOW
+# seconds of chain time (240), and up to six weather periods if the ace on
+# garden/3 needs one.
 #
 # MCP=1 needs gnomcp (github.com/gnoverse/gno-mcp, GNOMCP the binary): the
 # owner (test1, which gnomcp signs with on a local profile) calls through
@@ -81,7 +81,7 @@ die() { log "e2e: $*"; exit 1; }
 # shellcheck source=lib/e2e.sh
 . "$root/scripts/lib/e2e.sh"
 
-# ------------------------------------------------------------------ helpers
+# helpers
 # python3 for what sh reads badly: a qeval answer, JSON, base64, gnomcp's
 # stdio protocol
 cat >"$WORK/h.py" <<'EOF'
@@ -159,8 +159,9 @@ elif cmd == "portraits":  # every catalogue gnome's page: its portrait parsed, t
         if t is None or t.text != names[i][2]: bad.append(f"{i}: title"); continue
         out[i] = (len(svg), m.group(1)); seen.add(hashlib.sha256(svg).digest())
     heavy = max(out, key=lambda i: out[i][0])
-    # parsed, distinct, the heaviest's id, its tier, its bytes, its data URI, the first refusals
-    print(len(out), len(seen), heavy, names[heavy][1], out[heavy][0], out[heavy][1], ";".join(bad[:3]) or "-")
+    buy = max((i for i in out if names[i][1] != "legendary"), key=lambda i: out[i][0])  # (no Legendary: one a wallet, #104's is read)
+    # parsed, distinct, the heaviest's id, its tier, its bytes, the heaviest to buy's id, its data URI, the first refusals
+    print(len(out), len(seen), heavy, names[heavy][1], out[heavy][0], buy, out[buy][1], ";".join(bad[:3]) or "-")
 elif cmd == "holeshot":  # a shot that holes in one in this period's weather, "" for none
     import urllib.request
     rpc, pkg, hole = a
@@ -190,9 +191,8 @@ EOF
 
 KH=$WORK/keys
 
-# chain time: the last block's, unix seconds; a block's by height
+# chain time: the last block's, unix seconds
 chaintime() { curl -s "http://$RPC_ADDR/status" | jq -r .result.sync_info.latest_block_time | py epoch; }
-blocktime() { curl -s "http://$RPC_ADDR/block?height=$1" | jq -r .result.block.header.time | py epoch; }
 wait_until() { # wait_until <unix> <why>
 	log "e2e: waiting for chain time $1 ($2), $(($1 - $(chaintime)))s"
 	while [ "$(chaintime)" -lt "$1" ]; do sleep 5; done
@@ -264,13 +264,14 @@ urigas() {
 	[ -n "$(qg "OwnerOf(\"$1\")")" ] || { echo "unminted"; return; }
 	base=$(grun "o, _ := gnomes.OwnerOf(\"$1\"); println(o)")
 	one=$(grun "u, _ := gnomes.TokenURI(\"$1\"); println(len(u))")
+	[ -n "$base" ] && [ -n "$one" ] || { echo "failed"; return; }
 	echo $((one - base))
 }
 # within <step> <call> <bound> <got>: a number at most bound
 within() { if [ "$4" -eq "$4" ] 2>/dev/null && [ "$4" -le "$3" ]; then row "$1" "$2" "≤ $3" "$4" 0; else row "$1" "$2" "≤ $3" "${4:-none}" 1; fi; }
-# URIMAX: the most a TokenURI may take on a chain: the heaviest portrait's
-# measured here, 83.08M (ADR-007; 4a852c6's "0.076e9" is gno test's, which
-# charges no object loads), with room
+# URIMAX: the most a TokenURI may take on a chain: the dearest portrait's
+# (#199's) 81.18M, with room (gno test's figure is lower: it charges no
+# object loads)
 URIMAX=84000000
 
 report
@@ -292,7 +293,7 @@ findshot() {
 	done
 }
 
-# ------------------------------------------------------------------- chain
+# the chain
 log "e2e: work dir $WORK"
 addkey test1 "$TEST1_MNEMONIC"
 for k in p0 p1 b1 b2 treas; do # (MNEMONIC_<key>: a phrase the caller made, try-local.sh's; else one made here)
@@ -320,7 +321,7 @@ fi
 for _ in $(seq 60); do curl -s "http://$RPC_ADDR/status" >/dev/null && break; sleep 1; done
 curl -s "http://$RPC_ADDR/status" >/dev/null || die "gnodev did not start (see $WORK/gnodev.log)"
 
-# ------------------------------------------------------------------ deploy
+# deploy
 MAINNET=1 sh "$root/scripts/stage.sh" "$NS" "$WORK/stage" >"$WORK/stage.log" 2>&1 || die "stage.sh failed (see $WORK/stage.log)"
 for p in p/$NS/gnogolf/physics p/$NS/gnogolf/course p/$NS/gnogolf/weblink p/$NS/gnogolf/jsonq r/$NS/gnogolf/store r/$NS/gnogolf/golf/v2 r/$NS/gnogolf/gnomes; do
 	d=$WORK/stage/gno.land/$p
@@ -342,7 +343,6 @@ is "deploy" "gnomes.Owner()" "$OWNER" "$(qg 'Owner()')"
 is "deploy" "gnomes.Treasury()" "$OWNER" "$(qg 'Treasury()')"
 is "deploy" "store.Writer()" "$GOLF" "$(q "$STORE" 'Writer()')"
 
-# -------------------------------------------------------------------- seed
 # SEED=1: the state the shop's screens need (the header), then the chain
 # left running and $WORK/seed.env written
 if [ "${SEED:-}" = 1 ]; then
@@ -423,20 +423,20 @@ if [ "${SEED:-}" = 1 ]; then
 	exit 0
 fi
 
-# --------------------------------------------------------------- catalogue
+# catalogue
 no "catalogue: owner only" "only the owner" p0 "$GN" AddSeries genesis "$(cat "$ROWS")"
 no "catalogue: genesis first" "the genesis first" test1 "$GN" AddSeries drop2 "721|common|X|01"
 GASW=3000000000 ok "catalogue: publish the genesis (720 rows)" "published" test1 "$GN" AddSeries genesis "$(cat "$ROWS")"
 c=$(qg 'Collection()')
 is "catalogue: Collection series" "Collection().series[0]" "genesis 1 720 0" "$(printf %s "$c" | jf '" ".join(str(x) for x in (d["series"][0]["name"], d["series"][0]["first"], d["series"][0]["last"], d["series"][0]["sold"]))')"
 no "catalogue: once" "already published" test1 "$GN" AddSeries genesis "$(cat "$ROWS")"
-# a name is letters, digits, spaces and - ' . (the injection payloads: a link
-# over the portrait, a bidi override)
+# a name is letters, digits, spaces and - ' . (refused here: a link over the
+# portrait, a bidi override)
 no "catalogue: a name with a link" "a name is 1 to 48 bytes of letters" test1 "$GN" AddSeries drop2 "721|common|x](https://e.vil/p) ![t](https://e.vil/t.png|01"
 no "catalogue: a name with a bidi override" "a name is 1 to 48 bytes of letters" test1 "$GN" AddSeries drop2 "$(printf '721|common|Pip \342\200\256gnp.evil|01')"
 is "catalogue: Gnome(104)" "Gnome(\"104\").tier,name" "legendary The Miller" "$(qg 'Gnome("104")' | jf 'd["tier"] + " " + d["name"]')"
 
-# ------------------------------------------------------- the sale opens
+# the sale opens
 REALM_ADDR=$(py realm "$GN")
 SEND=36000000ugnot no "sale: closed at deploy" "the sale is closed" p0 "$GN" Buy 1
 NOW=$(chaintime)
@@ -445,8 +445,8 @@ is "close: none set" "CloseAt()" "0" "$(qg 'CloseAt()')"
 ok "close: set a year off, before any sale" "set" test1 "$GN" SetCloseAt "$((NOW + 365 * 86400))"
 is "sale: MintOpen()" "MintOpen()" "true" "$(qg 'MintOpen()')"
 
-# -------------------------------------------------- the genesis's one sale
-# its guards, then opened for later and withdrawn before it starts
+# the genesis's one sale: its guards, then opened for later and withdrawn
+# before it starts
 SEND=36000000ugnot no "sale: none opened yet" "gnome 1 is not on sale" p0 "$GN" Buy 1
 no "sale: owner only" "only the owner" p0 "$GN" OpenSale genesis 0 1
 NOW=$(chaintime)
@@ -458,8 +458,8 @@ no "sale: a start in milliseconds" "a sale starts from a day before now to a yea
 no "sale: more than a day back" "a sale starts from a day before now to a year after" test1 "$GN" OpenSale genesis "$((NOW - 86400 - 60))" 0
 no "sale: more than a year ahead" "a sale starts from a day before now to a year after" test1 "$GN" OpenSale genesis "$((NOW + 366 * 86400))" 0
 no "sale: never from the close on" "the genesis sale starts before it closes" test1 "$GN" OpenSale genesis "$((NOW + 365 * 86400))" 0
-LATER=$((NOW + 3600))
-ok "sale: the genesis in an hour" "opened" test1 "$GN" OpenSale genesis "$LATER" 0
+LATER=$((NOW + 8 * 86400)) # (past the 7 days a close is announced ahead: one before it is refused for the start)
+ok "sale: the genesis in eight days" "opened" test1 "$GN" OpenSale genesis "$LATER" 0
 is "sale: Collection().series[0].sale" "Collection().series[0].sale start,playersUntil,prices" "$LATER $LATER 36000000,72000000,336000000,1296000000" \
 	"$(qg 'Collection()' | jf '" ".join((str(d["series"][0]["sale"]["start"]), str(d["series"][0]["sale"]["playersUntil"]), ",".join(str(p) for p in d["series"][0]["sale"]["prices"])))')"
 no "sale: once a series" "series genesis is on sale already" test1 "$GN" OpenSale genesis "$NOW" 0
@@ -549,7 +549,7 @@ SEND=180000000ugnot ok "caps: 5 more (10 Commons)" "sold" p0 "$GN" Buy "$6,$7,$8
 SEND=36000000ugnot no "caps: lifetime, 10 Commons" "the cap is 10 common a wallet" p0 "$GN" Buy "${11}"
 is "buy: SoldOfTier(0)" "SoldOfTier(0)" "13" "$(qg 'SoldOfTier(0)')"
 
-# --------------------------------------------------------- equip, locker
+# equip, locker
 ok "equip: p1 wears 5" "worn" p1 "$GN" Equip 5
 is "equip: Equipped(p1)" "Equipped(p1).id,tier" "5 common" "$(qg "Equipped(\"$P1\")" | jf 'd["id"] + " " + d["tier"]')"
 is "worn: the one put on" "Worn(p1).id,equipped" "5 True" "$(qg "Worn(\"$P1\")" | jf 'd["id"] + " " + str(d["equipped"])')"
@@ -569,7 +569,7 @@ is "locker: GnomesOf(p1, 0) best first" "GnomesOf(p1,0) ids" "104,94,73,74,5,7" 
 is "locker: past the end" "GnomesOf(p1,99) rows,next" "0 -1" "$(qg "GnomesOf(\"$P1\",99)" | jf 'str(len(d["rows"])) + " " + str(d["next"])')"
 is "locker: TokenOfOwnerByIndex(p0, 9)" "TokenOfOwnerByIndex(p0,9)" "${10}" "$(qg "TokenOfOwnerByIndex(\"$P0\",9)")"
 
-# ---------------------------------------------------------------- treasury
+# treasury
 no "treasury: owner only" "only the owner" p0 "$GN" SetTreasury "$TREAS"
 no "treasury: not the realm" "not the realm's own address" test1 "$GN" SetTreasury "$REALM_ADDR"
 ok "treasury: offered to treas" "offered" test1 "$GN" SetTreasury "$TREAS"
@@ -600,7 +600,7 @@ t_before=$(bal "$TREAS")
 ok "sweep: to the treasury" "swept" test1 "$GN" Sweep
 is "sweep: the treasury has it" "balance(treas) after - before, balance(realm)" "1 0" "$(($(bal "$TREAS") - t_before)) $(bal "$REALM_ADDR")"
 
-# ---------------------------------------------------------- the site link
+# the site link
 no "site: owner only" "only the owner" p0 "$GN" SetSiteURL "https://gnogolf.xyz/"
 no "site: https only" "a site link is https://" test1 "$GN" SetSiteURL "http://gnogolf.xyz/"
 no "site: ends with /" "a site link is https://" test1 "$GN" SetSiteURL "https://gnogolf.xyz"
@@ -609,7 +609,7 @@ is "metadata: no external_url before the site" "TokenMetadata(\"5\") has externa
 ok "site: set" "set" test1 "$GN" SetSiteURL "https://gnogolf.xyz/"
 is "site: SiteURL()" "SiteURL()" "https://gnogolf.xyz/" "$(qg 'SiteURL()')"
 
-# ------------------------------------------------------ token reads, page
+# token reads, page
 md=$(qg 'TokenMetadata("5")')
 is "metadata: JSON" "TokenMetadata(\"5\") name,external_url,tier" \
 	"$(awk -F'|' '$1==5{print $3}' "$ROWS") https://gnogolf.xyz/g/5/ common" \
@@ -626,30 +626,24 @@ has "render: a gnome on gnoweb" "GET /r/$NS/gnogolf/gnomes:5" "$(awk -F'|' '$1==
 has "render: a player" "Render(\"<p1>\")" "5" "$("$GNOKEY" query vm/qrender -remote "$RPC_ADDR" -data "$GN:$P1" 2>&1)"
 has "render: not found" "Render(\"nope\")" "Not found" "$("$GNOKEY" query vm/qrender -remote "$RPC_ADDR" -data "$GN:nope" 2>&1)"
 
-# ---------------------------------------------------------- the portraits
-# every catalogue gnome's page carries its portrait (the TokenURI drawing):
-# each read, parsed, titled with its name; the heaviest bought and its
-# TokenURI read, and what TokenURI costs per tier
+# the portraits: every catalogue gnome's page carries its portrait (the
+# TokenURI drawing): each read, parsed, titled with its name; the heaviest
+# that is no Legendary bought and its TokenURI read, and what TokenURI costs
+# per tier
 set -- $(py portraits "http://$RPC_ADDR" "$GN" "$ROWS")
-is "portrait: every page draws its gnome" "Render(\"1\") … Render(\"720\") [qrender]: SVG parsed, <title> its name" "720 -" "$1 $7"
+is "portrait: every page draws its gnome" "Render(\"1\") … Render(\"720\") [qrender]: SVG parsed, <title> its name" "720 -" "$1 $8"
 is "portrait: no two alike" "distinct SVGs of the 720" "720" "$2"
-HEAVY=$3 HTIER=$4
-within "portrait: the heaviest, #$HEAVY ($HTIER)" "its SVG's bytes (6 KiB)" 6144 "$5"
-heavyuri=$6
-if [ "$HTIER" != legendary ]; then
-	SEND=$(qg "Gnome(\"$HEAVY\")" | jf 'd["price"]')ugnot ok "portrait: b2 buys #$HEAVY" "sold" b2 "$GN" Buy "$HEAVY"
-	is "portrait: TokenURI is the page's portrait" "TokenURI(\"$HEAVY\") == its page's image" "True" "$([ "$(qg "TokenURI(\"$HEAVY\")")" = "$heavyuri" ] && echo True || echo False)"
-	within "portrait: TokenURI gas, the heaviest (#$HEAVY)" "MsgRun TokenURI(\"$HEAVY\") - MsgRun OwnerOf" "$URIMAX" "$(urigas "$HEAVY")"
-fi
+within "portrait: the heaviest, #$3 ($4)" "its SVG's bytes (6 KiB)" 6144 "$5"
+HEAVY=$6 heavyuri=$7
+SEND=$(qg "Gnome(\"$HEAVY\")" | jf 'd["price"]')ugnot ok "portrait: b2 buys #$HEAVY" "sold" b2 "$GN" Buy "$HEAVY"
+is "portrait: TokenURI is the page's portrait" "TokenURI(\"$HEAVY\") == its page's image" "True" "$([ "$(qg "TokenURI(\"$HEAVY\")")" = "$heavyuri" ] && echo True || echo False)"
+within "portrait: TokenURI gas, the heaviest b2 buys (#$HEAVY)" "MsgRun TokenURI(\"$HEAVY\") - MsgRun OwnerOf" "$URIMAX" "$(urigas "$HEAVY")"
 within "portrait: TokenURI gas, a Common (#5)" "MsgRun TokenURI(\"5\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 5)"
 within "portrait: TokenURI gas, a Rare (#73)" "MsgRun TokenURI(\"73\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 73)"
 within "portrait: TokenURI gas, an Epic (#94)" "MsgRun TokenURI(\"94\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 94)"
 within "portrait: TokenURI gas, a Legendary (#104)" "MsgRun TokenURI(\"104\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 104)"
-c=14 r=3 e=1 l=2
-case $HTIER in common) c=15 ;; rare) r=4 ;; epic) e=2 ;; esac
-sold=$((c + r + e + l))
 
-# ---------------------------------------------------------- earned gnomes
+# earned gnomes
 SEND=1ugnot no "earned: free" "an earned gnome is free" p1 "$GN" MintEarned wizard
 no "earned: a kind" "no such earned gnome" p1 "$GN" MintEarned dragon
 no "earned: not proven (Island Cup unpublished)" "not proven: pirate" p1 "$GN" MintEarned pirate
@@ -673,10 +667,10 @@ is "earned: Equipped" "Equipped(p1).tier" "earned" "$(qg "Equipped(\"$P1\")" | j
 is "earned: TokenURI SVG" "TokenURI(\"1000001\") parsed as XML" "svg" "$(qg 'TokenURI("1000001")' | py svg 2>&1 | cut -d' ' -f1)"
 within "portrait: TokenURI gas, an earned gnome" "MsgRun TokenURI(\"1000001\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 1000001)"
 
-# ------------------------------------------------------------------- close
-# A close is announced 7 days ahead at least (close.gno closeNotice): a live run
-# sets and moves one but cannot wait it out; the close itself (buys refused, the
-# unsold closed, the final supply) is the realm's tests' (close_test.gno)
+# close: a close is announced 7 days ahead at least (close.gno closeNotice):
+# a live run sets and moves one but cannot wait it out; the close itself
+# (buys refused, the unsold closed, the final supply) is the realm's tests'
+# (close_test.gno)
 NOW=$(chaintime)
 WEEK=$((7 * 86400))
 no "close: owner only" "only the owner" p0 "$GN" SetCloseAt "$((NOW + WEEK + 3600))"
@@ -690,7 +684,7 @@ is "close: CloseAt()" "CloseAt()" "$CLOSE" "$(qg 'CloseAt()')"
 is "close: Collection closesAt, not closed yet" "Collection() closesAt,closed" "$CLOSE False" "$(qg 'Collection()' | jf 'str(d["closesAt"]) + " " + str(d["series"][0]["closed"])')"
 SEND=40000000ugnot ok "close: a later series sells on" "sold" b2 "$GN" Buy 721
 
-# ------------------------------------------------------------- the owner
+# the owner
 no "owner: only the offered accepts" "no transfer of the collection is offered to you" p0 "$GN" Accept
 ok "owner: Transfer offers" "offered" test1 "$GN" Transfer "$P0"
 ok "owner: p0 accepts" "taken" p0 "$GN" Accept

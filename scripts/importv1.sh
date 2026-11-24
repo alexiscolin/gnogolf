@@ -55,15 +55,20 @@ qeval() {
 }
 # a string answer's inside, its rows ("|" apart) a line each
 rows() { sed -n 's/^data: ("\(.*\)" string)$/\1/p' | tr '|' '\n' | grep . || true; }
+# archived: the archived holes v1 has yet to drain, in drain
+archived() {
+	drain=$(qeval "$v1.len(archiving)" | sed -n 's/^data: (\([0-9]*\) int)$/\1/p')
+	[ -n "$drain" ] || { echo "importv1.sh: no count of v1's archived holes at $remote" >&2; exit 1; }
+}
 
 # the courses, "<id> <mode> <player> <strokes> <flag>" a best, in the boards'
 # key order: v1's flag is 1 for a shot finer than 0.01, v2's for a copy; and
 # v2's holes, "<id>" a line
 dump() {
-	qeval "$v1."'func() (s string) { n2s := func(n int) string { if n == 0 { return "0" }; b := ""; for n > 0 { b = string(rune(48+n%10)) + b; n /= 10 }; return b }; off := func(x float64) bool { x *= 100; d := x - float64(int64(x)); if d < 0 { d = -d }; return d > 1e-6 && d < 1-1e-6 }; slots.Iterate("", "", func(_ string, id any) bool { e := find(id.(string)); s += e.id + "|"; for m := 0; m < modes; m++ { e.bests(m).Iterate("", "", func(p string, v any) bool { _, _, sh := bestFields(v); f := "0"; at := 0; for i := 0; i <= len(sh); i++ { if i == len(sh) || sh[i] == 59 { a, pw, _ := parseShot(sh[at:i]); at = i + 1; if off(a) || off(pw) { f = "1" } } }; s += e.id + " " + modeNames[m] + " " + p + " " + n2s(bestStrokes(v)) + " " + f + "|"; return false }) }; return false }); return }()' |
-		rows >"$tmp/v1"
-	qeval "$v2."'func() (s string) { slots.Iterate("", "", func(_ string, id string) bool { e := find(id); s += e.id + "|"; for m := 0; m < modes; m++ { e.bests(m).Iterate("", "", func(p, v string) bool { c := "0"; if e.copies(m).Has(p) { c = "1" }; s += e.id + " " + modeNames[m] + " " + p + " " + itoa(bestStrokes(v)) + " " + c + "|"; return false }) }; return false }); return }()' |
-		rows >"$tmp/v2"
+	qeval "$v1."'func() (s string) { n2s := func(n int) string { if n == 0 { return "0" }; b := ""; for n > 0 { b = string(rune(48+n%10)) + b; n /= 10 }; return b }; off := func(x float64) bool { x *= 100; d := x - float64(int64(x)); if d < 0 { d = -d }; return d > 1e-6 && d < 1-1e-6 }; slots.Iterate("", "", func(_ string, id any) bool { e := find(id.(string)); s += e.id + "|"; for m := 0; m < modes; m++ { e.bests(m).Iterate("", "", func(p string, v any) bool { _, _, sh := bestFields(v); f := "0"; at := 0; for i := 0; i <= len(sh); i++ { if i == len(sh) || sh[i] == 59 { a, pw, _ := parseShot(sh[at:i]); at = i + 1; if off(a) || off(pw) { f = "1" } } }; s += e.id + " " + modeNames[m] + " " + p + " " + n2s(bestStrokes(v)) + " " + f + "|"; return false }) }; return false }); return }()' >"$tmp/q"
+	rows <"$tmp/q" >"$tmp/v1"
+	qeval "$v2."'func() (s string) { slots.Iterate("", "", func(_ string, id string) bool { e := find(id); s += e.id + "|"; for m := 0; m < modes; m++ { e.bests(m).Iterate("", "", func(p, v string) bool { c := "0"; if e.copies(m).Has(p) { c = "1" }; s += e.id + " " + modeNames[m] + " " + p + " " + itoa(bestStrokes(v)) + " " + c + "|"; return false }) }; return false }); return }()' >"$tmp/q"
+	rows <"$tmp/q" >"$tmp/v2"
 	grep -v ' ' "$tmp/v1" >"$tmp/ids" || true
 	[ -s "$tmp/ids" ] || { echo "importv1.sh: no course holes on $v1 at $remote" >&2; exit 1; }
 	# what v2 lacks: "hole <id>", "record <id> <mode> <player>", "left <id> <mode> <player>"
@@ -78,10 +83,9 @@ dump() {
 verify() {
 	bad=0
 	# every board of a few holes in one query a realm; told apart hole by hole if they differ
-	same() { # same <expression> [<hole mode> …]: v1's and v2's answers; the boards a record was left on may differ
-		a=$(qeval "$v1.$1") b=$(qeval "$v2.$1")
-		[ "$a" = "$b" ] && return 0
-		return 1
+	same() { # same <expression>: v1's and v2's answers; the boards a record was left on may differ
+		a=$(qeval "$v1.$1") && b=$(qeval "$v2.$1") || exit 1
+		[ "$a" = "$b" ]
 	}
 	boards() { printf 'func() (s string) { for _, id := range []string{%s} { for _, m := range []string{"assisted", "pro"} { s += HoleLeaderboard(id, m, 0, 100) + Records(id, m, "", 100) } }; return }()' "$1"; }
 	set -- $(cat "$tmp/ids")
@@ -126,10 +130,10 @@ fi
 key=${1:?usage: importv1.sh <key> | -verify}
 
 holes=$(grep -c '^hole ' "$tmp/todo" || true) records=$(grep -c '^record ' "$tmp/todo" || true)
-drain=$(qeval "$v1.len(archiving)" | sed -n 's/^data: (\([0-9]*\) int)$/\1/p')
-echo "to send: ${drain:-?} archived holes to drain on v1, $holes holes, $records records ($(wc -l <"$tmp/left" | tr -d ' ') left on v1)"
+archived
+echo "to send: $drain archived holes to drain on v1, $holes holes, $records records ($(wc -l <"$tmp/left" | tr -d ' ') left on v1)"
 sed -n 's/^left /   left on v1: /p' "$tmp/todo"
-if [ "${drain:-0}" = 0 ] && [ "$holes" = 0 ] && [ "$records" = 0 ]; then
+if [ "$drain" = 0 ] && [ "$holes" = 0 ] && [ "$records" = 0 ]; then
 	echo "nothing to send"
 	verify
 	exit
@@ -182,11 +186,11 @@ said() { echo "$out" | awk '/GAS USED|STORAGE DELTA/ {printf "%s  ", $0}'; }
 : >"$tmp/msgs"
 
 # v1's drain, to its end (a call takes up to 400 standings out)
-while [ "${drain:-0}" != 0 ]; do
+while [ "$drain" != 0 ]; do
 	call "$v1" Drain 400
 	send
-	drain=$(qeval "$v1.len(archiving)" | sed -n 's/^data: (\([0-9]*\) int)$/\1/p')
-	echo "v1's drain: ${drain:-?} archived holes left  $(said)"
+	archived
+	echo "v1's drain: $drain archived holes left  $(said)"
 done
 
 for id in $(sed -n 's/^hole //p' "$tmp/todo"); do

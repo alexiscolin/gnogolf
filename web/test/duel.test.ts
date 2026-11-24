@@ -1,8 +1,8 @@
-// Ghost duels (ADR-004): the best raced, the ghost's pace, and the result in words.
+// Ghost duels: the best raced, the ghost's pace, and the result in words.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { raceLeft, duelResult, duelShare, skyWord, ghostSpeed, pickGhost, shotsOf, levelFrom, levelPick, pickOne, bestOf, showcases, inTurn, mapView, mapFit, mapZone, vsBest, pathD, railRuns, type Duel } from "../lib/duel.ts";
-import type { Ghost } from "../lib/types.ts";
+import type { Ghost, Vec2 } from "../lib/types.ts";
 
 const ghost = (strokes: number, mode: Ghost["mode"] = "assisted"): Ghost => ({ version: 1, hole: "garden/1/v1", mode, player: "g1x", strokes, period: 7, shots: "0.0000,1.0000,0;12.5000,6.2000,3" });
 const duel = (strokes: number, self = false): Duel => ({ ghost: ghost(strokes), name: "ace", self });
@@ -80,12 +80,10 @@ test("a rival at your level is read from a page around your place, or the board'
   assert.equal(levelFrom(0, 3), 0);
 });
 
-test("your level: the one just above you, else below; never you nor a pick already made", () => {
+test("your level: the one just above you, else below; never you", () => {
   assert.equal(levelPick(row("a", "b", "me", "d"), "me")?.player, "b");
   assert.equal(levelPick(row("me", "b", "c"), "me")?.player, "b"); // the first: the one below
-  assert.equal(levelPick(row("champ", "me", "c"), "me", ["champ"])?.player, "c");
   assert.equal(levelPick(row("a", "b", "c", "d", "e"), null)?.player, "c"); // no place: the middle
-  assert.equal(levelPick(row("a", "b", "c"), "zz", ["b"])?.player, "a");
   assert.equal(levelPick(row("me"), "me"), null);
 });
 
@@ -103,7 +101,7 @@ test("the hole shown off: an ace first, else the best against par, in the aim mo
   assert.deepEqual(showcases(b([["h1", 4, 2]]), holes, "pro"), [{ id: "h1", mode: "pro", strokes: 4, par: 3 }]); // the aim mode's, worse as it is
   assert.deepEqual(showcases(b([]), holes, "pro"), []);
   assert.deepEqual(showcases(b([["gone", 1, 1]]), holes, "pro"), []); // a hole no longer on the course
-  assert.equal(showcases(b([["h1", 2, 2], ["h2", 3, 3], ["h3", 1, 1]]), holes, "pro", 2).length, 2); // n at most
+  assert.equal(showcases(b([["h1", 2, 2], ["h2", 3, 3], ["h3", 1, 1], ["h4", 2, 2]]), [...holes, { id: "h4", par: 3 }], "pro").length, 3); // 3 at most
 });
 
 test("a hole's map: its middle in the window's, the tee to the left or the foot, the path one line", () => {
@@ -143,7 +141,7 @@ test("a map's lines: rails joined end to end into runs, their corners rounded, a
   const w = (a: [number, number], b: [number, number]) => ({ a, b });
   const runs = railRuns([w([0, 0], [1, 0]), w([5, 5], [6, 5]), w([1, 1], [1, 0]), w([0, 1], [0, 0])]);
   assert.deepEqual(runs, [[[0, 1], [0, 0], [1, 0], [1, 1]], [[5, 5], [6, 5]]]); // (a wall the other way round, joined all the same)
-  const id = (p: [number, number]) => p;
+  const id = (p: Vec2) => p;
   assert.equal(pathD([[0, 0], [10, 0]], id), "M0 0L10 0");
   assert.equal(pathD([[0, 0], [10, 0], [10, 10]], id), "M0 0L5 0Q10 0 10 5L10 10"); // the corner bent through the sides' middles
   assert.equal(pathD([[0, 0], [10, 0], [10, 10], [0, 0]], id), "M5 0Q10 0 10 5Q10 10 5 5Q0 0 5 0"); // a loop: no corner left

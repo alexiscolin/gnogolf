@@ -39,8 +39,6 @@ test("an empty NEXT_PUBLIC_OTHER_URL is treated as unset", async () => {
   assert.equal(OTHER_URL, "");
 });
 
-// ---- networkOf ----
-
 test("networkOf: a loopback RPC is always local, whatever NEXT_PUBLIC_NETWORK says", async () => {
   process.env.NEXT_PUBLIC_NETWORK = "mainnet";
   const { networkOf } = await load();

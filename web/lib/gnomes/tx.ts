@@ -1,14 +1,13 @@
-// The gnomes' signatures (r/gnogolf/gnomes, ADR-007), built on the wallet
+// The gnomes' signatures (r/gnogolf/gnomes), built on the wallet
 // layer's own (lib/adena.ts: send, gnokeyCall, gnokeyOn): one call each, the
 // realm's own function, Buy(ids) or Equip(id), and the same call as a gnokey
 // line. Loaded with the shop: the game's first load carries none of it.
-import { send, gnokeyCall, gnokeyOn, PKG_PATH, PRICE, type GnokeyAt } from "../adena";
-import { isAddress } from "../chain";
+import { send, gnokeyCall, gnokeyOn, PRICE, type GnokeyAt } from "../adena";
+import { isAddress, PKG_PATH } from "../chain";
 
 // Each signature alone, the realm's own function: Buy(ids), Equip(id). What
 // each asks: the most it took on a local chain of the onyx toolchain
-// (the local e2e run: a Buy of one 31.0M gas,
-// two 36.0M, five 55.4M; an Equip 10.8M), with room; the bytes it stores,
+// (a Buy of one 31.0M gas, two 36.0M, five 55.4M; an Equip 10.8M), with room; the bytes it stores,
 // bounded by the realm's goldens (a first buy 3,850, z_storage_buy) or,
 // unmeasured, generously (an equip's row): the bill says "at most", and Adena
 // charges what it simulates.
@@ -27,10 +26,12 @@ const ugnotOf = (n: number) => {
   if (!Number.isSafeInteger(n) || n < 1) throw new Error(NOTHING);
   return n;
 };
-/** The gnomes' calls, checked: an id a whole number, a list 1 to 5 of them once each, coins a whole ugnot amount. */
+/** config.gno maxBatch: the most ids one Buy takes. */
+export const MAX_BATCH = 5;
+/** The gnomes' calls, checked: an id a whole number, a list 1 to MAX_BATCH of them once each, coins a whole ugnot amount. */
 export const gnomeCall = {
   buy: (ids: readonly number[], total: number): GnomeCall => {
-    if (!ids.length || ids.length > 5 || new Set(ids).size !== ids.length) throw new Error(NOTHING);
+    if (!ids.length || ids.length > MAX_BATCH || new Set(ids).size !== ids.length) throw new Error(NOTHING);
     return { func: "Buy", args: [ids.map(gnomeNo).join(",")], send: ugnotOf(total), gas: GNOME_TX.buy.gas(ids.length), bytes: GNOME_TX.buy.bytes(ids.length) };
   },
   /** null takes it off: everyone sees the best again */

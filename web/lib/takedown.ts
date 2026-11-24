@@ -1,5 +1,5 @@
-// The takedown list (the site serves it at /takedown.json; who edits it and
-// when: docs/leaderboards.md): community holes the site no longer shows,
+// The takedown list (the site serves it at /takedown.json): community
+// holes the site no longer shows,
 // listed or linked, whatever the chain still keeps. Read as flags.ts reads
 // its list: only what it should hold, from the chain the game plays on.
 import { isAddress, isSlug } from "./chain";
@@ -30,7 +30,7 @@ export function readTakedown(text: string, chainId: string): ReadonlySet<string>
 
 /** The site's list (/takedown.json, read anew: no-cache, as Publish checks an alias before it is published) for the chain played on; none served, none taken down; a failed read rejects (the caller says what it falls back to). */
 export async function loadTakedown(chain: { chainId: () => Promise<string> }, get: Get = fetch): Promise<ReadonlySet<string>> {
-  const [text, id] = await Promise.all([get("/takedown.json", { cache: "no-cache" }).then((r) => (r.ok ? r.text() : "")), chain.chainId()]);
+  const [text, id] = await Promise.all([get("/takedown.json", { cache: "no-cache" }).then((r) => (r.ok ? r.text() : r.status === 404 ? "" : Promise.reject(new Error(`takedown ${r.status}`)))), chain.chainId()]);
   return readTakedown(text, id);
 }
 

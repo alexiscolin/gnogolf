@@ -8,28 +8,24 @@
 // (its best in either mode): never the author, never a copy of another's
 // round (the realm keeps those apart), so a badge costs real rounds by
 // other addresses.
-import type { Chain } from "../chain";
+import { MAX_SAVED, MAX_SAVED_HOLES, type Chain } from "../chain";
 import { skyOf } from "../sky";
 import { listHoles } from "./holes";
 import type { Proof } from "./proof";
 import { required } from "./rules";
 import type { HoleRow, Saved } from "../types";
+import { counted } from "../words";
 
 /** What savedOn read: the rounds, and the holes with more than one read takes. */
 export interface SavedOn {
   rows: readonly Saved[];
   more: ReadonlySet<string>;
 }
-/** How many rounds savedOn reads a hole and mode, at most: a hole with more has at least that many players. */
-export const SAVED_PAGE = 100;
-
-/** How many holes one savedOn read takes (chain.ts MAX_SAVED_HOLES). */
-const SAVED_HOLES = 12;
 
 /** The rounds saved on these holes (savedOn's), a read a dozen holes. */
 export async function savedOnAll(chain: Pick<Chain, "savedOn">, ids: readonly string[]): Promise<SavedOn> {
   const reads = [];
-  for (let i = 0; i < ids.length; i += SAVED_HOLES) reads.push(chain.savedOn(ids.slice(i, i + SAVED_HOLES)));
+  for (let i = 0; i < ids.length; i += MAX_SAVED_HOLES) reads.push(chain.savedOn(ids.slice(i, i + MAX_SAVED_HOLES)));
   const parts = await Promise.all(reads);
   return { rows: parts.flatMap((p) => p.rows), more: new Set(parts.flatMap((p) => [...p.more])) };
 }
@@ -85,19 +81,19 @@ export function statsOf(row: Pick<HoleRow, "id" | "plays">, saved: SavedOn, auth
   };
 }
 
-const n = (k: number, w: string) => `${k} ${w}${k === 1 ? "" : "s"}`;
+const playsWord = counted("play"), playersWord = counted("player");
 
 /** A hole's players and plays in words: "3 players · 12 plays". */
 export function statsLine(s: HoleStats): string {
-  if (!s.players) return s.plays ? `${n(s.plays, "play")} · no round saved yet` : "Nobody has played it yet";
-  return `${s.players}${s.more ? "+" : ""} ${s.players === 1 && !s.more ? "player" : "players"} · ${n(s.plays, "play")}`;
+  if (!s.players) return s.plays ? `${playsWord(s.plays)} · no round saved yet` : "Nobody has played it yet";
+  return `${s.players}${s.more ? "+" : ""} ${s.players === 1 && !s.more ? "player" : "players"} · ${playsWord(s.plays)}`;
 }
 
 /** Its best against the author's: "Best 2 · yours 4 · 2 players beat you"; "" with no round saved. */
 export function versusLine(s: HoleStats): string {
   if (!s.best) return "";
   if (!s.mine) return `Best ${s.best} · none of yours saved`;
-  return `Best ${s.best} · yours ${s.mine} · ${s.beat ? `${n(s.beat, "player")} beat you` : "nobody beat you yet"}`;
+  return `Best ${s.best} · yours ${s.mine} · ${s.beat ? `${playersWord(s.beat)} beat you` : "nobody beat you yet"}`;
 }
 
 /** The weathers a hole asks (proof.ts required) that rounds saved by other players hole it in, in that order. */
@@ -116,7 +112,7 @@ export interface BuilderFacts {
 /** The facts of an author's published holes (their rows) from the rounds saved on them. */
 export function factsOf(rows: readonly Pick<HoleRow, "id" | "world">[], saved: SavedOn, author: string): BuilderFacts {
   const players = new Set(saved.rows.filter((r) => r.player !== author && rows.some((h) => h.id === r.id)).map((r) => r.player));
-  const most = rows.some((h) => saved.more.has(h.id)) ? SAVED_PAGE : 0;
+  const most = rows.some((h) => saved.more.has(h.id)) ? MAX_SAVED : 0;
   return {
     published: rows.length,
     players: Math.max(players.size, most),
@@ -168,11 +164,11 @@ export function keepSeen(now: Seen): void {
 export const isFresh = (id: string, s: { plays: number; players: number }, seen: Seen) =>
   s.plays > (seen[id]?.plays ?? 0) || s.players > (seen[id]?.players ?? 0);
 
-/** The author's test rounds of a published version, one a weather: the fewest strokes. */
+/** The author's test rounds of a published version, one a weather: the latest, the round that proved it (or its shots, carried to an edit since); an earlier one is of the hole before an edit, kept for an undo. */
 export function testRounds(proofs: readonly Proof[], id: string): Proof[] {
-  const best = new Map<string, Proof>();
-  for (const p of proofs) if (p.id === id && (!best.has(p.kind) || p.strokes < best.get(p.kind)!.strokes)) best.set(p.kind, p);
-  return [...best.values()];
+  const latest = new Map<string, Proof>();
+  for (const p of proofs) if (p.id === id) latest.set(p.kind, p);
+  return [...latest.values()];
 }
 
 /**

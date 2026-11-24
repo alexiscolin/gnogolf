@@ -1,4 +1,4 @@
-// The shot clip (ADR-003), the part a browser is not needed for: the format
+// The shot clip, the part a browser is not needed for: the format
 // it is recorded in, the stretch of the holing stroke it shows, the sky
 // behind it and its file's name. The recording is engine/clip.ts.
 
@@ -32,8 +32,8 @@ export const CLIP = { lead: 700, tail: 1800, max: 8000, outro: 1800, fade: 300, 
  * the lead and the tail fit in max; else its last steps that do, with no
  * lead (a long putt opens mid-roll). length: the clip's expected ms.
  */
-export function clipWindow(ms: readonly number[], { lead, tail, max } = CLIP) {
-  const all = ms.reduce((a, b) => a + b, 0);
+export function clipWindow(ms: readonly number[]) {
+  const { lead, tail, max } = CLIP, all = ms.reduce((a, b) => a + b, 0);
   if (lead + all + tail <= max) return { from: 0, lead, length: lead + all + tail };
   let from = ms.length - 1, run = ms[from] || 0;
   while (from > 0 && run + ms[from - 1] + tail <= max) run += ms[--from];

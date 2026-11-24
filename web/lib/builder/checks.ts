@@ -1,16 +1,16 @@
 // The builder's own checks of a hole: what the chain does not check and a
-// player would meet (the design's L1). The chain takes a cup inside a wall;
+// player would meet. The chain takes a cup inside a wall;
 // these do not. Each issue names its rule (E2…), its piece and the place,
 // and is an error (no test mode, no publish) or a warning (a gauge nearing
 // its limit). checkHole reads a hole as fit gives it (decode's pieces, in
-// GG1's order); the draft's checks (draft-checks.ts) add what only the draft
-// knows. Rules and thresholds: docs/specs/hole-builder.md.
+// GG1's order); the draft's checks (pipeline.ts) add what only the draft
+// knows.
 import { closest, inZone, segDist, wallDist } from "../terrain";
 import type { PieceRef } from "../scene/census";
 import { RULES } from "../chain";
 import { LIMITS } from "./gg1";
 import { cap, MIN_SHOT_WORK, pt } from "./rules";
-import { CELL, laneOf, movers, moves, outline, reach, traps, type Trap } from "./lane";
+import { CELL, laneOf, movers, moves, outline, reach, shapeOf, traps, type Trap } from "./lane";
 import type { HoleIn, PostIn, V, WallIn, ZoneIn } from "./types";
 import type { Cost } from "./wasm";
 
@@ -56,7 +56,6 @@ const pieceOf = (h: HoleIn, r: PieceRef) => {
   const list = r.pulse === undefined ? h : h.pulses[r.pulse];
   return (r.set === "wall" ? list.walls : r.set === "post" ? list.posts : list.zones)[r.i];
 };
-const shapeOf = (z: ZoneIn) => ({ min: z.min, max: z.max, round: !!z.round, poly: z.poly, outside: z.outside });
 const centreOf = (z: ZoneIn): V => [(z.min[0] + z.max[0]) / 2, (z.min[1] + z.max[1]) / 2];
 
 /** A piece's name in a sentence: "the hedge wall", "the plain post", "the water hazard". */
@@ -162,9 +161,13 @@ export function passages(h: HoleIn, slack: number): Passage[] {
   }
   // each gap closed by a post at its middle: its cells within the post's reach shut (gridOf's own rule, on the same grid)
   const gaps: (Passage & { post: PostIn })[] = [];
+  // (two solids whose boxes lie further apart than need and slack, by more than float noise, have no such gap: the boxes' gap is the least theirs can be)
+  const box = of.map((s) => (s.kind === "post" ? [s.c[0] - s.r, s.c[1] - s.r, s.c[0] + s.r, s.c[1] + s.r] : [Math.min(s.a[0], s.b[0]), Math.min(s.a[1], s.b[1]), Math.max(s.a[0], s.b[0]), Math.max(s.a[1], s.b[1])]));
   for (let i = 0; i < of.length; i++) {
     for (let j = i + 1; j < of.length; j++) {
-      const [gap, mid] = gapOf(of[i], of[j]), need = of[i].keep + of[j].keep;
+      const need = of[i].keep + of[j].keep, p = box[i], q = box[j], far = need + slack + 1e-9;
+      if (q[0] - p[2] > far || p[0] - q[2] > far || q[1] - p[3] > far || p[1] - q[3] > far) continue;
+      const [gap, mid] = gapOf(of[i], of[j]);
       // (a hazard's two edges about its own inside: no way, the hazard's)
       if (!(gap > 1e-9 && gap < need + slack) || (of[i].zone && of[i].zone === of[j].zone && inZone(shapeOf(of[i].zone!), mid[0], mid[1]))) continue;
       gaps.push({ gap, need, mid, a: refs[i], b: refs[j], post: { c: mid, r: Math.max(gap / 2, CELL) } });
@@ -445,7 +448,7 @@ function inReach(h: HoleIn, reaches: Reaches, name: Namer): Issue[] {
 }
 
 /** Whether segments a→b and c→d cross at a point inside both (meeting at an end is not crossing). */
-function crosses(a: V, b: V, c: V, d: V) {
+export function crosses(a: V, b: V, c: V, d: V) {
   const o = (p: V, q: V, r: V) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
   const d1 = o(c, d, a), d2 = o(c, d, b), d3 = o(a, b, c), d4 = o(a, b, d), e = 1e-9;
   return ((d1 > e && d2 < -e) || (d1 < -e && d2 > e)) && ((d3 > e && d4 < -e) || (d3 < -e && d4 > e));
@@ -474,25 +477,24 @@ const kindOf = (h: HoleIn, r: PieceRef) => (r.set === "zone" ? (pieceOf(h, r) as
 
 /**
  * E13: no two solid pieces in one another where the scene draws them badly:
- * posts overlapping, a post on a wall, two walls crossing, a post in a zone
- * that moves the ball, two zones overlapping (of one kind, drawn at one height:
- * they flicker); unless the
- * palette lets that pair meet (allow).
+ * posts overlapping, a post on a wall, a post in a zone that moves the ball,
+ * two zones overlapping (of one kind, drawn at one height: they flicker);
+ * unless the palette lets that pair meet (allow). The draft's checks add bars
+ * crossing (pipeline.ts bars).
  */
 function overlaps(h: HoleIn, name: Namer, entryOf: EntryOf): Issue[] {
   const out: Issue[] = [], posts = each<PostIn>(h, "post"), walls = each<WallIn>(h, "wall"), zones = each<ZoneIn>(h, "zone");
   const may = (a: PieceRef, b: PieceRef) => !!entryOf(a)?.overlaps?.includes(kindOf(h, b));
-  const say = (a: PieceRef, b: PieceRef, what: string, at: V) => {
-    if (!entryOf(a) || !entryOf(b) || may(a, b) || may(b, a)) return;
-    out.push(err("E13", `${cap(name(a))} ${what} ${name(b)} at ${pt(at)}`, a, at, [b]));
-  };
+  // a pair the palette lets meet, or with a piece not the builder's to judge: asked first, before the shapes are compared
+  const free = (a: PieceRef, b: PieceRef) => !entryOf(a) || !entryOf(b) || may(a, b) || may(b, a);
+  const say = (a: PieceRef, b: PieceRef, what: string, at: V) => out.push(err("E13", `${cap(name(a))} ${what} ${name(b)} at ${pt(at)}`, a, at, [b]));
   posts.forEach(({ item: p, ref }, k) => {
-    for (const { item: q, ref: r } of posts.slice(k + 1)) if (Math.hypot(p.c[0] - q.c[0], p.c[1] - q.c[1]) < p.r + q.r - 1e-9) say(ref, r, "overlaps", p.c);
-    for (const { item: w, ref: r } of walls) if (segDist(p.c[0], p.c[1], w.a, w.b) < p.r - 1e-9) say(ref, r, "stands on", p.c);
-    for (const { item: z, ref: r } of zones) if (moves(z) && inZone(shapeOf(z), p.c[0], p.c[1])) say(ref, r, "stands in", p.c);
+    for (const { item: q, ref: r } of posts.slice(k + 1)) if (!free(ref, r) && Math.hypot(p.c[0] - q.c[0], p.c[1] - q.c[1]) < p.r + q.r - 1e-9) say(ref, r, "overlaps", p.c);
+    for (const { item: w, ref: r } of walls) if (!free(ref, r) && segDist(p.c[0], p.c[1], w.a, w.b) < p.r - 1e-9) say(ref, r, "stands on", p.c);
+    for (const { item: z, ref: r } of zones) if (!free(ref, r) && moves(z) && inZone(shapeOf(z), p.c[0], p.c[1])) say(ref, r, "stands in", p.c);
   });
   zones.forEach(({ item: z, ref }, k) => {
-    for (const { item: y, ref: r } of zones.slice(k + 1)) if (!z.outside && !y.outside && overlap(z, y)) say(ref, r, "lies over", z.min);
+    for (const { item: y, ref: r } of zones.slice(k + 1)) if (!free(ref, r) && !z.outside && !y.outside && overlap(z, y)) say(ref, r, "lies over", z.min);
   });
   return out;
 }
@@ -516,7 +518,7 @@ function scenery(h: HoleIn, name: Namer): Issue[] {
  */
 export function checkHole(h: HoleIn, { name = nameIn(h), entryOf = () => ({}), traps: search = true }: { name?: Namer; entryOf?: EntryOf; traps?: boolean } = {}): Issue[] {
   const lane = laneOf(h), judged: Judged = (r) => !!entryOf(r);
-  const ends = [...tee(h, lane, name, judged), ...cup(h, lane, name, judged)].filter((i) => !i.ref || judged(i.ref));
+  const ends = [...tee(h, lane, name, judged), ...cup(h, lane, name, judged)];
   // the way follows from its ends: with the tee or the cup on a piece, E4 would only say so again. An end
   // only out of the lane (a rail of its own moved across it) may be the other end shut in: said first
   const asked = !ends.length || (!ends.some((i) => i.ref) && (lane(h.tee) || lane(h.pin)));

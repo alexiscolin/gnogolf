@@ -1,5 +1,5 @@
 // @ts-check
-// The link cards (ADR-003): one 1200×630 JPEG per hole, per cup and for the
+// The link cards: one 1200×630 JPEG per hole, per cup and for the
 // home page, in web/public/og/, and the holes' names and pars for their pages
 // (web/app/h/holes.json). Each hole is shot in the game's Far view, by day and
 // in clear weather (?og, ?weather=clear), the HUD hidden; the card is then laid
@@ -35,7 +35,6 @@ const esc = (/** @type {string} */ s) => s.replace(/[&<>"]/g, (c) => `&#${c.char
 await chainUp();
 const b = await launch({ width: W, height: H });
 const { send, ev, js } = b;
-await send("Page.enable");
 await send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("gnogolf.gnome","classic");sessionStorage.setItem("gnogolf.cam.session","third");` });
 const png = async (/** @type {object} */ o = {}) => "data:image/png;base64," + (await send("Page.captureScreenshot", { format: "png", ...o })).data;
 

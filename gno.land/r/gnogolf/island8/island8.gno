@@ -1,8 +1,7 @@
 // Package island8 is the rock pools: a shelf of flat rock running up the
 // shore, with a tide pool in each bend of it. The line zig-zags up the shelf
-// between them, one pool after another; a ball that rolls into one is fished
-// out on the near side of it, not sent back to the tee. Wet sand round the
-// cup slows the last run in.
+// between them, one pool after another. Wet sand round the cup slows the
+// last run in.
 package island8
 
 import (
@@ -12,8 +11,9 @@ import (
 	"gno.land/p/gnogolf/physics/build"
 )
 
-// pool is a tide pool: the polygon, drawn and played as it is, and where a
-// ball that falls in is put back.
+// pool is a tide pool: the polygon, drawn and played as it is, with back as
+// its Vec: no shot reads it, the board and the 3D ground count it as ground
+// a ball reaches.
 func pool(back physics.Vec2, pts ...physics.Vec2) physics.Zone {
 	lo, hi := pts[0], pts[0]
 	for _, p := range pts {

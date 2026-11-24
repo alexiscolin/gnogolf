@@ -114,8 +114,10 @@ export function piecesBy(d: Draft, refs: Map<string, PieceRef[]>): Map<string, P
   return by;
 }
 
+/** To a millionth (a lattice's float noise kept out of the draft: every lattice point is made through it, sub's and surface.ts add's). */
+export const r6 = (x: number) => +x.toFixed(6) + 0;
 /** a moved by d, to a millionth (frame's shift is any amount, a post's rim: the painted green's lattice keys must still meet). */
-const sub = (a: V, d: V): V => [+(a[0] + d[0]).toFixed(6) + 0, +(a[1] + d[1]).toFixed(6) + 0];
+const sub = (a: V, d: V): V => [r6(a[0] + d[0]), r6(a[1] + d[1])];
 
 /**
  * The draft as GG1 (hex) on a 96 by 96 board, and its bars (fit's lines:
@@ -186,8 +188,9 @@ function zoneOf(kind: string, skin: string, g: Exclude<Geometry, { t: "rail" | "
 }
 
 /**
- * The draft moved so its extent starts at the margin: by whole grid steps,
- * so Fit shifts it by none; its painted green with it. The extent is Fit's, less the bars: rail ends,
+ * The draft moved, by any amount (a post's rim may set the extent), so its
+ * extent starts at the margin and Fit shifts it by none; its painted green
+ * with it. The extent is Fit's, less the bars: rail ends,
  * post edges, the tee and the cup (E1b holds every bar inside them).
  */
 export function frame(d: Draft): Draft {

@@ -7,8 +7,8 @@ import (
 )
 
 // A ball resting against the north rail inside a tram's end cap is pushed
-// out along the rail when the tram comes, never through it. (20, 0.6) is
-// where the hole is drawn, before Fit moved it by its margin.
+// out along the rail when the tram comes, never through it. (20, 0.6) is in
+// the hole's drawn coordinates; d is how far Fit moved them.
 func TestTheTramNeverPushesTheBallOffThePlaza(t *testing.T) {
 	d := me.Tee.Sub(physics.V(3, 22))
 	for tick := 0; tick < 24; tick++ {

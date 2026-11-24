@@ -11,6 +11,7 @@ import { camlog } from "@/lib/testhooks";
 import { reducedMotion } from "@/lib/device";
 import { CLASSIC, CUPS, guessCup } from "@/lib/card";
 import { stillsOnly } from "@/lib/prefs";
+import { SHOP } from "@/lib/gnomes/door";
 import type { Title as TitleScene } from "@/lib/scene/title"; // the live title scene, once its module has loaded and made it
 import type { Skin } from "@/lib/scene/gnome";
 
@@ -20,10 +21,6 @@ declare global {
     // the perf probe's and the stills baker's hooks (?camlog, ?titlebake)
     __title?: TitleScene;
     __titleFilm?: Film | null;
-  }
-  interface Navigator {
-    // the Network Information API (Chromium): not in the DOM types
-    connection?: { saveData?: boolean; effectiveType?: string };
   }
 }
 
@@ -128,21 +125,20 @@ export function Green({ p, world = "garden", holed = false, thick = false }: { p
   );
 }
 
-// the cups' clips, the best first: AV1, then VP9 (640x480), then H.264 (480x360): each ~150 KB, 10.5 s, 24 fps
+/** The cups' clips, the best first: AV1, then VP9 (640x480), then H.264 (480x360): each ~150 KB, 10.5 s, 24 fps. */
 export const CLIP = [
   ["av1.webm", 'video/webm; codecs="av01.0.04M.08"'],
   ["vp9.webm", 'video/webm; codecs="vp9"'],
   ["mp4", 'video/mp4; codecs="avc1.640028"'],
 ];
 
-// (kept: decoded images stay decoded)
 export const cupStill = (id: string) => `title/cup-${id}.webp`;
-const stills: HTMLImageElement[] = [];
+const stills: HTMLImageElement[] = []; // (kept: decoded images stay decoded)
 export const canHover = () => typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches;
 export const stillsReady = () => Promise.all(stills.map((im) => im.decode().catch(() => {})));
 
-/** Fetched while the title loads, so the cups screen opens whole. */
 let warmed = false;
+/** The cups' stills and clips, fetched while the title loads, so the cups screen opens whole. */
 export function warmClips() {
   if (warmed) return;
   warmed = true;
@@ -290,9 +286,12 @@ function useTitleScene(host: RefObject<HTMLDivElement | null>, film: RefObject<H
   const [scene, setScene] = useState<{ world: string; live: boolean; phase: Visit["phase"]; bare: boolean } | null>(null);
   useEffect(() => {
     if (!visit) {
-      // a link to a hole (?hole=, ?cup=): the title is only its loader, on the
-      // default sky, with nothing behind it
-      const deep = /[?&](hole|cup)=/.test(location.search);
+      // a link past the title (a hole's: ?hole=, ?cup=, its page /h/…; the
+      // cups', a rival's or the community holes': ?screen=cups, rival,
+      // community; the shop's pages /g/…): the title is only its loader, on
+      // the default sky, with nothing behind it (?screen=modes loads under the
+      // menu's frame, and the menu's Back opens the whole title at that address)
+      const deep = /[?&]((hole|cup)=|screen=(cups|rival|community)\b)/.test(location.search) || /^\/h\//.test(location.pathname) || (SHOP && /^\/g(\/|$)/.test(location.pathname));
       const world = deep ? guessWorld() : nextWorld(), live = !deep && !wantsStill(), canvas = live ? document.createElement("canvas") : null;
       if (canvas) canvas.className = "title__canvas";
       const v: Visit = (visit = { world, canvas, video: null, phase: "splash", p: null, ready: false, bare: deep, kill: undefined, notify() {} });
@@ -339,10 +338,13 @@ function useTitleScene(host: RefObject<HTMLDivElement | null>, film: RefObject<H
 const noSubscribe = () => () => {};
 const onServer = () => "garden";
 
-/** The title screen. Kept free of three.js so it can show while the game's
- *  bundle is still loading: the first thing on screen is the last thing to go.
- *  The line under the button is fixed text: it shows while the chain is still
- *  being reached, so it must not depend on anything the chain answers. */
+/** The title screen. Prerendered, it paints before any script runs, and it
+ *  stays while the game's bundle loads: the first thing on screen is the last
+ *  thing to go. Its first load brings three.js (prefs.ts reads the gnomes),
+ *  downloading beside React rather than after it: the game behind it is ready
+ *  no later, sooner on a slow link. The line under the button is fixed text: it
+ *  shows while the chain is still being reached, so it must not depend on
+ *  anything the chain answers. */
 // gnome: the player's own (Golf.tsx): the live scene's watcher by the cup wears it
 export default function Title({ onStart, onAbout, loading = false, world: given, gnome }: { onStart?: () => void; onAbout?: () => void; loading?: boolean; world?: string; gnome?: Skin }) {
   const guessed = useSyncExternalStore(noSubscribe, guessWorld, onServer);
@@ -479,7 +481,7 @@ export default function Title({ onStart, onAbout, loading = false, world: given,
         <div className="title__go">
           <Loader loading={loading} onDone={done} world={world} />
           {ready && (
-            <Button variant="gold" className="btn--play btn--cta btn--pop btn--start" aria-label="Play" onClick={(e) => (e.stopPropagation(), start())}>
+            <Button variant="gold" className="btn--play btn--cta btn--pop btn--start" onClick={(e) => (e.stopPropagation(), start())}>
               <span className="hint--mouse">Click to start</span>
               <span className="hint--touch">Tap to start</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12 H18 M13 6 L19 12 L13 18" /></svg>

@@ -10,7 +10,7 @@
 // itself — the page sends decisions, never outcomes — so a recorded score is
 // one nobody can type in.
 
-import { RULES, isAddress, isSlug, nameShape, errorKind, type Chain } from "./chain";
+import { RULES, PKG_PATH, isAddress, isSlug, nameShape, errorKind, type Chain } from "./chain";
 import { trackError } from "./analytics";
 import type { HoleState, Mode, Vec2, Zone } from "./types";
 
@@ -378,6 +378,12 @@ export function chainSplit(chain: Pick<Chain, "simulateRound" | "simulateCommit"
 // a chain without a registrar (chain.nameReg() ""): nothing is sent to an empty package path
 const NO_REGISTRAR = "This chain has no name registrar: no name can be taken here.";
 
+/** A commit's play, by Adena or by gnokey: PlayRoundPro for a pro round (the pro board's: the mode it was
+ *  played in), PlayRoundAt in the weather it was played in (its period: the chain takes the current one or
+ *  the one before), PlayRound with none. shots: the commit's, as the call carries them. */
+const playOf = (mode: Mode, hole: string, shots: string, period: number | null | undefined): [string, string[]] =>
+  mode === "pro" ? ["PlayRoundPro", [hole, shots, String(period)]] : period == null ? ["PlayRound", [hole, shots]] : ["PlayRoundAt", [hole, shots, String(period)]];
+
 /**
  * Signs one commit of this round: PlayRound… from the tee for the first, or
  * where the chain has the round for the next ones. reset: a Reset first, in
@@ -394,30 +400,17 @@ export async function recordRound({ address, realm, hole, shots, gas, period, re
   if (named && !named.registrar) throw new Error(NO_REGISTRAR);
   // no balance gate here: Adena itself says when an account cannot pay, and
   // the page warns beforehand (shortOf) without keeping the wallet shut
-  const call = (func: string, args: string[]): Call => ({
-    type: "/vm.m_call",
-    value: { caller: address, send: "", pkg_path: realm, func, args },
-  });
   // a pro round always has its period (HoleState gives one): never a 0 the chain refuses
-  const periodArg = (p: number | null | undefined) => {
-    if (p == null) throw new Error("This round has no weather period, so it cannot be saved. Play it again.");
-    return String(p);
-  };
+  if (mode === "pro" && period == null) throw new Error("This round has no weather period, so it cannot be saved. Play it again.");
   // the period the chain checked (as a whole number) is the one signed
   if (period != null && !Number.isSafeInteger(period)) throw new Error("This round's weather period is not one the chain knows. Play it again.");
-  // in the weather the round was played in (its period): the chain takes
-  // the current one or the one before
-  return send(
+  return calls(
+    address,
     [
-      ...(named ? [{ type: "/vm.m_call", value: { caller: address, send: "", pkg_path: named.registrar, func: "Register", args: [named.name] } } as Call] : []),
-      ...(reset ? [call("Reset", [hole])] : []),
-      // a pro round goes on the pro board (the mode is the one it was played in)
-      mode === "pro"
-        ? call("PlayRoundPro", [hole, shots.join(";"), periodArg(period)])
-        : period == null
-          ? call("PlayRound", [hole, shots.join(";")])
-          : call("PlayRoundAt", [hole, shots.join(";"), String(period)]),
-      ...(named ? [call("Claim", [])] : []),
+      ...(named ? [[named.registrar, "Register", [named.name]] as const] : []),
+      ...(reset ? [[realm, "Reset", [hole]] as const] : []),
+      [realm, ...playOf(mode, hole, shots.join(";"), period)],
+      ...(named ? [[realm, "Claim", []] as const] : []),
     ],
     Math.min((gas || MAX_GAS) + (named ? NAME_GAS : 0), MAX_GAS),
     price, chainId, rpc, "The transaction was not sent.",
@@ -450,8 +443,8 @@ export async function send(messages: (Call | Send)[], gasWanted: number, price: 
 }
 
 /** One transaction of plain calls from the connected account (maxDeposit: each call's storage deposit capped, "600000ugnot"). */
-const calls = (address: string, list: readonly (readonly [string, string, string[]])[], gasWanted: number, price: number, chainId: string | null | undefined, rpc: string, failed: string, maxDeposit = "") =>
-  send(list.map(([pkg_path, func, args]): Call => ({ type: "/vm.m_call", value: { caller: address, send: "", pkg_path, func, args, ...(maxDeposit && { max_deposit: maxDeposit }) } })), gasWanted, price, chainId, rpc, failed);
+const calls = (address: string, list: readonly (readonly [string, string, readonly string[]])[], gasWanted: number, price: number, chainId: string | null | undefined, rpc: string, failed: string, maxDeposit = "") =>
+  send(list.map(([pkg_path, func, args]): Call => ({ type: "/vm.m_call", value: { caller: address, send: "", pkg_path, func, args: [...args], ...(maxDeposit && { max_deposit: maxDeposit }) } })), gasWanted, price, chainId, rpc, failed);
 
 /** PublishMine's realm, slug, data (hex) and storage deposit, of the shapes the chain takes: what a publish checks, by Adena or by gnokey. */
 export const publishArgs = ({ realm, slug, hex, deposit }: { realm: string; slug: string; hex: string; deposit: number }) =>
@@ -487,7 +480,7 @@ export async function sendTip({ from, to, gnot, price, chainId, rpc }: { from: s
 // each) and seats each best the player kept unnamed: 70.2M with 3 bests on an
 // onyx gnodev, and about 4M a best more (golf/v2 filetests: the seat written
 // through store), so a whole course unnamed in both modes, 180 bests, takes
-// about 780M: 850M covers any player; Register was 28M to 29.5M there
+// about 780M: 850M covers any player; Register takes 28M to 29.5M there
 const CLAIM_GAS = 850_000_000, REGISTER_GAS = 60_000_000;
 /** What a name taken with a save adds to its gas: Register and Claim's. */
 export const NAME_GAS = REGISTER_GAS + CLAIM_GAS;
@@ -536,10 +529,9 @@ interface SaveRound extends Work {
   roundMode?: Mode | null;
 }
 // A gnokey paste's parts. Nothing the chain or the page's link says goes in
-// unchecked: a package path is one of a realm's characters, the chain's id and
+// unchecked: a package path is a realm's (chain.ts PKG_PATH), the chain's id and
 // RPC are theirs or a placeholder, and an argument is checked (or quoted) by
 // the plan it is in.
-export const PKG_PATH = /^gno\.land\/r\/[\w/.-]+$/;
 /** Where the save flow's gnokey panel (components/Gnokey.tsx) keeps the key's address, typed once: the Builder knows its author by it too. */
 export const GNOKEY_ADDR_KEY = "gnogolf.gnokey.addr";
 // an RPC as a command may carry it, "" for anything else
@@ -579,11 +571,9 @@ export function gnokeyPlan(s: SaveRound, { realm, price = PRICE, chainId, rpc, p
   const parts = checked && checked.length ? checked : commitsOf(s, shots.length);
   const plays = parts.map(([from, to]) => {
     // the shots are quoted: ";" ends a shell command
-    const hole = String(s.id), list = `'${shots.slice(from, to).join(";")}'`, at = String(s.period);
+    const list = `'${shots.slice(from, to).join(";")}'`;
     const gas = Math.min(gasOf(s, from, to) + (s.official === false && !s.fixed ? DECODE_MAX : 0), MAX_GAS);
-    return mode === "pro" ? call("PlayRoundPro", [hole, list, at], gas)
-      : s.period == null ? call("PlayRound", [hole, list], gas)
-        : call("PlayRoundAt", [hole, list, at], gas);
+    return call(...playOf(mode, String(s.id), list, s.period), gas);
   });
   return [call("Reset", [String(s.id)], PER_CALL), ...plays];
 }
@@ -617,9 +607,9 @@ export function gnokeyPaste(plan: readonly string[], who: string, first = "") {
   const send = [
     "send() {",
     "  for try in 1 2 3; do",
-    '    out=$("$@" 2>&1 | tee /dev/stderr)',
-    "    if printf '%s\n' \"$out\" | grep -q '^OK!'; then return 0; fi",
-    "    printf '%s\n' \"$out\" | grep -q 'signature verification failed' || return 1",
+    '    out=$("$@" 2>&1 | tee >(cat >&2))',
+    "    if printf '%s\\n' \"$out\" | grep -q '^OK!'; then return 0; fi",
+    "    printf '%s\\n' \"$out\" | grep -q 'signature verification failed' || return 1",
     '    echo "Gnogolf: the node had not taken the one before yet: sent again in a block (your password again)" >&2',
     "    sleep 6",
     "  done",

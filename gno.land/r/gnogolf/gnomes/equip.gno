@@ -23,7 +23,7 @@ func Equip(cur realm, tid string) {
 	if tid == "" {
 		equipped.Remove(caller.String())
 	} else {
-		if o, err := Token.OwnerOf(grc721.TokenID(tid)); err != nil || o != caller {
+		if o, err := token.OwnerOf(grc721.TokenID(tid)); err != nil || o != caller {
 			panic(errNotYours)
 		}
 		equipped.Set(caller.String(), tid)
@@ -31,33 +31,35 @@ func Equip(cur realm, tid string) {
 	chain.Emit("Equipped", "player", caller.String(), "id", tid)
 }
 
-// Equipped is the gnome player wears, "" for none. A gnome sold on since is
-// no longer worn: ownership is checked on read.
+// Equipped is the gnome player put on with Equip, "" for none. A gnome sold
+// on since is no longer worn: ownership is checked on read.
 //
 //	{"version":1,"player":"g1…","id":"104","name":"…","tier":"legendary","traits":"…"}
 func Equipped(player address) string {
-	if row := equippedRow(player); row != "" {
-		return `{"version":1,` + row
+	if g, ok := equippedGnome(player); ok {
+		return `{"version":1,` + wornFields(player, g) + `}`
 	}
 	return ""
 }
 
-// equippedRow is Equipped's fields after its version, "" for none.
-func equippedRow(player address) string {
+// equippedGnome is the gnome player put on with Equip, while they hold it.
+func equippedGnome(player address) (gnome, bool) {
 	v := equipped.Get(player.String())
 	if v == nil {
-		return ""
+		return gnome{}, false
 	}
 	tid := v.(string)
-	if o, err := Token.OwnerOf(grc721.TokenID(tid)); err != nil || o != player {
-		return ""
+	if o, err := token.OwnerOf(grc721.TokenID(tid)); err != nil || o != player {
+		return gnome{}, false
 	}
-	g, ok := tokenAt(parseID(tid))
-	if !ok {
-		return ""
-	}
-	return `"player":` + jsonq.Quote(player.String()) + `,"id":"` + tid + `","name":` + jsonq.Quote(g.name) +
-		`,"tier":"` + tierName(g.tier) + `","traits":` + jsonq.Quote(g.traits) + `}`
+	return tokenAt(parseID(tid))
+}
+
+// wornFields are what Equipped and Worn say of player's gnome g, after their
+// version.
+func wornFields(player address, g gnome) string {
+	return `"player":` + jsonq.Quote(player.String()) + `,"id":"` + itoa(g.id) + `","name":` + jsonq.Quote(g.name) +
+		`,"tier":"` + tierName(g.tier) + `","traits":` + jsonq.Quote(g.traits)
 }
 
 // Worn is the gnome player wears for everyone: the one put on with Equip
@@ -74,8 +76,8 @@ func Worn(player address) string {
 
 // wornRow is Worn's fields after its version, "" for none.
 func wornRow(player address) string {
-	if row := equippedRow(player); row != "" {
-		return row[:len(row)-1] + `,"equipped":true}`
+	if g, ok := equippedGnome(player); ok {
+		return wornFields(player, g) + `,"equipped":true}`
 	}
 	ids, _ := heldPage(player, 0, 1)
 	if len(ids) == 0 {
@@ -85,8 +87,7 @@ func wornRow(player address) string {
 	if !ok {
 		return ""
 	}
-	return `"player":` + jsonq.Quote(player.String()) + `,"id":"` + itoa(g.id) + `","name":` + jsonq.Quote(g.name) +
-		`,"tier":"` + tierName(g.tier) + `","traits":` + jsonq.Quote(g.traits) + `,"equipped":false}`
+	return wornFields(player, g) + `,"equipped":false}`
 }
 
 // WornMany is Worn for the first 50 players of a comma-separated list, those
@@ -99,7 +100,7 @@ func WornMany(players string) string {
 	n := 0
 	seen := map[string]bool{}
 	for i, p := range strings.SplitN(players, ",", maxPlayers+1) {
-		if i == maxPlayers || players == "" {
+		if i == maxPlayers {
 			break
 		}
 		if seen[p] || !address(p).IsValid() {

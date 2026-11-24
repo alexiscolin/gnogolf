@@ -1,6 +1,7 @@
 package gnomes
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -9,22 +10,15 @@ import (
 	"gno.land/p/nt/uassert/v0"
 )
 
-// Wearing is free (ADR-007): every player wears their best gnome, the
-// highest tier they hold then its lowest id, unless they put another on for
-// everyone with Equip. Worn says which, in one cheap read: the holder's
-// rows sort best first, so it reads one row.
+// Wearing is free: every player wears their best gnome, the highest tier
+// they hold then its lowest id, unless they put another on for everyone
+// with Equip. Worn says which, in one cheap read: the holder's rows sort
+// best first, so it reads one row.
 
 func wornJSON(player address, id int64, put bool) string {
 	g, _ := tokenAt(id)
 	return `{"version":1,"player":"` + player.String() + `","id":"` + itoa(id) + `","name":"` + g.name +
-		`","tier":"` + tierName(g.tier) + `","traits":"` + g.traits + `","equipped":` + boolString(put) + `}`
-}
-
-func boolString(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
+		`","tier":"` + tierName(g.tier) + `","traits":"` + g.traits + `","equipped":` + strconv.FormatBool(put) + `}`
 }
 
 func TestAPlayerWearsTheirBestGnome(cur realm, t *testing.T) {
@@ -89,7 +83,9 @@ func TestWornManyAnswersABoardPage(cur realm, t *testing.T) {
 	fresh(t, cur)
 	mintTo(alice, mustGnome(common()))
 	mintTo(bob, mustGnome(nthOfTier(1, 0)))
-	row := func(p address, id int64) string { return "{" + strings.TrimPrefix(wornJSON(p, id, false), `{"version":1,`) }
+	row := func(p address, id int64) string {
+		return "{" + strings.TrimPrefix(wornJSON(p, id, false), `{"version":1,`)
+	}
 	nobody := testutils.TestAddress("nobody")
 	got := WornMany(alice.String() + ",nope," + bob.String() + "," + alice.String() + "," + nobody.String())
 	uassert.Equal(t, `{"version":1,"rows":[`+row(alice, common())+","+row(bob, nthOfTier(1, 0))+"]}", got, "those who hold one, once each, in order")

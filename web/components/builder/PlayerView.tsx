@@ -1,11 +1,9 @@
 "use client";
 
-// The player's view, a small picture on top of the right side, still (the piece's settings scroll under it): the
-// hole from its tee through the game's own lens, as a round opens on it.
-// Painted from the board's own scene (Scene.tsx paint: no second build, no
-// second context), once an edit has settled and the hole is built, never a
-// frame. A click on it or P shows it large, in the game's sheet (its dim, its
-// X, Escape, the focus on the sheet and back to what opened it).
+// The player's view: the hole from its tee through the game's lens, as a
+// round opens on it. Painted from the board's own scene (Scene.tsx paint: no
+// second build, no second context) once an edit has settled, never a frame;
+// a click on it or P shows it large in a sheet.
 import { useEffect, useRef } from "react";
 import type { Eye } from "./Scene";
 import { Sheet } from "@/components/ui";

@@ -28,14 +28,14 @@
 // drawn as a dashed outline, as the timed pieces are while aiming.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { flat, relief, share } from "./materials";
+import { flat, relief, motion } from "./materials";
 import { animate, state } from "./state";
 import { seeded } from "./common";
-import { ud, type Hole } from "./data";
+import { ud, type Hole, type Tick } from "./data";
 import { bakeLocal } from "./bake";
 
 import { lavaMaterial, crustBy } from "./mines-lava";
-import { once, darkMouth, INK_THIN, inked, paint, boulder, halo, glow, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, plate, rivets, vnoise, solid, tinted, gem, knobbly } from "./mines-toon";
+import { once, darkMouth, INK_THIN, inked, paint, fill, boulder, halo, glow, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, plate, rivets, vnoise, solid, tinted, gem, knobbly } from "./mines-toon";
 import { outline, sheet, overVoid, zone } from "./mines-zones";
 import { mod, boxOf, inZone, inPoly, smoothstep } from "../terrain";
 import { sound } from "../feel";
@@ -54,16 +54,14 @@ function barsOf(walls: readonly Wall[], skin: string): PBar[] {
   }
   return out;
 }
-const zonesOf = (ex: Extras | null | undefined, skin: string) => (ex ? (ex.zones || []).filter((z) => z.skin === skin) : []);
+const zonesOf = (ex: Extras | null | undefined, skin: string) => (ex ? ex.zones.filter((z) => z.skin === skin) : []);
 const zkey = (z: Zone) => z.skin + ":" + z.min.join() + ":" + z.max.join();
 
-// the last stroke's extras of each hole: what this stroke's move on from
+// the last stroke drawn on each hole: what the stroke after it moves on from
 const last = new WeakMap<Hole, Extras>();
+/** What moves, each frame; with less motion asked for, shown once as it ends (a minute on: every move here is over). */
+const play = (f: Tick) => (motion ? animate(f) : f(performance.now() / 1000 + 60));
 
-// ------------------------------------------------------------ dashed outlines of what comes
-
-const dashM = () => share(new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.25, transparent: true, opacity: 0.4, depthWrite: false }));
-let dashMat: THREE.LineDashedMaterial | null = null;
 /** Outlines, dashed round each as its own line would be, all one line (one draw). */
 function dashed(loops: readonly (readonly Vec2[])[], t: Terrain) {
   const xyz: number[] = [], dist: number[] = [];
@@ -78,19 +76,17 @@ function dashed(loops: readonly (readonly Vec2[])[], t: Terrain) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(xyz, 3));
   geo.setAttribute("lineDistance", new THREE.Float32BufferAttribute(dist, 1));
-  return new THREE.LineSegments(geo, (dashMat ||= dashM()));
+  return new THREE.LineSegments(geo, once("dashed outline", () => new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.25, transparent: true, opacity: 0.4, depthWrite: false })));
 }
 const corners = (b: PBar): Vec2[] => {
   const nx = -b.uz, nz = b.ux, hl = b.L / 2, ht = b.T / 2;
   return [[b.c[0] - b.ux * hl - nx * ht, b.c[1] - b.uz * hl - nz * ht], [b.c[0] + b.ux * hl - nx * ht, b.c[1] + b.uz * hl - nz * ht], [b.c[0] + b.ux * hl + nx * ht, b.c[1] + b.uz * hl + nz * ht], [b.c[0] - b.ux * hl + nx * ht, b.c[1] - b.uz * hl + nz * ht]];
 };
 
-// ------------------------------------------------------------ the vault doors
-//
 // A round vault door in its frame of stone and steel across the corridor:
 // shut, it stands in its frame (the bar); open, it has rolled aside along
 // its track into a recess beside the corridor. On the frame's lintel a dial
-// shows the next three strokes, a lamp each: red where it will be shut.
+// shows the next two strokes, a lamp each: red where it will be shut.
 function vaultDoor(b: PBar, t: Terrain, s: Hole, shut: boolean, was: boolean | null, next: readonly boolean[], t0: number) {
   const g = new THREE.Group(), y0 = t.height(b.c[0], b.c[1]);
   const R = b.L / 2 + 0.15, W = b.T * 0.9;
@@ -144,13 +140,13 @@ function vaultDoor(b: PBar, t: Terrain, s: Hole, shut: boolean, was: boolean | n
       from = NaN;
     }
   }
-  // the dial: three lamps on the lintel, the next strokes, red where it will be shut
+  // the dial: two lamps on the lintel either side of its top, the next stroke's the bigger, red where it will be shut
   const dial = new THREE.Group();
   const face = solid(new THREE.CylinderGeometry(0.55, 0.55, 0.12, 20).rotateZ(Math.PI / 2), 0xe8dcc0);
   dial.add(face);
   next.forEach((sh, k) => {
     const lamp = gem(new THREE.SphereGeometry(0.12, 8, 6), sh ? 0xff4a3a : 0x6fe07a); // (lit from within: the world's glowing material)
-    lamp.position.set(0.1, 0.22 * Math.cos(((k - 1) * Math.PI) / 3.5) - 0.02, 0.24 * Math.sin(((k - 1) * Math.PI) / 3.5));
+    lamp.position.set(0.1, 0.22 * Math.cos(((k - 0.5) * Math.PI) / 3.5) - 0.02, 0.24 * Math.sin(((k - 0.5) * Math.PI) / 3.5));
     lamp.scale.setScalar(k === 0 ? 1.25 : 0.9);
     dial.add(lamp);
   });
@@ -224,7 +220,7 @@ function vaultDoor(b: PBar, t: Terrain, s: Hole, shut: boolean, was: boolean | n
     bakeLocal(door);
     ud(roll).live = ud(door).live = true;
     let rang = false;
-    animate((tt) => {
+    play((tt) => {
       const k = smoothstep((tt - t0 - 0.2) / 1.6);
       place(from + (to - from) * k);
       if (!rang && k > 0) (rang = true), sound("rumble", 0.35);
@@ -232,8 +228,6 @@ function vaultDoor(b: PBar, t: Terrain, s: Hole, shut: boolean, was: boolean | n
   }
   return g;
 }
-
-// ------------------------------------------------------------ the turntable
 
 /** The cart turntable: a timber platter on its iron ring, the deflector (the bar) across it, turned to the stroke's track; a signal arm at its side pointing at the next. */
 function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | undefined, next: PBar | undefined, t: Terrain, s: Hole, t0: number) {
@@ -257,9 +251,7 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   for (let k = -Math.floor(R / 0.5); k <= Math.floor(R / 0.5); k++) {
     const x = k * 0.5, w = 2 * Math.sqrt(Math.max(0, R * R - x * x)) - 0.1;
     if (w < 0.2) continue;
-    const geo = new THREE.BoxGeometry(0.46, 0.06, w).translate(x, 0.03, 0);
-    paint(geo, (_x, _y, _z, c) => c.set([TIMBER, TIMBER_LIGHT, TIMBER_DARK][(k + 30) % 3]));
-    boards.push(geo);
+    boards.push(fill(new THREE.BoxGeometry(0.46, 0.06, w).translate(x, 0.03, 0), [TIMBER, TIMBER_LIGHT, TIMBER_DARK][(k + 30) % 3]));
   }
   plat.add(new THREE.Mesh(mergeGeometries(boards), relief()));
   plat.add(solid(new THREE.CylinderGeometry(0.28, 0.32, 0.08, 12).translate(0, 0.04, 0), BRASS));
@@ -291,7 +283,7 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   // the deflector: a buffer beam with its rails, across the platter where the bar is
   const defl = new THREE.Group();
   // (as long as its bar: a collider, drawn where the chain has it)
-  const bw = now || bars[0], BL = bw.L, shift = 0;
+  const bw = now || bars[0], BL = bw.L;
   const beamM = beam(BL, 0.55, bw.T * 0.9, 0xb8433a);
   beamM.position.y = 0.32;
   const stripe = tinted(new THREE.BoxGeometry(BL * 0.98, 0.08, bw.T * 0.92).translate(0, 0.5, 0), 0xf1d24a);
@@ -301,12 +293,12 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   turn.add(defl);
   turn.position.set(cx, y0 + 0.02, cz);
   g.add(turn);
-  const set = (a: number, o: readonly [number, number]) => {
+  const set = (a: number, x: number, z: number) => {
     turn.rotation.y = -a;
-    defl.position.set(o[0] + shift, 0, o[1]);
+    defl.position.set(x, 0, z);
   };
-  const to = now || bars[0], from = was || to;
-  set(from.ang, off(from));
+  const to = now || bars[0], from = was || to, [x0, z0] = off(from), [x1, z1] = off(to);
+  set(from.ang, x0, z0);
   if (from.key !== to.key) {
     // (live only while it turns: standing still, it merges with the stroke's pieces)
     bakeLocal(plat), bakeLocal(defl);
@@ -315,9 +307,9 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
     let d = to.ang - from.ang;
     d = mod(d + Math.PI / 2, Math.PI) - Math.PI / 2;
     let rang = false;
-    animate((tt) => {
+    play((tt) => {
       const k = smoothstep((tt - t0 - 0.2) / 1.4);
-      set(from.ang + d * k, [off(from)[0] + (off(to)[0] - off(from)[0]) * k, off(from)[1] + (off(to)[1] - off(from)[1]) * k]);
+      set(from.ang + d * k, x0 + (x1 - x0) * k, z0 + (z1 - z0) * k);
       if (!rang && k > 0) (rang = true), sound("rumble", 0.2);
     });
   }
@@ -344,8 +336,6 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   }
   return g;
 }
-
-// ------------------------------------------------------------ the rockfall and the dynamite
 
 /** The roof over a bar: a crag of cracked rock hanging from the vault, its underside CRAG over the floor; fallen, a pale scar in it where the rock came away. */
 const CRAG = 8.7;
@@ -393,9 +383,10 @@ function heap(b: PBar, t: Terrain, fall: boolean, t0: number) {
     const dust = glow(new THREE.IcosahedronGeometry(b.L * 0.7, 1), 0xa89cb8, 0.5);
     dust.position.set(b.c[0], y0 + 0.8, b.c[1]);
     dust.visible = false;
+    ud(dust).live = true;
     g.add(dust);
     let rang = false;
-    animate((tt) => {
+    play((tt) => {
       for (const r of rocks) {
         const k = Math.min(1, Math.max(0, (tt - t0 - 0.3 - r.d) / 0.45)), top = y0 + CRAG + 0.4;
         r.m.position.setY(top + (r.y - top) * k * k);
@@ -424,7 +415,7 @@ function cracking(b: PBar, t: Terrain) {
       (x = nx), (z = nz), (a += (rand() - 0.5) * 1.2);
     }
   }
-  g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), new THREE.LineBasicMaterial({ color: 0x1a1320 })));
+  g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), once("crag cracks", () => new THREE.LineBasicMaterial({ color: 0x1a1320 }))));
   // dust streaming down in thin veils, pebbles dropping
   const n = 10, peb = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.06, 0), flat(0x8a7f98), n);
   peb.frustumCulled = false;
@@ -434,7 +425,7 @@ function cracking(b: PBar, t: Terrain) {
   veil.position.set(b.c[0], y0, b.c[1]);
   g.add(veil);
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3();
-  animate((tt) => {
+  play((tt) => {
     drops.forEach((d, i) => {
       const k = ((tt + d.ph) % d.T) / d.T;
       peb.setMatrixAt(i, M.compose(P.set(d.x, y0 + 8 * (1 - k * k), d.z), Q, S));
@@ -502,8 +493,9 @@ function charge(b: PBar, t: Terrain, sh: Hole, lit: boolean) {
     ud(fuse).live = true;
     fz0.add(spark);
     const P = new THREE.Vector3(), rings = tube.index ? tube.index.count / 24 : 0;
-    let t1 = -1;
-    animate((tt) => {
+    // its clock starts with the first frame that shows it; with less motion, here: play shows it burnt down
+    let t1 = motion ? -1 : performance.now() / 1000;
+    play((tt) => {
       if (t1 < 0) t1 = tt;
       const k = 1 - 0.9 * (1 - Math.exp(-(tt - t1) / 10));
       curve.getPoint(k * 0.95, P);
@@ -519,7 +511,7 @@ function charge(b: PBar, t: Terrain, sh: Hole, lit: boolean) {
 function blown(b: PBar, t: Terrain, s: Hole, fresh: boolean, t0: number) {
   const g = new THREE.Group(), rand = seeded("blown" + b.key), y0 = t.height(b.c[0], b.c[1]);
   // the rubble left: small stones scattered off the lane's line (along the wall's foot), the way through clear
-  const bits: { m: THREE.Object3D; to: THREE.Vector3; v: THREE.Vector3 }[] = [];
+  const bits: { m: THREE.Object3D; to: THREE.Vector3 }[] = [];
   for (let k = 0; k < 14; k++) {
     const sz = 0.12 + rand() * 0.2;
     // (never on the lane: rubble in the way would be a lie; a few tries, else none)
@@ -534,7 +526,7 @@ function blown(b: PBar, t: Terrain, s: Hole, fresh: boolean, t0: number) {
     to.y = t.height(to.x, to.z) + sz * 0.4;
     r.position.copy(to);
     g.add(r);
-    bits.push({ m: r, to, v: new THREE.Vector3((to.x - b.c[0]) * 2.2, 6 + rand() * 4, (to.z - b.c[1]) * 2.2) });
+    bits.push({ m: r, to });
   }
   const scorch = new THREE.Mesh(new THREE.CircleGeometry(b.L * 0.7, 20).rotateX(-Math.PI / 2), once("scorch", () => new THREE.MeshBasicMaterial({ color: 0x1a1016, transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 })));
   scorch.position.set(b.c[0], y0 + 0.04, b.c[1]);
@@ -545,11 +537,12 @@ function blown(b: PBar, t: Terrain, s: Hole, fresh: boolean, t0: number) {
     (flash.material).depthTest = false;
     flash.position.set(b.c[0], y0 + 1, b.c[1]);
     g.add(flash);
-    const smoke = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshToonMaterial({ color: 0x4a4458, transparent: true, depthWrite: false }));
+    const smoke = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), flat(0x4a4458, { transparent: true, depthWrite: false }));
     smoke.position.copy(flash.position);
     g.add(smoke);
+    ud(flash).live = ud(smoke).live = true;
     let boomed = false;
-    animate((tt) => {
+    play((tt) => {
       const k = tt - t0 - 0.2;
       if (!boomed && k > 0) (boomed = true), sound("blast");
       flash.visible = k > 0 && k < 0.5;
@@ -565,8 +558,6 @@ function blown(b: PBar, t: Terrain, s: Hole, fresh: boolean, t0: number) {
   }
   return g;
 }
-
-// ------------------------------------------------------------ slabs that crumble
 
 /** Where a slab has fallen: the lane broken open over the dark, jagged lips of rock and splintered planks round it, darkness going down. */
 function brokenHole(z: Zone, t: Terrain, s: Hole, fresh: boolean, t0: number) {
@@ -600,7 +591,7 @@ function brokenHole(z: Zone, t: Terrain, s: Hole, fresh: boolean, t0: number) {
     ud(piv).live = true;
     g.add(piv);
     let rang = false;
-    animate((tt) => {
+    play((tt) => {
       const k = Math.max(0, tt - t0 - 0.3);
       piv.position.y = y0 + 0.03 - 4.9 * k * k;
       piv.rotation.set(k * 0.8, 0, k * 0.5);
@@ -626,7 +617,7 @@ function cracked(z: Zone, t: Terrain, s: Hole) {
       (x = nx), (zz = nz), (a += (rand() - 0.5) * 0.7);
     }
   }
-  const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), new THREE.LineBasicMaterial({ color: 0x120c18 }));
+  const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), once("slab cracks", () => new THREE.LineBasicMaterial({ color: 0x120c18 })));
   g.add(line);
   // a ring round its edge where it is parting from the lane, and pebbles falling through it
   g.add(dashed([pts], t));
@@ -635,7 +626,7 @@ function cracked(z: Zone, t: Terrain, s: Hole) {
   g.add(peb);
   const drops = Array.from({ length: n }, (_, i) => ({ p: pts[Math.floor((i / n) * pts.length)], ph: rand() * 2 }));
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3();
-  animate((tt) => {
+  play((tt) => {
     drops.forEach((d, i) => {
       const k = ((tt + d.ph) % 1.6) / 1.6;
       peb.setMatrixAt(i, M.compose(P.set(d.p[0], t.height(d.p[0], d.p[1]) + 0.05 - 3 * k * k, d.p[1]), Q, S));
@@ -660,18 +651,10 @@ function planks(z: Zone, t: Terrain, s: Hole, gone: boolean, fresh: boolean, t0:
     // (run on 0.2 past the pit's edges onto the ledgers)
     (lo -= 0.2), (hi += 0.2);
     const parts: [number, number][] = gone ? [[lo, lo + 0.5 + rand() * 0.5], [hi - 0.5 - rand() * 0.5, hi]] : [[lo, hi]];
-    for (const [a, b] of parts) {
-      const geo = new THREE.BoxGeometry(0.44, 0.08, b - a).translate(x, t.height(x, (a + b) / 2) + 0.04, (a + b) / 2);
-      paint(geo, (_x, _y, _z, c) => c.set(tone));
-      deck.push(geo);
-    }
+    for (const [a, b] of parts) deck.push(fill(new THREE.BoxGeometry(0.44, 0.08, b - a).translate(x, t.height(x, (a + b) / 2) + 0.04, (a + b) / 2), tone));
   }
   // the ledgers the planks rest on, along the pit's edges under their ends
-  for (const e of [z.min[1] - 0.1, z.max[1] + 0.1]) {
-    const L = z.max[0] - z.min[0] + 0.3, geo = new THREE.BoxGeometry(L, 0.1, 0.22).translate(cx, t.height(cx, e) - 0.02, e);
-    paint(geo, (_x, _y, _z, c) => c.set(TIMBER_DARK));
-    deck.push(geo);
-  }
+  for (const e of [z.min[1] - 0.1, z.max[1] + 0.1]) deck.push(fill(new THREE.BoxGeometry(z.max[0] - z.min[0] + 0.3, 0.1, 0.22).translate(cx, t.height(cx, e) - 0.02, e), TIMBER_DARK));
   if (deck.length) g.add(inked(mergeGeometries(deck), relief(), INK_THIN));
   if (gone) g.add(brokenHole(z, t, s, false, t0));
   if (fresh && gone) {
@@ -685,7 +668,7 @@ function planks(z: Zone, t: Terrain, s: Hole, gone: boolean, fresh: boolean, t0:
     ud(falling).live = true;
     g.add(falling);
     let rang = false;
-    animate((tt) => {
+    play((tt) => {
       const k = Math.max(0, tt - t0 - 0.3);
       falling.position.y = -4.9 * k * k;
       falling.children.forEach((c, i) => (c.rotation.set(k * (1 + i * 0.3), 0, k * 0.7)));
@@ -695,8 +678,6 @@ function planks(z: Zone, t: Terrain, s: Hole, gone: boolean, fresh: boolean, t0:
   }
   return g;
 }
-
-// ------------------------------------------------------------ the lava tide
 
 /** The tide over the low stones: lava risen over them, rising in if it was not there, sinking away if it goes. */
 function tide(z: Zone, t: Terrain, s: Hole, rising: number, t0: number) {
@@ -737,7 +718,7 @@ function tide(z: Zone, t: Terrain, s: Hole, rising: number, t0: number) {
   set(rising >= 0 ? (rising > 0 ? 0 : 1) : 1);
   if (rising) {
     let rang = false;
-    animate((tt) => {
+    play((tt) => {
       const k = smoothstep((tt - t0 - 0.2) / 1.5);
       set(rising > 0 ? k : 1 - k);
       if (!rang && k > 0) (rang = true), sound("hiss");
@@ -763,11 +744,10 @@ function seep(z: Zone, t: Terrain, s: Hole) {
   const m = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), mat);
   ud(m).live = true;
   g.add(m);
-  animate((tt) => (mat.opacity = 0.45 + 0.45 * (0.5 + 0.5 * Math.sin(tt * 2.4))));
+  play((tt) => (mat.opacity = 0.45 + 0.45 * (0.5 + 0.5 * Math.sin(tt * 2.4))));
   return g;
 }
 
-/** The tide gauge: an iron post by the lake, marked low, mid and high, a float at the level now and an arrow at the next. */
 /** The nearest spot on the bank beside a zone: off the lane and off the void, clear of both for half a unit round it. */
 function bankBy(z: Zone, t: Terrain, s: Hole): Vec2 {
   const { cx, cz, w, h } = boxOf(z), r0 = Math.max(w, h) / 2;
@@ -779,7 +759,8 @@ function bankBy(z: Zone, t: Terrain, s: Hole): Vec2 {
     }
   return [z.max[0] + 1, cz];
 }
-function gauge(at: Vec2, t: Terrain, now: number, next: number, was = now, t0 = -99) {
+/** The tide gauge: an iron post by the lake, marked low, mid and high, a float at the level now and an arrow at the next. */
+function gauge(at: Vec2, t: Terrain, now: number, next: number, was: number, t0: number) {
   const g = new THREE.Group(), y0 = t.height(at[0], at[1]);
   const post = plate(0.2, 2.6, 0.2, IRON);
   post.position.y = 1.3;
@@ -795,7 +776,7 @@ function gauge(at: Vec2, t: Terrain, now: number, next: number, was = now, t0 = 
   // (riding up or down its post with the tide, not jumping to its mark)
   if (was !== now) {
     ud(float).live = true;
-    animate((tt) => void (float.position.y = 0.5 + (was + (now - was) * smoothstep((tt - t0 - 0.2) / 1.6)) * 0.8));
+    play((tt) => void (float.position.y = 0.5 + (was + (now - was) * smoothstep((tt - t0 - 0.2) / 1.6)) * 0.8));
   }
   const arrow = gem(new THREE.ConeGeometry(0.16, 0.36, 4).rotateZ(Math.PI / 2).translate(-0.35, 0.5 + next * 0.8, 0), 0xffd27a);
   g.add(float, arrow);
@@ -805,8 +786,6 @@ function gauge(at: Vec2, t: Terrain, now: number, next: number, was = now, t0 = 
   g.position.set(at[0], y0, at[1]);
   return g;
 }
-
-// ------------------------------------------------------------ bats
 
 /** A flock of bats round each roost of the stroke, flying in from where they roosted last stroke, swirling low where the chain has its post (the ball bounces off the swarm); a few stirring high over the next roost. */
 function bats(now: readonly Post[], was: readonly Post[] | null, next: readonly Post[], t: Terrain, t0: number) {
@@ -846,7 +825,7 @@ function bats(now: readonly Post[], was: readonly Post[] | null, next: readonly 
     ...next.flatMap((p) => Array.from({ length: 2 }, (_, k) => ({ home: p, from: p, r: 0.8 + rand() * 0.5, h: 3.5 + rand(), ph: rand() * 6, sp: 1.2, stir: true, k }))),
   ];
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), E = new THREE.Euler(), S = new THREE.Vector3(), P = new THREE.Vector3();
-  animate((tt) => {
+  play((tt) => {
     list.forEach((b, i) => {
       // on their way from the last roost, then circling this one, a flap a beat
       const f = smoothstep((tt - t0 - b.k * 0.1) / 1.6);
@@ -864,11 +843,9 @@ function bats(now: readonly Post[], was: readonly Post[] | null, next: readonly 
   return out;
 }
 /** A roost on the hole itself (not a pulse): the flock there, still. */
-export function batPost(p: Post, t: Terrain, _s: Hole) {
+export function batPost(p: Post, t: Terrain) {
   return bats([p], null, [], t, -99);
 }
-
-// ------------------------------------------------------------ the lift's landings
 
 /** A lamp by each landing: green where the cage stands this stroke (get in), red where the shaft is open (you fall);
  *  the arrow under it says where the cage goes next: up to this landing, or away from it. */
@@ -912,16 +889,15 @@ function openShaft(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ the stroke
-
 const MINE = new Set(["vault door", "turntable", "rockfall", "dynamite", "crumble", "lava tide", "bat", "shaft"]);
 
 export function extras(ex: Extras, s: Hole, t: Terrain): { group: THREE.Object3D; skins: Set<string> } | null {
   const g = new THREE.Group();
   ud(g).live = true;
   ud(g).steady = true; // swapped at once: everything here moves on from the last stroke itself
-  const t0 = performance.now() / 1000;
-  const prev = last.get(s) || null, next = (ex.ahead && ex.ahead[0]) || null, after = (ex.ahead && ex.ahead[1]) || null;
+  const t0 = performance.now() / 1000, had = last.get(s);
+  // (from the stroke before it only: none after a restart)
+  const prev = ex.stroke !== undefined && had?.stroke === ex.stroke - 1 ? had : null, next = (ex.ahead && ex.ahead[0]) || null, after = (ex.ahead && ex.ahead[1]) || null;
   last.set(s, ex);
   const all = [ex, prev, next, after].filter((q): q is Extras => !!q);
 
@@ -975,7 +951,8 @@ export function extras(ex: Extras, s: Hole, t: Terrain): { group: THREE.Object3D
   for (const z of tideNext) if (!tideNow.some((w) => zkey(w) === zkey(z))) g.add(seep(z, t, s));
   if (tideNow.length || tideNext.length || tideWas.length) {
     const stone = s.zones.find((q) => q.skin === "causeway");
-    const level = (n: number) => (n >= 4 ? 2 : n >= 2 ? 1 : 0);
+    // (low, mid or high by how many tides are up: hole 7's two, then four; hole 18's one at a time)
+    const level = (n: number) => (n >= 4 ? 2 : n > 0 ? 1 : 0);
     if (stone) g.add(gauge(bankBy(stone, t, s), t, level(tideNow.length), level(tideNext.length), prev ? level(tideWas.length) : level(tideNow.length), t0));
   }
 
@@ -994,7 +971,7 @@ export function extras(ex: Extras, s: Hole, t: Terrain): { group: THREE.Object3D
     const loops: (readonly Vec2[])[] = [];
     for (const b of next.walls.length ? ["vault door", "rockfall", "boulder"].flatMap((k) => barsOf(next.walls, k)) : [])
       if (!barsOf(ex.walls, b.skin).some((q) => q.key === b.key)) loops.push(corners(b));
-    for (const z of next.zones || []) if ((z.skin === "shaft" || z.skin === "lava tide") && !(ex.zones || []).some((w) => zkey(w) === zkey(z))) loops.push(z.poly && z.poly.length > 2 ? z.poly : outline(z, s));
+    for (const z of next.zones) if ((z.skin === "shaft" || z.skin === "lava tide") && !ex.zones.some((w) => zkey(w) === zkey(z))) loops.push(z.poly && z.poly.length > 2 ? z.poly : outline(z, s));
     if (loops.length) {
       // (shown while the player aims, as the timed pieces' are: course.ts ghosts)
       const line = dashed(loops, t), before = state.ghosts;

@@ -72,14 +72,14 @@ func TestPublishChecksItsData(cur realm, t *testing.T) {
 	loosened, _ := course.Decode(loose)
 	urequire.True(t, loosened != nil && course.Exact(loosened), "Exact cannot see it")
 	for _, c := range [][3]string{
-		{"garden/64", hexOf2(loose), "not as course.Encode writes it"},
+		{"garden/64", hex.EncodeToString([]byte(loose)), "not as course.Encode writes it"},
 		{"garden/65", hexOf(h), "this data is garden/64, not garden/65"},
 		{"garden/064", hexOf(h), "not garden/064"},
 		{"garden/64", hexOf(half), "a whole number from 1 to 999"},
 		{"garden/0", hexOf(cupHole("garden", 0, "Nowhere")), "a whole number from 1 to 999"},
 		{"garden/64", "zz", "not hex"},
 		{"garden/64", "474731", "course:"},
-		{"garden/64", hexOf2(off), "stored wall lengths"},
+		{"garden/64", hex.EncodeToString([]byte(off)), "stored wall lengths"},
 	} {
 		setOwner(deployer)
 		testing.SetRealm(testing.NewUserRealm(deployer))
@@ -96,15 +96,6 @@ func le64(x float64) string {
 	b := make([]byte, 8)
 	for i := range b {
 		b[i] = byte(u >> (8 * i))
-	}
-	return string(b)
-}
-
-func hexOf2(data string) string {
-	const digits = "0123456789abcdef"
-	b := make([]byte, 0, 2*len(data))
-	for i := 0; i < len(data); i++ {
-		b = append(b, digits[data[i]>>4], digits[data[i]&15])
 	}
 	return string(b)
 }
@@ -272,7 +263,7 @@ func TestAPulsesSetUpIsCharged(cur realm, t *testing.T) {
 func limitsHole() *course.Simple { return atLimits(course.MaxWalls-28-4, physics.Surface, "sand") }
 
 // heavyHole is limitsHole as heavy as golf takes it: 21 of its 128 inner
-// walls (24 in v1: v2's commit also keeps its rows in store, storeGas), and slopes for its polygons (a puddle try tests a polygon's edges on
+// walls, and slopes for its polygons (a puddle try tests a polygon's edges on
 // ground only), so its dearest weather leaves a commit's first shot its room.
 func heavyHole() *course.Simple { return atLimits(21, physics.Slope, "slope") }
 
@@ -618,18 +609,12 @@ func TestRankCountsThePlayersAhead(cur realm, t *testing.T) {
 	}
 	testing.SetRealm(testing.NewUserRealm(b)) // b one
 	PlayRoundPro(cross(cur), x, "0,1", Period())
-	rank := func(p address) int {
-		s := Rank("pro", p)
-		s = s[strings.Index(s, `"rank":`)+7:]
-		n, _ := strconv.Atoi(s[:strings.Index(s, ",")])
-		return n
-	}
-	uassert.True(t, rank(a) > 0 && rank(a) < rank(b), Rank("pro", a)+Rank("pro", b))
+	uassert.True(t, rankOf("pro", a) > 0 && rankOf("pro", a) < rankOf("pro", b), Rank("pro", a)+Rank("pro", b))
 	uassert.True(t, strings.HasPrefix(Rank("pro", stranger), `{"version":1,"mode":"pro","player":"`+stranger.String()+`","rank":0,`), Rank("pro", stranger))
 	// the whole ranking, a page at a time, in Rank's order
-	lb := CourseLeaderboard("pro", rank(a)-1, 1)
+	lb := CourseLeaderboard("pro", rankOf("pro", a)-1, 1)
 	uassert.True(t, strings.Contains(lb, `"rows":[{"player":"`+a.String()+`","name":"rka","holes":2,`), lb)
-	lb = CourseLeaderboard("pro", rank(b)-1, 1)
+	lb = CourseLeaderboard("pro", rankOf("pro", b)-1, 1)
 	uassert.True(t, strings.Contains(lb, `"rows":[{"player":"`+b.String()+`","name":"rkb","holes":1,`), lb)
 	uassert.True(t, strings.HasSuffix(CourseLeaderboard("pro", math.MaxInt, 100), `"rows":[],"next":0}`), "past the end: an empty last page")
 	uassert.True(t, strings.HasSuffix(CourseLeaderboard("pro", 0, 1), `],"next":1}`), "a page short of the end says where the next one starts")
@@ -652,7 +637,9 @@ func TestSimulateCommitIsTheNextCommit(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "on the board", func() { SimulateCommit(id, -1, 8, 0, "0,1", Period()) })
 }
 
-// The fixes of the second bug hunt, on the reads.
+// The reads refuse what the writes refuse: no shots or too many, a ball off
+// the board, a bad tick (a long one is clamped); friends lists each valid
+// address once.
 func TestTheReadsRefuseWhatTheWritesRefuse(cur realm, t *testing.T) {
 	id := register(cur, "reads")
 	for _, shots := range []string{"", ";;", " ; "} {
@@ -703,8 +690,7 @@ func TestPlayLinks(cur realm, t *testing.T) {
 
 func TestDrainIsOpen(cur realm, t *testing.T) {
 	testing.SetRealm(testing.NewUserRealm(stranger))
-	left := Drain(cross(cur), 1000)
-	uassert.Equal(t, len(archiving()), left)
+	Drain(cross(cur), 1000)
 }
 
 // The pages: the hub says who can change what, a hole's page and its data
@@ -823,9 +809,8 @@ func TestNewestCommunityHolesAreListed(cur realm, t *testing.T) {
 }
 
 // One author publishing as many holes as they like fills perAuthor rows and
-// no more: everyone else's, older or newer, stay listed. 1000 is the bound
-// the list once scanned (maxScanned): as many newer holes of one author
-// took every older one off the list and the hub.
+// no more: everyone else's, older or newer, stay listed, the older ones even
+// past a flood of 1000.
 func TestOneAuthorCannotFloodTheList(cur realm, t *testing.T) {
 	defer asideCourse(cur)()
 	data := hexOf(cupHole("pond", 1, "Flood"))

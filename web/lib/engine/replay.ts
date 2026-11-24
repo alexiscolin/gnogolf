@@ -109,6 +109,7 @@ export function flightsOf(path: readonly Vec2[], flags: string, zones: readonly 
 const NO_WALLS: readonly Wall[] = []; // (no hole loaded)
 
 export const MS_PER_STEP = 72; // one path segment is one substep: a constant slice of time
+export const DROP_MS = 320; // the holing step, the ball dropping in
 // the speed the engine's safety net budgets a replay at (board units a second)
 export const SHOW_SPEED = 26;
 // How fast the ball crosses the screen, in board units a second, for a chain
@@ -226,10 +227,6 @@ export function makeReplay(E: Live) {
     E.ball.rotation.set(0, 0, 0);
     rolled.mine = false;
   }
-  // Off a ramp the ball takes off. On the ground it follows the ground; when
-  // the ground falls away faster than the ball is moving down, it is in the
-  // air, under gravity, until it lands (with a small bounce). Cosmetic, like
-  // every height here: the chain's ball is a point on a flat board.
   // The rule a real ball follows: it stays on the ground while the ground's
   // own downward acceleration under it is less than gravity. Over a crest
   // that acceleration is speed² × curvature, so a fast ball over a rounded
@@ -237,9 +234,6 @@ export function makeReplay(E: Live) {
   // gravity and lands with a little bounce. Cosmetic: the chain's ball is a
   // point on a flat board.
   const air = { y: 0, vy: 0, gvy: 0, up: false, t: 0 };
-  // On the ground (no air flag) the ball is on the drawn ground, down a slope
-  // or off a ledge alike: the chain says when it leaves the ground (a take-off
-  // is flagged), so a step it does not flag is never drawn in the air.
   const GRAVITY = 30;
   function fly(p: THREE.Vector3) {
     const now = performance.now();
@@ -287,10 +281,12 @@ export function makeReplay(E: Live) {
     p.y = air.y;
   }
 
-  // whether a wind (the weather's) or a gust covers (x, y), by the zones' skins
-  // a timed slope that is not wind: a seesaw's plank, a tilting board
-  const tilting = (zs: readonly Zone[], x: number, y: number) => zs.some((z) => z.kind === "slope" && z.every && z.skin !== "wind" && z.skin !== "gust" && inZone(z, x, y));
-  const windy = (zs: readonly Zone[], x: number, y: number) => zs.some((z) => z.kind === "slope" && (z.skin === "wind" || z.skin === "gust") && inZone(z, x, y)) || !!(g.weather && g.weather.wind && !zs.some((z) => z.kind === "slope" && z.every && inZone(z, x, y)));
+  // moving air: the chain's "air" flag when the zone carries one, else the skin (a wind, a gust), as causeAt reads it
+  const blows = (z: Zone) => (typeof z.air === "boolean" ? z.air : z.skin === "wind" || z.skin === "gust");
+  // a timed slope that is not air: a seesaw's plank, a tilting board
+  const tilting = (zs: readonly Zone[], x: number, y: number) => zs.some((z) => z.kind === "slope" && z.every && !blows(z) && inZone(z, x, y));
+  // whether moving air (a hole's wind, a gust, a vent) or the weather's wind covers (x, y)
+  const windy = (zs: readonly Zone[], x: number, y: number) => zs.some((z) => z.kind === "slope" && blows(z) && inZone(z, x, y)) || !!(g.weather && g.weather.wind && !zs.some((z) => z.kind === "slope" && z.every && inZone(z, x, y)));
 
   // A slope's contour arrows light up while the ball rolls down it, and fade after.
   const glowing = new Map<Zone, number>(); // zone -> glow level 0..1
@@ -309,11 +305,9 @@ export function makeReplay(E: Live) {
     }
   }
 
-  /** Where a ball sinks: the pond's nearest point to where it went in — the
-   *  recorded point is outside the water when a fast ball enters mid-step. */
-  function sinkPoint(p: Vec2, q: Vec2, from: THREE.Vector3, start?: Vec2) {
-    const z = jumpFrom(p, q, start);
-    if (!z) return from;
+  /** Where a ball sinks in hazard z: the pond's nearest point to where it went
+   *  in (p) — the recorded point is outside the water when a fast ball enters mid-step. */
+  function sinkPoint(z: Zone, p: Vec2) {
     // a shaped sea (a polygon, or all but one): it sinks where it went in,
     // a little further on
     if (z.poly) {
@@ -343,10 +337,9 @@ export function makeReplay(E: Live) {
     return at([x, y], BALL_R + ground(x, y));
   }
 
-  /** Through a tunnel: down the mouth, along the tube, out of the exit pipe. */
-  // A frame of a tunnel, a climb back or a splash that throws ends that move:
-  // warned, the ball put right (E.stop), and the move settled, so the replay
-  // awaiting it goes on instead of waiting for good.
+  // A frame of the replay, a tunnel, a climb back or a splash that throws ends
+  // that move: warned, the ball put right (E.stop), and the move settled, so
+  // what awaits it goes on instead of waiting for good.
   const framesOf = (done: () => void, undo?: () => void) => (f: FrameRequestCallback) =>
     window.requestAnimationFrame((now) => {
       try {
@@ -365,6 +358,7 @@ export function makeReplay(E: Live) {
       }
     });
 
+  /** Through a tunnel: down the mouth, along the tube, out of the exit pipe. */
   function through(z: Zone, to: THREE.Vector3, round: number | undefined) {
     const cutAt = E.cut;
     const tube = g.course?.userData.tubes.get(z);
@@ -461,13 +455,6 @@ export function makeReplay(E: Live) {
     });
   }
 
-  /** A hazard step: from inside a hazard zone, straight to its destination. */
-  const drowned = (p: Vec2, q: Vec2, start?: Vec2) => { const z = jumpFrom(p, q, start); return !!z && z.kind === "hazard"; };
-
-  /** The ball sinks where it went in — ripples, a pause — then pops up at the
-   *  hazard's destination. 1.4 s in all: long enough to feel the loss. */
-  // skin: the hazard's — a serac (mountain) catches the ball in falling ice:
-  // no water there, so no rings and no splash, a burst of ice shards instead
   /** Just past the edge of zone z a ball left the lane at p (the last point
    *  on it; prev the one before): the nearest point of the zone's outline, a
    *  little beyond it, or along its way when the zone has no outline. (The
@@ -481,18 +468,23 @@ export function makeReplay(E: Live) {
     return from.clone().set(p[0] + (dx / l) * 0.6, from.y, p[1] + (dz / l) * 0.6);
   }
 
-  function splashDown(at: THREE.Vector3, back: THREE.Vector3, round: number | undefined, edge: THREE.Vector3 | null = null, skin = "", vel: THREE.Vector3 | null = null, zone: Zone | null = null) {
+  /** The ball sinks where it went in — ripples, a pause — then pops up at the
+   *  hazard's destination. 1.4 s after the fall (1.7 s into a drop or lava):
+   *  long enough to feel the loss. */
+  // skin: the hazard's — a serac (mountain) catches the ball in falling ice:
+  // no water there, so no rings and no splash, a burst of ice shards instead
+  function splashDown(at: THREE.Vector3, back: THREE.Vector3, round: number | undefined, edge: THREE.Vector3, skin: string, vel: THREE.Vector3, zone: Zone) {
     const cutAt = E.cut;
     let end = endingOf(skin), look = skin;
     buzz(25);
     // into a drop or lava it goes on over the lip along its way (a slow one tips over, 0.6 on), where it went in,
     // never well inside it as into water, nor stopped on the edge
-    const sp = vel ? Math.hypot(vel.x, vel.z) : 0, fallDir = new THREE.Vector3(1, 0, 0);
-    if ((end === "drop" || end === "lava") && edge && vel) {
+    const sp = Math.hypot(vel.x, vel.z), fallDir = new THREE.Vector3(1, 0, 0);
+    if (end === "drop" || end === "lava") {
       const dir = sp > 1e-3 ? vel.clone().setY(0).normalize() : at.clone().sub(edge).setY(0).normalize();
       fallDir.copy(dir);
       const on = edge.clone().addScaledVector(dir, Math.max(0.6, Math.min(sp * 0.5, 4)));
-      if (!zone || inZone(zone, on.x, on.z)) at = on.setY(at.y);
+      if (inZone(zone, on.x, on.z)) at = on.setY(at.y);
       else {
         // (going along the edge, slow: over it where the hazard is nearest, the side nearest its heading first)
         let best: THREE.Vector3 | null = null;
@@ -515,16 +507,15 @@ export function makeReplay(E: Live) {
     const drop = at.y - BALL_R - surf;
     // seconds, under gravity; with no drop to speak of, still a glide to where it sinks
     const fall = Math.max(Math.sqrt((2 * Math.max(drop, 0)) / GRAVITY), 0.2);
-    const from = edge || at.clone();
     const land = at.clone().setY(surf + BALL_R * 0.4);
     // (a drop's camera over the lip, following it down a moment: the rides' pose, camera.ts g.ride)
     // (and every fall-in in a world whose hazards are walled and deep, where the player's camera would not see it: worlds.ts fallCam)
-    const follow = (end === "drop" || !!(g.s && worldOf(g.s).fallCam)) && motion && !!edge, was = new THREE.Vector3();
+    const follow = (end === "drop" || !!(g.s && worldOf(g.s).fallCam)) && motion, was = new THREE.Vector3();
     // (seconds: going under, gone, coming back; a drop falls on a while out of sight, lava takes it in slowly)
     const under = end === "drop" || end === "lava" ? 1 : 0.7, gone = under + 0.4, over = gone + 0.3;
     const watch = () => {
       if (!follow) return;
-      rideCam.pos.copy(from).addScaledVector(fallDir, 1.2).setY(from.y + 5.5);
+      rideCam.pos.copy(edge).addScaledVector(fallDir, 1.2).setY(edge.y + 5.5);
       rideCam.look.copy(E.ball.position);
       rideCam.cut = false;
       g.ride = rideCam;
@@ -546,8 +537,8 @@ export function makeReplay(E: Live) {
         if (tf < fall) {
           const k = tf / fall;
           was.copy(E.ball.position);
-          E.ball.position.lerpVectors(from, land, k); // on outward at its speed
-          E.ball.position.y = from.y + (land.y - from.y) * k * k; // and down, faster and faster
+          E.ball.position.lerpVectors(edge, land, k); // on outward at its speed
+          E.ball.position.y = edge.y + (land.y - edge.y) * k * k; // and down, faster and faster
           roll(was, E.ball.position); // (rolling on as on the lane, at its own speed)
           watch();
           return void requestAnimationFrame(tick);
@@ -584,6 +575,7 @@ export function makeReplay(E: Live) {
           return done();
         }
         rings.step(t);
+        if (follow && t >= under) g.ride = null; // (the camera back to its own once the ball is gone: the reset follows)
         if (t < under) {
           const k = t / under;
           if (end === "drop") {
@@ -602,7 +594,6 @@ export function makeReplay(E: Live) {
           if (follow && g.ride) rideCam.look.copy(E.ball.position);
         } else if (t < gone) {
           E.ball.visible = false;
-          if (follow) g.ride = null; // (the camera back to its own once the ball is gone: the reset follows)
         } else {
           E.ball.visible = true;
           const k = Math.min((t - gone) / 0.3, 1);
@@ -704,19 +695,8 @@ export function makeReplay(E: Live) {
     // without flags (an older realm) the heights are guessed from the ground
     const flights = flags.length === path.length && g.s ? flightsOf(path, flags, g.s.zones, ticks) : null;
     const corners = cornersOf(path, why, flights, ticks);
-    return new Promise<void>((settle) => {
-      // a frame that throws ends the replay (the shot's finally puts things right)
-      const done = () => settle();
-      const guard = (f: FrameRequestCallback): FrameRequestCallback => (now) => {
-        try {
-          f(now);
-        } catch (err) {
-          console.warn("gnogolf: the replay threw", err);
-          E.stop();
-          done();
-        }
-      };
-      const requestAnimationFrame = (f: FrameRequestCallback) => window.requestAnimationFrame(guard(f));
+    return new Promise<void>((done) => {
+      const requestAnimationFrame = framesOf(done);
       let i = from;
       rolledBack = -1;
       air.y = BALL_R + ground(path[i][0], path[i][1]);
@@ -744,14 +724,14 @@ export function makeReplay(E: Live) {
         // to the pin, then down — never a snap across the cup
         const drop = holed && i === path.length - 2;
         // into the water: splash, sink, a beat, then back where the hazard sends it
-        if (drowned(path[i], path[i + 1], path[0])) {
-          const hz = jumpFrom(path[i], path[i + 1], path[0]);
+        const hz = jumpFrom(path[i], path[i + 1], path[0]);
+        if (hz?.kind === "hazard") {
           // off a rooftop: it drops into the street just past the edge it left
           // from, not well inside the hazard as into water
-          const at = hz && hz.skin === "roof" ? offEdge(hz, path[Math.max(0, i - 1)], path[i], from) : sinkPoint(path[i], path[i + 1], from, path[0]);
+          const at = hz.skin === "roof" ? offEdge(hz, path[Math.max(0, i - 1)], path[i], from) : sinkPoint(hz, path[i]);
           // (its speed over the last step, for a world whose ball falls on over the lip: worlds.ts fallIn)
           const pv = path[Math.max(0, i - 1)], vel = new THREE.Vector3(path[i][0] - pv[0], 0, path[i][1] - pv[1]).divideScalar(MS_PER_STEP / 1000);
-          return void splashDown(at, to, round, E.ball.position.clone(), hz ? hz.skin : "", vel, hz).then(() => {
+          return void splashDown(at, to, round, E.ball.position.clone(), hz.skin, vel, hz).then(() => {
             E.mood.shake(performance.now());
             air.t = 0;
             i++;
@@ -770,16 +750,17 @@ export function makeReplay(E: Live) {
         // every one ("b"), glancing and slow ones too; an older realm says
         // nothing, and a sharp turn in the path stands in for it
         // (a step drawn through its corner knocks there, not after it)
+        const knock = (q: Vec2, speed: number) => {
+          const post = s.posts.some((p) => Math.hypot(p.c[0] - q[0], p.c[1] - q[1]) < p.r + 1.2);
+          // louder the faster it hits, never silent (a world may sound it itself: a singing crystal)
+          const k = Math.max(0.2, Math.min(1, speed / 2));
+          if (!worldOf(s).ring?.(s, q[0], q[1], E.quiet ? 0 : k)) sound(post ? "boing" : "knock", k);
+        };
         if (i > 0 && !corners[i - 1]) {
           const ax = path[i][0] - path[i - 1][0], ay = path[i][1] - path[i - 1][1], l0 = Math.hypot(ax, ay);
           const cos = l0 > 0.15 && len > 0.15 ? (ax * (path[i + 1][0] - path[i][0]) + ay * (path[i + 1][1] - path[i][1])) / (l0 * len) : 1;
-          const marked = typeof why === "string" && why.length === path.length;
-          if (marked ? why[i] === "b" : cos < 0.6) {
-            const post = s.posts.some((p) => Math.hypot(p.c[0] - path[i][0], p.c[1] - path[i][1]) < p.r + 1.2);
-            // louder the faster it hits, never silent (a world may sound it itself: a singing crystal)
-            const k = Math.max(0.2, Math.min(1, Math.max(l0, len) / 2));
-            if (!worldOf(s).ring?.(s, path[i][0], path[i][1], E.quiet ? 0 : k)) sound(post ? "boing" : "knock", k);
-          }
+          const marked = why.length === path.length;
+          if (marked ? why[i] === "b" : cos < 0.6) knock(path[i], Math.max(l0, len));
         }
         // a bounce's step runs through where it hit: in, then out, at the one speed of its run
         const corner = !drop && corners[i];
@@ -789,7 +770,7 @@ export function makeReplay(E: Live) {
         let knocked = false;
         // (the step into a tunnel is drawn longer than the chain's, to the mouth:
         // at the chain's own speed, at most four times as long)
-        const ms = (drop ? 320 : showMs(run) * (into ? Math.min(4, from.distanceTo(to) / Math.max(run, 1e-3)) : 1)) / speed;
+        const ms = (drop ? DROP_MS : showMs(run) * (into ? Math.min(4, from.distanceTo(to) / Math.max(run, 1e-3)) : 1)) / speed;
         // a roll-back at a tube's mouth: the ball climbs part way into it and
         // slides back down before the path goes on (once per point)
         const back = !jump && i > 0 && rolledBack !== i && rollBackAt(path, i);
@@ -817,16 +798,16 @@ export function makeReplay(E: Live) {
         // the chain says what acts on each point ("cause": s slope, w wind, i
         // ice or wet, b bounce, - none); an older realm says nothing, and the
         // zones under the ball are read instead
-        const said = typeof why === "string" && why.length === path.length ? why[i + 1] : null;
+        const said = why.length === path.length ? why[i + 1] : null;
         const guess = () => causeAt(zs, path[i][0], path[i][1], vx, vy, ticks[i]);
         const guessVec = () => { const c = guess(); return c && "vec" in c ? c.vec : null; };
         // (a slope's and a tilt's own direction is the ball's: causes.at reads a vec for wind only)
         const along: Vec2 = [vx, vy];
-        const push: Cause | null = jump || drop ? null
+        const push: Cause | null = drop ? null
           : said == null ? guess()
           // "w" is anything airy to the chain, a timed slope included: it is wind
-          // only where a wind or a gust covers the point — a seesaw's plank, a
-          // tilting board (another skin) is a slope
+          // only where moving air covers the point — a seesaw's plank, a
+          // tilting board is a slope
           : said === "w" ? (windy(zs, path[i][0], path[i][1]) ? { kind: "wind", vec: guessVec() || (g.weather && g.weather.wind) || along } : { kind: "tilt", vec: along })
           : said === "s" ? (tilting(zs, path[i][0], path[i][1]) ? { kind: "tilt", vec: along } : { kind: "slope", vec: along })
           : said === "i" ? { kind: g.weather && (g.weather.rain || g.weather.storm) ? "wet" : "ice" }
@@ -837,7 +818,7 @@ export function makeReplay(E: Live) {
         const tick = (now: number) => {
           if (round !== g.round || E.cut !== cutAt) return done();
           // (a frame stamped before the step began, on a slow device: at its start)
-          const raw = jump ? 1 : Math.max(0, Math.min((now - start) / ms, 1));
+          const raw = Math.max(0, Math.min((now - start) / ms, 1));
           // one path step is one substep: the sails are where the chain had them
           // the pieces where the chain had them: the release tick, plus the step
           E.showAt(ticks[i] + raw);
@@ -846,14 +827,9 @@ export function makeReplay(E: Live) {
             const d = k * run;
             if (d < reach) E.ball.position.lerpVectors(from, via, d / reach);
             else E.ball.position.lerpVectors(via, to, run > reach ? (d - reach) / (run - reach) : 1);
-            if (d >= reach && !knocked && corner) {
-              knocked = true;
-              const post = s.posts.some((p) => Math.hypot(p.c[0] - corner[0], p.c[1] - corner[1]) < p.r + 1.2);
-              const k = Math.max(0.2, Math.min(1, run / 2));
-              if (!worldOf(s).ring?.(s, corner[0], corner[1], E.quiet ? 0 : k)) sound(post ? "boing" : "knock", k);
-            }
+            if (d >= reach && !knocked && corner) (knocked = true), knock(corner, run);
           } else E.ball.position.lerpVectors(from, to, k);
-          if (!jump && !drop) {
+          if (!drop) {
             const t = i + k, arc = flights && flights.get(i)?.find((q) => t >= q.t0 && t <= q.t1);
             if (arc) {
               // The chain's arc: up to its apex, vz²/2 over where it left,
@@ -880,10 +856,9 @@ export function makeReplay(E: Live) {
             const label = E.causes.at(E.ball.position, vx * perSec, vy * perSec, push, g.s ? g.s.world : "");
             if (label) (g.cause = { label, at: performance.now() }), void E.publish();
           }
-          if (!jump) roll(prev, E.ball.position);
+          roll(prev, E.ball.position);
           prev.copy(E.ball.position);
-          if (jump) E.ball.scale.setScalar(0.2 + 0.8 * Math.min((now - start) / 160, 1));
-          if (raw < 1 || (jump && E.ball.scale.x < 1)) return void requestAnimationFrame(tick);
+          if (raw < 1) return void requestAnimationFrame(tick);
           if (!drop) E.ball.scale.setScalar(1);
           i++;
           step();
