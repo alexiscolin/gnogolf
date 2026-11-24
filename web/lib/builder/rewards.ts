@@ -8,7 +8,7 @@
 // (its best in either mode): never the author, never a copy of another's
 // round (the realm keeps those apart), so a badge costs real rounds by
 // other addresses.
-import type { Chain } from "../chain";
+import { MAX_SAVED, MAX_SAVED_HOLES, type Chain } from "../chain";
 import { skyOf } from "../sky";
 import { listHoles } from "./holes";
 import type { Proof } from "./proof";
@@ -20,16 +20,11 @@ export interface SavedOn {
   rows: readonly Saved[];
   more: ReadonlySet<string>;
 }
-/** How many rounds savedOn reads a hole and mode, at most: a hole with more has at least that many players. */
-export const SAVED_PAGE = 100;
-
-/** How many holes one savedOn read takes (chain.ts MAX_SAVED_HOLES). */
-const SAVED_HOLES = 12;
 
 /** The rounds saved on these holes (savedOn's), a read a dozen holes. */
 export async function savedOnAll(chain: Pick<Chain, "savedOn">, ids: readonly string[]): Promise<SavedOn> {
   const reads = [];
-  for (let i = 0; i < ids.length; i += SAVED_HOLES) reads.push(chain.savedOn(ids.slice(i, i + SAVED_HOLES)));
+  for (let i = 0; i < ids.length; i += MAX_SAVED_HOLES) reads.push(chain.savedOn(ids.slice(i, i + MAX_SAVED_HOLES)));
   const parts = await Promise.all(reads);
   return { rows: parts.flatMap((p) => p.rows), more: new Set(parts.flatMap((p) => [...p.more])) };
 }
@@ -116,7 +111,7 @@ export interface BuilderFacts {
 /** The facts of an author's published holes (their rows) from the rounds saved on them. */
 export function factsOf(rows: readonly Pick<HoleRow, "id" | "world">[], saved: SavedOn, author: string): BuilderFacts {
   const players = new Set(saved.rows.filter((r) => r.player !== author && rows.some((h) => h.id === r.id)).map((r) => r.player));
-  const most = rows.some((h) => saved.more.has(h.id)) ? SAVED_PAGE : 0;
+  const most = rows.some((h) => saved.more.has(h.id)) ? MAX_SAVED : 0;
   return {
     published: rows.length,
     players: Math.max(players.size, most),

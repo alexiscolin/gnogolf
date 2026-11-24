@@ -1,6 +1,6 @@
 // Talking to the realm.
 //
-// Two reads, both free: no wallet, no transaction, no block to wait for. The
+// Reads only, all free: no wallet, no transaction, no block to wait for. The
 // chain resolves every shot — nothing here computes anything about a ball
 // (the aim's previews run the realm's own code in the page: lib/sim.ts).
 // See CLIENT.md for the contract.
@@ -14,7 +14,7 @@
 import { hostOf, isLoopback } from "./network";
 import { trackError } from "./analytics";
 import type {
-  Bests, CourseLeaderboard, Extras, Ghost, HoleLeaderboard, HoleRank, HoleRow, Holes, HoleState, Leaderboard, Mode, Rank, Round, SimulateFrom,
+  Bests, CourseLeaderboard, Extras, Ghost, HoleLeaderboard, HoleRank, HoleRow, Holes, HoleState, Mode, Rank, Round, SimulateFrom,
   DayCandidates, Saved, SimulateRound, Standings, StandingRow, StrokesRow, Vec2, Versions, Weather,
 } from "./types";
 
@@ -54,7 +54,7 @@ const REALM = isRealmPath(REALM_ENV) ? REALM_ENV : "gno.land/r/gnogolf/golf/v2";
 /** The hub's gnoweb path ("/r/…/golf"). */
 export const REALM_PATH = REALM.replace(/^gno\.land/, "");
 /** The game's own gnoweb path ("/r/…/gnogolf/") of a realm at `realm` (its version aside). */
-const gamePath = (realm: string) => realm.replace(/\/v[0-9]+$/, "").replace(/[^/]+$/, "");
+export const gamePath = (realm: string) => realm.replace(/\/v[0-9]+$/, "").replace(/[^/]+$/, "");
 /** The gnoweb path ("/p/…/") of the packages a realm at `realm` imports, beside
  *  it: p/gnogolf/… in the repo tree, p/<ns>/gnogolf/… as stage.sh deploys them. */
 export const pkgsPath = (realm: string) => gamePath(realm).replace(/^\/r\//, "/p/");
@@ -143,7 +143,6 @@ export const checks = {
   versions: (v: unknown): v is Versions => isObj(v) && typeof v.slot === "string" && Array.isArray(v.versions) &&
     v.versions.every((x) => isObj(x) && strs(x, "id", "by", "sha", "note", "next") && nums(x, "v", "height")),
   extras: (v: unknown): v is Extras => isObj(v) && arrays(v, "walls", "posts", "zones"),
-  leaderboard: (v: unknown): v is Leaderboard => board(v, standingRow, "holes"),
   bests: (v: unknown): v is Bests => board(v, strokesRow, "par") && typeof v.hole === "string",
   standings: (v: unknown): v is Standings => board(v, standingRow, "holes"),
   holeLeaderboard: (v: unknown): v is HoleLeaderboard => board(v, strokesRow, "par", "players", "finished", "offset", "next") && typeof v.hole === "string",
@@ -179,9 +178,9 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   // refusal — whose text is the realm's own sentence, not the VM's trace.
   const down = (e: unknown): ChainError => Object.assign(e instanceof Error ? e : new Error(String(e)), { kind: "down" as const });
   const refused = (message: string, log?: string): ChainError => Object.assign(new Error(message), { kind: "chain" as const, log });
-  // one of the node's own endpoints (/tx, /block), its JSON; down when it did not answer
-  const rpcGet = async <T>(path: string): Promise<T> => {
-    const c = new AbortController(), t = setTimeout(() => c.abort(), TIMEOUT);
+  // one of the node's own endpoints (/tx, /status, /blockchain), its JSON; down when it did not answer in ms
+  const rpcGet = async <T>(path: string, ms = TIMEOUT): Promise<T> => {
+    const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
     try {
       const res = await fetch(`${rpc}${path}`, { signal: c.signal });
       if (!res.ok) throw new Error(`RPC ${res.status}`);
@@ -284,13 +283,13 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   // a mode is sent exactly: the realm refuses any other word
   const m = (mode: string): Mode => (mode === "pro" ? "pro" : "assisted");
 
-  // Params that do not move within a session (the chain id, the gas and
-  // storage prices) are read once per ttl, not once a hole: the answer is kept,
-  // a failure is not.
   // Extras(hole, stroke), per hole version and stroke (chain.extras)
   const extrasRead = new Map<string, Promise<Extras>>();
   // HoleData(version), by version id (its data never changes; an alias's is read each time)
   const dataRead = new Map<string, Promise<string>>();
+  // Params that do not move within a session (the chain id, the gas and
+  // storage prices) are read once per ttl, not once a hole: the answer is kept,
+  // a failure is not.
   const memo = <T>(fn: () => Promise<T>, ttl: number) => {
     let at = 0, p: Promise<T> | null = null;
     return (): Promise<T> => {
@@ -310,37 +309,21 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   }
   let skew = 0;
   const status = memo(async () => {
-    const c = new AbortController(), t = setTimeout(() => c.abort(), 4000);
-    try {
-      const res = await fetch(`${rpc}/status`, { signal: c.signal });
-      if (!res.ok) throw new Error(`RPC ${res.status}`);
-      const r = ((await res.json()) as { result: Status }).result;
-      const bt = Date.parse((r.sync_info && r.sync_info.latest_block_time) || "");
-      if (Number.isFinite(bt)) skew = bt - Date.now();
-      return r;
-    } catch (e) {
-      throw down(e);
-    } finally {
-      clearTimeout(t);
-    }
+    const r = (await rpcGet<{ result?: Status }>("/status", 4000)).result;
+    if (!r) throw down(new Error("The node's status had no result in it."));
+    const bt = Date.parse((r.sync_info && r.sync_info.latest_block_time) || "");
+    if (Number.isFinite(bt)) skew = bt - Date.now();
+    return r;
   }, 60e3);
   const PARAMS_TTL = 10 * 60e3;
 
   // a block's hash and time (ms), from its header as /blockchain gives it; down if the node has no such block or does not answer
   async function blockMeta(height: number) {
-    const c = new AbortController(), t = setTimeout(() => c.abort(), TIMEOUT), at = Math.max(1, height | 0);
-    try {
-      const res = await fetch(`${rpc}/blockchain?minHeight=${at}&maxHeight=${at}`, { signal: c.signal });
-      if (!res.ok) throw new Error(`RPC ${res.status}`);
-      const r = (await res.json()) as { result?: { block_metas?: { block_id?: { hash?: string }; header?: { height?: string; time?: string } }[] } };
-      const m = r.result?.block_metas?.[0], ms = Date.parse(m?.header?.time ?? ""), hash = m?.block_id?.hash ?? "";
-      if (m?.header?.height !== String(at) || !Number.isFinite(ms) || !hash) throw new Error(`The node has no block ${at}.`);
-      return { hash, ms };
-    } catch (e) {
-      throw down(e);
-    } finally {
-      clearTimeout(t);
-    }
+    const at = Math.max(1, height | 0);
+    const r = await rpcGet<{ result?: { block_metas?: { block_id?: { hash?: string }; header?: { height?: string; time?: string } }[] } }>(`/blockchain?minHeight=${at}&maxHeight=${at}`);
+    const m = r.result?.block_metas?.[0], ms = Date.parse(m?.header?.time ?? ""), hash = m?.block_id?.hash ?? "";
+    if (m?.header?.height !== String(at) || !Number.isFinite(ms) || !hash) throw down(new Error(`The node has no block ${at}.`));
+    return { hash, ms };
   }
   const genesis = memo(() => blockMeta(1).then((b) => b.hash), Infinity);
 
@@ -412,7 +395,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     userURL: (addr: string) => (isAddress(addr) ? new URL(`/u/${addr}`, web + "/").href : "#"),
     /** gnoweb form of a realm's function (its $help page, at func): the call made in a browser, without Adena; # for anything else. */
     helpURL: (pkg: string, func: string) =>
-      /^gno\.land\/r\/[\w/.-]+$/.test(pkg) && /^[A-Z]\w*$/.test(func) ? new URL(`${pkg.replace(/^gno\.land/, "")}$help&func=${func}`, web + "/").href : "#",
+      PKG_PATH.test(pkg) && /^[A-Z]\w*$/.test(func) ? new URL(`${pkg.replace(/^gno\.land/, "")}$help&func=${func}`, web + "/").href : "#",
     /** gnoweb link to what a hole is made of: a realm hole's source, a data
      *  hole's data page. A player can read a hole before trusting it. */
     // links built from what the chain says, checked first: a hole id, an address
@@ -534,8 +517,6 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       }
       return p;
     },
-    /** The course-wide ranking of recorded rounds. */
-    leaderboard: (mode = "assisted") => qeval(`Leaderboard(${s(m(mode))})`, checks.leaderboard),
     /** The best rounds of these players (at most 50) on a hole: { hole, mode, par, rows: [{ player, strokes }] }. */
     bests: (hole: string, mode: string, players: readonly string[]) =>
       qeval(`Bests(${s(hole)}, ${s(m(mode))}, ${s(players.slice(0, 50).join(","))})`, checks.bests),
@@ -702,6 +683,11 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
 }
 export type Chain = ReturnType<typeof makeChain>;
 
+/** Which chain's realm: what this browser keeps of a chain is kept under it (a version's verdict, when an alias was first
+ *  published, a wasm's sources checked), its id, its genesis (a chain reseeded under the same id is another) and the realm. */
+export type Which = Pick<Chain, "chainId" | "genesis" | "realm">;
+export const whichOf = async (chain: Which) => `${await chain.chainId()}|${await chain.genesis()}|${chain.realm}`;
+
 /** A path the build names for its node or gnoweb ("/rpc": scripts/playground-server.mjs, which try-local.sh starts, streams it to the node) on the page's own origin; a URL as it is. */
 const onPage = (v: string) => (v.startsWith("/") && typeof location !== "undefined" ? location.origin + v : v);
 /** The build's node and gnoweb (NEXT_PUBLIC_RPC, NEXT_PUBLIC_WEB; this machine's by default), each a URL. */
@@ -730,13 +716,15 @@ export function safeEndpoint(given: string | null | undefined, fallback: string,
  *  ?rpc= could otherwise send the wallet to a look-alike realm on another
  *  gno.land chain. The overrides are for dev builds and this machine. */
 const pinnedPage = () => process.env.NODE_ENV === "production" && typeof location !== "undefined" && !isLoopback(location.hostname);
-function allowedHost(h: string, extra = process.env.NEXT_PUBLIC_ALLOWED_HOSTS || "") {
-  const list = [hostOf(process.env.NEXT_PUBLIC_RPC || ""), hostOf(process.env.NEXT_PUBLIC_WEB || ""), ...extra.split(",").map((x) => x.trim())].filter(Boolean);
+function allowedHost(h: string) {
+  const list = [hostOf(process.env.NEXT_PUBLIC_RPC || ""), hostOf(process.env.NEXT_PUBLIC_WEB || ""), ...(process.env.NEXT_PUBLIC_ALLOWED_HOSTS || "").split(",").map((x) => x.trim())].filter(Boolean);
   return h === "gno.land" || h.endsWith(".gno.land") || list.includes(h);
 }
 
 // a realm or package path as the chain names it, and nothing else
 const PKG = /^gno\.land\/[rp]\/[\w/.-]+$/;
+/** A realm's path as the chain names it, and nothing else: what a $help link and a gnokey command take. */
+export const PKG_PATH = /^gno\.land\/r\/[\w/.-]+$/;
 const ADDR = /^g1[0-9a-z]{38}$/;
 // a community hole's short name, as golf's validSlug takes it
 const SLUG = "[a-z0-9-]{1,32}", ONE_SLUG = new RegExp(`^${SLUG}$`);
@@ -753,15 +741,17 @@ export const isHoleId = (s: unknown) => PKG.test(String(s)) || DATA.test(String(
 const VERSION_ID = new RegExp(`^([a-z]{1,16}/[1-9]\\d{0,2}|g1[0-9a-z]{38}/${SLUG})/v[1-9]\\d*$`);
 /** Whether s is a data hole's version ("garden/7/v2", "<address>/<slug>/v3"): its data never changes, unlike an alias's. */
 export const isVersion = (s: unknown) => VERSION_ID.test(String(s));
-/** A best as the realm keeps it (recordsOf). */
-/** The most holes holesOf reads of an author's (their newest), and savedOn of holes at once, and of rounds a hole and mode. */
-const MAX_OWN = 24, MAX_SAVED_HOLES = 12, MAX_SAVED = 100;
+/** The most holes holesOf reads of an author's (their newest). */
+const MAX_OWN = 24;
+/** The most holes savedOn reads at once, and of rounds a hole and mode: a hole with more has at least that many players. */
+export const MAX_SAVED_HOLES = 12, MAX_SAVED = 100;
 /** A row holesOf takes: one of author's community holes (its id and alias theirs), every field as holeRow writes it. */
 function ownRow(r: unknown, author: string): r is HoleRow {
   if (!isObj(r) || typeof r.id !== "string" || !isHoleId(r.id) || !r.id.startsWith(author + "/") || r.official !== false) return false;
   if (!strs(r, "name", "world", "next") || !/^[a-z]{1,16}$/.test(r.world as string) || !nums(r, "plays", "best", "proBest", "par", "order")) return false;
   return r.slot === undefined || r.slot === r.id.replace(/\/v\d+$/, "");
 }
+/** A best as the realm keeps it (recordsOf). */
 export interface Kept { strokes: number; height: number; period: number; shots: string }
 /** One of a player's records (progressOf): the hole's version, slot, world and par; the mode, strokes,
  *  the block it was saved at and its weather's period; whether it holds the hole's record in that mode. */

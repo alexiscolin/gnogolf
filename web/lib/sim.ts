@@ -10,17 +10,18 @@
 //
 // It is used only once its sources are the realm's: the .gno files it was
 // built from, read back from the chain (vm/qfile) through stage.sh's prefix,
-// hashed and compared (once a browser: a package on the chain never changes).
+// hashed and compared (once a browser and chain: a package on a chain never changes).
 // No worker, no WebAssembly, a load or a check that fails:
 // the chain's previews, as before.
 
 import { track, trackError } from "./analytics";
-import type { Chain } from "./chain";
+import type { Chain, Which } from "./chain";
 import type { Stroke, Vec2 } from "./types";
-import type { Ask, Reply } from "./sim/worker";
+import type { Ask } from "./sim/host";
+import type { Reply } from "./sim/worker";
 import { sameSources } from "./sim/sources";
 
-type SimChain = Pick<Chain, "file" | "realm" | "holeData">;
+type SimChain = Pick<Chain, "file" | "holeData"> & Which;
 
 let worker: Worker | null = null, on: Promise<boolean> | null = null, off = false;
 let seq = 0;
@@ -106,7 +107,7 @@ export function same(chainRes: Stroke, local: Stroke | null, what: { hole: strin
 }
 
 /** The chain's previews again, for the rest of the visit. */
-export function simOff(why: "sources" | "load" | "mismatch", what: { hole?: string; period?: number; shot?: string; n?: number } = {}) {
+function simOff(why: "sources" | "load" | "mismatch", what: { hole?: string; period?: number; shot?: string; n?: number } = {}) {
   if (off) return;
   off = true;
   track("sim_off", { why, ...what });

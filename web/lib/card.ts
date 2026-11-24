@@ -161,8 +161,9 @@ export function migrate(old: Record<string, unknown> | null | undefined) {
 
 export function loadCard(): Card {
   try {
-    const card = (JSON.parse(localStorage.getItem(KEY) || "{}") as Card | null) || {};
-    return localStorage.getItem(VKEY) === "2" ? card : save(migrate(card));
+    const card = (JSON.parse(localStorage.getItem(KEY) || "{}") as Record<string, unknown> | null) || {};
+    // (a hand edit must not break a finish: only whole scores are read)
+    return localStorage.getItem(VKEY) === "2" ? Object.fromEntries(Object.entries(card).filter((x): x is [string, number] => Number.isInteger(x[1]) && Number(x[1]) >= 1)) : save(migrate(card));
   } catch {
     return {};
   }

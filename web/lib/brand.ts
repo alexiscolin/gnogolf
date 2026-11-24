@@ -58,9 +58,11 @@ export function drawCard(x: CanvasRenderingContext2D, W: number, H: number, { ey
   x.fillStyle = INK;
   x.font = `700 44px ${FONT}`;
   x.fillText("Gnogolf", left, -84);
+  const name = x.measureText("Gnogolf").width, host = siteHost();
   x.font = `600 26px ${FONT}`;
   x.fillStyle = HAT;
-  x.fillText(siteHost(), left, -50);
+  x.fillText(host, left, -50);
+  const end = left + Math.max(name, x.measureText(host).width) + 24;
   x.textAlign = "right";
   x.fillStyle = INK_SOFT;
   x.font = `700 22px ${FONT}`;
@@ -70,7 +72,7 @@ export function drawCard(x: CanvasRenderingContext2D, W: number, H: number, { ey
   x.fillText(score, w - 64, -52);
   const room = x.measureText(score).width + 24;
   x.fillStyle = INK;
-  x.fillText(title, w - 64 - room, -52);
+  x.fillText(title, w - 64 - room, -52, w - 64 - room - end); // (a long name squeezed, short of the left block)
   x.restore();
 }
 

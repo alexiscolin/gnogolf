@@ -9,8 +9,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import * as THREE from "three";
-import { makeHost } from "../lib/sim/host.ts";
-import type { Ask } from "../lib/sim/worker.ts";
+import { answer, makeHost, type Ask } from "../lib/sim/host.ts";
 import type { Live } from "../lib/engine/types.ts";
 import type { Mode, Stroke, Vec2 } from "../lib/types.ts";
 
@@ -20,8 +19,7 @@ class FakeWorker {
   host = makeHost(wasm);
   onmessage: ((e: { data: unknown }) => void) | null = null;
   postMessage(m: Ask & { n: number }) {
-    const h = this.host;
-    const out = m.op === "load" ? (h.load(m.id, m.hex), "") : m.op === "from" ? h.from(m.id, m.x, m.y, m.shot, m.stroke, m.period) : m.op === "round" ? h.round(m.id, m.shots, m.period) : JSON.stringify(h.sources());
+    const out = answer(this.host, m);
     setImmediate(() => this.onmessage?.({ data: { n: m.n, out, ms: 0 } }));
   }
   terminate() {}
@@ -35,6 +33,8 @@ const asked: string[] = [];
 const hex = fs.readFileSync(new URL("data/holes.txt", repo), "utf8").split("\n")[0].split(" ")[3];
 const chain = {
   realm: `gno.land/r/${NS}/gnogolf/golf/v2`,
+  chainId: () => Promise.resolve("dev"),
+  genesis: () => Promise.resolve("A"),
   // the deployed file: the repo's, its paths under the name
   file: (p: string) => {
     asked.push(p);

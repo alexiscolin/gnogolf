@@ -2,7 +2,7 @@
 // detector, and frameMs()'s tier table (60/30/10/sleep).
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { AWAY_MS, capped30, frameMs, frameStats, pace, slowFrames } from "../lib/engine/pace.ts";
+import { AWAY_MS, capped30, frameMs, frameStats, pace, probed, slowFrames } from "../lib/engine/pace.ts";
 
 void test("pace draws once a whole interval (less 1ms jitter) is owed, else carries the gap", () => {
   // a 10ms interval: an 8ms gap alone is not owed yet
@@ -55,6 +55,19 @@ void test("slowFrames drops the slowest 10% so one hitch does not read as a slow
 void test("slowFrames on a single sample keeps it (ceil(0.9) of 1 is 1: nothing to drop)", () => {
   assert.equal(slowFrames([100]), true);
   assert.equal(slowFrames([10]), false);
+});
+
+void test("probed times busy drawing only: a click, a pause, then a pull is judged on the pull", () => {
+  // 25 fps: a click (0.2 s busy), 3 s idle, then an 8 s pull
+  const p = { prev: 0, gaps: [] as number[] };
+  let t = 1000, done = false;
+  const draw = (ms: number, busy: boolean) => { for (const end = t + ms; t < end && !done; t += 40) done = probed(p, t, busy); };
+  draw(200, true);
+  draw(3000, false);
+  draw(8000, true);
+  assert.equal(done, true);
+  assert.ok(p.gaps.length > 10 && p.gaps.every((x) => x === 40), `${p.gaps.length} gaps`); // the pause is no gap
+  assert.equal(slowFrames(p.gaps), true);
 });
 
 void test("capped30 tells a steady 30 fps cap (a battery saver) from a GPU slow on its own", () => {

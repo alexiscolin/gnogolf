@@ -109,6 +109,7 @@ export function flightsOf(path: readonly Vec2[], flags: string, zones: readonly 
 const NO_WALLS: readonly Wall[] = []; // (no hole loaded)
 
 export const MS_PER_STEP = 72; // one path segment is one substep: a constant slice of time
+export const DROP_MS = 320; // the holing step, the ball dropping in
 // the speed the engine's safety net budgets a replay at (board units a second)
 export const SHOW_SPEED = 26;
 // How fast the ball crosses the screen, in board units a second, for a chain
@@ -789,7 +790,7 @@ export function makeReplay(E: Live) {
         let knocked = false;
         // (the step into a tunnel is drawn longer than the chain's, to the mouth:
         // at the chain's own speed, at most four times as long)
-        const ms = (drop ? 320 : showMs(run) * (into ? Math.min(4, from.distanceTo(to) / Math.max(run, 1e-3)) : 1)) / speed;
+        const ms = (drop ? DROP_MS : showMs(run) * (into ? Math.min(4, from.distanceTo(to) / Math.max(run, 1e-3)) : 1)) / speed;
         // a roll-back at a tube's mouth: the ball climbs part way into it and
         // slides back down before the path goes on (once per point)
         const back = !jump && i > 0 && rolledBack !== i && rollBackAt(path, i);

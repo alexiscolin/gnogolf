@@ -3,7 +3,8 @@
 // not have yet. Every answer agrees on one clock, the proof's period p:
 // period() is p, now() a time inside it (so the engine never moves the round
 // to another weather), the state and the weather are p's, and a weather past
-// it is refused as the realm refuses it. Answers are checked as the chain's
+// it is refused as the realm refuses it, by every read but simulateRound (the
+// replay, which has no clock). Answers are checked as the chain's
 // are (chain.ts checks); a refusal is the realm's sentence, as from the chain.
 import { checks, RULES, type Chain } from "../chain";
 import type { HoleRow, Vec2 } from "../types";

@@ -25,7 +25,7 @@ const prefs: Feel = (() => {
 export const feel = () => ({ ...prefs });
 export function setFeel<K extends keyof Feel>(k: K, v: Feel[K]) {
   prefs[k] = v;
-  if (k === "sound") ambience(v ? mood : {});
+  if (k === "sound") ambience(mood);
   try { localStorage.setItem(KEY, JSON.stringify(prefs)); } catch {}
 }
 
@@ -200,8 +200,6 @@ const SOUNDS = {
 // fades in and out, a gust of wind now and then (harder in a gale), the odd
 // soft whoosh of snow. Nothing plays in a hidden tab.
 let mood: Mood = {}, bed: { src: AudioBufferSourceNode; g: GainNode; stop?: ReturnType<typeof setTimeout> } | null = null, gusts: ReturnType<typeof setTimeout> | undefined, hushed = false;
-/** Off the course (title, cup and gnome screens) the weather is silent; back on
- *  it, the hole's weather plays again. */
 // ?camlog: every sound asked for, played or not (a test counts them)
 const soundLog: [string, number, number][] | null = camlog() ? [] : null;
 if (soundLog && typeof window !== "undefined") (window as Window & { __soundLog?: typeof soundLog }).__soundLog = soundLog;
@@ -215,6 +213,8 @@ export function freshAudio() {
   void ctx?.close().catch(() => {});
   ctx = null;
 }
+/** Off the course (title, cup and gnome screens) the weather is silent; back on
+ *  it, the hole's weather plays again. */
 export function hush(off: boolean) {
   hushed = !!off;
   ambience(mood);

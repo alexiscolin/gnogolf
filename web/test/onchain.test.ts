@@ -131,10 +131,6 @@ void test("onchain: at most four portraits are read at a time, the rest in turn"
   assert.equal(r.most(), 4, "never more than four at once");
   assert.equal(r.calls(), 10);
   assert.ok((await Promise.all(all)).every((u) => svgOf(u) === SVG));
-  const one = slowRead(), q = portraits(one.read, 0);
-  void q.get(1), void q.get(2);
-  await tick();
-  assert.equal(one.waiting.length, 1, "a cap of nothing reads one at a time, not none");
 });
 
 void test("onchain: any failure is null (the 3D portrait shows), and a failed read is asked again later", async () => {

@@ -22,6 +22,7 @@ void test("loadTakedown: the site's list read for the chain played on (one loade
   assert.deepEqual([...(await loadTakedown(chain, ok))], [`${A}/rude`]);
   assert.deepEqual(asked, ["/takedown.json"]);
   assert.equal((await loadTakedown(chain, () => Promise.resolve(new Response("", { status: 404 })))).size, 0, "no list served: none taken down");
+  await assert.rejects(loadTakedown(chain, () => Promise.resolve(new Response("", { status: 503 }))), "a list the site failed to serve: not read");
   await assert.rejects(loadTakedown(chain, () => Promise.reject(new Error("offline"))));
   await assert.rejects(loadTakedown({ chainId: () => Promise.reject(new Error("down")) }, ok));
 });

@@ -133,6 +133,17 @@ test("loadCard: corrupt JSON in storage reads as an empty card", () => {
   assert.deepEqual(loadCard(), {});
 });
 
+test("loadCard: a hand-edited v2 card keeps only its whole scores, and a finish is still recorded", () => {
+  localStorage.setItem("gnogolf.card.v", "2");
+  localStorage.setItem("gnogolf.card", JSON.stringify({ "garden/1": "4", "garden/2": 3, "garden/3": 2.5, "garden/4": -1 }));
+  assert.deepEqual(loadCard(), { "garden/2": 3 });
+  for (const v of ["7", '"abc"', "null"]) {
+    localStorage.setItem("gnogolf.card", v);
+    assert.deepEqual(loadCard(), {}, v);
+    assert.deepEqual(recordScore("garden/1", 4), { "garden/1": 4 }, v);
+  }
+});
+
 test("recordScore: the latest round on a hole replaces the one before, better or worse", () => {
   recordScore("garden/1", 5);
   assert.deepEqual(loadCard(), { "garden/1": 5 });

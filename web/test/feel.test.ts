@@ -8,6 +8,7 @@ import type { Feel } from "../lib/feel.ts";
 // check what the fakes "sound" like.
 const calls = { osc: 0, gain: 0, filter: 0, bufSrc: 0 };
 const oscs: { frequency: Param }[] = []; // every oscillator made, in order (a tone's pitch)
+const gains: { gain: Param }[] = []; // every gain made, in order (the rain bed's loudness)
 let contexts = 0, closed = 0;
 class Param {
   value = 0;
@@ -23,7 +24,7 @@ class FakeAudioContext {
   destination = {};
   constructor() { contexts++; }
   createOscillator() { calls.osc++; const o = { type: "sine", frequency: new Param(), ...linkable() }; oscs.push(o); return o; }
-  createGain() { calls.gain++; return { gain: new Param(), ...linkable() }; }
+  createGain() { calls.gain++; const g = { gain: new Param(), ...linkable() }; gains.push(g); return g; }
   createBiquadFilter() { calls.filter++; return { type: "", Q: new Param(), frequency: new Param(), ...linkable() }; }
   createBuffer(_ch: number, len: number) { return { getChannelData: () => new Float32Array(len) }; }
   createBufferSource() { calls.bufSrc++; return { buffer: null, loop: false, ...linkable() }; }
@@ -73,6 +74,17 @@ test("setFeel('sound', false/true) gates whether a sound actually plays", () => 
   setFeel("sound", true);
   sound("blip");
   assert.equal(calls.osc, before + 1, "sound back on: plays again");
+});
+
+test("setFeel('sound', false/true) in the rain: the rain fades out, then plays again", () => {
+  ambience({ rain: true });
+  const bed = gains[gains.length - 1];
+  assert.equal(bed.gain.value, 0.06);
+  setFeel("sound", false);
+  assert.equal(bed.gain.value, 0, "sound off: the rain fades out");
+  setFeel("sound", true);
+  assert.equal(bed.gain.value, 0.06, "sound back on: the rain again");
+  ambience({});
 });
 
 test("buzz: vibrates only while the vibe pref is on", () => {

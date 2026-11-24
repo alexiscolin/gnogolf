@@ -167,6 +167,7 @@ void test("dayPoint: where in alias order the UTC day's pick starts (the day's h
   assert.match(dayPoint(day), /^g1[023456789acdefghjklmnpqrstuvwxyz]{13}$/);
   assert.equal(dayPoint(Date.UTC(2026, 9, 7, 23, 59, 59)), dayPoint(day), "all that UTC day");
   assert.ok(new Set(Array.from({ length: 7 }, (_, i) => dayPoint(day + i * 864e5))).size > 1, "it changes from day to day");
+  assert.ok(new Set(Array.from({ length: 60 }, (_, i) => dayPoint(day + i * 864e5)[2])).size > 20, "anywhere in alias order: two months start under most of the 32 first characters");
 });
 
 /** A chain whose DayCandidates pages these rows (sorted by alias, as the realm keeps them), n a page. */

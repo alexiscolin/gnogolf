@@ -73,11 +73,11 @@ export const levelFrom = (rank: number, players: number, n = 5) => Math.max(0, (
 
 /** A rival at the player's level, from such a page: the one just above them (the
  *  one to beat), else just below, then further out; without them on it, the
- *  page's middle first. Never the player, nor one already picked (not). */
-export function levelPick<R extends { player: string }>(rows: readonly R[], me: string | null | undefined, not: readonly string[] = []) {
+ *  page's middle first. Never the player. */
+export function levelPick<R extends { player: string }>(rows: readonly R[], me: string | null | undefined) {
   const at = me ? rows.findIndex((r) => r.player === me) : -1, c = at >= 0 ? at : Math.floor(rows.length / 2);
   for (let d = at >= 0 ? 1 : 0; d <= rows.length; d++)
-    for (const r of [rows[c - d], rows[c + d]]) if (r && r.player !== me && !not.includes(r.player)) return r;
+    for (const r of [rows[c - d], rows[c + d]]) if (r && r.player !== me) return r;
   return null;
 }
 
@@ -93,26 +93,26 @@ export function bestOf(b: Readonly<Record<Mode, number>> | undefined, mode: Mode
   return b && b[m] ? { mode: m, strokes: b[m] } : null;
 }
 
-/** The holes a rival shows off, the finest first (n at most): an ace, else
+/** The holes a rival shows off, the finest first (3 at most): an ace, else
  *  their best against its par (bestOf); the course's order breaks a tie. */
-export function showcases(bests: ReadonlyMap<string, Readonly<Record<Mode, number>>>, holes: readonly { id: string; par: number }[], mode: Mode, n = 3) {
+export function showcases(bests: ReadonlyMap<string, Readonly<Record<Mode, number>>>, holes: readonly { id: string; par: number }[], mode: Mode) {
   const worth = (t: { strokes: number; par: number }) => (t.strokes === 1 ? -Infinity : t.strokes - t.par);
   const all: { id: string; mode: Mode; strokes: number; par: number }[] = [];
   for (const h of holes) {
     const b = bestOf(bests.get(h.id), mode);
     if (b) all.push({ id: h.id, ...b, par: h.par });
   }
-  return all.sort((a, b) => worth(a) - worth(b)).slice(0, n); // (a stable sort: the course's order within a worth)
+  return all.sort((a, b) => worth(a) - worth(b)).slice(0, 3); // (a stable sort: the course's order within a worth)
 }
 
-/** A hole seen from above in a round window (0..120, centre 60, radius r),
+/** A hole seen from above in a round window (0..120, centre 60, radius 56),
  *  framed on what happens (fit: the tee, the cup, the path; walls past the
  *  ring are cut): its middle in the window's, as big as its corners allow (a
  *  short one no more than 8 to a board unit), the tee on the left (a wide
  *  one) or at the foot (a tall one), turned half round otherwise. */
-export function mapView(fit: readonly Vec2[], { start, cup }: { start: Vec2; cup: Vec2 }, r = 56) {
+export function mapView(fit: readonly Vec2[], { start, cup }: { start: Vec2; cup: Vec2 }) {
   const xs = fit.map((p) => p[0]), ys = fit.map((p) => p[1]), x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0, h = Math.max(...ys) - y0;
-  const k = Math.min((1.84 * r) / Math.hypot(w + 6, h + 6), 8), s = (w >= h ? cup[0] < start[0] : cup[1] > start[1]) ? -k : k; // (3 units clear all round)
+  const k = Math.min((1.84 * 56) / Math.hypot(w + 6, h + 6), 8), s = (w >= h ? cup[0] < start[0] : cup[1] > start[1]) ? -k : k; // (3 units clear all round)
   const at = ([x, y]: Vec2): Vec2 => [+(60 + (x - x0 - w / 2) * s).toFixed(1), +(60 + (y - y0 - h / 2) * s).toFixed(1)];
   return { at, k };
 }

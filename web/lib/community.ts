@@ -13,10 +13,9 @@
 // a hole not yet judged is not shown. A hole whose data, or the rules, cannot
 // be read right now has no verdict at all (verdictOf throws, nothing kept):
 // it is said not to load, with Try again, never to break the rules.
-import { isVersion, type Chain } from "./chain";
+import { isVersion, whichOf, type Chain, type Which } from "./chain";
 import { authorOf } from "./builder/holes";
-import { bytesOf, sha256 } from "./sha";
-import { fnv1a } from "./sky";
+import { bytesOf, sha256, sha256Bytes } from "./sha";
 import { takenDown } from "./takedown";
 import type { DayRow, HoleRow } from "./types";
 import type { Verdict } from "./builder/verdict";
@@ -32,11 +31,6 @@ export const VERDICT_RULES = 1;
 export const VERDICT_KEY = "gnogolf.verdict";
 /** What the game says of a community hole it will not show. */
 export const NOT_BUILDER = "This hole was not made with the Builder rules.";
-
-/** Which chain's realm: what this browser keeps of a hole is kept under it (a version's verdict, when an alias was first
- *  published), its id, its genesis (a chain reseeded under the same id is another) and the realm. */
-type Which = Pick<Chain, "chainId" | "genesis" | "realm">;
-const whichOf = async (chain: Which) => `${await chain.chainId()}|${await chain.genesis()}|${chain.realm}`;
 
 /** What judging reads of a chain: a hole's data, and which chain's realm it is (a version's verdict is kept by its id there). */
 export type Judging = Pick<Chain, "holeData"> & Which;
@@ -132,11 +126,11 @@ export const aliasOf = (h: Pick<HoleRow, "id" | "slot">) => h.slot || h.id.repla
 
 // the characters of an address after its "g1" (bech32's), in their byte order
 const BECH32 = "023456789acdefghjklmnpqrstuvwxyz";
-/** Where in alias order the UTC day's pick starts: the day's hash (sky.ts fnv1a, the realm's) spelled as an address
+/** Where in alias order the UTC day's pick starts: the day's hash (sha-256) spelled as an address
  *  ("g1" and 13 of its characters), so any alias, of any author, is as likely to follow it. */
 export function dayPoint(now: number): string {
-  const h = fnv1a(new Date(now).toISOString().slice(0, 10));
-  return "g1" + Array.from({ length: 13 }, (_, i) => BECH32[Number((h >> BigInt(5 * (12 - i))) & 31n)]).join("");
+  const h = sha256Bytes(new TextEncoder().encode(new Date(now).toISOString().slice(0, 10)));
+  return "g1" + Array.from(h.subarray(0, 13), (b) => BECH32[b & 31]).join("");
 }
 
 /** How many candidates one DayCandidates read takes. */

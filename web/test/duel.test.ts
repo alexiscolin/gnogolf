@@ -80,12 +80,10 @@ test("a rival at your level is read from a page around your place, or the board'
   assert.equal(levelFrom(0, 3), 0);
 });
 
-test("your level: the one just above you, else below; never you nor a pick already made", () => {
+test("your level: the one just above you, else below; never you", () => {
   assert.equal(levelPick(row("a", "b", "me", "d"), "me")?.player, "b");
   assert.equal(levelPick(row("me", "b", "c"), "me")?.player, "b"); // the first: the one below
-  assert.equal(levelPick(row("champ", "me", "c"), "me", ["champ"])?.player, "c");
   assert.equal(levelPick(row("a", "b", "c", "d", "e"), null)?.player, "c"); // no place: the middle
-  assert.equal(levelPick(row("a", "b", "c"), "zz", ["b"])?.player, "a");
   assert.equal(levelPick(row("me"), "me"), null);
 });
 
@@ -103,7 +101,7 @@ test("the hole shown off: an ace first, else the best against par, in the aim mo
   assert.deepEqual(showcases(b([["h1", 4, 2]]), holes, "pro"), [{ id: "h1", mode: "pro", strokes: 4, par: 3 }]); // the aim mode's, worse as it is
   assert.deepEqual(showcases(b([]), holes, "pro"), []);
   assert.deepEqual(showcases(b([["gone", 1, 1]]), holes, "pro"), []); // a hole no longer on the course
-  assert.equal(showcases(b([["h1", 2, 2], ["h2", 3, 3], ["h3", 1, 1]]), holes, "pro", 2).length, 2); // n at most
+  assert.equal(showcases(b([["h1", 2, 2], ["h2", 3, 3], ["h3", 1, 1], ["h4", 2, 2]]), [...holes, { id: "h4", par: 3 }], "pro").length, 3); // 3 at most
 });
 
 test("a hole's map: its middle in the window's, the tee to the left or the foot, the path one line", () => {

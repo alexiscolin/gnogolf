@@ -6,12 +6,15 @@
 // onChange, and the interface is free to be whatever it likes.
 //
 // Its parts: engine/camera.ts (where the camera goes), engine/aim.ts (the
-// preview dots), engine/replay.ts (walking the chain's path), and
-// engine/probes.ts (the ?camlog test hooks). This file holds the game's state,
-// the frame loop, loading, the weather and the clock, input and the shot.
+// preview dots), engine/replay.ts (walking the chain's path), engine/rival.ts
+// (a duel's ghost), engine/clip.ts (the shot clip), engine/pace.ts (frame
+// pacing and the graphics tier), engine/types.ts (the shapes they share), and
+// engine/probes.ts with engine/audit.ts (the ?camlog test hooks). This file
+// holds the game's state, the frame loop, loading, the weather and the clock,
+// input and the shot.
 
 import * as THREE from "three";
-import { isTouch, reducedMotion } from "./device";
+import { isTouch } from "./device";
 import { buzz, sound, ambience, setSilent } from "./feel";
 import { makeWeather } from "./scene/weather";
 import { makeCauses } from "./scene/cause";
@@ -25,7 +28,7 @@ import {
 } from "./scene";
 import { BALL_R, plainSkins } from "./terrain";
 import { makeCamera } from "./engine/camera";
-import { pace, slowFrames, capped30, frameMs, frameStats, SLOW_KEY } from "./engine/pace";
+import { pace, probed, slowFrames, capped30, frameMs, frameStats, SLOW_KEY } from "./engine/pace";
 import { register, track, trackError } from "./analytics";
 import { makeReplay, outlived, MS_PER_STEP, SHOW_SPEED } from "./engine/replay";
 import { makeAimer, steerAim } from "./engine/aim";
@@ -209,8 +212,8 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     if (lists.list !== g.list || lists.world !== g.world) {
       lists.list = g.list;
       lists.world = g.world;
-      lists.holes = g.list ? inWorld() : [];
-      lists.worlds = g.list ? g.list.reduce<Record<string, number>>((m, h) => ((m[cupOf(h)] = (m[cupOf(h)] || 0) + 1), m), {}) : {};
+      lists.holes = inWorld();
+      lists.worlds = g.list.reduce<Record<string, number>>((m, h) => ((m[cupOf(h)] = (m[cupOf(h)] || 0) + 1), m), {});
     }
     return lists;
   };
@@ -222,28 +225,27 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     void publish();
   };
   function publish() {
-    if (!alive) return false;
+    if (!alive) return;
     const snap = snapshot();
     let changed = !told, hotOnly = !!told;
     if (told) for (const k in snap) {
       const key = k as keyof Snapshot;
       if (snap[key] !== told[key]) (changed = true), HOT.has(key) || (hotOnly = false);
     }
-    if (!changed) return true;
+    if (!changed) return;
     clearTimeout(toldLater);
     const now = performance.now();
     if (hotOnly && g.flying && now - toldAt < HOT_MS) {
       toldLater = setTimeout(publish, HOT_MS - (now - toldAt));
-      return true;
+      return;
     }
     told = snap;
     toldAt = wake = now;
     onChange(snap);
-    return true;
   }
   const snapshot = (): Snapshot => ({
       holes: perList().holes,
-      allHoles: g.list || NONE, // every cup's, for the cup totals and the grand slam
+      allHoles: g.list, // every cup's, for the cup totals and the grand slam
       world: g.world,
       linked: !!g.linked, // the page's link named a hole that exists
       ready: !!g.course && warming !== loads, // the hole is built and its shaders ready: the curtain may open
@@ -293,8 +295,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       errorKind: (g.error && g.errorKind) || null,
       failed: g.error ? g.failed || null : null, // the hole a load failed on (Try again)
       view: g.view,
-      gfx: gfxMode, // the graphics setting, and what it gives on this device
-      tier,
+      tier, // what the graphics setting gives on this device
       ...rival.state(), // a duel's rival: their strokes replayed so far (null: no duel), and their ball in
       done: !!g.done, // no more shots (holed, even before the banner)
     });
@@ -331,17 +332,12 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     return was !== tier;
   }
   // only busy frames count (an idle scene may be drawn at 10 or 30 fps on purpose)
-  const probe = { t0: 0, prev: 0, gaps: [] as number[], done: false, slow: false };
+  const probe = { prev: 0, gaps: [] as number[], done: false, slow: false };
   function probeFrame(now: number, busy: boolean) {
-    if (tier === "low" || probe.done) return;
-    if (!busy) return void (probe.prev = 0);
-    if (!probe.t0) probe.t0 = now;
-    if (probe.prev) probe.gaps.push(now - probe.prev);
-    probe.prev = now;
-    if (now - probe.t0 < 2000 && probe.gaps.length < 90) return;
+    if (tier === "low" || probe.done || !probed(probe, now, busy)) return;
     probe.done = true;
-    if (probe.gaps.length > 10) track("perf", { tier: gfxMode, slow: slowFrames(probe.gaps) });
-    if (probe.gaps.length > 10 && slowFrames(probe.gaps) && gfxMode === "auto") {
+    track("perf", { tier: gfxMode, slow: slowFrames(probe.gaps) });
+    if (slowFrames(probe.gaps) && gfxMode === "auto") {
       probe.slow = true;
       // and for the next visits; frames held steady at 30 fps (a battery saver, or vsync on a GPU just
       // too slow for 60) only for this one: probed again next visit
@@ -471,7 +467,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       // (kept within the pieces' period, as the tick sent is: past the 1,024
       // ticks the chain counts, what is shown is what the ball meets)
       const L = everyOf();
-      clock = (clock + elapsed * (reduced ? 1.5 : TICKS_PER_S)) % (L || Infinity);
+      clock = (clock + elapsed * (motion ? TICKS_PER_S : 1.5)) % (L || Infinity);
       showClock(clock);
       // aiming at moving pieces: the dots follow them
       if (dragging && everyOf() && aimer.shows() && now - lastTickPreview > 250) (lastTickPreview = now), preview();
@@ -535,8 +531,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     }
     mood.tick(now);
     if (confetti && !confetti.step(dt)) dropConfetti();
-    // nothing to see behind the title and picker screens, which are opaque
-    if (g.started) renderer.render(scene, camera);
+    renderer.render(scene, camera);
     cupPip();
   }
 
@@ -812,7 +807,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       if (n) {
         const ahead = await Promise.race([next, new Promise<null>((r) => setTimeout(() => r(null), 0))]);
         if (ahead) ex = { ...ex, ahead };
-        else void next.then(() => extrasFor === key && alive && ((extrasFor = ""), void showExtras()), () => {}); // (then with it)
+        else void next.then((ahead) => ahead.some(Boolean) && drawExtras(key, { ...ex, ahead }), () => {}); // (then with it)
       }
     } catch {
       // asked again in a moment: the stroke being aimed is played with its
@@ -820,6 +815,10 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       if (extrasFor === key) (extrasFor = ""), setTimeout(() => alive && !g.flying && void showExtras(), 2000);
       return;
     }
+    drawExtras(key, ex);
+  }
+  // the stroke's pieces drawn, unless another stroke's were asked for since
+  function drawExtras(key: string, ex: Extras) {
     if (extrasFor !== key || !alive || !g.course) return;
     sawPulse(ex);
     // this stroke's weather: the hole's, and whatever the stroke brings
@@ -886,12 +885,11 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   // a hole looked at past its period, no stroke played: the HUD's weather follows
   const staleTimer = setInterval(() => g.s && !g.flying && !g.shots.length && stale() && void freshWeather(), 5000);
 
-  // The timed pieces' clock: one substep per MS_PER_STEP, running all the
-  // time. A shot is let go at a tick of it and the chain plays the stroke from
-  // there, so what is on screen when you shoot is what the ball meets. It
-  // stops during a replay, where the path's own steps drive it.
+  // The timed pieces' clock: TICKS_PER_S substeps a second at rest and while
+  // aiming. A shot is let go at a tick of it and the chain plays the stroke from
+  // there, so what is on screen when you shoot is what the ball meets. A
+  // replay drives it by the path's own steps.
   let clock = 0, lastTickPreview = 0;
-  const reduced = reducedMotion();
   let everyL = 0; // the timed pieces' common period, kept per round
   const everyOf = () => everyL;
   const everyNow = () => {
@@ -920,7 +918,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   function newRound(ask = true) {
     sayFps(); // the round before's
     // a new round starts behind the gnome, looking at the cup: no easing in from the last pose
-    g.lastAim = null;
     cam.resetFollow();
     cam.jump(); // a new round: the camera starts in its framing, not eased in from the last hole
     g.roundMode = null;
@@ -995,7 +992,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     get clock() { return clock; },
     get cut() { return cut; },
     get mode() { return mode; },
-    get strokeZones() { return strokeZones; },
     get strokeExtras() { return strokeEx; },
     get extras() { return extras; },
   };
@@ -1027,17 +1023,17 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   let rect: DOMRect | null = null;
   const dropRect = () => (rect = null);
   window.addEventListener("resize", dropRect);
-  function boardPoint(ev: { clientX: number; clientY: number }) {
+  function boardPoint(cx: number, cy: number) {
     const r = rect || (rect = canvas.getBoundingClientRect());
-    const x = ((ev.clientX - r.left) / r.width) * 2 - 1;
-    const y = -((ev.clientY - r.top) / r.height) * 2 + 1;
+    const x = ((cx - r.left) / r.width) * 2 - 1;
+    const y = -((cy - r.top) / r.height) * 2 + 1;
     ray.setFromCamera(ndc.set(x, y), camera);
     return ray.ray.intersectPlane(plane, hit) ? { x: hit.x, y: hit.z } : null;
   }
 
   // A slingshot: press anywhere, pull back, let go. The shot flies away from
   // the pull, as if the elastic snapped into the gnome.
-  let press: { clientX: number; clientY: number; x: number; y: number; yaw?: number; dir?: number | null; lx?: number; ly?: number } | null = null;
+  let press: { x: number; y: number; yaw?: number; lx?: number; ly?: number } | null = null;
 
   function onMove(ev: PointerEvent) {
     if (!dragging || g.flying || !press) return;
@@ -1061,7 +1057,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     }
     // both ends through the camera as it is now: an easing camera moves the
     // board under a still hand, and must not turn the shot
-    const from = boardPoint(press), to = boardPoint(ev);
+    const from = boardPoint(press.x, press.y), to = boardPoint(ev.clientX, ev.clientY);
     if (!from || !to) return;
     const dir = Math.atan2(from.y - to.y, from.x - to.x);
     aimAt(pullShot(px, window.innerWidth, window.innerHeight, dir, MAX_POWER));
@@ -1072,7 +1068,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     if (!dragging || g.flying || !press || press.yaw == null || g.cam !== "third") return;
     const down = Math.max(0, (press.ly ?? press.y) - press.y);
     const a = steerAim(press.yaw, (press.lx ?? press.x) - press.x, down, dt, window.innerWidth, window.innerHeight);
-    (press.yaw = a.yaw), (press.dir = a.dir);
+    press.yaw = a.yaw;
     if (a.spin !== (g.spin || 0)) (g.spin = a.spin), void publish();
     if (!a.shot) {
       // (at the start's height: no power, the aim still turning)
@@ -1122,9 +1118,9 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     g.aiming = true;
     ghosts(true);
     shot = { angle: 0, power: 0 };
-    press = { clientX: ev.clientX, clientY: ev.clientY, x: ev.clientX, y: ev.clientY };
+    press = { x: ev.clientX, y: ev.clientY };
     // third person: the heading the pull is measured from, frozen for the pull
-    if (g.cam === "third" && g.view === "ball") (Object.assign(press, { yaw: cam.yaw(), dir: cam.yaw() }), (shot.angle = cam.yaw()));
+    if (g.cam === "third" && g.view === "ball") press.yaw = shot.angle = cam.yaw();
     // no dots until the chain has answered for this pull
     if (aim.userData.dots) aim.userData.dots.count = 0;
     else for (const d of aim.children) d.visible = false;
@@ -1171,7 +1167,9 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     else if (ev.key === "Escape" && g.aiming) return void endPull();
     else if ((ev.key === " " || ev.key === "Enter") && g.aiming) {
       ev.preventDefault();
-      endPull(true);
+      const fires = shot.power > 0.3; // (as a pull let go: a press held with no pull shoots nothing)
+      endPull(fires);
+      if (!fires) return;
       const k = pullShot(0, 1, 1, shot.angle, MAX_POWER); // the same rounding as a pull
       return void fire(k.deg, Math.round(shot.power * 100) / 100);
     } else return;
@@ -1220,9 +1218,10 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     notch = n;
   };
 
-  // Whatever happens in a shot — the chain erring, a replay throwing, a round
-  // changing mid-flight — the slingshot comes back: flying, aiming and the
-  // drag are always reset when it is over.
+  // Whatever happens in a shot — the chain erring, a replay throwing — the
+  // slingshot comes back: flying, aiming and the drag are reset when it is
+  // over. A round changed mid-flight has reset them itself, and may already
+  // be aimed: it is left alone.
   async function fire(angleDeg: number, power: number) {
     if (g.flying || !g.id || g.done || !g.course) return; // no island drawn, nothing to play on
     const round = g.round;
@@ -1234,11 +1233,11 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       console.warn("gnogolf: a shot failed", err);
       if (round === g.round) (g.error = errText(err)), (g.errorKind = "shot");
     } finally {
-      dragging = false;
-      g.aiming = false;
-      press = null;
-      if (round === g.round) g.flying = false;
-      aimable();
+      if (round === g.round) {
+        dragging = g.aiming = g.flying = false;
+        press = null;
+        aimable();
+      }
       void publish();
     }
   }
@@ -1295,7 +1294,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     }
     if (!g.shots.length) g.roundMode = mode; // this round is played, and recorded, in this mode
     const flew = performance.now();
-    g.lastAim = (angleDeg * Math.PI) / 180;
     g.shots = [...g.shots, one]; // a new list: what changed is seen by reference
     g.pts = [...g.pts, res.path.length];
     g.works = [...g.works, res.work || 0];
@@ -1365,10 +1363,11 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     g.ball = { x: last[0], y: last[1] };
     g.flying = false;
     // the duel's ghost answers among this stroke's pieces; then a timed hole
-    // changes for the next stroke (at once without a duel), its pieces asked meanwhile
-    if (g.s && g.s.timed) askExtras();
+    // changes for the next stroke (at once without a duel), its pieces asked
+    // meanwhile; holed, there is no next stroke
+    if (!res.holed && g.s && g.s.timed) askExtras();
     const answered = rival.turn(g.shots.length - 1, res.holed);
-    void answered.finally(() => (aimable(), void showExtras()));
+    void answered.finally(() => (aimable(), res.holed || void showExtras()));
     // a jump or a bounce may have ended mid-air: put him on the ground
     if (!res.holed) ball.position.set(last[0], BALL_R + ground(last[0], last[1]), last[1]);
     g.facing = Math.PI / 2; // at rest he looks at the player
@@ -1424,7 +1423,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
    * 3rd of that cup). null when it names nothing on this chain.
    */
   function linked(link: Link | null): HoleRow | null {
-    if (!link || !g.list) return null;
+    if (!link) return null;
     // an archived hole too, by its id; an alias (a slot, "<address>/<slug>")
     // is its current version, and so is a course hole's old realm id
     if ("id" in link) {
@@ -1511,7 +1510,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   const api = {
     start,
     load,
-    /** The hole a cup and place name ({ cup, n }), or null. */
+    /** The hole a link names (its id, or a cup and a place in it), or null. */
     find: (link: Link) => {
       const h = linked(link);
       // (an archived id past what Holes() lists: the load will ask the chain)
@@ -1522,7 +1521,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     /** Play a world: its first hole, and its holes in the menu. */
     setWorld(w: string) {
       loadWorld(w).catch(() => {}); // fetched while the player picks a gnome
-      if (!g.list) return;
       // from its first hole, wherever the last round stopped (a cup entered is a new start)
       const first = inWorld(w)[0];
       g.world = w;
@@ -1645,7 +1643,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     setGfx(m: string) {
       gfxMode = gfxOf(m);
       if (m === "auto") try { localStorage.removeItem(SLOW_KEY); } catch {} // a fresh look at the device
-      Object.assign(probe, { t0: 0, prev: 0, gaps: [], done: false, slow: false });
+      Object.assign(probe, { prev: 0, gaps: [], done: false, slow: false });
       if (setTier() && g.id && !g.flying && !g.shots.length) void load(g.id);
       void publish();
     },

@@ -24,6 +24,10 @@ test("siteURL: the page's own site, from its root (a hole's page too)", () => {
   assert.equal(siteURL("?hole=x/v1"), "https://gnogolf.xyz/?hole=x/v1", "so does the Builder");
   at("https://ipfs.io/ipfs/bafy/build/");
   assert.equal(siteURL("?hole=x/v1"), "https://ipfs.io/ipfs/bafy/?hole=x/v1");
+  at("https://gnogolf.xyz/g/12/");
+  assert.equal(siteURL("g/12/"), "https://gnogolf.xyz/g/12/", "so does the shop");
+  at("https://gnogolf.xyz/g/");
+  assert.equal(siteURL("g/?who=x"), "https://gnogolf.xyz/g/?who=x");
 });
 
 test("siteURL: never a local dev address, the public one instead", () => {

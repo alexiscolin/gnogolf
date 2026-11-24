@@ -19,14 +19,13 @@ import { BALL_R } from "../terrain";
 import { CLIP, clipWindow, skyStops } from "../clip";
 import { drawOutro, drawTerm } from "../brand";
 import { makeCamera } from "./camera";
-import { makeReplay, stepsMs } from "./replay";
+import { makeReplay, stepsMs, DROP_MS } from "./replay";
 import type { LitScene } from "../scene/data";
 import type { Confetti } from "../scene/fx";
 import type { Vec2 } from "../types";
 import type { GameState, Live } from "./types";
 
 const W = 1280, H = 720, FPS = 30;
-const DROP_MS = 320; // the holing step, the ball dropping in (the replay's own)
 
 /** What the engine gives the clip: the holing stroke and the live scene's hooks. */
 export interface ClipOf {
@@ -78,9 +77,9 @@ export function recordClip({ E, stroke, gnome, showClock, hide, card, term, chal
   const C: Live = {
     g: cg, camera, scene: own, chain: E.chain, aim: E.aim, band: E.band, causes, ground, lift: E.lift, zones: E.zones, log: false, quiet: true,
     mood: { joy() {}, shake() {}, hop: () => 0, tick() {} },
-    publish: () => true, screen: () => view, tickNow: () => null, landing: () => null,
+    publish() {}, screen: () => view, tickNow: () => null, landing: () => null,
     stop: () => cut++, showAt: (t) => (clock = t),
-    ball, dragging: false, shot: E.shot, mode: E.mode, strokeZones: E.strokeZones,
+    ball, dragging: false, shot: E.shot, mode: E.mode,
     get clock() { return clock; },
     get cut() { return cut; },
   };

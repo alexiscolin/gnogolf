@@ -139,6 +139,35 @@ test("safeEndpoint keeps a local http(s) override, or gno.land's own https, and 
   assert.equal(safeEndpoint("http://127.0.0.1:36657", DEFAULT_RPC, true), DEFAULT_RPC);
 });
 
+test("safeEndpoint: a production build on a public address keeps its own node, whatever the link says; on this machine it takes it", () => {
+  const env0 = process.env.NODE_ENV, g = globalThis as { location?: unknown };
+  try {
+    (process.env as Record<string, string>).NODE_ENV = "production";
+    g.location = { hostname: "gnogolf.xyz" };
+    assert.equal(safeEndpoint("https://rpc.gno.land", DEFAULT_RPC), DEFAULT_RPC);
+    g.location = { hostname: "localhost" };
+    assert.equal(safeEndpoint("https://rpc.gno.land", DEFAULT_RPC), "https://rpc.gno.land");
+  } finally {
+    if (env0 === undefined) delete process.env.NODE_ENV; else (process.env as Record<string, string>).NODE_ENV = env0;
+    delete g.location;
+  }
+});
+
+test("safeEndpoint: the build's own node and NEXT_PUBLIC_ALLOWED_HOSTS' hosts are taken over https, nothing that only starts like one", () => {
+  try {
+    process.env.NEXT_PUBLIC_ALLOWED_HOSTS = "rpc.example.org, web.example.org";
+    process.env.NEXT_PUBLIC_RPC = "https://node.example.net";
+    assert.equal(safeEndpoint("https://rpc.example.org", DEFAULT_RPC), "https://rpc.example.org");
+    assert.equal(safeEndpoint("https://web.example.org", DEFAULT_RPC), "https://web.example.org");
+    assert.equal(safeEndpoint("https://node.example.net", DEFAULT_RPC), "https://node.example.net");
+    assert.equal(safeEndpoint("http://rpc.example.org", DEFAULT_RPC), DEFAULT_RPC);
+    assert.equal(safeEndpoint("https://rpc.example.org.evil.com", DEFAULT_RPC), DEFAULT_RPC);
+  } finally {
+    delete process.env.NEXT_PUBLIC_ALLOWED_HOSTS;
+    delete process.env.NEXT_PUBLIC_RPC;
+  }
+});
+
 test("pullShot rounds power to maxPower and wraps the angle into [0, 360)", () => {
   const rest = pullShot(0, 800, 600, 0);
   assert.equal(rest.deg, 0);
@@ -256,6 +285,17 @@ test("chainId, now and sync follow the node's clock skew", async () => {
   const skew = await chain.sync();
   assert.ok(skew > 4000 && skew < 6000, `skew ${skew} should be roughly 5000`);
   assert.ok(Math.abs(chain.now() - (before + 5000)) < 1000);
+});
+
+test("chainId: a node that does not answer /status, or answers without a result, is down; a failure asked again", async () => {
+  const chain = makeChain();
+  let reply: unknown = { __status: 502 };
+  setFetch(() => reply);
+  await assert.rejects(chain.chainId(), (e: unknown) => errorKind(e) === "down");
+  reply = {};
+  await assert.rejects(chain.chainId(), (e: unknown) => errorKind(e) === "down");
+  reply = statusReply("dev", new Date().toISOString());
+  assert.equal(await chain.chainId(), "dev");
 });
 
 test("roundURL links a named player's round on a hole, # for a bad hole id or address", () => {
@@ -558,17 +598,17 @@ test("dayCandidates: DayCandidates' page as asked (after, limit), each row a hol
 });
 
 // ------------------------------------------------------------ boards, and the mode guard
-test("leaderboard defaults to assisted mode, and normalizes anything that isn't 'pro'", async () => {
+test("courseLeaderboard defaults to assisted mode, and normalizes anything that isn't 'pro'", async () => {
   const chain = makeChain();
-  setFetch((url) => { assert.ok(decoded(url).expr.includes('Leaderboard("assisted")')); return qevalReply(BOARD_REPLY); });
-  assert.equal((await chain.leaderboard()).rows[0].player, ADDR1);
-  await chain.leaderboard("nonsense-mode"); // still "assisted": the handler above would throw on anything else
+  setFetch((url) => { assert.ok(decoded(url).expr.includes('CourseLeaderboard("assisted", 0, 10)')); return qevalReply(COURSE_BOARD_REPLY); });
+  assert.equal((await chain.courseLeaderboard()).rows[0].player, ADDR1);
+  await chain.courseLeaderboard(0, 10, "nonsense-mode"); // still "assisted": the handler above would throw on anything else
 });
 
-test("leaderboard sends 'pro' through unchanged", async () => {
+test("courseLeaderboard sends 'pro' through unchanged", async () => {
   const chain = makeChain();
-  setFetch((url) => { assert.ok(decoded(url).expr.includes('Leaderboard("pro")')); return qevalReply({ ...BOARD_REPLY, mode: "pro" }); });
-  await chain.leaderboard("pro");
+  setFetch((url) => { assert.ok(decoded(url).expr.includes('CourseLeaderboard("pro", 0, 10)')); return qevalReply({ ...COURSE_BOARD_REPLY, mode: "pro" }); });
+  await chain.courseLeaderboard(0, 10, "pro");
 });
 
 test("bests truncates a player list to 50 names before sending it", async () => {

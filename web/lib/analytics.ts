@@ -149,7 +149,8 @@ export function optOut() {
   off = true;
   try { localStorage.setItem(OFF, "1"); } catch {}
   queue.length = 0;
-  if (ph) (ph.opt_out_capturing(), ph.reset(true));
+  // (never reset(): it forgets the opt-out too; opt_out_persistence_by_default takes the id away)
+  if (ph) ph.opt_out_capturing();
   // (this host's only, no domain: cross_subdomain_cookie is off; its opt-out one too, OFF says it)
   try {
     for (const c of document.cookie.split(";")) {
@@ -212,8 +213,11 @@ export function failure(err: unknown) {
 
 const G1 = /g1[0-9a-z]{38}/g; // a gno.land address (chain.ts ADDR), anywhere in a string
 // what a URL keeps of its query: where in the game, never who (by=, friend=:
-// an address) nor a share's text (a network's intent link, the referrer's)
+// an address; a held gnome's id, gnome=t<id>: its owner) nor a share's text
+// (a network's intent link, the referrer's)
 const KEEP = new Set(["cup", "hole", "gnome", "screen", "src"]);
+/** A gnome as it may leave: the game's by its id, a held one (lib/gnomes/wear.ts tokenSkin) as "token". */
+export const gnomeWord = (id: string) => (/^t\d/.test(id) ? "token" : id);
 /** A string as it may leave: URLs keep only KEEP; addresses, gno.land names (nym-…) and what follows an "address(" go. */
 // free: a player's own words (the feedback's): addresses, names and a key's hex go; a recovery phrase only
 // when the words are nothing else (a sentence of twelve plain words is no phrase)
@@ -222,6 +226,8 @@ export function scrub(v: string, free = false) {
     try {
       const u = new URL(v);
       for (const k of [...u.searchParams.keys()]) if (!KEEP.has(k)) u.searchParams.delete(k);
+      const gnome = u.searchParams.get("gnome");
+      if (gnome) u.searchParams.set("gnome", gnomeWord(gnome));
       v = u.href;
     } catch {}
   v = v
@@ -230,7 +236,7 @@ export function scrub(v: string, free = false) {
     .replace(/address\(.*/gs, "address(…)");
   // a net for what never should pass here (the page holds no key): a private key's hex, a recovery phrase
   v = v.replace(/\b(?:0x)?[0-9a-f]{64,}\b/gi, "hex…");
-  return free ? v.replace(/^\s*(?:[a-z]{3,8}\s+){11,23}[a-z]{3,8}\s*$/, "words…") : v.replace(/\b(?:[a-z]{3,8}\s+){11,}[a-z]{3,8}\b/g, "words…");
+  return free ? v.replace(/^\s*(?:[a-z]{3,8}\s+){11,23}[a-z]{3,8}\s*$/i, "words…") : v.replace(/\b(?:[a-z]{3,8}\s+){11,}[a-z]{3,8}\b/gi, "words…");
 }
 const deep = (v: unknown, free = false): unknown =>
   typeof v === "string" ? scrub(v, free) : Array.isArray(v) ? v.map((x) => deep(x, free)) : v && typeof v === "object" && !(v instanceof Date) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x, free || k.startsWith("$survey_response") || k === "$survey_questions")])) : v;

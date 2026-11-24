@@ -9,7 +9,7 @@ import { isTouch } from "@/lib/device";
 import { camlog } from "@/lib/testhooks";
 import { GNOMES, gnomeById, cheer, motion, knowGnome, setRivalGnome, loadWardrobe } from "@/lib/scene";
 import { NOT_BUILDER } from "@/lib/community";
-import { buildRpc, buildWeb, safeEndpoint, isHoleId, isAddress, errorKind, BYTE_PRICE, REALM_PATH, RULES, roundShots, wait, type Chain } from "@/lib/chain";
+import { isHoleId, isAddress, errorKind, BYTE_PRICE, REALM_PATH, RULES, roundShots, wait, type Chain } from "@/lib/chain";
 import { HOT, type ErrorKind, type GfxMode } from "@/lib/engine/types";
 import { savedGfx, saveGfx } from "@/lib/engine/pace";
 import type { Skin } from "@/lib/scene/gnome";
@@ -41,7 +41,7 @@ import { messageOf, holeLink, parHere, HONEST, suggestName, saveOf, pendingOf, s
 import { clipName } from "@/lib/clip";
 import { Boards, FullBoard, Podium, NameForm, nameOnce, useNameCheck, useRankNudge, useSavedPlace, type BoardProps, type NameCheck } from "@/components/Leaderboard";
 import { ADENA_URL, FAUCET, GNOT_URL, networkOf, OTHER_URL } from "@/lib/network";
-import { register, track, trackLeaving, trackError, once, failure, saveBlock, cardHoles, WALLET_STEPS, type Events, type Play, type RivalKind, type ShareKind, type WalletFrom } from "@/lib/analytics";
+import { register, track, trackLeaving, trackError, once, failure, saveBlock, cardHoles, gnomeWord, WALLET_STEPS, type Events, type Play, type RivalKind, type ShareKind, type WalletFrom } from "@/lib/analytics";
 import { savedCam, hadGnome, savedGnome, saveGnome, earned, remember, badgesAt, badgesEarned, forgetBadges, rememberBadges, seeWeather, weathersSeen, minesHinted, minesHintSaid } from "@/lib/prefs";
 import { darkGallery, minesOrder } from "@/lib/scene/data";
 import { SHOP, SHOP_LINE, pick, pickOf } from "@/lib/gnomes/door";
@@ -150,9 +150,10 @@ function useConfig() {
     // the shop's pages (app/g): /g/ its gallery, /g/<id>/ a gnome, /g/<kind>/ an earned one; ?who= a player's gnomes
     const [, gp] = SHOP ? /^\/g(?:\/([a-z0-9]{1,16}))?\/?$/.exec(window.location.pathname) || [] : [];
     const onShop = SHOP && /^\/g(\/|$)/.test(window.location.pathname);
+    const { rpc, web } = endpoints(window.location.search);
     setCfg({
-      rpc: safeEndpoint(p.get("rpc"), buildRpc()),
-      web: safeEndpoint(p.get("web"), buildWeb()),
+      rpc,
+      web,
       // a link to a hole: ?cup=island&hole=3 (its place in the cup), or its
       // id (?hole=garden/7/v2, a slot's current version ?hole=garden/7, a
       // community or realm hole's id); &gnome= the sharer's gnome
@@ -1553,7 +1554,7 @@ export default function Golf() {
   const holesNow = cardHoles(Object.keys(card).length), savedAny = Object.keys(onChainCard).length > 0;
   useEffect(() => register({ card_holes: holesNow, saved_any: savedAny }), [holesNow, savedAny]);
   useEffect(() => {
-    register({ aim, cam: camNow, gnome, adena: hasAdena(), connected: !!account, wallet_on_node: ourNode, chain: chainName || null, network: cfg ? networkOf(cfg.rpc) : null, hole: playing ? holeId : null, cup: playing ? world : null });
+    register({ aim, cam: camNow, gnome: gnomeWord(gnome), adena: hasAdena(), connected: !!account, wallet_on_node: ourNode, chain: chainName || null, network: cfg ? networkOf(cfg.rpc) : null, hole: playing ? holeId : null, cup: playing ? world : null });
   }, [aim, camNow, gnome, account, ourNode, chainName, cfg, playing, holeId, world]);
   // the screen in view, the ones the address bar does not follow (the sheets, the cards) included
   const view = feedbackOpen ? "feedback" : support ? "support" : rules ? "rules" : about ? "about" : board ? "boards" : badgesOpen ? "badges" : cardOpen ? "card" : real ? "wallet" : cupWon && cupWon.open ? "victory" : playing && holed ? "finished" : screen;

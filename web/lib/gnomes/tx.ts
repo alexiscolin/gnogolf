@@ -2,8 +2,8 @@
 // layer's own (lib/adena.ts: send, gnokeyCall, gnokeyOn): one call each, the
 // realm's own function, Buy(ids) or Equip(id), and the same call as a gnokey
 // line. Loaded with the shop: the game's first load carries none of it.
-import { send, gnokeyCall, gnokeyOn, PKG_PATH, PRICE, type GnokeyAt } from "../adena";
-import { isAddress } from "../chain";
+import { send, gnokeyCall, gnokeyOn, PRICE, type GnokeyAt } from "../adena";
+import { isAddress, PKG_PATH } from "../chain";
 
 // Each signature alone, the realm's own function: Buy(ids), Equip(id). What
 // each asks: the most it took on a local chain of the onyx toolchain

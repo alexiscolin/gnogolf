@@ -25,7 +25,7 @@ void test("a long stroke opens on its last steps, no lead, and stays within the 
   assert.equal(w.length, (60 - w.from) * 200 + CLIP.tail);
   assert.ok(w.length + 200 > CLIP.max, "as many steps as fit");
   // one step longer than the whole clip (a spiral slide) is still shown
-  assert.deepEqual(clipWindow([100, 9000], { lead: 500, tail: 1000, max: 8000 }), { from: 1, lead: 0, length: 10000 });
+  assert.deepEqual(clipWindow([100, 9000]), { from: 1, lead: 0, length: 9000 + CLIP.tail });
 });
 
 void test("the sky's stops, read from the computed gradient", () => {

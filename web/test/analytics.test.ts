@@ -12,7 +12,7 @@ const load = () => import(`../lib/analytics.ts?v=${n++}`) as Promise<typeof Anal
 const ADDR = "g1" + "q".repeat(38);
 type Captured = { event: string; props: unknown };
 // a stand-in for posthog-js: what init was given, and what was captured and registered
-// (since: the day its id was first seen, as its cookie keeps it)
+// (since: the day its id was first seen, as its cookie keeps it; reset forgets an opt-out too, as posthog-js's does)
 function fake(since?: number) {
   const got = { init: null as null | { key: string; options: Record<string, unknown> }, events: [] as Captured[], registered: {} as Record<string, unknown>, errors: [] as unknown[], resets: [] as unknown[], optedOut: false };
   const p = {
@@ -24,7 +24,7 @@ function fake(since?: number) {
     register: (props: Record<string, unknown>) => void Object.assign(got.registered, props),
     register_once: (props: Record<string, unknown>) => void Object.assign(got.registered, props),
     get_property: (k: string) => (k === "since_day" ? since : undefined),
-    reset: (device?: boolean) => void got.resets.push(device),
+    reset: (device?: boolean) => void (got.resets.push(device), (got.optedOut = false)),
     opt_out_capturing: () => void (got.optedOut = true),
     captureException: (e: unknown) => void got.errors.push(e),
   };
@@ -54,6 +54,7 @@ test("scrub: a URL keeps where in the game, never by=, friend= nor a share's tex
   assert.equal(scrub('golf: the name "nym-alice123" is taken'), 'golf: the name "nym-…" is taken');
   assert.equal(scrub("/h/garden-3/"), "/h/garden-3/");
   assert.equal(scrub(`https://gnogolf.xyz/h/garden-3/?by=${ADDR}&src=duel`), "https://gnogolf.xyz/h/garden-3/?src=duel", "where a link was shared from stays");
+  assert.equal(scrub("https://gnogolf.xyz/?cup=garden&hole=3&gnome=t412"), "https://gnogolf.xyz/?cup=garden&hole=3&gnome=token", "a held gnome's id names its owner");
 });
 
 test("scrub: a key's hex or a recovery phrase never leaves, should one ever reach an error", async () => {
@@ -63,6 +64,8 @@ test("scrub: a key's hex or a recovery phrase never leaves, should one ever reac
   assert.equal(scrub(`key 0x${hex}`), "key hex…");
   const phrase = "abandon ability able about above absent absorb abstract absurd abuse access accident";
   assert.equal(scrub(`restore: ${phrase}: 12 words`), "restore: words…: 12 words");
+  assert.equal(scrub(phrase.toUpperCase()), "words…");
+  assert.equal(scrub(`A${phrase.slice(1)}`, true), "words…", "a phone's keyboard writes the first word with a capital");
   // what the game sends stays: a sentence of the realm, a tx hash's 64 hex aside
   assert.equal(scrub("golf: the weather of that round is over, play the hole again"), "golf: the weather of that round is over, play the hole again");
 });
@@ -174,7 +177,6 @@ test("a visitor who objects: nothing more goes, and on a later page nothing load
     assert.equal(f.got.init!.options.opt_out_persistence_by_default, true);
     a.optOut();
     assert.equal(f.got.optedOut, true);
-    assert.deepEqual(f.got.resets, [true]); // its id forgotten, its device id too
     assert.deepEqual([...jar.keys()], ["theme"]); // its cookies gone, no one else's
     a.track("badge_earned", { id: "eagle" });
     assert.equal(f.got.events.length, 1);

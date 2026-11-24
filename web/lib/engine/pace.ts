@@ -53,6 +53,15 @@ export function slowFrames(gaps: readonly number[]) {
   return d.reduce((s, x) => s + x, 0) / d.length > 20;
 }
 
+/** The slow-GPU probe, a frame drawn: the gaps between busy frames gathered
+ *  (an idle frame ends a run), and whether they are enough to judge: 2 s of
+ *  busy drawing in more than 10 gaps, or 90 gaps. */
+export function probed(p: { prev: number; gaps: number[] }, now: number, busy: boolean) {
+  if (busy && p.prev) p.gaps.push(now - p.prev);
+  p.prev = busy ? now : 0;
+  return p.gaps.length >= 90 || (p.gaps.length > 10 && p.gaps.reduce((s, x) => s + x, 0) >= 2000);
+}
+
 /** Whether busy frames sit steadily on 33 ms: the browser holds them at 30 fps
  *  (a battery saver), which says nothing of the GPU. */
 export function capped30(gaps: readonly number[]) {

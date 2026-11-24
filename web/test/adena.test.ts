@@ -910,6 +910,7 @@ test("gnokeyName, gnokeyClaim, gnokeyTip in a paste: the retry helper, and every
     assert.match(paste, /^\(\nset -e\nsend\(\) \{\n[\s\S]*signature verification failed[\s\S]*\n\)$/);
     assert.equal(paste.split("\nsend gnokey maketx ").length - 1, plan.length);
     assert.ok(!paste.includes("<your-key-name>") && paste.includes(" 'my key'\n"));
+    assert.ok(paste.split("\n").every((line) => line.split("'").length % 2), "no line broken inside a quote: what is shown reads as it runs");
   }
 });
 

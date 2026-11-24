@@ -1,14 +1,14 @@
 // The page's own aim previews turned off (lib/sim.ts), each case in a fresh
-// copy of the module: sources that are not the realm's, a worker that fails,
-// and (through the aim, engine/aim.ts) a shot the page refuses that the chain
-// answers. Off, simReady is false and the aim asks the chain again. And on,
+// copy of the module: sources that are not the realm's (checked once a
+// chain: one reseeded under the same realm is read again), a worker that
+// fails, and (through the aim, engine/aim.ts) a shot the page refuses that
+// the chain answers. Off, simReady is false and the aim asks the chain again. And on,
 // the chain is still asked once for a still aim previewed every frame.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import * as THREE from "three";
-import { makeHost } from "../lib/sim/host.ts";
-import type { Ask } from "../lib/sim/worker.ts";
+import { answer, makeHost, type Ask } from "../lib/sim/host.ts";
 import type * as Sim from "../lib/sim.ts";
 import type { Live } from "../lib/engine/types.ts";
 import type { Stroke } from "../lib/types.ts";
@@ -20,10 +20,9 @@ class FakeWorker {
   host = makeHost(wasm);
   onmessage: ((e: { data: unknown }) => void) | null = null;
   postMessage(m: Ask & { n: number }) {
-    const h = this.host;
     const data = m.op === failing ? { n: m.n, err: "RuntimeError: unreachable" }
       : refusing && m.op !== "load" && m.op !== "sources" ? { n: m.n, out: "panic: golf: refused" }
-      : { n: m.n, out: m.op === "load" ? (h.load(m.id, m.hex), "") : m.op === "from" ? h.from(m.id, m.x, m.y, m.shot, m.stroke, m.period) : m.op === "round" ? h.round(m.id, m.shots, m.period) : JSON.stringify(h.sources()) };
+      : { n: m.n, out: answer(this.host, m) };
     setImmediate(() => this.onmessage?.({ data }));
   }
   terminate() {}
@@ -31,7 +30,10 @@ class FakeWorker {
 (globalThis as { Worker?: unknown }).Worker = FakeWorker;
 
 const hex = fs.readFileSync(new URL("data/holes.txt", repo), "utf8").split("\n")[0].split(" ")[3];
-const chain = (file = (p: string) => fs.readFileSync(new URL(p, repo), "utf8")) => ({ realm: "gno.land/r/gnogolf/golf/v2", file: (p: string) => Promise.resolve(file(p)), holeData: () => Promise.resolve(hex) });
+const chain = (file = (p: string) => fs.readFileSync(new URL(p, repo), "utf8")) => ({
+  realm: "gno.land/r/gnogolf/golf/v2", chainId: () => Promise.resolve("dev"), genesis: () => Promise.resolve("A"),
+  file: (p: string) => Promise.resolve(file(p)), holeData: () => Promise.resolve(hex),
+});
 const ID = "garden/1/v1", PERIOD = 5967997;
 let copies = 0;
 const fresh = () => import(`../lib/sim.ts?${++copies}`) as Promise<typeof Sim>;
@@ -42,6 +44,17 @@ void test("a deployed file that is not the one golf.wasm was built from: never s
   assert.equal(await sim.startSim(c), false);
   assert.equal(await sim.simHole(c, ID), false);
   assert.equal(sim.simReady(ID), false);
+});
+
+void test("sources checked once a chain: not read again there, read again on a chain reseeded under the same realm", async () => {
+  let read = 0;
+  const counted = (p: string) => (read++, fs.readFileSync(new URL(p, repo), "utf8"));
+  assert.equal(await (await fresh()).startSim(chain()), true);
+  assert.equal(await (await fresh()).startSim(chain(counted)), true);
+  assert.equal(read, 0);
+  const reseeded = { ...chain((p) => counted(p) + (p.endsWith("physics/step.gno") ? " " : "")), genesis: () => Promise.resolve("B") };
+  assert.equal(await (await fresh()).startSim(reseeded), false);
+  assert.ok(read > 0);
 });
 
 void test("a worker that fails a simulation turns the page's previews off, not blank", async () => {
