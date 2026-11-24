@@ -607,7 +607,7 @@ export function gnokeyPaste(plan: readonly string[], who: string, first = "") {
   const send = [
     "send() {",
     "  for try in 1 2 3; do",
-    '    out=$("$@" 2>&1 | tee /dev/stderr)',
+    '    out=$("$@" 2>&1 | tee >(cat >&2))',
     "    if printf '%s\\n' \"$out\" | grep -q '^OK!'; then return 0; fi",
     "    printf '%s\\n' \"$out\" | grep -q 'signature verification failed' || return 1",
     '    echo "Gnogolf: the node had not taken the one before yet: sent again in a block (your password again)" >&2',
