@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { makePreview } from "@/lib/scene";
-import type { Act, Skin } from "@/lib/scene/gnome";
+import { makePreview, type Act, type Skin } from "@/lib/scene/gnome";
 
 /** A gnome turning on a stage of its own (the preview renderer): the ref of
  *  the box it is drawn in. The picker's tile, the cup's new-gnome card, the

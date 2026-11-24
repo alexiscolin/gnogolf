@@ -13,7 +13,11 @@
 //
 // E: the engine's live state (engine/types.ts Live).
 import * as THREE from "three";
-import { makeRenderer, makeBall, gnomeById, makeConfetti, disposeCourse, releaseShared, overviewRig, farRig, courseBox, laneBox } from "../scene";
+import { disposeCourse, releaseShared } from "../scene/materials";
+import { makeRenderer } from "../scene/studio";
+import { overviewRig, farRig, courseBox, laneBox } from "../scene/rigs";
+import { makeBall, gnomeById } from "../scene/gnome";
+import { makeConfetti, type Confetti } from "../scene/fx";
 import { makeCauses } from "../scene/cause";
 import { BALL_R } from "../terrain";
 import { CLIP, clipWindow, skyStops } from "../clip";
@@ -21,7 +25,6 @@ import { drawOutro, drawTerm } from "../brand";
 import { makeCamera } from "./camera";
 import { makeReplay, stepsMs, DROP_MS } from "./replay";
 import type { LitScene } from "../scene/data";
-import type { Confetti } from "../scene/fx";
 import type { Vec2 } from "../types";
 import type { GameState, Live } from "./types";
 

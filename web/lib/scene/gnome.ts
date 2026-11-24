@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { BALL_R } from "../terrain";
 import { C, flat, inked, disposeCourse, releaseShared, texOf, motion, ownFade, setFade, THIN_HULL, lanternGlow, share } from "./materials";
-import { makeRenderer, makeScene } from "./camera";
+import { makeRenderer, makeScene } from "./studio";
 import { bake } from "./bake";
 import { ud, type Gnome } from "./data";
 import type { UnlockId } from "../card";

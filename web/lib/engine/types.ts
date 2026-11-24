@@ -5,7 +5,7 @@ import type * as THREE from "three";
 import type { Chain } from "../chain";
 import type { Extras, Forecast, HoleRow, Mode, Vec2, Zone, ZoneKind } from "../types";
 import type { Aim, Course, Gnome, Height, Hole, LitScene } from "../scene/data";
-import type { Rig, View } from "../scene/camera";
+import type { Rig, View } from "../scene/rigs";
 import type { WeatherNow } from "../scene/weather";
 import type { Band } from "../scene/fx";
 import type { Causes } from "../scene/cause";

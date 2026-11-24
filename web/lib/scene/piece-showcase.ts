@@ -5,7 +5,7 @@
 import * as THREE from "three";
 import { buildHole } from "./course";
 import { loadWorld } from "./worlds";
-import { makeStudio, setLighting } from "./camera";
+import { makeStudio, setLighting } from "./studio";
 import { disposeCourse, setTime } from "./materials";
 import type { Course, Hole } from "./data";
 

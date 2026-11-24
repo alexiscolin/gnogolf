@@ -2,7 +2,7 @@
 // built from (its sources(): path → sha-256), read back from the chain
 // (vm/qfile) through stage.sh's prefix, hashed and compared; once a browser
 // and chain (chain.ts whichOf: a package on a chain never changes).
-// golf.wasm's previews (lib/sim.ts) and builder.wasm's checks before a
+// golf.wasm's previews (client.ts) and builder.wasm's checks before a
 // publish (the Builder) both ask it.
 import { gamePath, whichOf, type Chain, type Which } from "../chain";
 import { sha256 as digest } from "../sha";

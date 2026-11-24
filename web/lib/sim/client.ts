@@ -1,6 +1,6 @@
 // The aim preview's physics in the page: golf.wasm, the realm's own
 // SimulateFrom and SimulateRoundAt built from its sources (scripts/wasm.sh),
-// run in a worker (sim/worker.ts). It answers byte for byte as the chain does
+// run in a worker (worker.ts). It answers byte for byte as the chain does
 // (scripts/wasmparity.ts plays the whole course through both), so the aim's
 // dots follow the pull without asking the chain (engine/aim.ts). The chain
 // stays the authority: the shot played is the chain's answer, and every
@@ -14,12 +14,12 @@
 // No worker, no WebAssembly, a load or a check that fails:
 // the chain's previews.
 
-import { track, trackError } from "./analytics";
-import type { Chain, Which } from "./chain";
-import type { Stroke, Vec2 } from "./types";
-import type { Ask } from "./sim/host";
-import type { Reply } from "./sim/worker";
-import { sameSources } from "./sim/sources";
+import { track, trackError } from "../analytics";
+import type { Chain, Which } from "../chain";
+import type { Stroke, Vec2 } from "../types";
+import type { Ask } from "./host";
+import type { Reply } from "./worker";
+import { sameSources } from "./sources";
 
 type SimChain = Pick<Chain, "file" | "holeData"> & Which;
 
@@ -44,7 +44,7 @@ const sourcesMatch = async (chain: SimChain) => sameSources(chain, JSON.parse(aw
 export function startSim(chain: SimChain): Promise<boolean> {
   if (on && !off) return on;
   if (off || typeof Worker === "undefined" || typeof WebAssembly === "undefined") return Promise.resolve(false);
-  worker = new Worker(new URL("./sim/worker.ts", import.meta.url), { type: "module" });
+  worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
   worker.onmessage = ({ data: r }: MessageEvent<Reply>) => {
     const w = waiting.get(r.n);
     waiting.delete(r.n);

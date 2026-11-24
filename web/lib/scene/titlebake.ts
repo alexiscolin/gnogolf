@@ -4,7 +4,7 @@
 // ?titlebake, which puts both on window; production builds never load it.
 import * as THREE from "three";
 import { makeTitle, golden, holeOf, cupCam, CUP, RIDE_AT, RIDE_S, type CupFrame } from "./title";
-import { makeRenderer, makeScene } from "./camera";
+import { makeRenderer, makeScene } from "./studio";
 import { smoothstep } from "../terrain";
 import { TICKS_PER_S } from "../engine/types";
 import { disposeCourse, setTime } from "./materials";

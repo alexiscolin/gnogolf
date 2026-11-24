@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { makeBall, type Skin } from "./gnome";
 import "./gnome-dress"; // (the collection's wardrobe: the showcase draws nothing else)
 import { makeTrail } from "./gnome-fx";
-import { makeStudio } from "./camera";
+import { makeStudio } from "./studio";
 import { disposeCourse } from "./materials";
 import { BALL_R } from "../terrain";
 import { TIER_LOOK } from "../gnomes/catalogue";

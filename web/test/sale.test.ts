@@ -1,4 +1,4 @@
-// lib/gnomes/promo.ts: the sale the game's screens promote, read once a chain
+// lib/gnomes/sale.ts: the sale the game's screens promote, read once a chain
 // (another chain is read on its own; a failed read is asked again), its state
 // worked out from the clock at each use, never frozen at the first read; and
 // the one gate the shop's every door goes through (geo.ts shopShown).
@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import type { Collection } from "../lib/gnomes/shop.ts";
 import type { Served } from "../lib/gnomes/served.ts";
-import { readSale, saleAt } from "../lib/gnomes/promo.ts";
+import { readSale, saleAt } from "../lib/gnomes/sale.ts";
 import { shopShown } from "../lib/gnomes/geo.ts";
 
 const catalogue = JSON.parse(fs.readFileSync(new URL("../../data/gnomes.json", import.meta.url), "utf8")) as { gnomes: Served["gnomes"] };

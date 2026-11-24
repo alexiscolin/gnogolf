@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { mod } from "../terrain";
 import { motion, share } from "./materials";
-import { setLighting } from "./camera";
+import { setLighting } from "./studio";
 import type { LitScene } from "./data";
 import type { Forecast, MutVec2, Zone } from "../types";
 
@@ -71,7 +71,7 @@ const BITS_OF: Record<string, readonly number[]> = {
 // dusty stream of grit and pale streaks, the rain water dripping from the
 // vault (fewer drops, slower, each a drop), the puddles black water, and the
 // fog "Lights out": no banks of mist, the lanterns out (the world's) and the
-// light gone to the dark gallery's (camera.ts TIMES), the dark closing in
+// light gone to the dark gallery's (studio.ts TIMES), the dark closing in
 // (the scene's fog in the vault's colour, near). A cave is never clear of
 // its own dark far off: a soft far fog always. Every other world is untouched.
 const CAVE = {

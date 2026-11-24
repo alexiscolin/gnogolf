@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { sound } from "@/lib/feel";
 import { clipSupport } from "@/lib/clip";
-import type { ClipRun } from "@/lib/engine/clip";
+import type { ClipRun } from "@/lib/engine/recorder";
 import { siteURL } from "@/lib/site";
 import { pasted, shareLinks, useCopied } from "./common";
 import { isTouch, reducedMotion } from "@/lib/device";

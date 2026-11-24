@@ -122,7 +122,7 @@ async function shoot(c, s, i, out) {
   // a duel: that player's ghost raced (their best here); "champion", the seeded one's address in CHAMPION
   if (s.by) q.set("by", s.by === "champion" ? (process.env.CHAMPION || (() => { throw new Error("a duel cut needs CHAMPION=<the seeded champion's address>"); })()) : s.by);
   if (s.screen) q.set("screen", s.screen); // a screen of the game's (its ui shown), not the course
-  if (s.day) q.set("og", ""); // day: in daylight whatever its id's time (web/lib/scene/camera.ts timeOf)
+  if (s.day) q.set("og", ""); // day: in daylight whatever its id's time (web/lib/scene/studio.ts timeOf)
   // (camlog: the rig in a production build too, the playground's: web/lib/promo.ts)
   const url = `${APP}/?${s.screen ? "" : "play&"}promo&camlog&${q}`;
   // a duel's reads, kept from the first render (web/lib/promo.ts attach)

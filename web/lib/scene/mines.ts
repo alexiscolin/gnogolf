@@ -5,7 +5,7 @@
 // glowing, lanterns on posts and chains, a vault of rock overhead with its
 // stalactites, crystal veins and glowworms, galleries going off into the dark
 // with their lamps, and, where the lane has no rails, the void: a drop into
-// the dark. The light is the scene's own (camera.ts "cave"): the crystals and
+// the dark. The light is the scene's own (studio.ts "cave"): the crystals and
 // lanterns spill it as pools baked into the merged meshes' colours (baked),
 // and "Lights out" puts the lanterns out. Decoration only: nothing out here is
 // in the physics. The lane's own pieces are mines-rides.ts's, then

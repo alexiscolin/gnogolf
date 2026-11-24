@@ -44,7 +44,7 @@ export function frameView(lo: P, hi: P, size: { w: number; h: number }, inset: {
 }
 
 /**
- * The island the 3D board's world is set on (lib/scene/camera.ts islandBox:
+ * The island the 3D board's world is set on (lib/scene/rigs.ts islandBox:
  * ISLAND round the hole's board, 0..board, more of it behind the tee's side,
  * less in front), as a box in the view's plane (turned, tilted): what F keeps
  * the sight inside, so no bare ground shows past one edge while the scenery

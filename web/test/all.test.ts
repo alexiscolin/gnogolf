@@ -8,7 +8,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync } from "node:fs";
 
-const elsewhere = /^scene[/.]|^(engine|promo)\.ts$|worker\.ts$/;
+const elsewhere = /^scene\/|^(engine|promo)\.ts$|worker\.ts$/;
 
 test("the logic layer loads", async () => {
   for (const m of readdirSync(new URL("../lib/", import.meta.url), { recursive: true, encoding: "utf8" }))

@@ -7,7 +7,7 @@
 //
 // Its parts: engine/camera.ts (where the camera goes), engine/aim.ts (the
 // preview dots), engine/replay.ts (walking the chain's path), engine/rival.ts
-// (a duel's ghost), engine/clip.ts (the shot clip), engine/pace.ts (frame
+// (a duel's ghost), engine/recorder.ts (the shot clip), engine/pace.ts (frame
 // pacing and the graphics tier), engine/types.ts (the shapes they share), and
 // engine/probes.ts with engine/audit.ts (the ?camlog test hooks). This file
 // holds the game's state, the frame loop, loading, the weather and the clock,
@@ -22,10 +22,12 @@ import { loadWorld, worldOf } from "./scene/worlds";
 import { makeChain, shotOf, pullShot, isHoleId, RULES, wait, errorKind, type Chain } from "./chain";
 import { boardWork } from "./adena";
 import { cupOf, legacyOf, oldToSlot } from "./card";
-import {
-  makeRenderer, weakGpu, makeScene, maxDpr, buildHole, finishHole, makeBall, makeAim, at,
-  courseBox, laneBox, overviewRig, farRig, makeBand, bandTo, gnomeById, makeConfetti, disposeCourse, releaseShared, setTime, buildExtras, setLighting, quality, motion, headlamp,
-} from "./scene";
+import { at, disposeCourse, releaseShared, setTime, quality, motion, isDrawn } from "./scene/materials";
+import { makeRenderer, weakGpu, makeScene, maxDpr, setLighting } from "./scene/studio";
+import { courseBox, laneBox, overviewRig, farRig } from "./scene/rigs";
+import { buildHole, finishHole, buildExtras } from "./scene/course";
+import { makeBall, gnomeById, headlamp } from "./scene/gnome";
+import { makeAim, makeBand, bandTo, makeConfetti, type Confetti } from "./scene/fx";
 import { BALL_R, plainSkins } from "./terrain";
 import { makeCamera } from "./engine/camera";
 import { pace, probed, slowFrames, capped30, frameMs, frameStats, SLOW_KEY } from "./engine/pace";
@@ -33,20 +35,18 @@ import { register, track, trackError } from "./analytics";
 import { makeReplay, outlived, MS_PER_STEP, SHOW_SPEED } from "./engine/replay";
 import { makeAimer, steerAim } from "./engine/aim";
 import { makeRival } from "./engine/rival";
-import { simHole, simReady, simStroke } from "./sim";
+import { simHole, simReady, simStroke } from "./sim/client";
 import { NO_TAKEN, takedownOf, takenDown } from "./takedown";
 import { communityOf, gateOf, type Gate } from "./community";
 import { authorOf } from "./builder/holes";
 import { messageOf } from "./words";
 import type { Extras, Ghost, HoleRow, Mode, Post, Stroke, Wall, Zone } from "./types";
 import { md, ud, type Course, type Gnome, type Hole } from "./scene/data";
-import { isDrawn } from "./scene/materials";
 import type { WeatherZone } from "./scene/weather";
-import type { Confetti } from "./scene/fx";
 import { makeHoling, makeTrail, type GnomeTrail, type Holed } from "./scene/gnome-fx";
 import type { promo as Promo } from "./promo";
 import type { probes as Probes } from "./engine/probes";
-import type { ClipOf, ClipRun } from "./engine/clip";
+import type { ClipOf, ClipRun } from "./engine/recorder";
 import { drawCard, loadBadge, type Caption } from "./brand";
 import { HOT as HOT_FIELDS, TICKS_PER_S, type CamMode, type ErrorKind, type GameState, type GfxMode, type Link, type Live, type Mood, type Shot, type Snapshot, type Tier } from "./engine/types";
 
@@ -1624,7 +1624,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       const stroke = won;
       if (!stroke || !g.s) return Promise.resolve(null);
       const hide = () => [ball, rival.ball(), aim, band, confetti && confetti.group];
-      return Promise.all([import("./engine/clip"), loadBadge()]).then(([m]) => m.recordClip({ E, stroke, gnome: gnomeId, showClock, hide, card: (x, w, h) => drawCard(x, w, h, caption, 0.6), term: caption.term, challenge: caption.challenge || `${caption.title} · ${caption.score}` }, run));
+      return Promise.all([import("./engine/recorder"), loadBadge()]).then(([m]) => m.recordClip({ E, stroke, gnome: gnomeId, showClock, hide, card: (x, w, h) => drawCard(x, w, h, caption, 0.6), term: caption.term, challenge: caption.challenge || `${caption.title} · ${caption.score}` }, run));
     },
     /** Races a ghost on this hole, from the tee; null drops the duel. */
     race(ghost: Ghost | null) {

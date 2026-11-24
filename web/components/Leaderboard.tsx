@@ -19,8 +19,7 @@ import Share from "@/components/Share";
 import { messageOf, shortAddr, holeLink, dareLink, parHere, HONEST, nameHint, nameRefusal, strokesWord, holesWord, AIMS, AIM_NAMES, useCopied, GNOME, byStanding, standingVs, RANKED_BY } from "@/components/common";
 import { vsPar, type SkyKind } from "@/lib/card";
 import { SkyIcon } from "@/components/Weather";
-import { gnomeById } from "@/lib/scene";
-import { rivalSkin, type Skin } from "@/lib/scene/gnome";
+import { gnomeById, rivalSkin, type Skin } from "@/lib/scene/gnome";
 import { SHOP, onWear, wearVersion } from "@/lib/gnomes/door";
 import { Collector, askWorn } from "@/components/gnomes/Door";
 

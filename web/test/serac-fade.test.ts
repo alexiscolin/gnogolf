@@ -10,7 +10,7 @@ import fs from "node:fs";
 import * as THREE from "three";
 import { host } from "./builder-fixture.ts";
 import { loadWorld } from "./scene-harness.ts";
-import { applyRig, restRig, type View } from "../lib/scene/camera.ts";
+import { applyRig, restRig, type View } from "../lib/scene/rigs.ts";
 import { md } from "../lib/scene/data.ts";
 import { BALL_R } from "../lib/terrain.ts";
 import type { Course, Hole } from "../lib/scene/data.ts";

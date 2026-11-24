@@ -14,8 +14,8 @@ import { angDiff, onAt, segHit, rayCircle, BALL_R } from "../terrain";
 import { causeAt } from "../scene/cause";
 import { darkGallery, sight } from "../scene/data";
 import { ud } from "../scene/data";
-import { aimAlong } from "../scene";
-import { same, simHole, simReady, simStroke } from "../sim";
+import { aimAlong } from "../scene/fx";
+import { same, simHole, simReady, simStroke } from "../sim/client";
 import type { MutVec2, Stroke, Vec2 } from "../types";
 import type { Live } from "./types";
 

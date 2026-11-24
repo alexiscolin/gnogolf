@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { C, ink, flat, drawn, grows, sway, rbox, windNow, share, texOf, fadeable, setFade, fadeLoop, gridGeo, onTop } from "./materials";
 import { animate } from "./state";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { lantern, fireflies, tree, bush, stone, flower, bigFlower, gnomelet, brolly, mailbox, signpost, hill, house, pond, puddle, fence, mushroom, tuft, bunting, butterfly } from "./props";
 
 

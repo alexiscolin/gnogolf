@@ -25,7 +25,7 @@ import { served as catalogue, type Served } from "@/lib/gnomes/served";
 import { Closes, EarnedTile, GnomeCard, LookSwitch, SaleLine, ShareOne, TierChip, TierFilter } from "./parts";
 import { SearchButton, SearchRow, useSearch } from "@/components/Search";
 import { BlankShelf, SaleSlot, SHOP_HEAD, ShopPitch } from "./ShopFrame";
-import { knownSale } from "@/lib/gnomes/promo";
+import { knownSale } from "@/lib/gnomes/sale";
 import { portraitsOf, savedLook, saveLook, type Look } from "@/lib/gnomes/onchain";
 import GnomeSheet from "./GnomeSheet";
 import Album from "./Album";

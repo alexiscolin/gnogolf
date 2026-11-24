@@ -10,7 +10,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { C, flat, drawn, rbox, lanternGlow, glowTex, share, ownFade, fadeLoop, type FadeItem, geoOf, gridGeo } from "./materials";
 import { animate, report, state } from "./state";
 import { inZone, mod, onAt, untilOn, segDist, wallDist, smoothstep, boxOf, closest, terrain } from "../terrain";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { hidesPlay } from "./sight";
 import { gnomelet, bunting, stone, smoke } from "./props";
 import { bakeLocal, look, weatherLooks, instances } from "./bake";

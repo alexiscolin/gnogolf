@@ -20,7 +20,7 @@ const sources = (dir: string): string[] =>
 const FREES = /forceContextLoss\(\)|WEBGL_lose_context/;
 
 void test("every renderer made on a canvas of its own is let go with its context", () => {
-  const CALLERS = new Set([path.join("lib", "scene", "camera.ts"), path.join("lib", "engine.ts"), path.join("lib", "builder", "stage.ts")]); // (makeRenderer's home; the engine, on its caller's canvas; the Builder's one canvas, kept for the page)
+  const CALLERS = new Set([path.join("lib", "scene", "studio.ts"), path.join("lib", "engine.ts"), path.join("lib", "builder", "stage.ts")]); // (makeRenderer's home; the engine, on its caller's canvas; the Builder's one canvas, kept for the page)
   const makers = ["lib", "components"].flatMap(sources).filter((f) => !CALLERS.has(f) && /makeRenderer\(|new THREE\.WebGLRenderer\(/.test(read(f)));
   assert.ok(makers.length >= 5, "the scan finds them");
   for (const f of makers) assert.match(read(f), FREES, `${f} makes a renderer and never frees its context`);

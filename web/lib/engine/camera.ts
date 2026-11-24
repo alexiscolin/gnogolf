@@ -5,12 +5,11 @@
 // E: the engine's live state (engine/types.ts Live).
 import * as THREE from "three";
 import { behind, chaseState } from "../chase";
-import { focusRig, applyRig, ORBIT, followDist, FOLLOW_CLOSER } from "../scene";
+import { focusRig, applyRig, ORBIT, followDist, FOLLOW_CLOSER, type Rig } from "../scene/rigs";
 import { BALL_R, CELL, onAt, closest, segHit, rayCircle, angDiff, inZone } from "../terrain";
 import { worldOf } from "../scene/worlds";
 import { ud, md } from "../scene/data";
 import type { Extras, Post, Wall } from "../types";
-import type { Rig } from "../scene/camera";
 import type { Height } from "../scene/data";
 import type { Live } from "./types";
 
@@ -48,7 +47,7 @@ export function makeCamera(E: Live) {
     lean.y = Math.max(-1, Math.min(1, (ev.clientY / window.innerHeight - 0.5) * 2));
   };
   const leant = { target: new THREE.Vector3(), dist: 0, ox: 0, oy: 0, tilt: 0, yaw: 0 };
-  // the camera on the ball stands off from the overview's distance (scene/camera.ts followDist), worked out once an overview
+  // the camera on the ball stands off from the overview's distance (scene/rigs.ts followDist), worked out once an overview
   let followFor: Rig | null = null;
   const followOver = { dist: 0 };
   const follow = () => {

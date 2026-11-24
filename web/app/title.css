@@ -9,7 +9,7 @@
    and the title's and the cup won's own classes).
    The backdrop (--s0) is the scenes' own colour, mirrored by hand: keep it
    in step with its source.
-     garden   day sky #fff3df (scene/camera.ts makeScene)
+     garden   day sky #fff3df (scene/studio.ts makeScene)
      island   shallow #5fd0cc softened to #8fd8d0 (scene/island.ts P)
      town     wall #f6ead3 (scene/town.ts T)
      mountain haze #eef3f8 (scene/mountain.ts M)

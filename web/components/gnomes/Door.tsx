@@ -15,7 +15,7 @@ import { Button } from "@/components/ui";
 import { SHOP_TITLE } from "@/lib/gnomes/door";
 import type { Chain } from "@/lib/chain";
 import type { Promo } from "@/lib/gnomes/shop";
-import type { Sale } from "@/lib/gnomes/promo";
+import type { Sale } from "@/lib/gnomes/sale";
 import type { Skin } from "@/lib/scene/gnome";
 
 import type * as Game from "./Game";
@@ -43,7 +43,7 @@ function usePart(want: boolean) {
 /** The shop's part, fetched once a screen wants it (want), null until it is in (and for good where the shop is off). */
 export const useShopPart = (want = true): Part | null => usePart(want).m;
 
-/** The sale on this chain (lib/gnomes/promo.ts, read once a chain) as the screens show it now, by the chain's clock
+/** The sale on this chain (lib/gnomes/sale.ts, read once a chain) as the screens show it now, by the chain's clock
  *  (whole seconds, as the gallery's): promo undefined while read, null for none; none at all without a chain. */
 export function useSale(chain: Chain | null): { promo: Promo | null | undefined; now: number } {
   const m = useShopPart(!!chain);

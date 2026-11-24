@@ -16,7 +16,7 @@
 //   kerb    { color, post }                  its rails
 //   edgeInk false to hide the green's edge line
 //   SEA     the world's sea level: "sea" zones are left open over it
-//   time(s) -> string   its own time of day (camera.ts TIMES), not timeOf's
+//   time(s) -> string   its own time of day (studio.ts TIMES), not timeOf's
 //   baked(course)       after the hole's merge: its own pass over the merged meshes
 //   lifted(s) -> Terrain?  the hole's terrain with parts of its lane raised
 //                          (cosmetic: the ball is drawn on it), or none

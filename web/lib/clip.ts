@@ -1,6 +1,6 @@
 // The shot clip, the part a browser is not needed for: the format
 // it is recorded in, the stretch of the holing stroke it shows, the sky
-// behind it and its file's name. The recording is engine/clip.ts.
+// behind it and its file's name. The recording is engine/recorder.ts.
 
 /** The MP4s a clip may be recorded as, best first: MP4 is the one video X takes. */
 const MP4 = ["video/mp4;codecs=avc1.640028", "video/mp4;codecs=avc1.42E01F", "video/mp4;codecs=avc1", "video/mp4"];

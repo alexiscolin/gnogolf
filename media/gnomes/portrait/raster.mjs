@@ -40,7 +40,7 @@ export const toUnits = (/** @type {V3} */ p) => { const [x, y] = project(p); ret
 /** How many SVG units a world length is, at a depth. */
 export const unitsAt = (/** @type {number} */ len, /** @type {number} */ z) => (len * FOCAL * N) / 2 / z / SS;
 
-// the game's day light (camera.ts makeScene): a sky over a green ground, a sun from above right
+// the game's day light (studio.ts makeScene): a sky over a green ground, a sun from above right
 const lin = (/** @type {number} */ c) => { const v = c / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
 const rgbLin = (/** @type {number} */ h) => /** @type {V3} */ ([lin((h >> 16) & 255), lin((h >> 8) & 255), lin(h & 255)]);
 const SKY = rgbLin(0xfff3df), GROUND = rgbLin(0x9fc4b3), SUN = rgbLin(0xfff6e2), SUN_AT = unit([24, 40, 6]);

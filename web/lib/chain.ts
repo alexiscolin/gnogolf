@@ -2,9 +2,9 @@
 //
 // Reads only, all free: no wallet, no transaction, no block to wait for. The
 // chain resolves every shot — nothing here computes anything about a ball
-// (the aim's previews run the realm's own code in the page: lib/sim.ts).
+// (the aim's previews run the realm's own code in the page: lib/sim).
 //
-// This is the one place the chain's JSON is parsed (lib/sim.ts parses the
+// This is the one place the chain's JSON is parsed (lib/sim parses the
 // wasm's, the same JSON): each read is checked
 // against the shape lib/types.ts gives it (the fields the page cannot do
 // without), and a reply that is not that shape is refused here, as the realm's

@@ -11,7 +11,7 @@ import { C, T, flat, drawn, rbox, texOf, share } from "./materials";
 import { house, smoke } from "./props";
 import { inZone, CELL } from "../terrain";
 import { seeded } from "./common";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { ud, type Hole, type Height } from "./data";
 import type { Post, Vec2, Zone } from "../types";
 import { own } from "../own";

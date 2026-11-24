@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { C, flat, drawn, clipTo, share, disposeCourse, releaseShared } from "./materials";
-import { makeRenderer, makeScene } from "./camera";
+import { makeRenderer, makeScene } from "./studio";
 import { state } from "./state";
 import type { Aim, Height, WaterMask } from "./data";
 import type { Vec2 } from "../types";

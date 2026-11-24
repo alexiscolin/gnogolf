@@ -37,7 +37,7 @@ void test("frameView: on a bigger window, the lane no smaller than on a 1440 by 
     }
 });
 
-// F on the 3D board's island (islandIn: ISLAND round the board, lib/scene/camera.ts islandBox): the sight inside it
+// F on the 3D board's island (islandIn: ISLAND round the board, lib/scene/rigs.ts islandBox): the sight inside it
 // where it fits, the island in its middle where the sight is the larger, the hole always in sight, each quarter turn.
 void test("frameView: the board kept on the island to its foot, never bare ground past one edge with the scenery cut at the other", () => {
   const AROUND = { x: 7, front: 4, back: 10 }, board = { w: 26, h: 44 }; // a tall hole: the owner's

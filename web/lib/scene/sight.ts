@@ -1,7 +1,7 @@
 // What the player sees of the ball and the cup past a tall thing beside the
 // lane (the mountain's serac tower, its top leaning out over the path): seen
 // from the camera a player plays with, the classic camera at rest on the
-// ball (engine/camera.ts goal, camera.ts restRig: the default, where every
+// ball (engine/camera.ts goal, rigs.ts restRig: the default, where every
 // shot is aimed from), framed as on a computer's window, with the ball
 // anywhere on the lane (between shots, on the way to the cup) and at the
 // cup. The Builder refuses a piece whose thing would stand in between (its
@@ -9,7 +9,7 @@
 // its left instead: the course's own seracs, mountain15, hide a ball beside
 // their towers from it, so it is not held to it.)
 import * as THREE from "three";
-import { applyRig, restRig, type View } from "./camera";
+import { applyRig, restRig, type View } from "./rigs";
 import { BALL_R } from "../terrain";
 import type { Terrain } from "../terrain";
 import type { Hole } from "./data";

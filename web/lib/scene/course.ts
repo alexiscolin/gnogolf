@@ -5,7 +5,8 @@ import { C, bankRows, ink, flat, motion, drawn, drape, rbox, ringLine, texOf, se
 import { bake } from "./bake";
 import { state, report } from "./state";
 import type { Census, PieceRef } from "./census";
-import { timeOf, islandBox } from "./camera";
+import { timeOf } from "./studio";
+import { islandBox } from "./rigs";
 import { bush, stone, flower, tuft, mole, windmill, smokeBatch } from "./props";
 import { seeded, placer, GRASS, dropOf } from "./common";
 import { roughOf } from "./garden";
