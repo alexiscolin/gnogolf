@@ -18,10 +18,8 @@ var (
 	selfAddr = chain.PackageAddress("gno.land/r/gnogolf/gnomes")
 )
 
-// `gno test` runs init with no signer: each test starts from a fresh
-// collection owned by the deployer, the placeholder genesis published, no
-// closing date, its sale under way from now with no player window, the
-// mint open.
+// fresh is a new collection owned by the deployer: the placeholder genesis
+// published and on sale with no player window, no closing date, the mint open.
 func fresh(t *testing.T, rlm realm) {
 	noSale(t, rlm)
 	if err := openSale(genesisName, now(), 0); err != nil {
@@ -29,8 +27,7 @@ func fresh(t *testing.T, rlm realm) {
 	}
 }
 
-// published is a fresh collection with the placeholder genesis published,
-// no closing date set.
+// published is a new collection with the placeholder genesis published.
 func published(_ *testing.T, rlm realm) {
 	setUp(0, rlm, deployer)
 	if err := addSeries(genesisName, placeholderGenesis()); err != nil {
@@ -43,9 +40,8 @@ func skip(seconds int64) { testing.SkipHeights(seconds/5 + 1) }
 
 // placeholderGenesis stands in for the designer's catalogue
 // (data/gnomes.json), laid out as it is: seven worlds, each its 72 Commons,
-// then its Rares, its Epics and its Legendary (the first worlds take what is
-// left over: 21 Rares, then 20; 10 Epics, then 9). Names "Gnome <id>",
-// traits "v0.<id>".
+// then its Rares, Epics and Legendary (the first worlds take the remainder).
+// Names "Gnome <id>", traits "v0.<id>".
 func placeholderGenesis() string {
 	var b strings.Builder
 	id := int64(1)
@@ -63,7 +59,6 @@ func placeholderGenesis() string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
-// genesisWorlds is the genesis's worlds.
 const genesisWorlds = 7
 
 // placeholderRows is a series' rows from id first, each tier's in turn,
@@ -102,14 +97,13 @@ func TestThePlaceholderIsLaidOutAsTheCatalogue(cur realm, t *testing.T) {
 	}
 }
 
-// (testing.IssueCoins is not reverted when a call aborts, so the realm's
-// balance carries over between tests: the tests check what a call changes.)
+// testing.IssueCoins is not reverted when a call aborts: the realm's balance
+// carries over between tests, so the tests check what a call changes.
 
-// asUser readies a direct call by who, with sent as its -send envelope (the
-// coins land on the realm, as maketx call -send does), and returns who's
-// realm. The test itself must pass it to testing.SetRealm: SetRealm acts on
-// the frame that calls it, so called in here it would be lost on return.
-// Each call is its own transaction: nothing of its envelope spent yet.
+// asUser readies a direct call by who with sent as its -send envelope,
+// unspent, and returns who's realm. The test itself must pass it to
+// testing.SetRealm: SetRealm acts on the frame that calls it, so in here it
+// would be lost on return.
 func asUser(who address, sent chain.Coins) runtime.Realm {
 	testing.SetOriginCaller(who)
 	testing.SetOriginSend(sent)

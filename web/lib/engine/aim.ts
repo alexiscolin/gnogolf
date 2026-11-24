@@ -14,14 +14,14 @@ import { angDiff, onAt, segHit, rayCircle, BALL_R } from "../terrain";
 import { causeAt } from "../scene/cause";
 import { darkGallery, sight } from "../scene/data";
 import { ud } from "../scene/data";
-import { aimAlong } from "../scene";
-import { same, simHole, simReady, simStroke } from "../sim";
+import { aimAlong } from "../scene/fx";
+import { same, simHole, simReady, simStroke } from "../sim/client";
 import type { MutVec2, Stroke, Vec2 } from "../types";
 import type { Live } from "./types";
 
 const MAX_POWER = RULES.maxPower;
 
-// Third person's aim (engine.ts steer, every frame of a pull), two ways at
+// Third person's aim (engine/input.ts steer, every frame of a pull), two ways at
 // once, a slingshot's way round (the hand right turns the aim left). Within
 // the zone of the press (a share of the width, and wider than a full pull on
 // a narrow screen), left or right, the offset dx is the aim itself (FINE at

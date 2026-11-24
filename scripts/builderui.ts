@@ -1,17 +1,11 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The Builder's layout in a headless Chrome, against a dev server with the
-// Builder on (NEXT_PUBLIC_BUILDER=1): at the widths a computer opens it at
-// (900 px, its floor, to a wide screen, and a short laptop window), the
-// window never scrolls sideways, the checks' dock takes no room when all is
-// well (no gauge far from its limit; a problem opens it, its piece a click
-// away, and fixed it folds back), the three steps sit in the middle of the
-// header, Undo keeps its place as Play's reason comes and goes, what Play
-// says when it is off is readable, and the note of a browser that keeps
-// nothing covers no control; undo and redo stand whole in the header; the
-// palette shows its first four unscrolled (More pieces folded), folds as
-// left for the visit; the start screen (a player back) never scrolls
-// sideways, keeps clear of the corner's Back and shows its starters above
-// the fold. Exits non-zero on the first failure.
+// Builder on (NEXT_PUBLIC_BUILDER=1), at the widths a computer opens it at:
+// 900 px (its floor) to a wide screen, and a short laptop window. The window
+// never scrolls sideways, the checks' dock takes no room when all is well,
+// the header keeps its controls whole and in place, the palette and the
+// start screen show their first rows unscrolled. Each block below says what
+// it checks. Exits non-zero on the first failure.
 //
 //   APP=http://localhost:3471 node --experimental-strip-types scripts/builderui.ts
 
@@ -110,10 +104,9 @@ for (const [w, h] of SIZES) {
   c.kill();
 }
 
-// the buttons in a row as tall as one another, on one top and their words on one baseline (Button's sizes): the
-// header's (Back, the steps, the meter, ?, undo, redo, the action), the Inspector's; off, a button keeps the box it has
-// on (undo, before and after an edit), and so does one on (the difficulty meter showing its line: gold, as every on
-// control); the palette's pieces are rows on one grid, no look under them, its first four whole with no scroll
+// Buttons in a row: as tall as one another, on one top, their words on one baseline (the header's, the
+// Inspector's). A button keeps its box off (undo, before and after an edit) and on (the difficulty meter: gold,
+// as every on control). The palette's pieces are rows on one grid, the first four whole with no scroll.
 for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   const c = await editor(w, h);
   const at = `buttons ${w}×${h}`;

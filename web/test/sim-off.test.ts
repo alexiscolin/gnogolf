@@ -1,4 +1,4 @@
-// The page's own aim previews turned off (lib/sim.ts), each case in a fresh
+// The page's own aim previews turned off (lib/sim/client.ts), each case in a fresh
 // copy of the module: sources that are not the realm's (checked once a
 // chain: one reseeded under the same realm is read again), a worker that
 // fails, and (through the aim, engine/aim.ts) a shot the page refuses that
@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { aimRig } from "./aim-rig.ts";
 import { answer, makeHost, type Ask } from "../lib/sim/host.ts";
-import type * as Sim from "../lib/sim.ts";
+import type * as Sim from "../lib/sim/client.ts";
 import type { Stroke } from "../lib/types.ts";
 
 const repo = new URL("../../", import.meta.url);
@@ -35,7 +35,7 @@ const chain = (file = (p: string) => fs.readFileSync(new URL(p, repo), "utf8")) 
 });
 const ID = "garden/1/v1", PERIOD = 5967997;
 let copies = 0;
-const fresh = () => import(`../lib/sim.ts?${++copies}`) as Promise<typeof Sim>;
+const fresh = () => import(`../lib/sim/client.ts?${++copies}`) as Promise<typeof Sim>;
 
 void test("a deployed file that is not the one golf.wasm was built from: never started", async () => {
   const sim = await fresh();
@@ -66,7 +66,7 @@ void test("a worker that fails a simulation turns the page's previews off, not b
 });
 
 void test("the page's own previews every frame (third person) on a still aim: the chain is still asked once, 120 ms on", async (t) => {
-  const sim = await import("../lib/sim.ts");
+  const sim = await import("../lib/sim/client.ts");
   assert.equal(await sim.simHole(chain(), ID), true);
   let asked = 0;
   const ask = () => (asked++, new Promise<Stroke>(() => {}));
@@ -80,7 +80,7 @@ void test("the page's own previews every frame (third person) on a still aim: th
 });
 
 void test("a shot the page refuses that the chain answers is a difference", async (t) => {
-  const sim = await import("../lib/sim.ts"); // the aim's own copy
+  const sim = await import("../lib/sim/client.ts"); // the aim's own copy
   assert.equal(await sim.simHole(chain(), ID), true);
   refusing = true;
   const asked: ((s: Stroke) => void)[] = [];

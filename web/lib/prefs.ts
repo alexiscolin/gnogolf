@@ -1,17 +1,15 @@
-// What this browser remembers of the player: the camera picked this session,
-// the Builder's Inspector folded or not, the gnome, and the gnomes earned.
-import { GNOMES } from "./scene/gnome";
+// What this browser remembers of the player: the camera, the Builder's Inspector, the gnome, the gnomes and badges earned.
+import { GNOMES, gnomeById } from "./scene/gnome";
 import { reducedMotion } from "./device";
 import { lowGfx } from "./engine/pace";
 import type { CamMode } from "./engine/types";
 
-// the camera modes, in the order the button goes through them. A page always
-// opens in Classic; a mode picked since is kept for this tab's session only.
+/** The camera modes, in the order the button goes through them. A page opens in Classic; a pick is kept for the tab's session only. */
 export const CAM_ORDER: readonly CamMode[] = ["classic", "third", "far"];
 const CAM_KEY = "gnogolf.cam.session";
 export function savedCam(): CamMode {
   try {
-    localStorage.removeItem("gnogolf.cam"); // the old, lasting choice: forgotten
+    localStorage.removeItem("gnogolf.cam"); // the lasting choice an older build kept
     const c = sessionStorage.getItem(CAM_KEY);
     return CAM_ORDER.find((m) => m === c) ?? "classic";
   } catch {
@@ -22,7 +20,7 @@ export function saveCam(m: CamMode) {
   try { sessionStorage.setItem(CAM_KEY, m); } catch {}
 }
 
-// the Builder's Inspector: its Details open until the player folds them, kept so for the visit
+// the Builder's Inspector: its Details stay open until the player folds them, kept for the visit
 const DETAILS_KEY = "gnogolf.builder.details";
 export function detailsOpen() {
   try {
@@ -36,7 +34,7 @@ export function saveDetailsOpen(open: boolean) {
 }
 
 const GNOME_KEY = "gnogolf.gnome";
-/** Whether this player ever picked a gnome (a first visit has not). */
+/** Whether this player ever picked a gnome. */
 export function hadGnome() {
   try {
     return !!localStorage.getItem(GNOME_KEY);
@@ -60,9 +58,21 @@ export function saveGnome(id: string) {
   try { localStorage.setItem(GNOME_KEY, id); } catch {}
 }
 
-// A list of ids this browser keeps for good (the gnomes earned, the badges,
-// the weathers holed out in): read back as strings only, a hand edit or an
-// older format must not blank the page.
+/** The gnome a shared link asks for (?gnome=), and whether this player has it. */
+export function linkedGnome() {
+  const want = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("gnome");
+  const gn = want ? GNOMES.find((x) => x.id === want) : undefined;
+  return gn && { id: gn.id, name: gn.name, open: !gn.unlock || earned().includes(gn.id) };
+}
+/** The locked gnome a shared link asked for, said once: null when there is none. */
+export function lockedNote() {
+  const gn = linkedGnome();
+  if (!gn || gn.open) return null;
+  const mine = gnomeById(savedGnome());
+  return `${gn.name.replace(/^The /, "")} is locked — playing as ${mine.name.replace(/^The /, "")}`;
+}
+
+// A list of ids this browser keeps for good. Read back as strings only: a hand edit must not blank the page.
 function kept(key: string): string[] {
   try {
     const e: unknown = JSON.parse(localStorage.getItem(key) || "[]");
@@ -82,9 +92,9 @@ function keep(key: string, ids: readonly string[]) {
 export const earned = () => kept("gnogolf.earned");
 /** A gnome earned, kept for good. */
 export const remember = (id: string) => keep("gnogolf.earned", [id]);
-/** The badges earned in this browser (lib/card.ts BADGES), and new ones kept for good. */
+/** The badges earned in this browser. */
 export const badgesEarned = () => kept("gnogolf.badges");
-// (at: the hole they were earned on, kept for the new ones only); returns the new ones
+/** Keeps new badges for good, and the hole each was earned on. Returns the new ones. */
 export const rememberBadges = (ids: readonly string[], at: string) => {
   const had = badgesEarned(), add = ids.filter((id) => !had.includes(id));
   if (!add.length) return add;
@@ -95,7 +105,7 @@ export const rememberBadges = (ids: readonly string[], at: string) => {
   return add;
 };
 const AT_KEY = "gnogolf.badges.at";
-/** Where each badge was earned: its hole's id (the cup card stamps it there); strings only, as kept() reads. */
+/** Where each badge was earned: its hole's id. */
 export function badgesAt(): Record<string, string> {
   try {
     const e: unknown = JSON.parse(localStorage.getItem(AT_KEY) || "{}");
@@ -104,13 +114,13 @@ export function badgesAt(): Record<string, string> {
     return {};
   }
 }
-/** The mines' holes whose signature was said on a first visit (their slots, "mines/7"). */
+/** The mines' holes whose signature was said on a first visit, by slot. */
 export const minesHinted = () => kept("gnogolf.hint.mines");
 export const minesHintSaid = (slot: string) => keep("gnogolf.hint.mines", [slot]);
-/** The weathers a hole was finished in ("" the calm one), for All weathers. */
+/** The weathers a hole was finished in, "" the calm one. */
 export const weathersSeen = () => kept("gnogolf.weathers");
 export const seeWeather = (kind: string) => keep("gnogolf.weathers", [kind]);
-/** A new game: the badges go with the scorecard, where they were earned and the weathers counted toward one too (the gnomes stay). */
+/** A new game: the badges, where they were earned and the weathers go with the scorecard. The gnomes stay. */
 export function forgetBadges() {
   try {
     for (const k of ["gnogolf.badges", AT_KEY, "gnogolf.weathers"]) localStorage.removeItem(k);
@@ -119,12 +129,11 @@ export function forgetBadges() {
 
 declare global {
   interface Navigator {
-    // the Network Information API (Chromium): not in the DOM types
+    // the Network Information API, Chromium only: not in the DOM types
     connection?: { saveData?: boolean; effectiveType?: string };
   }
 }
-/** Stills and no clips on the cup cards: reduced motion, a data saver or a
- *  slow link, the Low graphics tier. */
+/** Stills and no clips on the cup cards: reduced motion, a data saver, a slow link or the Low graphics tier. */
 export function stillsOnly() {
   try {
     if (reducedMotion()) return true;

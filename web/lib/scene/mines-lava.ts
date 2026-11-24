@@ -11,11 +11,11 @@
 // vertex, more crust: a shore, a cooling edge), none is the open flow. The
 // world (mines.ts) builds the heat round it (embers, glow, shimmer) on top.
 import * as THREE from "three";
-import { share, uTime } from "./materials";
+import { uTime, once } from "./materials";
 import { md, ud } from "./data";
 import { animate } from "./state";
 import { MINES } from "./mines-kit";
-import { shared, once } from "./mines-toon";
+import { shared } from "./mines-toon";
 import type { Rand } from "./common";
 
 const hex = (c: number) => new THREE.Color(c);
@@ -53,16 +53,14 @@ vec2 lvFlow(vec2 p) {
 }
 `;
 
-let mat: THREE.MeshBasicMaterial | null = null;
 /** The lavaCrust of a curtain pouring down (crustBy(geo, FALLING)): its flow runs down it. */
 export const FALLING = -1;
 /**
  * The lava: one material for every lava of the mines. A geometry's lavaCrust
  * (per vertex, 0..1) is how much it has crusted over, or FALLING.
  */
-export function lavaMaterial() {
-  if (mat) return mat;
-  const m = share(new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
+export const lavaMaterial = () => once("mines:lava", () => {
+  const m = new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
   const u = Object.fromEntries(Object.entries(BANDS).map(([k, c]) => ["u" + k[0].toUpperCase() + k.slice(1), { value: c }]));
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, u, { uTime });
@@ -137,8 +135,8 @@ varying vec3 vLw;
   m.customProgramCacheKey = () => "mines-lava";
   md(m).hook = "mines-lava";
   m.side = THREE.DoubleSide; // (a curtain is seen from both sides; a lake from above only)
-  return (mat = m);
-}
+  return m;
+});
 
 /** A crust per vertex (lavaCrust): k(x, z) of each vertex. */
 export function crustBy(geo: THREE.BufferGeometry, k: (x: number, z: number) => number) {
@@ -172,9 +170,9 @@ function bubbleSystem(boil: boolean) {
     col.set([c.r, c.g, c.b], i * 3);
   }
   dome.setAttribute("color", new THREE.BufferAttribute(col, 3));
-  const domes = new THREE.InstancedMesh(dome, once("bubble dome", () => new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true })), CAP);
+  const domes = new THREE.InstancedMesh(dome, once("mines:bubble dome", () => new THREE.MeshBasicMaterial({ color: 0xffffff, vertexColors: true })), CAP);
   // (a boil's ring thin and faint, spreading as it goes: a ripple, not a white sticker)
-  const rings = new THREE.InstancedMesh(new THREE.TorusGeometry(1, boil ? 0.05 : 0.12, 3, 16).rotateX(Math.PI / 2), boil ? once("boil ring", () => new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: 0.4, depthWrite: false })) : once("bubble ring", () => new THREE.MeshBasicMaterial({ color: MINES.lavaHi })), CAP);
+  const rings = new THREE.InstancedMesh(new THREE.TorusGeometry(1, boil ? 0.05 : 0.12, 3, 16).rotateX(Math.PI / 2), boil ? once("mines:boil ring", () => new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: 0.4, depthWrite: false })) : once("mines:bubble ring", () => new THREE.MeshBasicMaterial({ color: MINES.lavaHi })), CAP);
   // (the embers over the lava are the world's: mines.ts)
   for (const o of [domes, rings]) (o.frustumCulled = false), root.add(o);
   const list: { at: THREE.Vector3; T: number; ph: number; r: number }[] = [];

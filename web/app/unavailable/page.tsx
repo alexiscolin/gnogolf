@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { buttonClass } from "@/components/button";
 import { SHOP } from "@/lib/gnomes/shop";
 
-// What a gnome's page is where the shop is not offered (netlify.toml's
-// country rules, lib/gnomes/geo.ts): the shop is not here, the game is.
-// Out of search results, as the 404 is. Shop off, it never names the shop.
+// Shown where the shop is not offered (netlify.toml's country rules). Shop off, it never names the shop.
 export const metadata: Metadata = { title: "Not available in your region · Gnogolf", robots: { index: false }, alternates: { canonical: null } };
 
 export default function Unavailable() {

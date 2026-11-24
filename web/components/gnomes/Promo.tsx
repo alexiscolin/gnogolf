@@ -12,7 +12,7 @@ import type { Chain } from "@/lib/chain";
 import { gnot, promoWords, type Promo } from "@/lib/gnomes/shop";
 import { know } from "@/lib/gnomes/wear";
 import type { Skin } from "@/lib/scene/gnome";
-import { readSale } from "@/lib/gnomes/promo";
+import { readSale } from "@/lib/gnomes/sale";
 import { SHOP_LINE } from "@/lib/gnomes/door";
 import type { Tier } from "@/lib/gnomes/vocab";
 import { sound } from "@/lib/feel";

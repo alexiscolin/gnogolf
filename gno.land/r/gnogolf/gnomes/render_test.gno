@@ -56,10 +56,9 @@ func TestGNOTIsWrittenPlainly(t *testing.T) {
 	uassert.Equal(t, "0.000001", gnot(1))
 }
 
-// Behind the rows' rule, the page escapes a name as Markdown wherever it
-// goes (the title, the portrait's alt text, a link's text): even a name the
-// rule had let by could never close the brackets and swap the portrait for
-// an image from elsewhere, nor write markup.
+// The page escapes a name as Markdown wherever it goes: even a name the rows'
+// rule had let by could not close the brackets and swap the portrait for
+// another image.
 func TestANameOnThePageIsMarkdownEscaped(cur realm, t *testing.T) {
 	fresh(t, cur)
 	g := mustGnome(1)

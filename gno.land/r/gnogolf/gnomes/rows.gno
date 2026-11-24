@@ -6,10 +6,9 @@ import (
 	"unicode/utf8"
 )
 
-// A series' rows are read in place. Its ids follow on with no gap, so the
-// row of an id is found by bisection on the string's offsets: from any
-// offset, its line starts at most a line back. About ten steps for the
-// genesis, where walking it from the top would read every line.
+// A series' rows are read in place. Ids follow on with no gap, so an id's row
+// is found by bisection on byte offsets, stepping back to the line's start:
+// about ten steps for the genesis.
 
 // rowOf returns the line of gnome id in rows, "" when there is none.
 func rowOf(rows string, id int64) string {
@@ -77,13 +76,13 @@ func parseRow(row string) (gnome, error) {
 	return gnome{id: id, tier: ti, name: f[2], traits: f[3]}, nil
 }
 
-// plainName: what a name may be, wherever it is shown (gnoweb's Markdown, a
-// wallet's text, a market's JSON, the portrait's SVG): 1 to maxGnomeName
-// bytes of valid UTF-8, each rune a letter (a-z, A-Z, or an accented Latin
-// one: Latin-1's and Latin Extended-A's), a digit, a space or one of - ' .
-// Nothing a page reads as markup or a link ([ ] ( ) < > & ! * _ # ...),
-// and nothing unseen: no control, no bidi override or isolate (text running
-// backwards), no zero width, no combining mark.
+// plainName reports whether s may be a gnome's name, wherever it is shown
+// (gnoweb's Markdown, a wallet's text, a market's JSON, the portrait's SVG):
+// 1 to maxGnomeName bytes of valid UTF-8, each rune a Latin letter (ASCII,
+// Latin-1, Latin Extended-A), a digit, a space or one of - ' . So nothing a
+// page reads as markup or a link, and nothing unseen: no control, bidi,
+// zero-width or combining rune. web/lib/gnomes/rows.ts keeps the same rule
+// (rowcases_test.gno).
 func plainName(s string) bool {
 	if s == "" || len(s) > maxGnomeName || !utf8.ValidString(s) {
 		return false
@@ -100,7 +99,8 @@ func plainName(s string) bool {
 	return true
 }
 
-// printable: 1 to max bytes of printable ASCII, a space included.
+// printable reports whether s is 1 to max bytes of printable ASCII, a space
+// included.
 func printable(s string, max int) bool {
 	if s == "" || len(s) > max {
 		return false

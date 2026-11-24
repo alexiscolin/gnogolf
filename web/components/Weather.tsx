@@ -1,25 +1,15 @@
 "use client";
 
-
-// The forecast for the stroke, bottom left: a gnome's weathervane — his hat is
-// the arrow and points where the wind blows (the board as seen: right is +x,
-// down the screen is +y) — a windsock for how hard, and what falls from the sky.
-// A storm's flashes are the scene's (flash counts them): the screen lights
-// up with the 3D lightning, not on a clock of its own. A clear night's sky is
-// the moon (night: the hole's time of day). Underground (the Crystal Mines)
-// the same four kinds go by a mine's names, a lantern for a sky: still air,
-// a draught, dripping, lights out; a dark gallery says its lamp's reach.
 import { useEffect, useState } from "react";
 import { InfoTip } from "@/components/ui";
 import type { WeatherNow } from "@/lib/scene/weather";
 import { sight } from "@/lib/scene/data";
 
-/** The sky's picture: the weather card's, and a board's record's (wind: gusts; under the mines, a lantern). */
+/** The sky's picture. mine: a lantern stands for the sky. */
 export function SkyIcon({ sky, mine = false, night = false, className }: { sky: "sun" | "wind" | "rain" | "snow" | "fog" | "storm"; mine?: boolean; night?: boolean; className?: string }) {
   return (
     <svg viewBox="0 0 40 28" className={className} aria-hidden="true">
       {mine ? (
-        // a lantern for the sky: lit, dripping, or out
         <>
           <path d="M 16 7 Q 20 1 24 7" className="wv__rod" />
           <rect x="14" y="7" width="12" height="14" rx="3.5" className={sky === "fog" ? "ws__cloud ws__cloud--dark" : "ws__sun"} />
@@ -37,22 +27,22 @@ export function SkyIcon({ sky, mine = false, night = false, className }: { sky: 
   );
 }
 
+/** The forecast card. The vane's hat points where the wind blows: right is +x, down the screen is +y. flash: the scene's lightning count. */
 export default function Weather({ w: given, flash = 0, until = null, night = false, world = "", dark = false }: { w: WeatherNow | null; flash?: number; until?: number | null; night?: boolean; world?: string; dark?: boolean }) {
-  // how long this weather lasts: the chain's period ends at until (epoch ms);
-  // said in minutes, which a drifting clock spoils less than a time of day
+  // until: the end of the chain's period, epoch ms. Said in minutes, which a drifting clock spoils less than a time of day.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 15000);
     return () => clearInterval(t);
   }, []);
-  // a clear sky still says so, when the chain gives the round a forecast
+  // a clear sky still shows when the chain gives the round a forecast
   if (!given && !until) return null;
   const w: Partial<WeatherNow> = given || {};
   const s = w.wind ? Math.hypot(w.wind[0], w.wind[1]) : 0;
   const deg = w.wind ? (Math.atan2(w.wind[1], w.wind[0]) * 180) / Math.PI : 0;
   // the chain's push per substep, on four steps: breeze, wind, strong, gale
   const force = !s ? 0 : s < 0.05 ? 1 : s < 0.09 ? 2 : s < 0.13 ? 3 : 4;
-  const mine = world === "mines"; // (the chain's kinds as the mines name them: About's rules say the same)
+  const mine = world === "mines"; // the mines name the chain's kinds their own way
   const NAMES = mine ? ["Still air", "Draught", "Draught", "Strong draught", "Strong draught"] : ["Calm", "Breeze", "Wind", "Strong wind", "Gale"];
   const [RAIN, FOG] = mine ? ["Dripping", "Lights out"] : ["Rain", "Fog"];
   const sky = w.storm ? "storm" : w.rain ? "rain" : w.snow ? "snow" : w.fog ? "fog" : "sun";
@@ -68,7 +58,7 @@ export default function Weather({ w: given, flash = 0, until = null, night = fal
     .join(" ") || (mine ? "Still air: nothing pushes the ball." : "A clear sky: nothing pushes the ball.");
   return (
     <>
-      {/* the card is the button: what it does to the ball, a tap away */}
+      {/* the card is the button that opens the note */}
       <InfoTip className="card card--weather" label={`Weather: ${said || (mine ? "still air" : "clear")}. What it does`} note={note}>
         <svg viewBox="0 0 64 64" className="weather__vane" aria-hidden="true">
           <circle cx="32" cy="32" r="29" className="wv__dial" />

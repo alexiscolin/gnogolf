@@ -14,7 +14,7 @@
 // that outline at its edge, never a staircase of cells.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { flat, relief, share } from "./materials";
+import { flat, relief, share, once } from "./materials";
 import { animate, state } from "./state";
 import { seeded, type Rand } from "./common";
 import { md, ud, type Hole } from "./data";
@@ -24,7 +24,7 @@ import { bakeLocal } from "./bake";
 import { MINES, crystalCluster, planks, drawnGround } from "./mines-kit";
 import { waterMaterial } from "./mines-water";
 import { lavaMaterial, FALLING, crustBy, bubbles } from "./mines-lava";
-import { once, GOLD, GOLD_DARK, goldMat, gem, form, shared, plate, INK_THIN, inked, facets, knobbly, paint, strata, boulder, lumps, vnoise, halo, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, RUST, solid, tinted, deck, sightFade } from "./mines-toon";
+import { GOLD, GOLD_DARK, goldMat, gem, form, shared, plate, INK_THIN, inked, facets, knobbly, paint, strata, boulder, lumps, vnoise, halo, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, RUST, solid, tinted, deck, sightFade } from "./mines-toon";
 import { inZone, inPoly, nearestOnPoly, segDist, smoothstep, mod, there, onAt, untilOn, boxOf } from "../terrain";
 import { sound } from "../feel";
 import type { Terrain } from "../terrain";
@@ -322,7 +322,7 @@ function lavaPool(pts: MutVec2[], level: number, t: Terrain, s: Hole, rand: Rand
   g.add(rim(fine, t, bank, true));
   // a line of ember light where the lava meets its bank
   const glow = band(pts, [[-0.02, () => level + 0.03, 0xff7a2a], [-0.5, () => level + 0.01, 0x000000]], off);
-  g.add(new THREE.Mesh(glow, once("lava lip glow", () => new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))));
+  g.add(new THREE.Mesh(glow, once("mines:lava lip glow", () => new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }))));
   // bubbles, and rafts of cooler crust on the flow
   const inner = spotsIn(pts, Math.min(9, 2 + Math.round(Math.abs(areaOf(pts)) / 8)), 0.9, rand, (x, zz) => !off(x, zz));
   add(g, bubbles(t, inner.map(([x, zz]) => new THREE.Vector3(x, level + 0.01, zz)), rand));
@@ -437,8 +437,8 @@ const CAP = 96;
 function dripSystem() {
   const root = new THREE.Group();
   ud(root).live = true;
-  const drop = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 6, 4).scale(1, 1.8, 1), once("drip", () => flat(0xffffff, { emissive: 0x3f7fa0, emissiveIntensity: 0.5 })), CAP);
-  const ring = new THREE.InstancedMesh(new THREE.TorusGeometry(1, 0.025, 3, 14).rotateX(Math.PI / 2), once("drip ring", () => new THREE.MeshBasicMaterial({ color: 0xd8f4ff, transparent: true, opacity: 0.6, depthWrite: false })), CAP);
+  const drop = new THREE.InstancedMesh(new THREE.SphereGeometry(0.05, 6, 4).scale(1, 1.8, 1), once("mines:drip", () => flat(0xffffff, { emissive: 0x3f7fa0, emissiveIntensity: 0.5 })), CAP);
+  const ring = new THREE.InstancedMesh(new THREE.TorusGeometry(1, 0.025, 3, 14).rotateX(Math.PI / 2), once("mines:drip ring", () => new THREE.MeshBasicMaterial({ color: 0xd8f4ff, transparent: true, opacity: 0.6, depthWrite: false })), CAP);
   drop.frustumCulled = ring.frustumCulled = false;
   root.add(drop, ring);
   const list: { at: THREE.Vector3; T: number; ph: number; c: THREE.Color; gate?: () => boolean }[] = [];
@@ -494,7 +494,7 @@ function steamSystem() {
   ud(root).live = true;
   // (toon steam: pale billows in the flat bands, see-through a little, behind what stands in front of them — not
   // a glow smeared on the floor; a puff thins out by shrinking away, one draw)
-  const mat = once("steam", () => new THREE.MeshToonMaterial({ color: 0xe4eaf0, transparent: true, opacity: 0.82, depthWrite: false }));
+  const mat = once("mines:steam", () => new THREE.MeshToonMaterial({ color: 0xe4eaf0, transparent: true, opacity: 0.82, depthWrite: false }));
   const CAPS = 256, puff = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 1), mat, CAPS);
   puff.frustumCulled = false;
   root.add(puff);
@@ -589,10 +589,8 @@ function oreBin(z: Zone, t: Terrain, s: Hole, rand: Rand) {
 // ground of clumps and grains — cells of the floor each a shade of their own
 // with a dark seam between them, and fine grit — so ore dirt, scree, ballast
 // read as stuff, not as a smear
-let laidMat: THREE.MeshToonMaterial | null = null;
-const laid = () => {
-  if (laidMat) return laidMat;
-  const m = share(flat(0xffffff, { vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
+const laid = () => once("mines:laid", () => {
+  const m = flat(0xffffff, { vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = "varying vec3 vLaidW;\n" + sh.vertexShader.replace("#include <begin_vertex>", "#include <begin_vertex>\n  vLaidW = (modelMatrix * vec4(transformed, 1.0)).xyz;");
     sh.fragmentShader = `varying vec3 vLaidW;
@@ -621,8 +619,8 @@ float ldH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); 
   };
   m.customProgramCacheKey = () => "mines-laid";
   md(m).hook = "mines-laid";
-  return (laidMat = m);
-};
+  return m;
+});
 
 /** The ink along an outline where it is on the lane, a hair over it. */
 function edgeInk(pts: readonly Vec2[], t: Terrain, s: Hole, lift = 0.05) {
@@ -770,7 +768,6 @@ function dripPool(z: Zone, t: Terrain, s: Hole, rand: Rand) {
 }
 
 /** Crystal ice: a floor of pale glass, deep cyan in its middle, crystals caught in it, frost at its rim, a glint. */
-let iceMat: THREE.MeshPhongMaterial | null = null;
 function ice(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   // (not over the cup's rings: the cup is set in the rock, the ice round it; nor under a surface listed after it,
   // the floor there as the physics has it)
@@ -814,8 +811,7 @@ function ice(z: Zone, t: Terrain, s: Hole, rand: Rand) {
     const f = (1 - smoothstep(d / 0.9)) * (0.55 + 0.45 * vnoise(x * 4.1, zz * 4.1));
     c.lerp(frost, 0.8 * f);
   }, (x, zz) => t.onGreen(x, zz) && !overVoid(s, x, zz) && Math.hypot(x - cx0, zz - cz0) > CUP * 0.55 && !over.some((o) => inPoly(x, zz, o) && edgeDist(x, zz, o) > step), 8000, snap); // (fine on a big floor: it follows the ground under it)
-  iceMat ||= share(new THREE.MeshPhongMaterial({ vertexColors: true, emissive: 0x3f8fb8, emissiveIntensity: 0.3, shininess: 110, specular: 0xffffff, flatShading: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
-  g.add(new THREE.Mesh(geo, iceMat));
+  g.add(new THREE.Mesh(geo, once("mines:ice", () => new THREE.MeshPhongMaterial({ vertexColors: true, emissive: 0x3f8fb8, emissiveIntensity: 0.3, shininess: 110, specular: 0xffffff, flatShading: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }))));
   // facet lines: the crystal's cleavage, straight cracks at three angles
   const lines: THREE.Vector3[] = [];
   for (let k = 0; k < Math.round(Math.abs(areaOf(pts)) / 3); k++) {
@@ -1352,7 +1348,7 @@ function magnet(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   if (lumpsG.length) {
     const m = mergeGeometries(lumpsG);
     m.computeVertexNormals();
-    g.add(inked(m, once("magnet ore", () => new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x9aa8c8 })), INK_THIN));
+    g.add(inked(m, once("mines:magnet ore", () => new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x9aa8c8 })), INK_THIN));
   }
   // the field: lines of iron filings from across the zone toward the vein, trembling on
   const lines: THREE.Vector3[] = [];

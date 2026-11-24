@@ -1,28 +1,14 @@
-// Talking to the realm.
-//
-// Reads only, all free: no wallet, no transaction, no block to wait for. The
-// chain resolves every shot — nothing here computes anything about a ball
-// (the aim's previews run the realm's own code in the page: lib/sim.ts).
-//
-// This is the one place the chain's JSON is parsed (lib/sim.ts parses the
-// wasm's, the same JSON): each read is checked
-// against the shape lib/types.ts gives it (the fields the page cannot do
-// without), and a reply that is not that shape is refused here, as the realm's
-// ("chain"), not left to fail somewhere in the scene.
+// Reads of the realm: no wallet, no transaction. The one place the chain's JSON is
+// parsed: a reply that is not the shape lib/types.ts gives it is refused here.
 
 import { hostOf, isLoopback } from "./network";
-import { trackError } from "./analytics";
+import { trackError, type NameRefusal } from "./analytics";
 import type {
   Bests, CourseLeaderboard, Extras, Ghost, HoleLeaderboard, HoleRank, HoleRow, Holes, HoleState, Mode, Rank, Round, SimulateFrom,
   DayCandidates, Saved, SimulateRound, Standings, StandingRow, StrokesRow, Vec2, Versions, Weather,
 } from "./types";
 
-/**
- * The realm's rules the client plays by, copied from gno.land/r/gnogolf/golf/v2
- * (golf.gno, weather.gno): scripts/selfcheck.ts reads them there and fails on
- * any drift. A split or a gas figure that disagrees with the realm sends a
- * commit the chain refuses.
- */
+/** The realm's rules, copied from golf.gno and weather.gno. scripts/selfcheck.ts fails on any drift. */
 export const RULES = {
   /** golf.gno maxShots: the longest shot list one commit takes */
   maxShots: 12,
@@ -34,76 +20,74 @@ export const RULES = {
   maxPower: 10,
   /** weather.gno PeriodSeconds, in ms: one weather's length */
   periodMs: 300e3,
-  /** golf.gno's work model (workBudget, workPerShot, workPerWall, workPerPoint, workPerPiece, workPerUnit, workPerPulseWall, workPerPulsePost) */
+  /** golf.gno's work model: workBudget, then workPerShot and the like */
   work: { budget: 1.4e9, shot: 10e6, wall: 150e3, point: 1.2e6, piece: 15e3, unit: 1000, pulseWall: 700e3, pulsePost: 200e3 },
-  /** physics MaxWork and MaxWorkStep: a stroke's work cap, and the most a stroke passes it by (golf's work.next caps a shot by what is left, less this) */
+  /** physics MaxWork and MaxWorkStep: a stroke's work cap, and the most a stroke passes it by */
   maxWork: 1_000_000,
   maxWorkStep: 225_000,
 } as const;
 
-/** A realm path NEXT_PUBLIC_REALM may name: gno.land/r/<namespace>/<realm>, or
- *  a game's sub-path, gno.land/r/<namespace>/<game>/<realm>, either with a
- *  version (…/golf/v2) (next.config.mjs holds the same rule). */
+/** A realm path NEXT_PUBLIC_REALM may name: gno.land/r/<namespace>[/<game>]/<realm>[/v<n>]. next.config.mjs holds the same rule. */
 export const isRealmPath = (s: string) => /^gno\.land\/r\/[a-z0-9_-]+(\/[a-z0-9_]+){1,2}(\/v[0-9]+)?$/.test(s);
-// the hub: the build's (NEXT_PUBLIC_REALM, as gno.land/r/nym-alexiscolin000/gnogolf/golf/v2
-// on onyx), else the local chain's (a production build refuses one missing or
-// of another shape: next.config.mjs)
+// the build's realm, else the local chain's
 const REALM_ENV = process.env.NEXT_PUBLIC_REALM || "";
 const REALM = isRealmPath(REALM_ENV) ? REALM_ENV : "gno.land/r/gnogolf/golf/v2";
 /** The hub's gnoweb path ("/r/…/golf"). */
 export const REALM_PATH = REALM.replace(/^gno\.land/, "");
-/** The game's own gnoweb path ("/r/…/gnogolf/") of a realm at `realm` (its version aside). */
+/** The game's gnoweb path ("/r/…/gnogolf/") for a realm path. */
 export const gamePath = (realm: string) => realm.replace(/\/v[0-9]+$/, "").replace(/[^/]+$/, "");
-/** The gnoweb path ("/p/…/") of the packages a realm at `realm` imports, beside
- *  it: p/gnogolf/… in the repo tree, p/<ns>/gnogolf/… as stage.sh deploys them. */
+/** The gnoweb path ("/p/…/") of the packages a realm imports, beside it. */
 export const pkgsPath = (realm: string) => gamePath(realm).replace(/^\/r\//, "/p/");
-/** The gnoweb path of the realm that keeps the records, beside the rules: …/gnogolf/store. */
+/** The gnoweb path of the store realm, beside the rules. */
 export const storePath = (realm: string) => gamePath(realm) + "store";
-/** The gnomes' realm beside the rules: gno.land/r/…/gnogolf/gnomes. */
+/** The gnomes' realm, beside the rules. */
 export const GNOMES_REALM = gamePath(REALM) + "gnomes";
 const HOLES_TTL = 10 * 60e3; // a hole registered meanwhile shows within ten minutes, or in a new tab
 
-/** A pause of ms: between two reads of the chain, a retry, a beat. */
 export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-/** Whether seen() finds a signed transaction in, asked every 3 s for 90 s (it lands within a few blocks) while live() (the page waiting for it still open). */
+/** p, or a rejection once ms have gone by. */
+export function within<T>(p: Promise<T>, ms = 4000): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<never>((_, no) => (t = setTimeout(() => no(new Error("The chain did not answer in time.")), ms)))]).finally(() => clearTimeout(t));
+}
+/** Whether seen() turns true, asked every 3 s for 90 s while live(). A signed transaction lands within a few blocks. */
 export async function landed(seen: () => Promise<boolean>, live: () => boolean): Promise<boolean> {
   for (const t0 = Date.now(); Date.now() - t0 < 90_000 && live(); await wait(3000)) {
     if (await seen()) return true;
   }
   return false;
 }
-/** What the chain charges per stored byte (ugnot) when its own price is not read yet or not readable: the vm's default. */
+/** Ugnot per stored byte while the chain's price is not read: the vm's default. */
 export const BYTE_PRICE = 100;
 
 export const DEFAULT_RPC = "http://127.0.0.1:26657";
 export const DEFAULT_WEB = "http://127.0.0.1:8888";
 
-/** An error from a read, tagged: "down" the node did not answer, "chain" it refused (log: the VM's). */
+/** An error from a read: "down" the node did not answer, "chain" it refused, with the VM's log. */
 interface ChainError extends Error {
   kind?: "down" | "chain";
   log?: string;
 }
 /** The kind a thrown value was tagged with, if any. */
 export const errorKind = (e: unknown): ChainError["kind"] => (e instanceof Error ? (e as ChainError).kind : undefined);
-/** Whether the chain refused a read because the realm has no such function (a realm deployed before it, as onyx's v2 before DayCandidates). */
+/** Whether the chain refused a read because the realm has no such function: a realm deployed before it. */
 export const undeclared = (e: unknown, name: string) => errorKind(e) === "chain" && String((e as ChainError).log ?? "").includes(`name ${name} not declared`);
 
 // Gno wants a float where the signature says float64; an integer literal would
 // be an untyped int, so every number goes out with a decimal point.
 const f = (n: number) => Number(n).toFixed(4);
 const s = (v: unknown) => JSON.stringify(String(v));
-// an exact float, as the realm gave it (its shortest round-trip form), with the
-// decimal point a float64 argument wants
+// an exact float as the realm gave it, with the decimal point a float64 argument wants
 const fx = (n: number) => {
   const t = String(Number(n));
   if (!Number.isFinite(Number(n))) throw new Error("A ball must be on the board.");
   return /[.e]/.test(t) ? t : t + ".0";
 };
 const hexOf = (str: string) => [...new TextEncoder().encode(str)].map((b) => b.toString(16).padStart(2, "0")).join("");
-// the VM quotes its strings the Go way: a rune past U+FFFF it deems not
-// printable comes as \UXXXXXXXX, which JSON lacks (a \\ before a U is not one)
+// The VM quotes strings the Go way: a rune past U+FFFF comes as \UXXXXXXXX, which JSON lacks.
+// An escaped backslash before a U is not one.
 const goJSON = (q: string) => q.replace(/\\(U[0-9a-fA-F]{8}|[\s\S])/g, (m, e: string) => (e.length > 1 ? String.fromCodePoint(parseInt(e.slice(1), 16)) : m));
-// the JSON shape this page reads (every realm object carries "version")
+// the "version" every realm object carries, as this page reads it
 const VERSION = 1;
 let warned = false;
 /** The realm's own sentence in a VM panic log ("golf: …"), or null. */
@@ -112,8 +96,7 @@ function refusal(log: string | undefined) {
   return m ? m[1].replace(/\s+$/, "") : null;
 }
 
-// Small and structural: what the page reads without looking twice. Anything
-// deeper (a skin's name, a zone's numbers) the scene already treats as data.
+// The checks cover the fields the page reads blind. The scene treats anything deeper as data.
 
 export type Obj = Record<string, unknown>;
 export const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -123,17 +106,14 @@ export const nums = (v: Obj, ...keys: string[]) => keys.every((k) => Number.isFi
 export const strs = (v: Obj, ...keys: string[]) => keys.every((k) => typeof v[k] === "string");
 const isMode = (m: unknown): m is Mode => m === "assisted" || m === "pro";
 const holeRow = (h: unknown) => isObj(h) && typeof h.id === "string";
-// a path is points of two finite numbers
 const isPath = (p: unknown): p is Vec2[] => Array.isArray(p) && p.every(isVec);
-// a stroke's flight: its path (at least one point, or it is not one), one air
-// flag and one cause letter per point, and where it rests exactly
+// a flight: a path of at least one point, an air flag and a cause letter per point, the exact rest
 const isFlight = (v: Obj) => isPath(v.path) && v.path.length > 0 && isVec(v.rest) && strs(v, "air", "cause");
 const simFrom = (v: unknown): v is SimulateFrom => isObj(v) && isFlight(v) && typeof v.holed === "boolean" && nums(v, "bounces");
-// a board: its rows (each checked by row), its mode and the numbers it says
 const board = (v: unknown, row: (r: unknown) => boolean, ...keys: string[]): v is Obj => isObj(v) && isMode(v.mode) && Array.isArray(v.rows) && v.rows.every(row) && nums(v, ...keys);
 const strokesRow = (r: unknown) => isObj(r) && typeof r.player === "string" && (r.name === undefined || typeof r.name === "string") && nums(r, "strokes");
 const standingRow = (r: unknown) => strokesRow(r) && nums(r as Obj, "holes", "par");
-/** Each answer's shape, checked (the builder's test mode reads its local chain's answers through the same). */
+/** A shape check per realm answer. */
 export const checks = {
   holes: (v: unknown): v is HoleRow[] => Array.isArray(v) && v.every(holeRow),
   // Holes(): { version, play, successor, holes }
@@ -165,25 +145,40 @@ export const checks = {
 };
 // a gno.land name as r/sys/users writes them
 const isName = (n: string) => /^[a-z0-9._-]{1,64}$/i.test(n);
-/** What a name a registrar takes is made of (its own rules come after, ValidateNymFormat): what nameProblem asks first, and a gnokey paste takes. */
+/** The characters a registrar's name is made of. Its own rules come after. */
 export const nameShape = (n: string) => /^[a-z0-9_-]{1,64}$/.test(n);
-// what a refused stroke says, as the engine always said it
+/** The registrar's reserved words: what a name may not start with. */
+const RESERVED = /^(gno|gl|g1|atom|atone|photon|cosmos)/;
+/** A name to start from: the gnome's letters, or "golfer", then 3 digits. rnd: 0..1. */
+export const suggestName = (gnome: string, rnd = Math.random()) => {
+  const l = gnome.toLowerCase().replace(/[^a-z]/g, "").slice(0, 13);
+  return (l.length >= 5 && !RESERVED.test(l) ? l : "golfer") + String(100 + Math.floor(rnd * 900));
+};
+
+/** The registrar's rules for what follows "nym-", in the order said: the test, the words, the refusal's name. */
+const NAME_RULES: readonly (readonly [(stem: string) => boolean, string, NameRefusal])[] = [
+  [(n) => !/^[a-z]+\d{0,3}$/.test(n), "lowercase letters, then digits", "chars"],
+  [(n) => RESERVED.test(n), "it cannot start with gno, gl, g1, atom, atone, photon or cosmos", "reserved"],
+  [(n) => !/^[a-z]{5,13}(\d|$)/.test(n), "5 to 13 letters", "length"],
+  [(n) => !/^[a-z]{5,13}\d{3}$/.test(n), "and 3 digits to end", "digits"],
+];
+const broken = (stem: string) => NAME_RULES.find(([bad]) => bad(stem));
+/** The rule a typed name breaks, "" once it holds. */
+export const nameHint = (stem: string) => (!stem ? "5 to 13 letters, then 3 digits" : broken(stem)?.[1] ?? "");
+/** Why a typed name is refused: the rule it breaks, else the chain's answer. why is nameProblem's: "" none, null unread. */
+export const nameRefusal = (stem: string, why?: string | null): NameRefusal | null =>
+  !stem ? null : broken(stem)?.[2] ?? (!why ? null : /too close/i.test(why) ? "lookalike" : /taken\.$/.test(why) ? "taken" : /registrar/.test(why) ? "no_registrar" : "invalid");
 const NO_PATH = "The chain answered without a path for that shot.";
 
 export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: string; web?: string } = {}) {
-  // Every request gives up after its time (a node that hangs must not hang
-  // the game), is checked at each level, and its bytes read as UTF-8.
+  // a node that hangs must not hang the game
   const TIMEOUT = 8000;
   const utf8 = (b64: string) => new TextDecoder().decode(Uint8Array.from(atob(b64 || ""), (c) => c.charCodeAt(0)));
-  // signal: the caller's, to cancel a request it no longer wants (a stale
-  // aim preview). The timeout is a timer of its own, not AbortSignal.timeout,
-  // which older Safari lacks.
-  // An error is tagged with its kind: "down" when the node did not answer
-  // (refused, timed out, a proxy's HTML page), "chain" when it answered with a
-  // refusal — whose text is the realm's own sentence, not the VM's trace.
+  // "down": the node did not answer (refused, timed out, a proxy's HTML page).
+  // "chain": it refused, and the text is the realm's own sentence.
   const down = (e: unknown): ChainError => Object.assign(e instanceof Error ? e : new Error(String(e)), { kind: "down" as const });
   const refused = (message: string, log?: string): ChainError => Object.assign(new Error(message), { kind: "chain" as const, log });
-  // one of the node's own endpoints (/tx, /status, /blockchain), its JSON; down when it did not answer in ms
+  // the JSON of one of the node's endpoints; "down" when it did not answer in ms
   const rpcGet = async <T>(path: string, ms = TIMEOUT): Promise<T> => {
     const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
     try {
@@ -200,6 +195,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     error?: { data?: string; message?: string };
     result?: { response?: { ResponseBase?: { Error?: unknown; Log?: string; Data?: string } } };
   }
+  // The timeout is a timer of its own: older Safari lacks AbortSignal.timeout.
   async function once(url: string, ms: number, signal: AbortSignal | null) {
     const c = new AbortController(), t = setTimeout(() => c.abort(new DOMException("signal timed out", "TimeoutError")), ms);
     const stop = () => c.abort(signal?.reason);
@@ -240,8 +236,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   /** A raw ABCI query; returns the decoded data string. */
   const abci = (path: string) => query(`${rpc}/abci_query?path=%22${path}%22`);
 
-  // an expression evaluated in a realm, read-only: the VM's typed result as it
-  // printed it; a failure told analytics (the function, the node's host, how long)
+  // an expression evaluated in a realm: the VM's typed result as printed. A failure is told to analytics.
   const vm = (realm: string, expr: string, ms?: number, signal?: AbortSignal | null) => {
     const t0 = performance.now();
     return query(`${rpc}/abci_query?path=%22vm/qeval%22&data=0x${hexOf(`${realm}.${expr}`)}`, ms, signal).catch((e: unknown) => {
@@ -251,7 +246,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   };
   // the function an expression calls, as a refusal names it
   const fnOf = (expr: string) => expr.slice(0, expr.indexOf("("));
-  // a string result — ("…" string), an empty one ( string) — unwrapped; an answer that is not one is the chain's to answer for
+  // a string result unwrapped: ("…" string), or ( string) when empty
   const unquote = (raw: string, expr: string) => {
     if (raw.trim() === "( string)") return "";
     try {
@@ -261,12 +256,12 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     }
   };
 
-  // a string answer from any realm (r/sys/users)
+  // a string answer from any realm
   const qstr = async (realm: string, expr: string, ms?: number) => unquote(await vm(realm, expr, ms), expr);
 
   // a realm read, checked: T when the answer has T's shape, refused otherwise
   const qeval = <T>(expr: string, ok: (v: unknown) => v is T, ms?: number, signal?: AbortSignal | null, bad?: string) => qjson(REALM, expr, ok, ms, signal, bad);
-  // the same of any realm's JSON (the gnomes' beside the rules)
+  // the same for any realm's JSON
   async function qjson<T>(realm: string, expr: string, ok: (v: unknown) => v is T, ms?: number, signal?: AbortSignal | null, bad?: string): Promise<T> {
     // the reply is a Gno typed result — ("<json>" string) — so it unwraps twice
     const json = unquote(await vm(realm, expr, ms, signal), expr);
@@ -288,13 +283,11 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   // a mode is sent exactly: the realm refuses any other word
   const m = (mode: string): Mode => (mode === "pro" ? "pro" : "assisted");
 
-  // Extras(hole, stroke), per hole version and stroke (chain.extras)
+  // Extras by hole version and stroke
   const extrasRead = new Map<string, Promise<Extras>>();
-  // HoleData(version), by version id (its data never changes; an alias's is read each time)
+  // HoleData by version id: a version's data never changes
   const dataRead = new Map<string, Promise<string>>();
-  // Params that do not move within a session (the chain id, the gas and
-  // storage prices) are read once per ttl, not once a hole: the answer is kept,
-  // a failure is not.
+  // fn read once per ttl: the answer is kept, a failure is not
   const memo = <T>(fn: () => Promise<T>, ttl: number) => {
     let at = 0, p: Promise<T> | null = null;
     return (): Promise<T> => {
@@ -305,9 +298,8 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       return p;
     };
   };
-  // The chain's clock: the node's last block time against this device's, from
-  // /status (re-read once a minute at most). The chain judges a period by the
-  // block a transaction lands in, never by the device.
+  // The chain's clock: the last block time against this device's. The chain judges a period
+  // by the block a transaction lands in, never by the device.
   interface Status {
     node_info: { network: string };
     sync_info?: { latest_block_time?: string };
@@ -322,7 +314,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   }, 60e3);
   const PARAMS_TTL = 10 * 60e3;
 
-  // a block's hash and time (ms), from its header as /blockchain gives it; down if the node has no such block or does not answer
+  // a block's hash and time (ms); "down" if the node has no such block
   async function blockMeta(height: number) {
     const at = Math.max(1, height | 0);
     const r = await rpcGet<{ result?: { block_metas?: { block_id?: { hash?: string }; header?: { height?: string; time?: string } }[] } }>(`/blockchain?minHeight=${at}&maxHeight=${at}`);
@@ -332,8 +324,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
   }
   const genesis = memo(() => blockMeta(1).then((b) => b.hash), Infinity);
 
-  // whether the chain runs pkg: a package it doesn't know is its answer
-  // (false); a node not answering is thrown, not kept
+  // whether the chain runs pkg; a node not answering throws
   const has = async (pkg: string) => {
     try {
       await vm(pkg, "IsPaused()");
@@ -343,7 +334,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       throw e;
     }
   };
-  /** The name registrar this chain runs, "" if none: onyx, mainnet and a local gno have r/sys/namereg/v0 (pearl had v1). */
+  /** The name registrar this chain runs, "" if none: v0 on onyx, mainnet and a local gno. */
   const nameReg = memo(async () => {
     for (const v of ["gno.land/r/sys/namereg/v0", "gno.land/r/sys/namereg/v1"]) if (await has(v)) return v;
     return "";
@@ -352,11 +343,11 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     rpc,
     web,
     realm: REALM,
-    /** A read of another realm's JSON, checked as the rules' are (lib/gnomes/shop.ts reads the gnomes' with it). */
+    /** A read of another realm's JSON, checked as the rules' are. */
     qjson,
-    /** A read of another realm's string answer (an empty one: ""). */
+    /** A read of another realm's string answer. */
     qstr,
-    /** The node's current gas price, as ugnot per gas: { gas, price } → price / gas. */
+    /** The node's gas price, in ugnot per gas. */
     gasPrice: memo(async () => {
       const r = await abci("auth/gasprice");
       let j: { price?: unknown; gas?: unknown } = {};
@@ -367,25 +358,24 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       if (!Number.isFinite(p) || p <= 0) throw refused("The chain's gas price could not be read.");
       return p;
     }, PARAMS_TTL),
-    /** How much ugnot an address holds here; 0 for an account the chain has never seen. */
-    // null when the node cannot say: an RPC outage is not an empty account
+    /** The ugnot an address holds: 0 for an account the chain has never seen, null when the node cannot say. */
     balance: async (addr: string): Promise<number | null> => {
       try {
         const r = await abci(`bank/balances/${encodeURIComponent(addr)}`);
-        if (!r) return 0; // the chain has never seen this account
+        if (!r) return 0;
         const m = String(JSON.parse(r)).match(/(\d+)ugnot/);
         return m ? Number(m[1]) : 0;
       } catch {
         return null;
       }
     },
-    /** The chain id the node reports — what a wallet must be switched to. */
+    /** The chain id the node reports. */
     chainId: async () => (await status()).node_info.network,
-    /** Now on the chain's clock (ms): the device's, set by the last block time read. */
+    /** Now on the chain's clock (ms). */
     now: () => Date.now() + skew,
     /** Reads /status again if its last read is a minute old: the clock follows. */
     sync: () => status().then(() => skew),
-    /** What the chain charges per byte a transaction stores, in ugnot (vm params). */
+    /** Ugnot the chain charges per byte a transaction stores. */
     storagePrice: memo(async () => {
       const m = String(JSON.parse(await abci("params/vm:p:storage_price"))).match(/^(\d+)ugnot$/);
       return m ? Number(m[1]) : BYTE_PRICE;
@@ -393,26 +383,23 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     /** gnoweb page of one player's round on a hole. */
     roundURL: (hole: string, player: string) =>
       isHoleId(hole) && isAddress(player) ? new URL(`${REALM_PATH}:${hole}/${player}`, web + "/").href : "#",
-    /** gnoweb board: a hole's best rounds, or the course's (the hub's), at the mode's table. */
+    /** gnoweb board at the mode's table: a hole's best rounds, or the course's. */
     boardURL: (hole: string | null, mode: Mode) =>
       new URL(`${REALM_PATH}${isHoleId(hole) ? `:${hole}` : ""}#${mode === "assisted" ? "assisted" : "pro"}`, web + "/").href,
-    /** gnoweb page of an address (its /u/ profile), # for anything else. */
+    /** gnoweb page of an address, # for anything else. */
     userURL: (addr: string) => (isAddress(addr) ? new URL(`/u/${addr}`, web + "/").href : "#"),
-    /** gnoweb form of a realm's function (its $help page, at func): the call made in a browser, without Adena; # for anything else. */
+    /** gnoweb $help form of a realm's function: the call made without Adena. # for anything else. */
     helpURL: (pkg: string, func: string) =>
       PKG_PATH.test(pkg) && /^[A-Z]\w*$/.test(func) ? new URL(`${pkg.replace(/^gno\.land/, "")}$help&func=${func}`, web + "/").href : "#",
-    /** gnoweb link to what a hole is made of: a realm hole's source, a data
-     *  hole's data page. A player can read a hole before trusting it. */
-    // links built from what the chain says, checked first: a hole id, an address
+    /** gnoweb link to what a hole is made of: a realm hole's source, a data hole's data page. */
     sourceURL: (id: string | null) =>
       PKG.test(String(id))
         ? new URL(String(id).replace(/^gno\.land/, "") + "$source", web + "/").href
         : isHoleId(id)
           ? new URL(`${REALM_PATH}:${id}/data`, web + "/").href
           : "#",
-    /** Every registered hole: id, name, official (one of the course's), world, order, par, plays, best, next (archived for). */
-    // kept for the tab (sessionStorage, HOLES_TTL): a reload or a Retry does
-    // not pay the list again (163M of query gas); fresh=true reads it anyway
+    /** Every registered hole. */
+    // Kept for the tab: a reload does not pay the list again, 163M of query gas. fresh reads it anyway.
     holes: async (fresh = false): Promise<HoleRow[]> => {
       const key = `gnogolf.holes|${rpc}|${REALM}`;
       try {
@@ -425,45 +412,31 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       } catch {}
       return list;
     },
-    /** One hole's geometry, skins, weather and wear (HoleState: everything to draw the hole and aim). */
+    /** Everything to draw a hole and aim on it. */
     state: (hole: string) => qeval(`HoleState(${s(hole)})`, checks.state),
-    /**
-     * One stroke, read-only, from an exact ball: what PlayRoundAt would play
-     * for stroke `stroke` (0 = the first) of a round in `period`. ball is the
-     * "rest" of the previous answer, exactly as it came; shot is shotOf's.
-     * { holed, bounces, path, air, cause, rest }.
-     */
+    /** One stroke, read-only, from an exact ball: what PlayRoundAt would play for stroke (0 = the first) in period. ball is the previous answer's "rest", as it came. */
     simulateFrom: (hole: string, ball: Vec2, shot: string, stroke: number, period: number, ms?: number, signal?: AbortSignal | null) =>
       qeval(`SimulateFrom(${s(hole)}, ${fx(ball[0])}, ${fx(ball[1])}, ${s(shot)}, ${stroke | 0}, ${period | 0})`, checks.simFrom, ms, signal, NO_PATH),
-    /**
-     * A round replayed from the tee, read-only: the last shot's path and the
-     * stroke count, exactly what PlayRound would record for the same list.
-     * shots is ["angle,power", …] as made by shotOf.
-     */
+    /** A round replayed from the tee, read-only: the last shot's path and the stroke count PlayRound would record. */
     simulateRound: (hole: string, shots: readonly string[], period: number | null | undefined, ms?: number, signal?: AbortSignal | null) =>
       period == null
         ? qeval(`SimulateRound(${s(hole)}, ${s(shots.join(";"))})`, checks.simRound, ms, signal, NO_PATH)
         : qeval(`SimulateRoundAt(${s(hole)}, ${s(shots.join(";"))}, ${period | 0})`, checks.simRound, ms, signal, NO_PATH),
-    /** A recorded round replayed in its own weather, however old (the previews above take the current one only): for checking a record. */
+    /** A recorded round replayed in its own weather, however old. */
     replayRound: (hole: string, shots: readonly string[], period: number, ms?: number) =>
       qeval(`SimulateRoundIn(${s(hole)}, ${s(shots.join(";"))}, ${period | 0})`, checks.simRound, ms, null, NO_PATH),
-    /**
-     * One commit of a round under way, read-only: what the next PlayRoundAt
-     * (or PlayRoundPro) of these shots would do from the exact ball ("rest")
-     * at stroke number stroke, refused as that commit would be. SimulateRound's JSON.
-     */
+    /** One commit of a round under way, read-only: what PlayRoundAt of these shots would do from the exact ball at stroke. */
     simulateCommit: (hole: string, ball: Vec2, stroke: number, shots: readonly string[], period: number, ms?: number, signal?: AbortSignal | null) =>
       qeval(`SimulateCommit(${s(hole)}, ${fx(ball[0])}, ${fx(ball[1])}, ${stroke | 0}, ${s(shots.join(";"))}, ${period | 0})`, checks.simRound, ms, signal, NO_PATH),
-    /** When a block was made (ms): its header's time, as /blockchain gives it; down if the node has no such block or does not answer. */
+    /** When a block was made (ms); "down" if the node has no such block. */
     blockTime: async (height: number) => (await blockMeta(height)).ms,
-    /** The chain's first block's hash, read once: what tells a chain apart from another reseeded under the same id (what this browser keeps of one is never another's). */
+    /** The first block's hash, read once: it tells a chain from another reseeded under the same id. */
     genesis,
-    /** A page of the hole of the day's candidates (DayCandidates): the community holes after an alias, in alias order, none hidden, each with the block it was first published at. */
+    /** A page of the hole of the day's candidates: the community holes after an alias, in alias order, none hidden. */
     dayCandidates: (after: string, limit: number) => qeval(`DayCandidates(${s(after)}, ${limit | 0})`, checks.dayCandidates),
-    /** A community hole's versions (an alias, "<address>/<slug>"): what the next one's id will be, and each one's sha. */
+    /** The versions of a community hole's alias, "<address>/<slug>". */
     versions: (alias: string) => qeval(`Versions(${s(alias)})`, checks.versions),
-    /** A version's data (GG1) in hex, as it was published: what the local preview plays (lib/sim), the community
-     *  list judges and the meter rates. A version's read once a visit (its data never changes), a failure not kept. */
+    /** A version's data (GG1) in hex, as published. A version's is read once a visit; a failure is not kept. */
     holeData: (hole: string) => {
       const read = async () => {
         const hex = await qstr(REALM, `HoleData(${s(hole)})`);
@@ -473,7 +446,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       if (!isVersion(hole)) return read();
       let p = dataRead.get(hole);
       if (!p) {
-        if (dataRead.size >= 64) dataRead.clear(); // (up to 64 KB of hex each: a long session from scratch, never unbounded)
+        if (dataRead.size >= 64) dataRead.clear(); // 64 KB of hex each at most: bounded over a long session
         p = read().catch((e: unknown) => (dataRead.delete(hole), Promise.reject(e instanceof Error ? e : new Error(String(e)))));
         dataRead.set(hole, p);
       }
@@ -481,7 +454,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     },
     /** A deployed package's file, as the node keeps it (vm/qfile). */
     file: (path: string) => query(`${rpc}/abci_query?path=%22vm/qfile%22&data=0x${hexOf(path)}`),
-    /** The weather's five minutes on the chain (block time / 300), and its forecast for a hole. */
+    /** The weather's period on the chain: block time / 300. */
     // an int64, not a string: its own unwrapping
     period: async () => {
       const raw = await vm(REALM, "Period()");
@@ -490,63 +463,59 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       return n;
     },
     weather: (hole: string, period: number) => qeval(`Weather(${s(hole)}, ${period | 0})`, checks.weather),
-    /** The golf realm's owner (its maker), as the chain has it: where a tip goes. */
+    /** The golf realm's owner: where a tip goes. */
     owner: async () => {
       const raw = await vm(REALM, "Owner()");
       const a = (raw.match(/^\("([^"]+)" \.uverse\.address\)$/) || [])[1];
       if (!a || !isAddress(a)) throw refused("The chain's owner is not an address.");
       return a;
     },
-    /** Whether the realm takes community holes now (Publishing()): the Builder's publish step reads it first. */
+    /** Whether the realm takes community holes now. */
     publishing: async () => {
       const m = (await vm(REALM, "Publishing()")).match(/^\((true|false) bool\)/);
       if (!m) throw refused("The chain did not say whether publishing is open.");
       return m[1] === "true";
     },
-    /** An alias's current version's id (Current), "" for none: a publish has landed once it names the new id. */
+    /** The id of an alias's current version, "" for none. A publish has landed once it names the new id. */
     current: (alias: string) => qstr(REALM, `Current(${s(alias)})`),
-    /** The realm that took this course over (Successor()), "" for none: nothing is published to a course that moved. */
+    /** The realm that took this course over, "" for none. */
     successor: () => qstr(REALM, "Successor()"),
-    /** Who writes in the records' realm now (store's Writer(): "" paused, another realm once new rules took over): a save or a publish here lands only while it is this realm. */
+    /** Who writes in the store realm now: "" paused, another realm once new rules took over. A save lands only while it is this realm. */
     writer: () => qstr(storePath(REALM), "Writer()"),
-    /** What a timed hole adds at one stroke of a round (0 = first shot): read
-     *  once per hole version and stroke (Extras is a pure function of the two:
-     *  the look-ahead and the next stroke ask the same), a failure not kept. */
+    /** What a timed hole adds at one stroke (0 = the first). A pure function of hole version and stroke: read once, a failure not kept. */
     extras: (hole: string, stroke: number) => {
       const n = Math.max(0, stroke | 0), k = `${hole}#${n}`;
       let p = extrasRead.get(k);
       if (!p) {
-        if (extrasRead.size >= 512) extrasRead.clear(); // (a long session: from scratch, never unbounded)
+        if (extrasRead.size >= 512) extrasRead.clear(); // bounded over a long session
         p = qeval(`Extras(${s(hole)}, ${n})`, checks.extras).catch((e: unknown) => (extrasRead.delete(k), Promise.reject(e instanceof Error ? e : new Error(String(e)))));
         extrasRead.set(k, p);
       }
       return p;
     },
-    /** The best rounds of these players (at most 50) on a hole: { hole, mode, par, rows: [{ player, strokes }] }. */
+    /** The best rounds of these players on a hole, 50 at most. */
     bests: (hole: string, mode: string, players: readonly string[]) =>
       qeval(`Bests(${s(hole)}, ${s(m(mode))}, ${s(players.slice(0, 50).join(","))})`, checks.bests),
-    /** These players across the course: { mode, holes, rows: [{ player, holes, strokes, par }] }. */
+    /** These players across the course, 50 at most. */
     standings: (mode: string, players: readonly string[]) =>
       qeval(`Standings(${s(m(mode))}, ${s(players.slice(0, 50).join(","))})`, checks.standings),
-    /** A player's place in a mode's course ranking: { rank (0: not ranked), of, holes, strokes, par }. */
+    /** A player's place in a mode's course ranking. rank 0: not ranked. */
     rank: (mode: string, player: string) => qeval(`Rank(${s(m(mode))}, address(${s(player)}))`, checks.rank),
-    /** Of these holes (the first 100: one read's room, the course is 90), a player's bests on those they have one on, in either mode: their ghosts. One read. */
+    /** A player's bests on these holes, in either mode, in one read. The first 100 holes: one read's room. */
     bestsOf: async (holes: readonly string[], player: string): Promise<ReadonlyMap<string, { pro: number; assisted: number }>> => {
       const got = new Map<string, { pro: number; assisted: number }>();
       if (!isAddress(player)) return got;
       const ids = holes.slice(0, 100), who = s(player);
-      // a line "<id> <pro> <assisted>" a hole, read once for both modes (BestOf reads and decodes it for each); the realm's strconv is not in reach here: n writes the digits
+      // A line "<id> <pro> <assisted>" a hole. The realm's strconv is out of reach in a query: n writes the digits.
       const out = await qstr(REALM, `func() (s string) { n := func(v int) (t string) { for { t = string(rune(48+v%10)) + t; v /= 10; if v == 0 { return } } }; for _, h := range []string{${ids.map(s).join(", ")}} { e := readHole(h); p, a := bestStrokes(bestOfPlayer(e, modeOf("pro"), ${who})), bestStrokes(bestOfPlayer(e, modeOf("assisted"), ${who})); if p+a > 0 { s += h + " " + n(p) + " " + n(a) + "\\n" } }; return }()`);
-      const best = (v: string) => (/^(0|[1-9]\d?)$/.test(v) && Number(v) <= RULES.maxRoundStrokes ? Number(v) : NaN); // (0: none in that mode)
+      const best = (v: string) => (/^(0|[1-9]\d?)$/.test(v) && Number(v) <= RULES.maxRoundStrokes ? Number(v) : NaN); // 0: none in that mode
       for (const line of out.split("\n")) {
         const [id, pro, assisted, ...rest] = line.split(" "), b = { pro: best(pro), assisted: best(assisted) };
-        if (ids.includes(id) && !rest.length && b.pro >= 0 && b.assisted >= 0 && b.pro + b.assisted > 0) got.set(id, b); // (only the holes asked)
+        if (ids.includes(id) && !rest.length && b.pro >= 0 && b.assisted >= 0 && b.pro + b.assisted > 0) got.set(id, b); // only the holes asked
       }
       return got;
     },
-    /** A player's records on the course, every version of a slot's (archived ones too), a row a best, never a
-     *  copy (kept, never ranked): what their progress is rebuilt from on another device (card.ts fromChain).
-     *  A read a page of 300 versions (each decoded only where the player has a best: at most ~0.8e9 query gas). */
+    /** A player's records over every version of every slot, never a copy: what progress is rebuilt from on another device. A read is a page of 300 versions, ~0.8e9 query gas at most. */
     progressOf: async (player: string): Promise<ChainBest[]> => {
       const rows: ChainBest[] = [];
       for (let after = "", page = 0; isAddress(player) && page < 40; page++) {
@@ -556,32 +525,29 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
           if (line.startsWith("next ")) after = line.slice(5);
           const [id, slot, world, par, mode, strokes, height, period, top, ...rest] = line.split(" "), n = (v: string, max: number) => (/^\d{1,15}$/.test(v) && Number(v) <= max ? Number(v) : NaN);
           const r = { id, slot, world, par: n(par, 99), mode: mode as Mode, strokes: n(strokes, RULES.maxRoundStrokes), height: n(height, Number.MAX_SAFE_INTEGER), period: n(period, Number.MAX_SAFE_INTEGER), top: top === "1" };
-          // (a row as the realm writes it, or none: its strings go into keys and badges)
+          // a row as the realm writes it, or none: its strings go into keys and badges
           if (!rest.length && isHoleId(id) && /^[a-z]+\/\d{1,4}$/.test(slot) && /^[a-z]{1,16}$/.test(world) && isMode(mode) && r.par > 0 && r.strokes > 0 && r.height >= 0 && r.period >= 0 && (top === "0" || r.top)) rows.push(r);
         }
-        if (!isHoleId(after)) break; // (the last page)
+        if (!isHoleId(after)) break; // the last page
       }
       return rows;
     },
-    /** These players' records on a hole in a mode (the first 50), as the realm keeps them: strokes, the block
-     *  it was saved at, its weather's period, its shots ("a,p,t;…"). One read: a board's page, the bot check's hole. */
+    /** These players' records on a hole in a mode, the first 50, as the realm keeps them. One read. */
     recordsOf: async (hole: string, mode: string, players: readonly string[]): Promise<ReadonlyMap<string, Kept>> => {
       const got = new Map<string, Kept>(), ps = players.filter(isAddress).slice(0, 50);
       if (!ps.length) return got;
       const out = await qstr(REALM, `func() (s string) { e, m := readHole(${s(hole)}), modeOf(${s(m(mode))}); for _, p := range []string{${ps.map(s).join(", ")}} { if v, ok := e.bests(m).Get(p); ok { s += p + " " + v + "\\n" } }; return }()`);
-      for (const [p, k] of keptLines(out)) if (ps.includes(p)) got.set(p, k); // (only the players asked)
+      for (const [p, k] of keptLines(out)) if (ps.includes(p)) got.set(p, k); // only the players asked
       return got;
     },
-    /** A page of a hole's board in a mode with each row's record (recordsOf's), in its order: one
-     *  read of up to 300 (the bot check's; a name deleted since stays). next: the next page's offset, 0 at the end. */
+    /** A page of a hole's board with each row's record, up to 300 in one read. next: the next page's offset, 0 at the end. */
     boardRecords: async (hole: string, mode: string, offset = 0, limit = 300) => {
       const n = Math.max(1, Math.min(300, limit | 0)), at = Math.max(0, offset | 0);
       const out = await qstr(REALM, `func() (s string) { e, m := readHole(${s(hole)}), modeOf(${s(m(mode))}); e.board(m).IterateByOffset(${at}, ${n}, func(_, p string) bool { if r, ok := e.bests(m).Get(p); ok { s += p + " " + r + "\\n" } else { s += p + "\\n" }; return false }); return }()`);
       const lines = out.split("\n").filter(Boolean);
       return { rows: keptLines(out), next: lines.length === n ? at + n : 0 };
     },
-    /** An author's holes, newest first: their current versions not hidden (the realm's byAuthor rows), at most
-     *  MAX_OWN, each as Holes() lists one (which keeps three an author). One read: the Builder's "Your holes". */
+    /** An author's holes, newest first: their current versions not hidden, MAX_OWN at most. One read. */
     holesOf: async (author: string): Promise<HoleRow[]> => {
       if (!isAddress(author)) return [];
       const out = await qstr(REALM, `func() (s string) { n := 0; byAuthor.ReverseIterate(${s(author + " ")}, ${s(author + "!")}, func(_, id string) bool { if e := find(id); e != nil { s += holeRow(e) + "\\n" }; n++; return n == ${MAX_OWN} }); return }()`);
@@ -593,14 +559,11 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
         } catch {
           continue;
         }
-        if (ownRow(r, author)) rows.push(r); // (the author's only, every field as the realm writes it)
+        if (ownRow(r, author)) rows.push(r); // the author's only, every field as the realm writes it
       }
       return rows;
     },
-    /** The rounds saved on these holes (the first MAX_SAVED_HOLES asked): each player's best there in each
-     *  mode, with its weather's period, never a copy of another's (the realm keeps those apart), the first
-     *  MAX_SAVED a hole and mode by address; more: the holes that have more. One read: who played an
-     *  author's holes (lib/builder/rewards.ts). */
+    /** The rounds saved on these holes: each player's best in each mode, never a copy, the first MAX_SAVED a hole and mode. more: the holes that have more. One read. */
     savedOn: async (holes: readonly string[]): Promise<{ rows: Saved[]; more: Set<string> }> => {
       const ids = holes.filter(isHoleId).slice(0, MAX_SAVED_HOLES), rows: Saved[] = [], more = new Set<string>();
       if (!ids.length) return { rows, more };
@@ -614,7 +577,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       }
       return { rows, more };
     },
-    /** A gno.land name's address, or "" (r/sys/users). */
+    /** A gno.land name's address, or "". */
     resolveName: (name: string) =>
       isName(name)
         ? qstr("gno.land/r/sys/users", `func() string { d, _ := ResolveName(${s(name)}); if d == nil { return "" }; return d.Addr().String() }()`).then((a) => (isAddress(a) ? a : ""))
@@ -622,15 +585,15 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     /** An address's gno.land name, or "". */
     nameOf: (addr: string) =>
       isAddress(addr)
-        ? qstr("gno.land/r/sys/users", `func() string { d := ResolveAddress(address(${s(addr)})); if d == nil { return "" }; return d.Name() }()`).then((n) => (isName(n) ? n : "")) // (nothing a lying node could dress up)
+        ? qstr("gno.land/r/sys/users", `func() string { d := ResolveAddress(address(${s(addr)})); if d == nil { return "" }; return d.Name() }()`).then((n) => (isName(n) ? n : "")) // nothing a lying node could dress up
         : Promise.resolve(""),
-    /** A page of every player's best on a hole, named or not, by address: { rows: [{ player, strokes }], next ("" at the end) }. */
+    /** A page of every player's best on a hole, by address. next is "" at the end. */
     records: (hole: string, mode: string, after = "", limit = 100) =>
       qeval(`Records(${s(hole)}, ${s(m(mode))}, ${s(after)}, ${limit | 0})`, checks.records),
-    /** A page of every course standing, named or not, by address: { rows: [{ player, holes, strokes, par, height }], next ("" at the end) }. */
+    /** A page of every course standing, by address. next is "" at the end. */
     players: (mode: string, after = "", limit = 100) => qeval(`Players(${s(m(mode))}, ${s(after)}, ${limit | 0})`, checks.players),
     nameReg,
-    /** Why a name cannot be taken here ("" if it can): the registrar's own format rules, then whether it is taken. */
+    /** Why a name cannot be taken here, "" if it can. */
     nameProblem: async (name: string) => {
       const reg = await nameReg();
       if (!reg) return "This chain has no name registrar.";
@@ -650,28 +613,22 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       const names = out.split(",");
       return ok.map((a, i) => ({ player: a, name: names[i] || "" }));
     },
-    /** A page of the course ranking (most holes, then the best score against par): { mode, holes, players, offset, rows: [{ player, holes, strokes, par }], next (0 at the end) }. */
+    /** A page of the course ranking: most holes, then the best score against par. next is 0 at the end. */
     courseLeaderboard: (offset = 0, limit = 10, mode = "assisted") =>
       qeval(`CourseLeaderboard(${s(m(mode))}, ${offset | 0}, ${limit | 0})`, checks.courseLeaderboard),
-    /** A player's place on a hole's board: { rank (0: not on it), of, strokes }. */
+    /** A player's place on a hole's board. rank 0: not on it. */
     holeRank: (hole: string, mode: string, player: string) => qeval(`HoleRank(${s(hole)}, ${s(m(mode))}, address(${s(player)}))`, checks.holeRank),
-    /** A player's best on a hole in a mode with its period and shots, or null: the ghost a duel races, replayed with replayRound then simulateFrom. */
+    /** A player's best on a hole in a mode with its period and shots, or null: the ghost a duel races. */
     ghost: (hole: string, mode: string, player: string) =>
       isAddress(player)
-        ? qeval(`Ghost(${s(hole)}, ${s(m(mode))}, address(${s(player)}))`, checks.ghost).then((g) => (g && g.player === player && g.mode === m(mode) && (g.hole === hole || g.hole.startsWith(hole + "/")) ? g : null)) // (the one asked for, or none)
+        ? qeval(`Ghost(${s(hole)}, ${s(m(mode))}, address(${s(player)}))`, checks.ghost).then((g) => (g && g.player === player && g.mode === m(mode) && (g.hole === hole || g.hole.startsWith(hole + "/")) ? g : null)) // the one asked for, or none
         : Promise.resolve(null),
-    /** A page of a hole's board: { hole, mode, par, players (named), finished (everyone), offset, rows: [{ player, strokes }], next (the next page's offset, 0 at the end) }. */
+    /** A page of a hole's board. players counts the named, finished everyone. next is 0 at the end. */
     holeLeaderboard: (hole: string, offset = 0, limit = 10, mode = "assisted") =>
       qeval(`HoleLeaderboard(${s(hole)}, ${s(m(mode))}, ${offset | 0}, ${limit | 0})`, checks.holeLeaderboard),
-    /** One player's round under way on a hole ({ shots, strokes, period, rest, path… }), or null: none, holed (not kept: its best is) or Reset. */
+    /** A player's round under way on a hole, or null: none, holed or Reset. */
     round: (hole: string, player: string) => qeval(`Round(${s(hole)}, address(${s(player)}))`, checks.round),
-    /**
-     * What a transaction's calls returned, as the node printed them (a call's
-     * result, `("holed in 3 strokes" string)`, one after the other), from its
-     * hash as a wallet gives it (base64, or hex); null when the node has no
-     * such transaction, refused (errorKind "chain", its log) when it failed:
-     * nothing of it was kept. A holed round is not kept: this is how a save knows.
-     */
+    /** What a transaction's calls returned, as the node printed them, from its hash in base64 or hex. null: no such transaction. Refused when it failed. */
     txResult: async (hash: string) => {
       let hex = "";
       try {
@@ -680,7 +637,7 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
       if (hex.length !== 64) throw refused("Not a transaction hash.");
       const body = await rpcGet<{ error?: unknown; result?: { tx_result?: { ResponseBase?: { Error?: unknown; Log?: string; Data?: string } } } }>(`/tx?hash=0x${hex}`);
       const r = body.result && body.result.tx_result && body.result.tx_result.ResponseBase;
-      // (the realm's own sentence for the player; the VM's whole log kept on the error)
+      // the realm's own sentence for the player; the VM's whole log stays on the error
       if (r && r.Error) throw refused(refusal(r.Log) || "The transaction failed.", r.Log);
       return r ? utf8(r.Data || "") : null;
     },
@@ -688,25 +645,17 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
 }
 export type Chain = ReturnType<typeof makeChain>;
 
-/** Which chain's realm: what this browser keeps of a chain is kept under it (a version's verdict, when an alias was first
- *  published, a wasm's sources checked), its id, its genesis (a chain reseeded under the same id is another) and the realm. */
+/** What tells a chain's realm from another: what this browser keeps of a chain is kept under it. */
 export type Which = Pick<Chain, "chainId" | "genesis" | "realm">;
 export const whichOf = async (chain: Which) => `${await chain.chainId()}|${await chain.genesis()}|${chain.realm}`;
 
-/** A path the build names for its node or gnoweb ("/rpc": scripts/playground-server.mjs, which try-local.sh starts, streams it to the node) on the page's own origin; a URL as it is. */
+/** A path the build names for its node or gnoweb ("/rpc"), put on the page's own origin. A URL as it is. */
 const onPage = (v: string) => (v.startsWith("/") && typeof location !== "undefined" ? location.origin + v : v);
-/** The build's node and gnoweb (NEXT_PUBLIC_RPC, NEXT_PUBLIC_WEB; this machine's by default), each a URL. */
+/** The build's node and gnoweb, each a URL: this machine's by default. */
 export const buildRpc = () => onPage(process.env.NEXT_PUBLIC_RPC || DEFAULT_RPC);
 export const buildWeb = () => onPage(process.env.NEXT_PUBLIC_WEB || DEFAULT_WEB);
 
-/**
- * An RPC or gnoweb address from the page's own link (?rpc=, ?web=) is taken
- * only from an allowlist: this machine (http or https), the build's own
- * hosts, gno.land's (*.gno.land, https) and any listed in
- * NEXT_PUBLIC_ALLOWED_HOSTS (comma-separated host names, https). Anything else
- * falls back: a link must not point the game, Adena and every "read its code"
- * link at a look-alike node.
- */
+/** An RPC or gnoweb address from the page's link, taken only from an allowlist: this machine, the build's hosts, *.gno.land, NEXT_PUBLIC_ALLOWED_HOSTS. A link must not point the game and Adena at a look-alike node. */
 export function safeEndpoint(given: string | null | undefined, fallback: string, pinned = pinnedPage()) {
   if (!given || pinned) return fallback;
   try {
@@ -717,9 +666,7 @@ export function safeEndpoint(given: string | null | undefined, fallback: string,
   } catch {}
   return fallback;
 }
-/** A built site on a public address plays its own chain only: a shared link's
- *  ?rpc= could otherwise send the wallet to a look-alike realm on another
- *  gno.land chain. The overrides are for dev builds and this machine. */
+/** A built site on a public address plays its own chain only: ?rpc= could send the wallet to a look-alike realm. */
 const pinnedPage = () => process.env.NODE_ENV === "production" && typeof location !== "undefined" && !isLoopback(location.hostname);
 function allowedHost(h: string) {
   const list = [hostOf(process.env.NEXT_PUBLIC_RPC || ""), hostOf(process.env.NEXT_PUBLIC_WEB || ""), ...(process.env.NEXT_PUBLIC_ALLOWED_HOSTS || "").split(",").map((x) => x.trim())].filter(Boolean);
@@ -728,12 +675,12 @@ function allowedHost(h: string) {
 
 // a realm or package path as the chain names it, and nothing else
 const PKG = /^gno\.land\/[rp]\/[\w/.-]+$/;
-/** A realm's path as the chain names it, and nothing else: what a $help link and a gnokey command take. */
+/** A realm's path as the chain names it, and nothing else. */
 export const PKG_PATH = /^gno\.land\/r\/[\w/.-]+$/;
 const ADDR = /^g1[0-9a-z]{38}$/;
 // a community hole's short name, as golf's validSlug takes it
 const SLUG = "[a-z0-9-]{1,32}", ONE_SLUG = new RegExp(`^${SLUG}$`);
-/** Whether s is a community hole's short name: 1 to 32 lower-case letters, digits and dashes (golf's validSlug). */
+/** Whether s is a community hole's short name: 1 to 32 lower-case letters, digits and dashes. */
 export const isSlug = (s: unknown) => typeof s === "string" && ONE_SLUG.test(s);
 /** A text's length as a realm counts it (a Go string's len): its UTF-8 bytes. */
 export const utf8Bytes = (s: string) => new TextEncoder().encode(s).length;
@@ -742,15 +689,15 @@ export const utf8Bytes = (s: string) => new TextEncoder().encode(s).length;
 const DATA = new RegExp(`^([a-z]{1,16}/[1-9]\\d{0,2}|g1[0-9a-z]{38}/${SLUG})(/v[1-9]\\d*)?$`);
 /** Whether s names a hole: a realm's path, or a data hole's id or alias. */
 export const isHoleId = (s: unknown) => PKG.test(String(s)) || DATA.test(String(s));
-// a data hole's version: its alias, then "/v<n>" (a community hole's slug may itself be "v3": that is an alias)
+// A data hole's version: its alias, then "/v<n>". A community hole's slug may itself be "v3".
 const VERSION_ID = new RegExp(`^([a-z]{1,16}/[1-9]\\d{0,2}|g1[0-9a-z]{38}/${SLUG})/v[1-9]\\d*$`);
-/** Whether s is a data hole's version ("garden/7/v2", "<address>/<slug>/v3"): its data never changes, unlike an alias's. */
+/** Whether s is a data hole's version ("garden/7/v2"): its data never changes, unlike an alias's. */
 export const isVersion = (s: unknown) => VERSION_ID.test(String(s));
 /** The most holes holesOf reads of an author's (their newest). */
 const MAX_OWN = 24;
-/** The most holes savedOn reads at once, and of rounds a hole and mode: a hole with more has at least that many players. */
+/** The most holes savedOn reads at once, and the most rounds a hole and mode. */
 export const MAX_SAVED_HOLES = 12, MAX_SAVED = 100;
-/** A row holesOf takes: one of author's community holes (its id and alias theirs), every field as holeRow writes it. */
+/** Whether r is one of author's community holes, every field as holeRow writes it. */
 function ownRow(r: unknown, author: string): r is HoleRow {
   if (!isObj(r) || typeof r.id !== "string" || !isHoleId(r.id) || !r.id.startsWith(author + "/") || r.official !== false) return false;
   if (!strs(r, "name", "world", "next") || !/^[a-z]{1,16}$/.test(r.world as string) || !nums(r, "plays", "best", "proBest", "par", "order")) return false;
@@ -758,13 +705,11 @@ function ownRow(r: unknown, author: string): r is HoleRow {
 }
 /** A best as the realm keeps it (recordsOf). */
 export interface Kept { strokes: number; height: number; period: number; shots: string }
-/** One of a player's records (progressOf): the hole's version, slot, world and par; the mode, strokes,
- *  the block it was saved at and its weather's period; whether it holds the hole's record in that mode. */
+/** One of a player's records. top: it holds the hole's record in that mode. */
 export interface ChainBest { id: string; slot: string; world: string; par: number; mode: Mode; strokes: number; height: number; period: number; top: boolean }
 // a kept best's shots: "angle,power,tick" (%.4f, %.4f, %d) joined by ";"
 const SHOTS = /^-?\d{1,3}\.\d{4},\d{1,2}\.\d{4},-?\d{1,4}(;-?\d{1,3}\.\d{4},\d{1,2}\.\d{4},-?\d{1,4})*$/;
-/** recordsOf's lines, "<player> <strokes> <height> <period> <shots>", each field as the realm writes it
- *  (golf.gno bestOf), a best's shots as many as its strokes; any other line dropped. */
+/** recordsOf's lines, "<player> <strokes> <height> <period> <shots>". Any line not as the realm writes it is dropped. */
 function keptLines(out: string): [string, Kept][] {
   const got: [string, Kept][] = [];
   for (const line of out.split("\n")) {
@@ -782,13 +727,7 @@ export const shortAddr = (a: string, head = 8, tail = 4) => `${String(a).slice(0
 const PULL_SHARE = 0.24; // a pull this share of the viewport's short side is full power
 /** How far a pull goes to full power on a vw × vh screen (px). */
 export const pullFull = (vw: number, vh: number) => Math.max(120, Math.min(vw, vh) * PULL_SHARE);
-/**
- * The pull, as a shot: the same pull always gives the same numbers. Its length
- * is measured in CSS pixels against the viewport's short side, so neither the
- * pixel density nor the browser's zoom changes it, and nothing depends on the
- * frame rate. Angle and power are rounded here, once, to what the chain is
- * sent: the preview and the shot use exactly these.
- */
+/** The pull as a shot, in CSS pixels against the viewport's short side: pixel density, zoom and frame rate change nothing. Angle and power are rounded here, once, to what the chain is sent. */
 export function pullShot(px: number, vw: number, vh: number, angleRad: number, maxPower: number = RULES.maxPower) {
   const full = pullFull(vw, vh);
   const power = Math.round(Math.min(px / full, 1) * maxPower * 100) / 100;
@@ -798,12 +737,9 @@ export function pullShot(px: number, vw: number, vh: number, angleRad: number, m
   return { deg, power };
 }
 
-/** One shot as the realm parses it. The same string goes to SimulateRound and
- *  to PlayRound, so the preview and the record decide the same shot. */
+/** One shot as the realm parses it: the same string goes to SimulateRound and to PlayRound. */
 export const shotOf = (angleDeg: number, power: number, tick?: number | null) => `${f(angleDeg)},${f(power)}` + (tick == null ? "" : `,${tick | 0}`);
-/** A round's shots as the realm stores them ("%.4f,%.4f,%d": a shot sent with no tick is kept
- *  at tick 0), from a list of shotOf's or the chain's ";"-joined string: compared, the page's
- *  round and the chain's both go through it. */
+/** A round's shots as the realm stores them ("%.4f,%.4f,%d", tick 0 when none), from a list of shotOf's or the chain's ";"-joined string. */
 export const roundShots = (shots: string | readonly string[]) =>
   (typeof shots === "string" ? shots.split(";") : shots)
     .map((x) => {

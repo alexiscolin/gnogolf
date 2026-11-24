@@ -14,12 +14,12 @@
 // merged too.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { flat, relief } from "./materials";
+import { flat, relief, once } from "./materials";
 import { animate, state } from "./state";
 import { seeded, onGround, GRASS, type Rand } from "./common";
 import { ud, type Hole } from "./data";
 import { MINES, lit } from "./mines-kit";
-import { once, GOLD, GOLD_DARK, goldMat, INK_THIN, inked, facets, knobbly, lumps, vnoise, paint, fill, strata, boulder, gem, form, splay, glow, halo, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, rivets, plate, TIMBER, solid, tinted } from "./mines-toon";
+import { GOLD, GOLD_DARK, goldMat, INK_THIN, inked, facets, knobbly, lumps, vnoise, paint, fill, strata, boulder, gem, form, splay, glow, halo, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, rivets, plate, TIMBER, solid, tinted } from "./mines-toon";
 import { segDist, inZone, there, smoothstep } from "../terrain";
 import { sound } from "../feel";
 import * as machines from "./mines-machines";
@@ -597,7 +597,7 @@ function frozenColumn(r: number, rand: Rand) {
   const geo = mergeGeometries(strands.map((q) => (q.deleteAttribute("uv"), q.deleteAttribute("normal"), q)));
   paint(geo, (x, y, z, c) => c.set(0xeaf9ff).lerp(new THREE.Color(0x8fd0ea), 0.35 + 0.35 * Math.sin(y * 1.9 + Math.atan2(z, x) * 2)));
   // (lit from within as the crystals are: ice, pale in the dark, not a dark blue pillar)
-  const ice = once("frozen fall", () => flat(0xffffff, { vertexColors: true, emissive: 0x6fbcdc, emissiveIntensity: 0.55 })); // (in the world's toon bands)
+  const ice = once("mines:frozen fall", () => flat(0xffffff, { vertexColors: true, emissive: 0x6fbcdc, emissiveIntensity: 0.55 })); // (in the world's toon bands)
   g.add(facets(knobbly(geo, rand, r * 0.06, 2.4, true), ice, INK_THIN));
   // its frozen splash: a low lumpy apron of ice spreading into the lake round it, inside the post's circle
   const apron = knobbly(new THREE.IcosahedronGeometry(1, 2), rand, 0.12, 2.2);

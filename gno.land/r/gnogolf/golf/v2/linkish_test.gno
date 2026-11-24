@@ -5,9 +5,7 @@ import (
 	"testing"
 )
 
-// linkishRef is linkish written plainly (strings.ToLower, the look-alike dots
-// replaced, then three scans): the reference linkish's one-byte pass must
-// equal, whatever the text.
+// linkishRef is linkish written plainly: what its one-byte pass must equal.
 func linkishRef(s string) bool {
 	low := strings.ToLower(s)
 	for _, d := range []string{"．", "。", "․", "﹒"} {
@@ -31,10 +29,7 @@ func linkishRef(s string) bool {
 	return false
 }
 
-// linkish answers as linkishRef does: on names and notes, domains, IP
-// addresses, every look-alike, the two runes that lower-case to ASCII, the
-// spaces past ASCII, CJK, invalid UTF-8, and every string of up to three of
-// the pieces these are made of.
+// Checked on real inputs and on every string of up to three of their pieces.
 func TestLinkishIsItsReference(t *testing.T) {
 	cases := []string{
 		"", "a", "claim at bonus.xyz", "see www.bonus", "WWW.X", "wWw.", "ww.w", "awww.", "awww, so close",

@@ -5,7 +5,6 @@ import { PAGES } from "./g/pages";
 
 export const dynamic = "force-static";
 
-// the home page, every hole's and cup's own page, and the shop's when it is on
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
     { url: `${SITE}/`, priority: 1 },

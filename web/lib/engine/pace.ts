@@ -1,9 +1,7 @@
-// Frame pacing: which display refreshes are drawn, and when a device is too
-// slow for the High tier, and the tier this browser plays in. Plain numbers,
-// no three: the title reads it before the game loads.
+// Frame pacing and the graphics tier, in plain numbers. No three.js: the title reads it before the game loads.
 import type { GfxMode } from "./types";
 
-/** Where Auto remembers a device found too slow for High ("low"): the title and the cup cards read it too. */
+/** Where Auto remembers a device found too slow for High ("low"). */
 export const SLOW_KEY = "gnogolf.gfx.slow";
 const GFX_KEY = "gnogolf.gfx";
 /** The graphics picked in this browser: auto (by the device), high or low. */
@@ -18,8 +16,7 @@ export function savedGfx(): GfxMode {
 export function saveGfx(m: GfxMode) {
   try { localStorage.setItem(GFX_KEY, m); } catch {}
 }
-/** The Low graphics tier: picked, or Auto on a device whose frames were slow
- *  (the engine's own flag); `blocked` when storage cannot be read. */
+/** Whether this browser plays in Low: picked, or Auto on a device found slow. blocked: the answer when storage cannot be read. */
 export function lowGfx(blocked = false) {
   const gfx = savedGfx();
   try {
@@ -31,14 +28,7 @@ export function lowGfx(blocked = false) {
 
 
 const out = { draw: false, budget: 0 };
-/**
- * One display refresh: the time owed since the last frame drawn (budget),
- * plus this refresh's gap, against the frame interval wanted. Drawn once a
- * whole interval (less 1 ms of jitter) is owed; what is left over is carried,
- * at most one interval, so a 75, 90 or 144 Hz display averages the interval
- * (60 a second when busy) instead of every second or third refresh. The same
- * object every call.
- */
+/** One display refresh: drawn once a whole interval is owed (less 1 ms of jitter); the rest is carried, one interval at most. The same object every call. */
 export function pace(budget: number, gap: number, interval: number) {
   const b = budget + gap;
   out.draw = b >= interval - 1;
@@ -46,46 +36,34 @@ export function pace(budget: number, gap: number, interval: number) {
   return out;
 }
 
-/** Whether busy frames drawn this far apart (ms) say a slow GPU: over 20 ms on
- *  average (the cap wants 16.7), the slowest tenth left out (a hitch is not a GPU). */
+/** Whether these gaps between busy frames (ms) say a slow GPU: over 20 on average, the slowest tenth left out. */
 export function slowFrames(gaps: readonly number[]) {
   const d = [...gaps].sort((a, b) => a - b).slice(0, Math.max(1, Math.ceil(gaps.length * 0.9)));
   return d.reduce((s, x) => s + x, 0) / d.length > 20;
 }
 
-/** The slow-GPU probe, a frame drawn: the gaps between busy frames gathered
- *  (an idle frame ends a run), and whether they are enough to judge: 2 s of
- *  busy drawing in more than 10 gaps, or 90 gaps. */
+/** The slow-GPU probe, once a frame: gathers the gaps between busy frames. Returns whether there is enough to judge (2 s in over 10 gaps, or 90 gaps). */
 export function probed(p: { prev: number; gaps: number[] }, now: number, busy: boolean) {
   if (busy && p.prev) p.gaps.push(now - p.prev);
   p.prev = busy ? now : 0;
   return p.gaps.length >= 90 || (p.gaps.length > 10 && p.gaps.reduce((s, x) => s + x, 0) >= 2000);
 }
 
-/** Whether busy frames sit steadily on 33 ms: the browser holds them at 30 fps
- *  (a battery saver), which says nothing of the GPU. */
+/** Whether busy frames sit steadily on 33 ms: a browser holding 30 fps (a battery saver), which says nothing of the GPU. */
 export function capped30(gaps: readonly number[]) {
   const d = [...gaps].sort((a, b) => a - b), mid = d[d.length >> 1];
   return d[Math.floor(d.length * 0.1)] > 30 && mid >= 31 && mid <= 36;
 }
 
-/** A run of busy frames' gaps (ms) as analytics says it: the median frame
- *  rate and the slowest tenth's, the frames over 50 ms (a hitch), how many. */
+/** Busy frames' gaps (ms) for analytics: the median frame rate, the slowest tenth's, and the frames over 50 ms. */
 export function frameStats(gaps: readonly number[]) {
   const d = [...gaps].sort((a, b) => a - b), at = (q: number) => d[Math.min(d.length - 1, Math.floor(d.length * q))];
   return { fps: Math.round(1000 / at(0.5)), fps_p10: Math.round(1000 / at(0.9)), long: d.filter((x) => x > 50).length, frames: d.length };
 }
 
-/** No input (pointer, key, touch, wheel) for this long, no shot on its way: the scene dozes. */
+/** With no input for this long and no shot on its way, the scene dozes. */
 export const AWAY_MS = 60_000;
-/**
- * The frame interval (ms) a scene in view is drawn at, or 0: not drawn.
- * busy (a shot, an aim, the camera moving) and fast movers in view (a tram, a
- * lift, a mill's sails): 60 fps. Anything else moving (the garden's sway, the
- * water, the weather, the decor): 30, never less while the player is about;
- * 10 once away (sinceInput past AWAY_MS). Nothing moving (reduced motion, no
- * timed piece): 10 for a second after the last input or change (sinceWake), then nothing.
- */
+/** The frame interval (ms) a scene in view is drawn at, or 0 for none: 60 fps busy or with fast movers, 30 while anything else moves, 10 once away or for a second after the last change. */
 export function frameMs(busy: boolean, moving: boolean, fast: boolean, sinceInput: number, sinceWake: number) {
   if (busy) return 1000 / 60;
   if (!moving) return sinceWake > 1000 ? 0 : 1000 / 10;

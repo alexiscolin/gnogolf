@@ -30,9 +30,8 @@ func TestTokenURIIsAnOnChainSVG(cur realm, t *testing.T) {
 	uassert.True(t, strings.HasSuffix(svg, "</svg>"), svg)
 }
 
-// A name is the catalogue's, which only the owner writes and AddSeries
-// holds to plain letters (TestANameIsLettersAndPlainMarks); it is escaped
-// all the same, so not even a row let by could inject markup into a wallet.
+// AddSeries holds names to plain letters (TestANameIsLettersAndPlainMarks);
+// the SVG escapes them all the same.
 func TestANameCannotInjectMarkup(t *testing.T) {
 	svg := drawGnome(gnome{tier: 0, name: `<script>"x"</script>`, traits: classic})
 	uassert.False(t, strings.Contains(svg, "<script>"), svg)
@@ -49,8 +48,7 @@ const classic = "01010100000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff"
 // draw is a common gnome of traits drawn.
 func draw(traits string) string { return drawGnome(gnome{tier: 0, name: "Pip", traits: traits}) }
 
-// What the realm cannot read it draws as the Classic, never panicking: not
-// hex, another format, too short, nothing.
+// Traits the realm cannot read draw the Classic and never panic.
 func TestUnreadableTraitsDrawTheClassic(t *testing.T) {
 	want := draw(classic)
 	for _, traits := range []string{"", "01", "v0.1", "zz", "0", "0101010", "01010100000000FFFF", "02010100000500ffff", "ff", strings.Repeat("01", 300)} {
@@ -58,9 +56,9 @@ func TestUnreadableTraitsDrawTheClassic(t *testing.T) {
 	}
 }
 
-// A field past its table, a colour past the palette, a thing worn past the
-// vocab: plain, as the client reads them (codec.ts). A shorter look is plain
-// past its end; a longer one's extra bytes are ignored.
+// A code past its table, a colour past the palette, a thing worn past the
+// vocab: plain, as codec.ts reads them. Missing bytes are plain, extra bytes
+// ignored.
 func TestUnknownTraitsDrawPlain(t *testing.T) {
 	want := draw(classic)
 	for _, f := range []int{fHat, fBeard, fPattern, fPiece, fMaterial, fTrail, fProp, fHatColour, fBrim, fBody, fAccent} {
@@ -77,8 +75,7 @@ func with(traits string, f int, v byte) string {
 }
 
 // The tables have a line for each code of the client's vocab
-// (web/lib/gnomes/vocab.ts, props.ts): the counts are the Genesis' tables,
-// which only grow.
+// (web/lib/gnomes/vocab.ts, props.ts). The counts only grow.
 func TestTheArtCoversTheVocab(t *testing.T) {
 	for _, c := range []struct {
 		name   string
@@ -98,17 +95,15 @@ func TestTheArtCoversTheVocab(t *testing.T) {
 	uassert.Equal(t, 5*18, len(artTiers))
 }
 
-// Every value of every drawn field changes the picture: each hat, beard,
-// thing worn, piece, pattern, material, trail and prop, and each colour
-// where something takes it. (Series, home, archetype and kind are not
-// looks; a holing is what the cup does, never in a still.)
+// Every value of every drawn field changes the picture, and each colour where
+// something takes it. Series, home, archetype, kind and holing are not drawn.
 func TestEveryTraitIsDrawn(t *testing.T) {
 	plain := draw(classic)
 	for _, c := range []struct{ field, n int }{
 		{fHat, artHatsN}, {fBeard, artBeardsN}, {fPiece, artPiecesN}, {fPattern, artPatternsN},
 		{fMaterial, artMaterialsN}, {fTrail, artTrailsN}, {fProp, artPropsN},
 	} {
-		for k := 1; k < c.n; k++ { // (0 is the plain)
+		for k := 1; k < c.n; k++ { // 0 is the plain
 			uassert.NotEqual(t, plain, draw(with(classic, c.field, byte(k))), "field "+itoa(int64(c.field))+" code "+itoa(int64(k)))
 		}
 	}
@@ -151,11 +146,10 @@ func TestAMaterialStandsInForTheBody(t *testing.T) {
 	}
 }
 
-// samples are gnomes of the Genesis (data/gnomes.json): an earned one and
-// one of each tier, the first Common of each archetype, the dearest picture
-// of the 729 to draw (Figurehead Fen), a pattern, and the materials drawn
-// apart (neon's line, lava's eyes, crystal's body). Their SVGs are held by
-// their hash, and their size.
+// samples are Genesis gnomes (data/gnomes.json): an earned one, one of each
+// tier, the first Common of each archetype, the heaviest picture (Figurehead
+// Fen), a pattern, and the materials drawn apart. Their SVGs are held by hash
+// and size.
 var samples = []struct {
 	name, traits, tier, sha string
 }{
@@ -184,8 +178,7 @@ var samples = []struct {
 	{"Crystal Gnome", "0101040105090023ff00233800ff00000000ff00ff093b0523043b4222", "legendary", "5a41cbb76c4a216e"},
 }
 
-// maxSVG is what a portrait may weigh: the 729 of the Genesis and the
-// earned are 1.9 to 5.6 KB.
+// maxSVG bounds a portrait: the Genesis's and the earned are 1.9 to 5.6 KB.
 const maxSVG = 6 * 1024
 
 func TestPortraitGoldens(t *testing.T) {

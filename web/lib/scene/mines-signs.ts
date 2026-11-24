@@ -15,11 +15,11 @@
 // decor's bake merges the signs with the rest (a draw for the faces).
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { relief, texOf } from "./materials";
+import { relief, texOf, once } from "./materials";
 import { seeded, type Rand } from "./common";
 import { inZone, inSea, segDist, boxOf, type Terrain } from "../terrain";
 import { MINES, darkGallery, chamferField } from "./mines-kit";
-import { once, INK, INK_THIN, chamfer, paint, fill, log, boulder, vnoise, TIMBER, TIMBER_DARK, IRON, IRON_DARK, RUST } from "./mines-toon";
+import { INK, INK_THIN, chamfer, paint, fill, log, boulder, vnoise, TIMBER, TIMBER_DARK, IRON, IRON_DARK, RUST } from "./mines-toon";
 import { FONT } from "../brand";
 import type { Hole, Height } from "./data";
 import type { Extras, Vec2, Wall, Zone } from "../types";
@@ -587,7 +587,7 @@ function face(x: X, name: string, ox: number, oy: number) {
 }
 
 /** The faces' texture, drawn once (again once the site's font has come). */
-const faces = () => once("sign faces", () => {
+const faces = () => once("mines:sign faces", () => {
   const canvas = document.createElement("canvas");
   canvas.width = CELL_W * COLS;
   canvas.height = CELL_H * ROWS;
@@ -600,7 +600,7 @@ const faces = () => once("sign faces", () => {
   return t;
 });
 /** The faces' material: unlit (enamel catching the lamp: it reads in the dark), a hair under white. */
-const faceMaterial = () => once("sign face", () => new THREE.MeshBasicMaterial({ map: faces(), color: 0xe8e2da }));
+const faceMaterial = () => once("mines:sign face", () => new THREE.MeshBasicMaterial({ map: faces(), color: 0xe8e2da }));
 
 /** A face's quad (w × h, facing +z at z) on its cell of the atlas. */
 function faceGeo(name: string, w: number, h: number, z: number, back = false) {
@@ -913,16 +913,15 @@ const NEAR = 6.5;
 /** The machines a hole may have two of, far apart (two tracks of carts, two geysers...): one sign each. */
 const TWICE = new Set(["geyser", "pistons", "doors", "power", "steam", "stamps"]);
 
-/**
- * Where a hole's signs go: its pieces gathered by sign (near ones as one),
- * each group signed where the lane comes to it (a few units before its
- * first point along the lane from the tee), off the lane on the floor or
- * over the void, not in front of the lane, clear of the pieces, the rides'
- * way, the hazards, the tee, the cup and the other signs; facing the way the
- * ball comes and the camera. At most `cap` signs, the machines first.
- */
-function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number; z: number }[], extra: Lists | null): Spot[] {
-  const f = fieldOf(s, at.t), W = s.board.w, H = s.board.h, voids = voidsOf(s);
+/** Whether a zone comes within r of (x, z): the point in it, or one r off it along x or z. */
+const by = (q: Zone, x: number, z: number, r: number) => inZone(q, x, z) || inZone(q, x + r, z) || inZone(q, x - r, z) || inZone(q, x, z + r) || inZone(q, x, z - r);
+/** A plate names its piece: within about 6 of it, or it reads as another's; the dark gallery's is the hole's own. */
+const far = (a: { name: string; pts: [number, number][] }, x: number, z: number) => a.name !== "dark" && !TEE.has(a.name) && !a.pts.some(([px, pz]) => Math.hypot(px - x, pz - z) <= NEAR);
+
+/** The lane as a sign's place is measured against it: how far along it from the tee a point is (geoAt: Infinity off
+ *  it), how far off it (offAt), and a point's place along it (snap). */
+function laneOf(s: Hole, t: Terrain) {
+  const f = fieldOf(s, t);
   const idx = (x: number, z: number) => f.at(x, z);
   const geoAt = (x: number, z: number) => (idx(x, z) < 0 ? Infinity : f.geo[idx(x, z)]);
   const offAt = (x: number, z: number) => (idx(x, z) < 0 ? 1e4 : f.off[idx(x, z)]);
@@ -937,7 +936,14 @@ function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number
       }
     return best;
   };
-  // the groups: a sign's pieces within 10 of each other are one
+  return { geoAt, offAt, snap };
+}
+type Lane = ReturnType<typeof laneOf>;
+
+/** The pieces gathered by sign: a sign's pieces within 10 of each other are one, with where the lane first comes to
+ *  it (g along the lane, at x z) and how far along the lane its last point is (top); the machines first, then as the
+ *  lane meets them. */
+function gathered(list: readonly Mark[], { snap }: Lane) {
   const groups: { name: string; pts: [number, number][] }[] = [];
   for (const m of list) {
     const near = groups.filter((q) => q.name === m.name && q.pts.some(([x, z]) => m.pts.some(([a, b]) => Math.hypot(a - x, b - z) < 10)));
@@ -957,7 +963,14 @@ function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number
     return { name: q.name, ...best, top, pts: q.pts };
   });
   firsts.sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name) || a.g - b.g);
-  // what a sign keeps clear of: every piece (and its track run on past the lane), the tunnels' ways, the hazards
+  return firsts;
+}
+type Signed = ReturnType<typeof gathered>[number];
+
+/** What a sign keeps clear of: every piece (and its track run on past the lane), the tunnels' ways, the hazards, the
+ *  tee and the cup. extra: a stroke's pieces, with the hole's own. */
+function keepClear(s: Hole, { geoAt }: Lane, extra: Lists | null) {
+  const W = s.board.w, H = s.board.h, voids = voidsOf(s);
   const all: Lists = { walls: [...s.walls, ...(extra?.walls || [])], posts: [...s.posts, ...(extra?.posts || [])], zones: [...s.zones, ...(extra?.zones || [])] };
   // (a plain wall out in the void is the board's frame, not drawn: nothing to keep clear of)
   const segs: [Vec2, Vec2, number][] = all.walls.filter((w) => !inSea(w, all.zones)).map((w) => [w.a, w.b, w.every ? 1.6 : 1.2]);
@@ -1008,7 +1021,6 @@ function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number
       }
     return best;
   })();
-  const by = (q: Zone, x: number, z: number, r: number) => inZone(q, x, z) || inZone(q, x + r, z) || inZone(q, x - r, z) || inZone(q, x, z + r) || inZone(q, x, z - r);
   const clear = (x: number, z: number, cone = true) =>
     segs.every(([a, b, r]) => segDist(x, z, a, b) > r) &&
     all.posts.every((p) => Math.hypot(p.c[0] - x, p.c[1] - z) > 2) &&
@@ -1017,6 +1029,40 @@ function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number
     // (9 clear of the tee, where the camera starts close: a plate there looms over it; one meant for the tee 3.5)
     Math.hypot(x - s.start[0], z - s.start[1]) > (cone ? 9 : 3.5) && Math.hypot(x - s.cup[0], z - s.cup[1]) > 4 &&
     !(cone && Math.hypot(x - s.start[0], z - s.start[1]) < 9.5 && (x - s.start[0]) * teeWay[0] + (z - s.start[1]) * teeWay[1] < 0.3 * Math.hypot(x - s.start[0], z - s.start[1]));
+  const overVoid = (x: number, z: number) => (voids.length > 0 && (x < 0 || z < 0 || x > W || z > H || voids.some((q) => inZone(q, x, z)))) || lakes.some((q) => inZone(q, x, z));
+  // the rails: a bracket's post stands off them
+  const walls0 = all.walls.filter((w) => !w.every);
+  return { segs, zones, pits, shafts, walls0, clear, overVoid };
+}
+
+/** What placing a hole's signs reads: the hole and its ground, the spots taken so far, the lane's measures and what a
+ *  sign keeps clear of. */
+type Survey = { s: Hole; at: Ground; taken: { x: number; z: number }[] } & Lane & ReturnType<typeof keepClear>;
+
+/** Where the lane comes to a sign's pieces: P, back along the lane from its first point, 5 before (the tee itself for
+ *  a sign read from the tee); and Q, the way the ball comes (12 before), for the plate to face. */
+function approach({ s, geoAt }: Survey, a: Signed) {
+  const before = (d: number, R: number) => {
+    if (a.g === Infinity) return { x: a.x, z: a.z };
+    let best = { x: a.x, z: a.z, k: Infinity };
+    for (let r = 0; r <= R; r += STEP)
+      for (let t = 0; t < TAU; t += STEP / Math.max(r, STEP)) {
+        const x = a.x + Math.cos(t) * r, z = a.z + Math.sin(t) * r, g = geoAt(x, z);
+        if (g === Infinity || g > a.g - 1) continue;
+        const k = Math.abs(g - (a.g - d)) + 0.15 * r;
+        if (k < best.k) best = { x, z, k };
+      }
+    return best;
+  };
+  // (one to read from the tee as the player aims: by the tee, where the Classic camera looks over it, the
+  // wide screen's along −z and the upright phone's along +x: near its line across (z) first)
+  const tee = TEE.has(a.name), P = tee ? { x: s.start[0], z: s.start[1] } : before(5, 9), Q = before(12, 16);
+  return { tee, P, Q };
+}
+
+/** A sign's spot off the lane, on the floor or hung over the void: near where the lane comes to its pieces, clear of
+ *  everything, hiding the least of the lane from the cameras. Null where there is no room. */
+function openSpot({ at, taken, offAt, snap, pits, shafts, clear, overVoid }: Survey, a: Signed, { tee, P, Q }: ReturnType<typeof approach>) {
   // in front of the lane from the camera (it looks from +z: never there; an upright phone from −x: rather not)
   const hides = (x: number, z: number, deep: number) => {
     let phone = 0;
@@ -1028,91 +1074,87 @@ function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number
       }
     return phone;
   };
-  const overVoid = (x: number, z: number) => (voids.length > 0 && (x < 0 || z < 0 || x > W || z > H || voids.some((q) => inZone(q, x, z)))) || lakes.some((q) => inZone(q, x, z));
-  // where nothing else fits, a bracket of its own: on a rock rib between lanes (off the lane, not on
-  // its rails) or up from a shaft's or the void's wall at the lane's edge, the plate out over the
-  // drop; by the stretch of lane that leads to the piece (30 before it) or runs along it, nearest the
-  // approach; facing both cameras alike (a wide screen's from +z, an upright phone's from −x)
-  const walls0 = all.walls.filter((w) => !w.every);
-  const bracketSpot = (a: { name: string; g: number; top: number; pts: [number, number][] }, to: { x: number; z: number }): (Spot & { k: number }) | null => {
-    let best: (Spot & { k: number }) | null = null;
-    for (let cz = 0.5; cz < H; cz += 1)
-      for (let cx = 0.5; cx < W; cx += 1) {
-        const g0 = geoAt(cx, cz);
-        if (!(g0 >= a.g - 30 && g0 <= Math.max(a.g, a.top))) continue;
-        for (let r = 0.5; r <= 2.5; r += 0.5)
-        for (let t = 0; t < TAU; t += 0.5 / r) {
-          const x = cx + Math.cos(t) * r, z = cz + Math.sin(t) * r, off = offAt(x, z);
-          if (off < 0.35 || off > 1.5 || taken.some((q) => Math.hypot(q.x - x, q.z - z) < 4) || walls0.some((w) => segDist(x, z, w.a, w.b) < 0.3)) continue;
-          if (!segs.every(([p0, p1, rr]) => rr < 1.5 || segDist(x, z, p0, p1) > rr) || zones.some((q) => by(q, x, z, 1.2)) || pits.some((q) => inZone(q, x, z) && !shafts.includes(q))) continue;
-          if (Math.hypot(x - s.start[0], z - s.start[1]) < 9 || Math.hypot(x - s.cup[0], z - s.cup[1]) < 4 || far(a, x, z)) continue;
-          const yaw = Math.atan2(-1, 1), ux = Math.cos(yaw), uz = -Math.sin(yaw), hw = (PW * BRACKET) / 2 + 0.35;
-          const down = overVoid(x, z) || shafts.some((q) => inZone(q, x, z));
-          let side = 0;
-          if (down) {
-            // (the plate out to the side of the post that is over the drop, clear of the lane)
-            const fit = (sd: number) => [0.5, 1, 1.5, 2].every((u) => { const px = x + ux * sd * hw * u, pz = z + uz * sd * hw * u; return offAt(px, pz) >= 1 && (overVoid(px, pz) || shafts.some((q) => inZone(q, px, pz))); });
-            side = fit(1) ? 1 : fit(-1) ? -1 : 0;
-            if (!side) continue;
-          }
-          const k = Math.hypot(x - to.x, z - to.z) + 0.5 * Math.abs(off - 0.8);
-          if (best && k >= best.k) continue;
-          const near = snap(x, z), y = at.t.height(near.x, near.z);
-          best = { name: a.name, x, z, y, yaw, hung: false, bracket: { foot: down ? -7 : 0, side }, k };
-        }
+  let best: (Spot & { k: number }) | null = null;
+  // (and if there is no room, a little closer to the others and to the lane behind; or further off, behind
+  // it all: a round cavern's back wall)
+  for (const [cx, cz, R, room, deep] of [[P.x, P.z, 11, 5.5, 6.5], [a.x, a.z, 11, 5.5, 6.5], [a.x, a.z, 22, 5.5, 6.5], [P.x, P.z, 11, 5, 3.5], [a.x, a.z, 16, 5, 3.5], [a.x, a.z, 36, 5.5, 6.5]] as const) {
+    for (let r = 1.8; r <= R; r += 0.6)
+      for (let t = 0; t < TAU; t += 0.6 / r) {
+        const x = cx + Math.cos(t) * r, z = cz + Math.sin(t) * r, off = offAt(x, z);
+        if (off < 1.7 || off > 5.5 || far(a, x, z) || !clear(x, z, !tee) || taken.some((q) => Math.hypot(q.x - x, q.z - z) < room)) continue;
+        // facing the ball coming, and the cameras (a wide screen's from +z, an upright phone's from −x: between them);
+        // the plate's ends as clear as its middle
+        let fx = Q.x - x, fz = Q.z - z;
+        const L = Math.hypot(fx, fz) || 1;
+        (fx = (0.8 * fx) / L - 0.8), (fz = (0.8 * fz) / L + 1.1);
+        // (a sign read from the tee faces both cameras alike, half way between them)
+        const yaw = tee ? Math.atan2(-1, 1) : Math.atan2(fx, fz), ex = Math.cos(yaw) * (PW / 2 + 0.1), ez = -Math.sin(yaw) * (PW / 2 + 0.1);
+        const ends = [[x - ex, z - ez], [x + ex, z + ez]] as const;
+        if (ends.some(([px, pz]) => offAt(px, pz) < 1 || !clear(px, pz, !tee))) continue;
+        const floor = at.ok(x, z, 0.8, 1.2) && ends.every(([px, pz]) => at.ok(px, pz, 0.35, 0.8)) && !pits.some((q) => by(q, x, z, 1.2) || ends.some(([px, pz]) => by(q, px, pz, 0.8)));
+        const hung = !floor && off >= 4 && off <= 5.5 && overVoid(x, z) && ends.every(([px, pz]) => overVoid(px, pz)) && ![[x, z], ...ends].some(([px, pz]) => shafts.some((q) => inZone(q, px, pz)));
+        if (!floor && !hung) continue;
+        const k = (tee ? Math.hypot(0.5 * (x - P.x), 1.5 * (z - P.z)) : Math.hypot(x - P.x, z - P.z)) + Math.max(hides(x, z, deep), ...ends.map(([px, pz]) => hides(px, pz, deep))) + 0.6 * Math.abs(off - (hung ? 4.6 : 2.3));
+        if (k === Infinity || (best && k >= best.k)) continue;
+        const near = snap(x, z);
+        best = { name: a.name, x, z, y: hung ? at.t.height(near.x, near.z) + HUNG_Y : at.bank(x, z), yaw, hung, k };
       }
-    return best;
-  };
-  // (a plate names its piece: within about 6 of it, or it reads as another's; the dark gallery's is the hole's own)
-  const far = (a: { name: string; pts: [number, number][] }, x: number, z: number) => a.name !== "dark" && !TEE.has(a.name) && !a.pts.some(([px, pz]) => Math.hypot(px - x, pz - z) <= NEAR);
+    if (best) break;
+  }
+  return best;
+}
+
+/** Where nothing else fits, a bracket of its own: on a rock rib between lanes (off the lane, not on its rails) or up
+ *  from a shaft's or the void's wall at the lane's edge, the plate out over the drop; by the stretch of lane that
+ *  leads to the piece (30 before it) or runs along it, nearest the approach (to); facing both cameras alike (a wide
+ *  screen's from +z, an upright phone's from −x). */
+function bracketSpot({ s, at, taken, geoAt, offAt, snap, segs, zones, pits, shafts, walls0, overVoid }: Survey, a: Signed, to: { x: number; z: number }): (Spot & { k: number }) | null {
+  const W = s.board.w, H = s.board.h;
+  let best: (Spot & { k: number }) | null = null;
+  for (let cz = 0.5; cz < H; cz += 1)
+    for (let cx = 0.5; cx < W; cx += 1) {
+      const g0 = geoAt(cx, cz);
+      if (!(g0 >= a.g - 30 && g0 <= Math.max(a.g, a.top))) continue;
+      for (let r = 0.5; r <= 2.5; r += 0.5)
+      for (let t = 0; t < TAU; t += 0.5 / r) {
+        const x = cx + Math.cos(t) * r, z = cz + Math.sin(t) * r, off = offAt(x, z);
+        if (off < 0.35 || off > 1.5 || taken.some((q) => Math.hypot(q.x - x, q.z - z) < 4) || walls0.some((w) => segDist(x, z, w.a, w.b) < 0.3)) continue;
+        if (!segs.every(([p0, p1, rr]) => rr < 1.5 || segDist(x, z, p0, p1) > rr) || zones.some((q) => by(q, x, z, 1.2)) || pits.some((q) => inZone(q, x, z) && !shafts.includes(q))) continue;
+        if (Math.hypot(x - s.start[0], z - s.start[1]) < 9 || Math.hypot(x - s.cup[0], z - s.cup[1]) < 4 || far(a, x, z)) continue;
+        const yaw = Math.atan2(-1, 1), ux = Math.cos(yaw), uz = -Math.sin(yaw), hw = (PW * BRACKET) / 2 + 0.35;
+        const down = overVoid(x, z) || shafts.some((q) => inZone(q, x, z));
+        let side = 0;
+        if (down) {
+          // (the plate out to the side of the post that is over the drop, clear of the lane)
+          const fit = (sd: number) => [0.5, 1, 1.5, 2].every((u) => { const px = x + ux * sd * hw * u, pz = z + uz * sd * hw * u; return offAt(px, pz) >= 1 && (overVoid(px, pz) || shafts.some((q) => inZone(q, px, pz))); });
+          side = fit(1) ? 1 : fit(-1) ? -1 : 0;
+          if (!side) continue;
+        }
+        const k = Math.hypot(x - to.x, z - to.z) + 0.5 * Math.abs(off - 0.8);
+        if (best && k >= best.k) continue;
+        const near = snap(x, z), y = at.t.height(near.x, near.z);
+        best = { name: a.name, x, z, y, yaw, hung: false, bracket: { foot: down ? -7 : 0, side }, k };
+      }
+    }
+  return best;
+}
+
+/**
+ * Where a hole's signs go: its pieces gathered by sign (near ones as one),
+ * each group signed where the lane comes to it (a few units before its
+ * first point along the lane from the tee), off the lane on the floor or
+ * over the void, not in front of the lane, clear of the pieces, the rides'
+ * way, the hazards, the tee, the cup and the other signs; facing the way the
+ * ball comes and the camera. At most `cap` signs, the machines first.
+ */
+function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number; z: number }[], extra: Lists | null): Spot[] {
+  const lane = laneOf(s, at.t), firsts = gathered(list, lane);
+  const v: Survey = { s, at, taken, ...lane, ...keepClear(s, lane, extra) };
   const out: Spot[] = [], perSign = new Map<string, number>();
   for (const a of firsts) {
     if (out.length >= cap || (perSign.get(a.name) || 0) >= (TWICE.has(a.name) ? 2 : 1)) continue;
-    // where the lane comes to it: back along the lane from its first point, 5 before;
-    // and the way the ball comes (12 before), for the plate to face
-    const before = (d: number, R: number) => {
-      if (a.g === Infinity) return { x: a.x, z: a.z };
-      let best = { x: a.x, z: a.z, k: Infinity };
-      for (let r = 0; r <= R; r += STEP)
-        for (let t = 0; t < TAU; t += STEP / Math.max(r, STEP)) {
-          const x = a.x + Math.cos(t) * r, z = a.z + Math.sin(t) * r, g = geoAt(x, z);
-          if (g === Infinity || g > a.g - 1) continue;
-          const k = Math.abs(g - (a.g - d)) + 0.15 * r;
-          if (k < best.k) best = { x, z, k };
-        }
-      return best;
-    };
-    // (one to read from the tee as the player aims: by the tee, where the Classic camera looks over it, the
-    // wide screen's along −z and the upright phone's along +x: near its line across (z) first)
-    const tee = TEE.has(a.name), P = tee ? { x: s.start[0], z: s.start[1] } : before(5, 9), Q = before(12, 16);
-    let best: (Spot & { k: number }) | null = null;
-    // (and if there is no room, a little closer to the others and to the lane behind; or further off, behind
-    // it all: a round cavern's back wall)
-    for (const [cx, cz, R, room, deep] of [[P.x, P.z, 11, 5.5, 6.5], [a.x, a.z, 11, 5.5, 6.5], [a.x, a.z, 22, 5.5, 6.5], [P.x, P.z, 11, 5, 3.5], [a.x, a.z, 16, 5, 3.5], [a.x, a.z, 36, 5.5, 6.5]] as const) {
-      for (let r = 1.8; r <= R; r += 0.6)
-        for (let t = 0; t < TAU; t += 0.6 / r) {
-          const x = cx + Math.cos(t) * r, z = cz + Math.sin(t) * r, off = offAt(x, z);
-          if (off < 1.7 || off > 5.5 || far(a, x, z) || !clear(x, z, !tee) || taken.some((q) => Math.hypot(q.x - x, q.z - z) < room)) continue;
-          // facing the ball coming, and the cameras (a wide screen's from +z, an upright phone's from −x: between them);
-          // the plate's ends as clear as its middle
-          let fx = Q.x - x, fz = Q.z - z;
-          const L = Math.hypot(fx, fz) || 1;
-          (fx = (0.8 * fx) / L - 0.8), (fz = (0.8 * fz) / L + 1.1);
-          // (a sign read from the tee faces both cameras alike, half way between them)
-          const yaw = tee ? Math.atan2(-1, 1) : Math.atan2(fx, fz), ex = Math.cos(yaw) * (PW / 2 + 0.1), ez = -Math.sin(yaw) * (PW / 2 + 0.1);
-          const ends = [[x - ex, z - ez], [x + ex, z + ez]] as const;
-          if (ends.some(([px, pz]) => offAt(px, pz) < 1 || !clear(px, pz, !tee))) continue;
-          const floor = at.ok(x, z, 0.8, 1.2) && ends.every(([px, pz]) => at.ok(px, pz, 0.35, 0.8)) && !pits.some((q) => by(q, x, z, 1.2) || ends.some(([px, pz]) => by(q, px, pz, 0.8)));
-          const hung = !floor && off >= 4 && off <= 5.5 && overVoid(x, z) && ends.every(([px, pz]) => overVoid(px, pz)) && ![[x, z], ...ends].some(([px, pz]) => shafts.some((q) => inZone(q, px, pz)));
-          if (!floor && !hung) continue;
-          const k = (tee ? Math.hypot(0.5 * (x - P.x), 1.5 * (z - P.z)) : Math.hypot(x - P.x, z - P.z)) + Math.max(hides(x, z, deep), ...ends.map(([px, pz]) => hides(px, pz, deep))) + 0.6 * Math.abs(off - (hung ? 4.6 : 2.3));
-          if (k === Infinity || (best && k >= best.k)) continue;
-          const near = snap(x, z);
-          best = { name: a.name, x, z, y: hung ? at.t.height(near.x, near.z) + HUNG_Y : at.bank(x, z), yaw, hung, k };
-        }
-      if (best) break;
-    }
-    if (!best) best = bracketSpot(a, P);
+    const way = approach(v, a);
+    const best = openSpot(v, a, way) ?? bracketSpot(v, a, way.P);
     if (!best) continue;
     out.push(best);
     taken.push(best);

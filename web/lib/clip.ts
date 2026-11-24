@@ -1,37 +1,24 @@
-// The shot clip, the part a browser is not needed for: the format
-// it is recorded in, the stretch of the holing stroke it shows, the sky
-// behind it and its file's name. The recording is engine/clip.ts.
+// The shot clip without a browser: its format, the stretch of the holing stroke it shows, its sky and its file's name.
 
 /** The MP4s a clip may be recorded as, best first: MP4 is the one video X takes. */
 const MP4 = ["video/mp4;codecs=avc1.640028", "video/mp4;codecs=avc1.42E01F", "video/mp4;codecs=avc1", "video/mp4"];
 
-/** The first MP4 this browser records (supported: MediaRecorder.isTypeSupported),
- *  or "": no clip is offered then, the image and the link are. */
+/** The first MP4 this browser records, or "": no clip is offered then. */
 export function clipMime(supported: (type: string) => boolean) {
   return MP4.find((t) => { try { return supported(t); } catch { return false; } }) || "";
 }
 
-/** The MP4 this browser can make a clip in, or "" when it can't: it needs a
- *  canvas it can film (captureStream) and a MediaRecorder that writes MP4.
- *  Anything missing, and there is no clip at all: no button, no loader. */
+/** The MP4 this browser can make a clip in, or "": it needs a canvas it can film and a MediaRecorder that writes MP4. */
 export function clipSupport(w: { MediaRecorder?: { isTypeSupported(type: string): boolean }; HTMLCanvasElement?: { prototype: object } } = globalThis) {
   if (!w.MediaRecorder || !w.HTMLCanvasElement || !("captureStream" in w.HTMLCanvasElement.prototype)) return "";
   const rec = w.MediaRecorder;
   return clipMime((t) => rec.isTypeSupported(t));
 }
 
-/** How long a clip holds on each part, in ms: the gnome still before the
- *  release, the moment after the drop (the confetti, the result popping in
- *  pop after it), the stroke's part at most, then the closing card (the game's
- *  name and address) and its fade in. */
+/** How long a clip holds on each part, in ms: the gnome still before the release, the moment after the drop, the stroke at most, the closing card, its fade in, the result's pop. */
 export const CLIP = { lead: 700, tail: 1800, max: 8000, outro: 1800, fade: 300, pop: 150 };
 
-/**
- * The stretch of the holing stroke a clip shows, from each path step's time
- * on screen (ms): from the release (from 0, after the lead) when the stroke,
- * the lead and the tail fit in max; else its last steps that do, with no
- * lead (a long putt opens mid-roll). length: the clip's expected ms.
- */
+/** The stretch of the holing stroke a clip shows, from each path step's time on screen (ms): from the release when it all fits in max, else its last steps with no lead. length: the clip's expected ms. */
 export function clipWindow(ms: readonly number[]) {
   const { lead, tail, max } = CLIP, all = ms.reduce((a, b) => a + b, 0);
   if (lead + all + tail <= max) return { from: 0, lead, length: lead + all + tail };
@@ -40,16 +27,13 @@ export function clipWindow(ms: readonly number[]) {
   return { from: Math.max(from, 0), lead: 0, length: run + tail };
 }
 
-/** The sky's colour stops (offset 0..1, colour) from its CSS background
- *  (getComputedStyle: "linear-gradient(178deg, rgb(…) 0%, …)"): the page's
- *  sky is CSS, the clip paints it behind the course. The day's when unreadable. */
+/** The sky's colour stops (offset 0..1, colour) from its CSS background, as getComputedStyle gives it. The day's when unreadable. */
 export function skyStops(css: string): [number, string][] {
   const stops = [...css.matchAll(/(rgba?\([^)]*\)|#[0-9a-f]{3,8})\s+(-?[\d.]+)%/gi)].map((m): [number, string] => [Math.min(1, Math.max(0, Number(m[2]) / 100)), m[1]]);
   return stops.length ? stops : [[0, "#fdebcf"], [1, "#bfd9cc"]];
 }
 
-/** The clip's file name, after its hole: gnogolf-garden-3.mp4 for a course
- *  hole (whatever its version), gnogolf-<slug>.mp4 for a community one. */
+/** The clip's file name: gnogolf-garden-3.mp4 for a course hole, whatever its version; gnogolf-<slug>.mp4 for a community one. */
 export function clipName(id: string) {
   const parts = id.replace(/\/v\d+$/, "").split("/");
   const last = parts[parts.length - 1] || "";

@@ -8,7 +8,7 @@ import fs from "node:fs";
 import type * as THREE from "three";
 import { loadWorld } from "./scene-harness.ts";
 import { host } from "./builder-fixture.ts";
-import { islandBox } from "../lib/scene/camera.ts";
+import { islandBox } from "../lib/scene/rigs.ts";
 import type { Hole } from "../lib/scene/data.ts";
 import type { Extras, Wall } from "../lib/types.ts";
 

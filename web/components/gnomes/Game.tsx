@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import type { Chain } from "@/lib/chain";
 import { chunk } from "@/lib/chunk";
 import { closingSlot, makeShop } from "@/lib/gnomes/shop";
-import { knownSale } from "@/lib/gnomes/promo";
+import { knownSale } from "@/lib/gnomes/sale";
 import { served } from "@/lib/gnomes/served";
 import { know } from "@/lib/gnomes/wear";
 import { collectorsOf } from "@/lib/gnomes/collection";
@@ -20,7 +20,7 @@ import type { OwnedProps } from "./Owned";
 
 export { CollectionSection, PromoLine, shopFace, shopLine, shopSkinOf } from "./Promo";
 export { default as Collector } from "./Rank";
-export { readSale, saleAt } from "@/lib/gnomes/promo";
+export { readSale, saleAt } from "@/lib/gnomes/sale";
 export { askWorn, playing } from "@/lib/gnomes/wear";
 export { skinOfTraits } from "@/lib/gnomes/skin";
 export { makeShop };

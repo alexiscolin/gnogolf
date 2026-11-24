@@ -37,8 +37,7 @@ func zonesAt(h *Simple, data string) int {
 	return strings.Index(data, string(e.b))
 }
 
-// The bytes no Encode writes are refused: an unknown flag, a skin past the
-// table.
+// An unknown flag, a skin past the table.
 func TestUnwrittenBytesAreRefused(t *testing.T) {
 	h := plain()
 	data := Encode(h)

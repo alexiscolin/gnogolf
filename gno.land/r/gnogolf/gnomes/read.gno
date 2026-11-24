@@ -8,18 +8,17 @@ import (
 	"gno.land/p/nt/grc721/v0"
 )
 
-// The reads the screens call (the mint page, the gallery, a gnome's page,
-// the locker), as JSON, one query each (vm/qeval), each with a "version".
+// The reads the screens call, as JSON: one query each (vm/qeval), each with a
+// "version".
 
 // pageSize is a GnomesOf page.
 const pageSize = 100
 
-// Collection is the mint page's header: the sale's switch ("open") and the
-// earned gnomes' ("earnedOpen"), the genesis's closing date (0 for none),
-// the owner, the treasury and the one offered it, the site, the royalty,
-// the tiers (the price of the next sale, the caps, how many sold) and the
-// series (how many sold; "closed" once the sale closed, so its final supply
-// is "sold"; its "sale", null before one is opened).
+// Collection returns the mint page's header: the sale's switch ("open") and
+// the earned gnomes' ("earnedOpen"), the genesis's closing date (0 for none),
+// the owner, the treasury and the one offered it, the site, the royalty, the
+// tiers (the next sale's price, the caps, how many sold) and the series (how
+// many sold, "closed", and its "sale", null before one is opened).
 func Collection() string {
 	var b strings.Builder
 	b.WriteString(`{"version":1,"open":` + strconv.FormatBool(mintOpen) + `,"earnedOpen":` + strconv.FormatBool(earnedOpen) + `,"closesAt":` + itoa(closeAt) +
@@ -63,9 +62,9 @@ func saleJSON(i int) string {
 	return out + `]}`
 }
 
-// Gnome is gnome tid, of the catalogue or earned, `{"version":1,"id":""}`
-// when there is none: its owner ("" while unsold) and its price (its sale's;
-// the next sale's when its series is on none yet; 0 for an earned one).
+// Gnome returns gnome tid, catalogue or earned; `{"version":1,"id":""}` when
+// there is none. "owner" is "" while unsold. "price" is its sale's, the next
+// sale's when its series has none yet, 0 for an earned gnome.
 //
 //	{"version":1,"id":"217","series":"genesis","name":"…","tier":"common",
 //	 "traits":"…","owner":"","price":36000000,"sold":false,"closed":false}
@@ -88,11 +87,11 @@ func Gnome(tid string) string {
 		`,"closed":` + strconv.FormatBool(isClosed(g.id)) + `}`
 }
 
-// noneJSON is the answer for a thing that does not exist: still versioned.
+// noneJSON answers for a gnome that does not exist: still versioned.
 const noneJSON = `{"version":1,"id":""}`
 
-// Sold is the gallery's one query: a bit per catalogue id, bit id-1 set once
-// it is sold, the bytes in hex.
+// Sold returns the gallery's one query: a bit per catalogue id, bit id-1 set
+// once it is sold, the bytes in hex.
 func Sold() string {
 	n := (lastID() + 7) / 8
 	out := make([]byte, 0, 2*n)
@@ -106,9 +105,9 @@ func Sold() string {
 	return string(out)
 }
 
-// GnomesOf is the locker: owner's tokens from offset, at most 100, best
-// first (heldKey: tier rank, then id), as the locker shows a team; "total"
-// is how many they hold, "next" the offset of the following page, or -1.
+// GnomesOf returns the locker: owner's tokens from offset, at most pageSize,
+// best first (heldKey). "total" is how many they hold, "next" the following
+// page's offset, or -1.
 //
 //	{"version":1,"owner":"g1…","total":3,"next":-1,
 //	 "rows":[{"id":"217","tier":"common","traits":"…"},…]}
@@ -136,19 +135,22 @@ func GnomesOf(owner address, offset int64) string {
 	return b.String()
 }
 
-// CanBuy is the mint page's answer before any signature: whether buyer may
-// buy ids (as Buy takes them) now, and if not why. It asks Buy's own checks
-// (check), so it never says other than Buy would. "reason" is a code for
-// the screen, the first refusal Buy would meet ("" when ok): ids, paused,
-// unknown, unlisted, later, taken, closed, players-only, window-cap,
-// cap; "said" is Buy's sentence for it, "" when ok. "total" is the ugnot to
-// send, 0 when not ok. Neither the payment nor the direct call is checked: a
-// read has no coins and no caller. "left" is what buyer's lifetime caps
-// leave per tier Buy sells, this list not counted. "window" is the player
-// window of the first id's sale until it ends (a sale yet to start
-// included): its end and what its caps leave buyer per tier, this list not
-// counted; with no such window (none, over, or no id read) "until" is 0 and
-// its "left" all 0, the lifetime caps alone holding.
+// CanBuy tells the mint page, before any signature, whether buyer may buy ids
+// (as Buy takes them) now. It runs Buy's own checks (check), so it never says
+// other than Buy would. Only the payment and the direct call go unchecked: a
+// read has no coins and no caller. Its fields:
+//
+//   - "reason": the first refusal Buy would meet, "" when ok: ids, paused,
+//     unknown, unlisted, later, taken, closed, players-only, window-cap, cap;
+//   - "said": Buy's sentence for it, "" when ok;
+//   - "total": the ugnot to send, 0 when not ok;
+//   - "left": what buyer's lifetime caps leave per tier, this list not
+//     counted;
+//   - "window": the player window of the first id's sale, until it ends: its
+//     end and what its caps leave buyer, this list not counted. With no such
+//     window, "until" is 0 and its "left" all 0.
+//
+// As in:
 //
 //	{"version":1,"ok":false,"reason":"window-cap","said":"the player window takes 3 common a wallet",
 //	 "total":0,"left":{"common":7,"rare":5,"epic":2,"legendary":1},
@@ -173,8 +175,8 @@ func CanBuy(buyer address, ids string) string {
 		`,"window":{"until":` + itoa(until) + `,"left":` + capsLeft(playerCap, inWin) + `}}`
 }
 
-// capsLeft writes what caps leave once had is counted, per tier,
-// as {"common":n,…}; all 0 for had nil.
+// capsLeft writes what caps leave once had is counted, per tier, as
+// {"common":n,…}; all 0 for a nil had.
 func capsLeft(caps [len(tiers)]int64, had *[len(tiers)]int64) string {
 	var b strings.Builder
 	b.WriteString("{")
@@ -192,8 +194,8 @@ func capsLeft(caps [len(tiers)]int64, had *[len(tiers)]int64) string {
 	return b.String()
 }
 
-// Params is the rules a screen explains, from config.gno: the longest
-// player window (hours), the ids one Buy takes, the coin.
+// Params returns the rules a screen explains: the longest player window
+// (hours), the ids one Buy takes, the coin.
 func Params() string {
 	return `{"version":1,"maxHours":` + itoa(maxHours) + `,"maxBatch":` + itoa(maxBatch) + `,"denom":"` + payDenom + `"}`
 }

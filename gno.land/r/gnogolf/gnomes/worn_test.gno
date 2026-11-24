@@ -10,10 +10,8 @@ import (
 	"gno.land/p/nt/uassert/v0"
 )
 
-// Wearing is free: every player wears their best gnome, the highest tier
-// they hold then its lowest id, unless they put another on for everyone
-// with Equip. Worn says which, in one cheap read: the holder's rows sort
-// best first, so it reads one row.
+// A player wears their best gnome unless Equip put another on. Worn reads one
+// row either way.
 
 func wornJSON(player address, id int64, put bool) string {
 	g, _ := tokenAt(id)
@@ -91,8 +89,7 @@ func TestWornManyAnswersABoardPage(cur realm, t *testing.T) {
 	uassert.Equal(t, `{"version":1,"rows":[`+row(alice, common())+","+row(bob, nthOfTier(1, 0))+"]}", got, "those who hold one, once each, in order")
 	uassert.Equal(t, `{"version":1,"rows":[]}`, WornMany(""))
 
-	// past the first 50 players (repeats and junk count, so the walk stays
-	// short), the rest are not read
+	// past the first 50 players the rest are not read; repeats and junk count
 	many := ""
 	for i := 0; i < maxPlayers; i++ {
 		many += testutils.TestAddress("p"+itoa(int64(i))).String() + ","

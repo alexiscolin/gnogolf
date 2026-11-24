@@ -8,13 +8,13 @@ import (
 	"gno.land/p/gnogolf/physics"
 )
 
-// Diff is the first difference between two holes, field by field and float
-// by float (by their bits, so -0 is not 0), the walls' prep included, or ""
-// when there is none. A nil list and an empty one are the same list.
+// Diff is the first difference between two holes, "" when there is none. It
+// compares field by field, floats by their bits (so -0 is not 0), the walls'
+// prep included. A nil list equals an empty one.
 //
-// It is how a decoded hole is proved the hole it was encoded from: Encode,
-// Decode and Diff must name the same fields, and the tripwire in course's
-// data test fails to build when a field is added to any of the types.
+// It proves a decoded hole is the hole it was encoded from: Encode, Decode and
+// Diff must name the same fields, and the tripwire in data_test.gno fails to
+// build when a type gains a field.
 func Diff(a, b *course.Simple) string {
 	c := &differ{}
 	c.whole("W", a.W, b.W)

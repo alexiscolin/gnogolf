@@ -1,5 +1,4 @@
-// Friends: addresses (or gno.land names, resolved once) kept in this browser;
-// one added by its address alone (a friend link, a dare) takes its name once found (nameFriends).
+// Friends: addresses kept in this browser. One added by its address alone takes its gno.land name once found.
 import { isAddress } from "./chain";
 
 const FRIENDS = "gnogolf.friends";
@@ -17,7 +16,7 @@ export const loadFriends = (): Friend[] => {
   }
 };
 export const saveFriends = (all: Friend[]) => {
-  const f = all.slice(-49); // (the latest kept: one added now is never the one dropped)
+  const f = all.slice(-49); // the latest are kept: one added now is never the one dropped
   try {
     localStorage.setItem(FRIENDS, JSON.stringify(f));
   } catch {}
@@ -28,7 +27,7 @@ export function addFriend(addr: string, name = "") {
   if (!isAddress(addr) || f.some((x) => x.addr === addr)) return f;
   return saveFriends([...f, { addr, name }]);
 }
-/** The names found for friends kept by their address alone (names: by address, "" for none), kept with them. */
+/** Keeps the names found for friends added by their address alone. names: by address, "" for none. */
 export function nameFriends(names: Readonly<Record<string, string>>) {
   const f = loadFriends(), found = (x: Friend) => !x.name && !!names[x.addr];
   return f.some(found) ? saveFriends(f.map((x) => (found(x) ? { ...x, name: names[x.addr] } : x))) : f;

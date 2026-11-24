@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Medal } from "@/components/Badges";
 import { Button } from "@/components/ui";
-import { messageOf } from "@/components/common";
+import { messageOf } from "@/lib/words";
 import { connect, hasAdena, PRICE, recordRound } from "@/lib/adena";
 import { landed, RULES, type Chain } from "@/lib/chain";
 import { replayed, type Proof } from "@/lib/builder/proof";

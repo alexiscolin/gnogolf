@@ -22,13 +22,11 @@ function mkHole(zones: Zone[] = [], posts: Post[] = [], walls: Wall[] = []) {
 type RafGlobal = { window?: { requestAnimationFrame: (f: FrameRequestCallback) => number }; requestAnimationFrame?: (f: FrameRequestCallback) => number };
 
 /** Runs fn() with requestAnimationFrame firing its callback right away, and
- *  performance.now() jumping a million ms further every call: any
- *  animation's first frame already lands past its own duration, so the whole
- *  chain of steps (and any .then() it strings together) runs to completion
- *  as fast as the microtask queue drains, no real waiting. replay() reads
- *  its own guarded copy off `window`, but the tube/splash helpers it calls
- *  out to (through, climbBack, splashDown) call the bare global instead —
- *  both need stubbing. */
+ *  performance.now() jumping a million ms further every call: an animation's
+ *  first frame lands past its own duration, so the whole chain of steps runs
+ *  to completion as fast as the microtask queue drains. replay() reads its
+ *  own guarded copy off `window`, but the tube and splash helpers it calls
+ *  (through, climbBack, splashDown) call the bare global: both are stubbed. */
 async function withFakeClock<T>(fn: () => Promise<T>): Promise<T> {
   const realNow = performance.now.bind(performance);
   const g = globalThis as RafGlobal;

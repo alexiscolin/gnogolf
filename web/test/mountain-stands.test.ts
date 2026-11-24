@@ -1,9 +1,9 @@
 // What stands beside the mountain's moving pieces (lib/scene/mountain.ts
 // snowCannon, serac): the gust's snow cannon and the serac's ice tower never
-// on the lane, whatever the hole; where no spot off the lane exists the piece
+// on the lane, whatever the hole. Where no spot off the lane exists the piece
 // is refused in the Builder (its census: hidden, "room"; pipeline.ts E12),
 // never drawn over the ball. The course's own holes that have them
-// (mountain/10's cannon, mountain/15's three seracs) draw as they always have.
+// (mountain/10's cannon, mountain/15's three seracs) keep their drawing.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

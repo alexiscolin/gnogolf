@@ -1,19 +1,12 @@
-// What a gnome is made of (Skin.material: an Epic's, a Legendary's), in the
-// game's own drawing: still flat bands of light under an ink line, but each
-// material its own bands and marks.
-// Polished things (metal, glaze, porcelain, crystal, frost) get a fourth,
-// bright band and a glint (crystal its facets instead); wood its grain,
-// stone its speckle, wool its stitches, gingerbread its icing; neon trades
-// the ink line for a lit one, lava glows through its cracks. Colours stay
-// the skin's: a material is how the light takes them.
+// What a gnome is made of: each material its own bands of light and marks, the skin's colours kept.
 import * as THREE from "three";
-import { flat, hullOf, share, texOf } from "./materials";
+import { flat, hullOf, share, texOf, once } from "./materials";
 import { seeded } from "./common";
 import { md } from "./data";
 import type { Material } from "../gnomes/vocab";
 import type { Skin } from "./gnome";
 
-/** The parts of a gnome a material dresses: his body, his hat's, his beard's, and his prop's that take it. */
+/** The parts of a gnome a material dresses. */
 export interface Dressed {
   body: THREE.Mesh;
   hat: THREE.Mesh[];
@@ -21,13 +14,12 @@ export interface Dressed {
   prop: THREE.Mesh[];
 }
 
-/** Materials that dress the beard too: a statue's, a knitted toy's, frost. */
+/** Materials that dress the beard too. */
 const WHOLE: ReadonlySet<Material> = new Set(["stone", "wool", "crystal", "frost"]);
-/** The polished materials: a fourth, bright band, and a glint but on crystal. */
+/** Polished materials take a fourth, bright band of light. */
 const POLISHED: ReadonlySet<Material> = new Set(["metal", "glaze", "porcelain", "crystal", "frost"]);
 
-// light in bands, as materials.ts does it; a polished thing has a fourth,
-// narrow and bright: its shine
+// A toon gradient of light levels: SHINE ends in a narrow bright band.
 const bands = (levels: number[]) => {
   const t = new THREE.DataTexture(new Uint8Array(levels), levels.length, 1, THREE.RedFormat);
   t.minFilter = t.magFilter = THREE.NearestFilter;
@@ -37,7 +29,7 @@ const bands = (levels: number[]) => {
 const SHINE = bands([92, 165, 225, 225, 255]), MATTE = bands([128, 196, 240]);
 
 const css = (v: number) => "#" + new THREE.Color(v).getHexString();
-/** A small canvas, painted: the texture of a material in two colours. */
+/** A 64 px repeating texture, painted with a generator seeded by key. */
 function painted(key: string, paint: (x: CanvasRenderingContext2D, rand: () => number) => void) {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
@@ -47,7 +39,7 @@ function painted(key: string, paint: (x: CanvasRenderingContext2D, rand: () => n
   return t;
 }
 
-// each material's marks, on a 64-pixel square round the part (base, detail)
+// Each material's marks in base colour a and detail colour b, on a 64 px square wrapped round the part.
 const MARKS: Partial<Record<Material, (x: CanvasRenderingContext2D, r: () => number, a: string, b: string) => void>> = {
   wood: (x, r, a, b) => {
     // fine grain running down, half seen: a carving, not a barrel
@@ -82,7 +74,7 @@ const MARKS: Partial<Record<Material, (x: CanvasRenderingContext2D, r: () => num
     for (let i = 0; i < 4; i++) x.beginPath(), x.arc(i * 16 + 8, 42, 2, 0, Math.PI * 2), x.fill();
   },
   lava: (x, r, a, b) => {
-    // a crust split by glowing cracks (the same lines lit, as the emissive map)
+    // A crust split by cracks; the same map lights them as the emissive map.
     x.fillStyle = a, x.fillRect(0, 0, 64, 64), x.strokeStyle = b, x.lineWidth = 1.8;
     for (let k = 0; k < 7; k++) {
       x.beginPath();
@@ -102,29 +94,26 @@ const MARKS: Partial<Record<Material, (x: CanvasRenderingContext2D, r: () => num
 };
 
 const METAL_LIFT = new THREE.Color(0x141414);
-const made = new Map<string, THREE.Material>();
-/** A material's surface in a colour, its detail in another (made once per kind and pair, kept). */
+/** A material's surface in a base and a detail colour, made once per kind and pair. */
 function surface(kind: Material, base: number, detail: number): THREE.Material {
   const key = `${kind}:${base}:${detail}`;
-  let m = made.get(key);
-  if (m) return m;
-  const marks = MARKS[kind], map = marks ? share(painted(key, (x, r) => marks(x, r, css(base), css(detail)))) : null;
-  const opts: THREE.MeshToonMaterialParameters = {};
-  if (POLISHED.has(kind) || kind === "stone") opts.gradientMap = POLISHED.has(kind) ? SHINE : MATTE; // (else flat()'s own bands)
-  if (map) opts.map = map;
-  if (kind === "lava") Object.assign(opts, { emissive: detail, emissiveMap: map, emissiveIntensity: 0.8 });
-  // a metal's faint lift of its own light, the same for every part: the bake merges a gnome's
-  // metal parts into one draw (their colours in its vertices), and that draw has one emissive
-  if (kind === "metal") opts.emissive = METAL_LIFT;
-  if (kind === "crystal") Object.assign(opts, { transparent: true, opacity: 0.86, emissive: new THREE.Color(detail).multiplyScalar(0.25) });
-  m = share(flat(map ? 0xffffff : base, opts));
-  if (kind === "crystal") md(m).base = 0.86; // see-through as ice is: a ghost fades it from there
-  made.set(key, m);
-  return m;
+  return once("gnome-matter:" + key, () => {
+    const marks = MARKS[kind], map = marks ? share(painted(key, (x, r) => marks(x, r, css(base), css(detail)))) : null;
+    const opts: THREE.MeshToonMaterialParameters = {};
+    if (POLISHED.has(kind) || kind === "stone") opts.gradientMap = POLISHED.has(kind) ? SHINE : MATTE; // else flat()'s own bands
+    if (map) opts.map = map;
+    if (kind === "lava") Object.assign(opts, { emissive: detail, emissiveMap: map, emissiveIntensity: 0.8 });
+    // One emissive for every metal part: the bake merges them into one draw, which has one emissive.
+    if (kind === "metal") opts.emissive = METAL_LIFT;
+    if (kind === "crystal") Object.assign(opts, { transparent: true, opacity: 0.86, emissive: new THREE.Color(detail).multiplyScalar(0.25) });
+    const m = flat(map ? 0xffffff : base, opts);
+    if (kind === "crystal") md(m).base = 0.86; // a ghost fades it from this opacity
+    return m;
+  });
 }
 
 const GLINT = share(new THREE.MeshBasicMaterial({ color: 0xffffff }));
-/** A polished thing's glint: two white dabs where the light hits the body. */
+/** Two white dabs where the light hits the body. */
 function glint(g: THREE.Group) {
   for (const [dir, r] of [[[-0.5, 0.42, 0.75], 0.07], [[-0.62, 0.22, 0.75], 0.035]] as const) {
     const n = new THREE.Vector3(...dir).normalize(), d = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), GLINT);
@@ -135,12 +124,7 @@ function glint(g: THREE.Group) {
   }
 }
 
-/**
- * Dresses a gnome in his material: the parts' surfaces swapped (each keeping
- * its own colour), a crystal body cut into facets, a neon one's ink lit, a
- * metal one's band and glint. Returns what moves with time (lava's glow), or
- * null. Nothing for a toon gnome.
- */
+/** Dresses a gnome in his material, each part keeping its own colour. Returns what moves with time, or null. */
 export function dressMatter(g: THREE.Group, skin: Skin, parts: Dressed): ((t: number) => void) | null {
   const kind = skin.material;
   if (!kind) return null;
@@ -151,9 +135,9 @@ export function dressMatter(g: THREE.Group, skin: Skin, parts: Dressed): ((t: nu
   };
   [parts.body, ...parts.hat, ...parts.prop, ...(WHOLE.has(kind) ? parts.beard : [])].forEach(dress);
   if (kind === "crystal") {
-    // the body cut into facets: the same ball, flat faces
+    // The body as flat facets.
     const facets = new THREE.IcosahedronGeometry(0.55, 1);
-    facets.computeVertexNormals(); // (not indexed: each face its own normal, a facet)
+    facets.computeVertexNormals(); // not indexed: each face keeps its own normal
     for (const o of parts.body.parent!.children) if (o instanceof THREE.Mesh) o.geometry = facets;
   }
   if (kind === "neon") {

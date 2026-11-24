@@ -1,6 +1,6 @@
 // lib/scene/gnome.ts ACTS: the menu's panels each play their own act on the
-// one stage (makePreview), Solo and Duel as before, the Builder's gnome
-// hammering, the shop's showing himself off: never the same motion twice.
+// one stage (makePreview): Solo, Duel, the Builder's gnome hammering, the
+// shop's showing himself off. Never the same motion twice.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import "./scene-harness.ts";

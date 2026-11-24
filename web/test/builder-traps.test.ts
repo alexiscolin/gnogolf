@@ -177,7 +177,8 @@ void test("traps stays quick on a busy board: 92 by 92, sixteen steep slopes, ei
   const t0 = performance.now();
   assert.deepEqual(traps(h, LOOSE(h)), []);
   // (about 10 ms here: the quick way, no slope one-way, no energies; 1.4 s once, when a flood went round and round)
-  assert.ok(performance.now() - t0 < 250, `${(performance.now() - t0).toFixed(0)} ms`);
+  const room = process.env.CI ? 4 : 1;
+  assert.ok(performance.now() - t0 < 250 * room, `${(performance.now() - t0).toFixed(0)} ms`);
 });
 
 void test("a dead end of abutting slopes of different grades or falls: refused, the quick way and the full one alike", () => {

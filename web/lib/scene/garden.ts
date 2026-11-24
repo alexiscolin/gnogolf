@@ -1,16 +1,13 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { C, ink, flat, drawn, grows, sway, rbox, windNow, share, texOf, fadeable, setFade, fadeLoop, gridGeo, onTop } from "./materials";
+import { C, ink, flat, drawn, grows, sway, rbox, windNow, once, texOf, fadeable, setFade, fadeLoop, gridGeo, onTop } from "./materials";
 import { animate } from "./state";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { lantern, fireflies, tree, bush, stone, flower, bigFlower, gnomelet, brolly, mailbox, signpost, hill, house, pond, puddle, fence, mushroom, tuft, bunting, butterfly } from "./props";
 
 
 
-// A garden around the green: trees, bushes, stones, a signpost, hills and a
-// couple of clouds. It is decoration and nothing else — no obstacle lives out
-// here, and the seed is the hole's own name, so each course keeps its garden
-// from one visit to the next.
+// The garden around the green: decoration only, seeded by the hole's name so a course keeps its garden.
 
 import { seeded, hashOf, lookSeed, ISLAND, GRASS, placer, tangentInto, type Rand } from "./common";
 import { smoothstep } from "../terrain";
@@ -56,12 +53,7 @@ function edging(s: Hole, box: THREE.Box3) {
   return g;
 }
 
-// Three landscapes for the back of the island. Which one a hole gets is a hash
-// of its id: stable for a course, and different from its neighbours often
-// enough that eighteen holes do not look like one.
-
-// A few holes have a dream of their own; the rest take one of the three
-// everyday backdrops by a hash of their id.
+// A few holes have a backdrop of their own; the rest take one of three by a hash of their id.
 const THEME: Record<string, string> = { hole5: "giants", hole17: "giants", hole8: "clouds", hole14: "clouds", hole19: "clouds" };
 const themeOf = (id: string) => {
   const named = own(THEME, String(id).split("/").pop()!);
@@ -84,7 +76,7 @@ function hills({ rand, X0, X1, reserve, free }: Backdrop) {
   return g;
 }
 
-/** Water streaks that scroll: what makes a sheet of water read as running. */
+/** Scrolling streaks that make a sheet of water read as running. */
 function streaks(rand: Rand, repeat: number) {
   const c = document.createElement("canvas");
   c.width = 32; c.height = 128;
@@ -115,14 +107,10 @@ function ribbon(pts: readonly THREE.Vector3[], half: (k: number) => number, side
   return geo;
 }
 
-/**
- * A stream across the back: it wells up from a spring among stones, winds
- * flush with the grass under a bridge, and spills off the island's edge down
- * its soil face. One ribbon of water, narrow at the spring — no boxes.
- */
+/** A stream across the back: from a spring among stones, under a bridge, off the island's edge as one ribbon of water. */
 function stream({ rand, X0, X1, reserve }: Backdrop) {
   const g = new THREE.Group();
-  const z = -ISLAND.back + 3.2, x0 = X0 + 3, edge = X1 + 0.8; // the island's right face
+  const z = -ISLAND.back + 3.2, x0 = X0 + 3, edge = X1 + 0.8; // edge is the island's right face
   const pts: THREE.Vector3[] = [];
   for (let i = 0; i <= 24; i++) {
     const t = i / 24;
@@ -130,7 +118,7 @@ function stream({ rand, X0, X1, reserve }: Backdrop) {
     pts.push(new THREE.Vector3(x0 + (edge - x0) * t, GRASS + 0.04, z + Math.sin(t * Math.PI * 3.2) * 1.8 + Math.sin(t * Math.PI * 7.1 + 1) * 0.5));
   }
   const curve = new THREE.CatmullRomCurve3(pts);
-  // the whole ribbon and its banks: nothing stands in the water
+  // Reserve the ribbon and its banks: nothing stands in the water.
   for (let i = 0; i <= 60; i++) {
     const p = curve.getPoint(i / 60);
     reserve(p.x, p.z, 1.3);
@@ -159,7 +147,7 @@ function stream({ rand, X0, X1, reserve }: Backdrop) {
   }
   g.add(spring);
   reserve(src.x - 0.3, src.z, 1.4);
-  // pebbles along the banks, on the bank and not in the water
+  // Pebbles along the banks, clear of the water.
   for (let i = 0; i < 16; i++) {
     const k = 4 + Math.floor(rand() * (N - 10)), p = along[k], sgn = rand() > 0.5 ? 1 : -1;
     const st = stone(rand);
@@ -176,7 +164,7 @@ function stream({ rand, X0, X1, reserve }: Backdrop) {
     g.add(m);
     return { m, off: i / 10, lane: (rand() - 0.5) * 0.8 };
   });
-  // and over the edge: the stream bends down the soil face as a falling sheet
+  // Over the edge the stream bends down the soil face as a falling sheet.
   const end = along[N], side = across(N);
   const fallPts = [
     end.clone(),
@@ -235,11 +223,7 @@ function stream({ rand, X0, X1, reserve }: Backdrop) {
   return g;
 }
 
-/**
- * A far range: big hazy peaks on their own low strip of land well behind the
- * island, so they tower over it without standing on (or in) anything of it.
- * `tips` leaves only their snowy tops showing, over a sea of clouds.
- */
+/** A far range of hazy peaks on its own strip of land well behind the island. tips shows only their snowy tops, over a sea of clouds. */
 function farRange(rand: Rand, X0: number, X1: number, { tips = false } = {}) {
   const g = new THREE.Group();
   // far off and hazy: small on screen, a band along the horizon
@@ -266,13 +250,12 @@ function farRange(rand: Rand, X0: number, X1: number, { tips = false } = {}) {
   return g;
 }
 
-/** Rocky peaks with snow on top — the tallest thing on any island. */
+/** Rocky peaks with snow on top: the tallest thing on any island. */
 function mountains({ rand, X0, X1, reserve, free }: Backdrop) {
   const g = new THREE.Group();
   const peaks = [[0.12, 7.5], [0.3, 10], [0.5, 12.5], [0.7, 9.5], [0.9, 7]];
   for (const [t, h] of peaks) {
-    // as wide as the strip behind the board allows: off the island's back
-    // edge, and clear of the board's back wall
+    // As wide as the strip behind the board allows: inside the island's back edge, clear of the board's back wall.
     const r = Math.min(h * 0.55, (ISLAND.back - 1.6) / 2);
     const peak = new THREE.Group();
     const rock = drawn(new THREE.ConeGeometry(r, h, 6), flat(0x8a9a8c));
@@ -282,13 +265,11 @@ function mountains({ rand, X0, X1, reserve, free }: Backdrop) {
     snow.position.y = h - snowH / 2 + 0.02;
     peak.add(rock, snow);
     peak.position.set(X0 + 8 + (X1 - X0 - 9) * t + (rand() - 0.5), GRASS, -ISLAND.back + 0.4 + r);
-    if (t !== 0.5 && !free(peak.position.x, peak.position.z, r * 0.85)) continue; // a neighbour stands there (a narrow board)
+    if (t !== 0.5 && !free(peak.position.x, peak.position.z, r * 0.85)) continue; // a neighbour already stands there
     peak.rotation.y = t === 0.5 ? 0 : rand() * Math.PI;
     g.add(peak);
     if (t === 0.5) {
-      // the tallest one has a waterfall down one of its ridges — the one
-      // facing front-left, so it runs down the rock and its pool stays
-      // behind the board instead of falling onto the green
+      // The tallest has a waterfall down its front-left ridge: its pool stays behind the board, off the green.
       const dir = new THREE.Vector3(-Math.sin(Math.PI / 3), 0, Math.cos(Math.PI / 3)); // a ridge of the six-sided cone
       const fall = waterfall(peak.position, dir, r, h, rand);
       g.add(fall);
@@ -301,23 +282,16 @@ function mountains({ rand, X0, X1, reserve, free }: Backdrop) {
 }
 
 /** A texture that fades a ribbon's two edges out, so falling water has no hard sides. */
-let softEdges: THREE.CanvasTexture | null = null;
-function soft() {
-  if (softEdges) return softEdges;
+const soft = () => once("garden:soft edges", () => {
   const c = document.createElement("canvas");
   c.width = 64; c.height = 4;
   const x = c.getContext("2d")!, grd = x.createLinearGradient(0, 0, 64, 0);
   grd.addColorStop(0, "#000"); grd.addColorStop(0.25, "#fff"); grd.addColorStop(0.75, "#fff"); grd.addColorStop(1, "#000");
   x.fillStyle = grd; x.fillRect(0, 0, 64, 4);
-  return (softEdges = share(texOf(c)));
-}
+  return texOf(c);
+});
 
-/**
- * A waterfall off the tallest peak. It wells out of a notch in the rock, curls
- * out over a ledge, then runs down the ridge as one soft-edged ribbon with two
- * thin strands beside it, into a pool nestled at the mountain's foot: foam
- * where it lands, spray, and rings that stay inside the pool.
- */
+/** A waterfall off the tallest peak: over a ledge, down the ridge as one soft-edged ribbon and two thin strands, into a pool with foam, spray and rings. */
 function waterfall(base: THREE.Vector3, dir: THREE.Vector3, r: number, h: number, rand: Rand) {
   const g = new THREE.Group();
   const side = new THREE.Vector3(dir.z, 0, -dir.x);
@@ -407,14 +381,7 @@ function waterfall(base: THREE.Vector3, dir: THREE.Vector3, r: number, h: number
   return g;
 }
 
-/**
- * Giants: flowers the size of trees. They grow from the garden on both long
- * sides of the board and arch OVER the lane, their heads hanging high above
- * the green (a canopy, partly in the way of the view — that is the point),
- * swaying and nodding in the wind, shedding petals that drift down onto the
- * lane. A head between the camera and the ball fades out (userData.fade).
- * With dandelion puffs, pollen and a ladybird. Nothing here touches the ball.
- */
+/** Giant flowers arching over the lane from both long sides, swaying, shedding petals. A head between the camera and the ball fades out. Nothing here touches the ball. */
 function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
   const g = new THREE.Group();
   const pastel = [0xf4a6b8, 0xf6d27a, 0xc5b3f0, 0xa8dcc8, 0xf7b98b];
@@ -428,8 +395,7 @@ function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
     const flower = new THREE.Group();
     flower.position.set(x, GRASS, z);
     ud(flower).live = true;
-    // the stem rises beside the board and bends in over it: the head hangs
-    // above the lane, a little past its middle
+    // The stem rises beside the board and bends in over it: the head hangs a little past the lane's middle.
     const Hh = 4.6 + rand() * 1.6, reach = (back ? 1 : -1) * (H / 2 + 2 + rand() * 1.5);
     const curve = new THREE.CubicBezierCurve3(
       new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, Hh * 0.7, 0),
@@ -446,7 +412,7 @@ function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
     head.position.copy(curve.getPoint(1));
     head.rotation.x = back ? 2.2 : -2.2;
     const R = 1.6 + rand() * 1.2, colour = pastel[Math.floor(rand() * pastel.length)];
-    // opaque until the canopy fade makes them see-through (setFade)
+    // Opaque until the canopy fade makes them see-through.
     const pm = fadeable(flat(colour, {})), hm = fadeable(flat(C.sun, {}));
     for (let q = 0; q < 9; q++) {
       const a = (q / 9) * Math.PI * 2, pt = new THREE.Mesh(new THREE.SphereGeometry(R * 0.45, 10, 6), pm);
@@ -492,8 +458,7 @@ function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
       setFade(p.m.material, u < 0.9 ? 1 : (1 - u) * 10); // blended only while it fades
     }
   });
-  // fade: a head near the line from the camera to the ball goes see-through
-  // (the shared canopy fade, from where each head is now)
+  // A head near the line from the camera to the ball goes see-through.
   ud(g).fade = fadeLoop(heads.map((f) => ({ obj: f.head, at: f.world, r: f.R, mats: f.mats })), { min: 0.25 });
   // dandelion puffs on the right
   for (let k = 0; k < 2; k++) {
@@ -501,12 +466,10 @@ function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
     if (!free(x, z, 0.8)) continue;
     reserve(x, z, 0.8);
     const h = 3 + rand() * 1.5;
-    // one plant: a stem tapering up to a small receptacle, the seed spokes
-    // radiating from it; all on the one sway, from its foot, so the head
-    // never floats off the stem. Lit like the rest (toon), not glowing at night
+    // One plant on one sway from its foot, so the head never floats off the stem; toon-lit, not glowing at night.
     const dand = new THREE.Group();
     dand.position.set(x, GRASS, z);
-    ud(dand).foot = 0; // its sway is weighed from here (materials.ts plantFeet)
+    ud(dand).foot = 0; // its sway is weighed from here
     ud(dand).flex = 0.7; // a thin stem: it bends, but less than grass
     const stem = grows(new THREE.CylinderGeometry(0.035, 0.09, h, 6), C.leafDark);
     stem.position.y = h / 2;
@@ -548,8 +511,7 @@ function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
     bug.position.set(lx + 0.2, GRASS + 0.22, lz);
     g.add(leaf, bug);
   }
-  // pollen motes drifting over the garden (never through the lane: high up):
-  // one instanced draw, live (they were merged where they stood, and never drifted)
+  // Pollen motes drifting high over the garden: one instanced draw, kept live so the bake does not freeze them.
   const mote = new THREE.MeshBasicMaterial({ color: 0xfff1a8, transparent: true, opacity: 0.8 });
   const motes = Array.from({ length: 24 }, () => ({ x: X0 + rand() * (X1 - X0), z: -ISLAND.back + rand() * (ISLAND.back - 1), y: 3 + rand() * 7, ph: rand() * 6 }));
   const moteMesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 5, 4), mote, motes.length);
@@ -566,14 +528,10 @@ function giants({ rand, X0, X1, reserve, free, W, H }: Backdrop) {
   return g;
 }
 
-/**
- * The "clouds" holes have no island at all: the lane floats in the sky on its
- * own thin slab, over a sea of clouds that fills the view. Snowy peaks pierce
- * it far off; a rainbow, a balloon and a few birds.
- */
+/** Whether a hole floats on its own slab over a sea of clouds, with no island. */
 const cloudy = (id: string) => themeOf(id) === "clouds";
 
-/** Many puffs as one inked mesh (one draw, plus its outline). */
+/** Many puffs as one mesh; inked adds one draw for its outline. */
 function puffs(list: readonly (readonly [number, number, number, number, number])[], inked = true) {
   const geos = list.map(([x, y, z, r, sy]) => {
     const g = new THREE.SphereGeometry(r, 8, 5);
@@ -589,8 +547,7 @@ function puffs(list: readonly (readonly [number, number, number, number, number]
 
 function cloudSea({ rand, W, H }: Pick<Backdrop, "rand" | "W" | "H">) {
   const g = new THREE.Group();
-  // two layers, drifting apart slowly: one close under and round the lane,
-  // one wide and lower out to the horizon
+  // Two layers drifting apart slowly: one close round the lane, one wide and lower out to the horizon.
   const near: [number, number, number, number, number][] = [], far: [number, number, number, number, number][] = [];
   for (let k = 0; k < 50; k++) {
     const x = -14 + rand() * (W + 28), z = -14 + rand() * (H + 24);
@@ -660,40 +617,16 @@ function slab(s: Hole) {
 const BACKDROPS: Record<string, (b: Backdrop) => THREE.Group> = { hills, stream, mountains, giants };
 
 
-/**
- * The garden around the green. Decoration and nothing else — no obstacle lives
- * out here — and it stays on the island: a prop past the edge reads as
- * floating in the sky. Tall things go behind and to the right only, so they
- * never stand between either camera and the green; the left and the front get
- * low things. The seed is the hole's id, so a course keeps its garden.
- */
-function decor(s: Hole, bank: Height = () => 0): THREE.Group {
-  if (cloudy(s.hole)) return cloudSea({ rand: seeded(lookSeed(s)), W: s.board.w, H: s.board.h });
+/** A hole's decor as it is laid: its group, seed, bounds, hour and placing. Every part draws from the one seed: the order decor() calls them in is the hole's look. */
+function startDecor(s: Hole, bank: Height) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
   const rand = seeded(lookSeed(s));
   const X0 = -ISLAND.x + 0.8, X1 = W + ISLAND.x - 0.8;
   const Z0 = -ISLAND.back + 0.8, Z1 = H + ISLAND.front - 0.6;
 
-  // Nothing stands inside anything else: every prop with a footprint reserves
-  // it, and a scattered prop that lands on a reserved spot tries elsewhere or
-  // is dropped. A tree through the house roof is the first thing an eye finds.
+  // Every prop with a footprint reserves it; a scattered prop that lands on a reserved spot tries elsewhere or is dropped.
   const { free, reserve } = placer();
-  // the picket fence along the front: nothing grows through it
-  for (let x = X0 + 1; x <= X1 - 1; x += 0.7) reserve(x, Z1, 0.3);
-  // stepping stones from the tee to the fence, laid first so nothing is
-  // planted on them; apart, on the ground, and short of the pickets
-  const stones = new THREE.Group();
-  for (let i = 0; i < 3; i++) {
-    const st = drawn(new THREE.CylinderGeometry(0.45, 0.5, 0.14, 10), flat(C.stone));
-    const x = s.start[0] + (rand() - 0.5) * 0.4, z = H + 1.0 + i * 0.95;
-    st.position.set(x, GRASS + bank(x, z) + 0.05, z);
-    st.scale.z = 0.75;
-    stones.add(st);
-    reserve(x, z, 0.5);
-  }
-  g.add(stones);
-
   const put = <T extends THREE.Object3D>(m: T, x: number, z: number, k = 1, r = 0) => {
     m.position.set(x, GRASS + bank(x, z), z);
     m.rotation.y = rand() * Math.PI * 2;
@@ -714,23 +647,34 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       }
   };
   const low = (r: Rand) => { const t = rand(); return t < 0.45 ? bush(r) : t < 0.7 ? stone(r) : flower(r); };
+  // how much garden there is to fill: a 64-long lane gets twice the trees
+  const span = (X1 - X0) / 46;
+  const time = timeOf(s.hole);
+  return { s, g, W, H, rand, X0, X1, Z0, Z1, span, time, bank, free, reserve, put, scatter, low };
+}
+type Decor = ReturnType<typeof startDecor>;
 
-  // behind: the course's backdrop, then a row of trees in front of it. Tall
-  // things start clear of the left end: on a portrait screen that is the
-  // foreground.
-  reserve(-3.6, H + 1.2, 1.3); // the signpost
-  const backdrop = BACKDROPS[themeOf(s.hole)];
-  const bd = backdrop({ rand, X0, X1, Z0, W, H, reserve, free });
-  g.add(bd);
-  if (ud(bd).fade) ud(g).fade = ud(bd).fade;
-  // the gnome's home: one house, or on some holes a little mushroom village
+/** Stepping stones from the tee to the fence, laid first so nothing is planted on them. */
+function steppingStones({ s, g, H, rand, bank, reserve }: Decor) {
+  const stones = new THREE.Group();
+  for (let i = 0; i < 3; i++) {
+    const st = drawn(new THREE.CylinderGeometry(0.45, 0.5, 0.14, 10), flat(C.stone));
+    const x = s.start[0] + (rand() - 0.5) * 0.4, z = H + 1.0 + i * 0.95;
+    st.position.set(x, GRASS + bank(x, z) + 0.05, z);
+    st.scale.z = 0.75;
+    stones.add(st);
+    reserve(x, z, 0.5);
+  }
+  g.add(stones);
+}
+
+/** The gnome's home: one house, or on some holes a little mushroom village. */
+function gnomeHome({ s, g, W, H, rand, X0, X1, bank, free, reserve, put }: Decor) {
   const hh = hashOf(String(s.hole), 131);
   if (["hills", "stream"].includes(themeOf(s.hole)) && hh % 2 === 0) {
     const caps = [C.cap, 0xf2a93b, 0x9b7fd1, 0xc98b5a, 0x5b6fb5];
     const homes: [number, number][] = [];
-    // big enough to live in (a house is 1.75 wide at the roof per unit of
-    // scale): tried along the back, then down the right side, wherever the
-    // backdrop (a stream, hills) has left room
+    // Big enough to live in, a house being 1.75 wide at the roof per unit of scale: tried along the back, then down the right side.
     const spots: [number, number][] = [];
     for (let z = 1.2; z < H + 1.5; z += 1.3) spots.push([W + ISLAND.x - 3.3, z]);
     for (let x = X1 - 3; x > X0 + 6; x -= 1.3) spots.push([x, -ISLAND.back + 4.4]);
@@ -782,15 +726,12 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     const home = put(house(), X1 - 3.6, -4.6, 1.1, 2.2);
     home.rotation.y = -0.45;
   }
-  // the pond on the right, if the village left it room
-  for (const pz of [H * 0.62, H * 0.3, H * 0.9]) if (free(W + 4.2, pz, 2.7)) { put(pond(rand), W + 4.2, pz, 1, 2.7).rotation.y = 0; break; }
+}
 
-  // how much garden there is to fill: a 64-long lane gets twice the trees
-  const span = (X1 - X0) / 46;
-  // trees at the back — but not among giants, nor on a cloud island
+/** Trees at the back unless giants stand there, groves at the back corners and down the right, low things behind the lane. */
+function backWoods({ W, H, rand, X0, X1, Z0, Z1, span, free, put, scatter, low }: Decor, backdrop: (b: Backdrop) => THREE.Group) {
   if (backdrop !== giants) scatter(Math.round((backdrop === mountains ? 12 : 24) * span), X0 + 5, X1, Z0 + 3.5, -1.8, tree, 0.95);
-  // groves: a few clumps of wood packed close at the back corners and down
-  // the right side, so the island reads framed by forest, not dotted
+  // Groves: clumps packed close at the back corners and down the right, so the island reads framed by forest.
   if (backdrop !== giants)
     for (const [gx, gz] of [[X1 - 3, -ISLAND.back + 2.5], [X0 + 7, -ISLAND.back + 2.2], [X1 - 2.5, H * 0.3], [X1 - 2.5, H * 0.85]])
       for (let k = 0; k < 7; k++) {
@@ -799,20 +740,20 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
         put(tree(rand), x, z, 0.85 + rand() * 0.3, 0.8);
       }
   scatter(Math.round(8 * span), X0, X1, -2.2, -1.2, low, 0.8);
+}
 
-
-  // right: trees and a pond
+/** Trees and big flowers on the right; nothing taller than a bush on the left and the front. */
+function sidesAndFront({ W, H, rand, X0, X1, Z1, span, scatter, low }: Decor) {
   scatter(6, W + 2, X1 - 1.2, 0, Z1 - 1, tree, 0.9);
-  // big flowers, standing tall where tall things may: the right and the back
   scatter(3, W + 1.8, X1 - 0.8, 0, H, bigFlower, 1);
   scatter(Math.round(3 * span), X0 + 6, X1 - 2, -ISLAND.back + 1.5, -2, bigFlower, 1);
 
-  // left and front: nothing taller than a bush
   scatter(9, X0, -1.5, 0, Z1, low, 0.9);
   scatter(Math.round(10 * span), X0, X1, H + 1.3, Z1 - 0.5, (r) => (rand() < 0.6 ? flower(r) : bush(r)), 0.75);
+}
 
-  // a hedge of round bushes hugging the lane's long sides, and rocks at its
-  // ends: the lane sits in a garden bed instead of on a lawn
+/** A hedge of round bushes along the lane's long sides and rocks at its ends: a garden bed, not a lawn. */
+function laneBed({ g, W, H, rand, bank, free, reserve }: Decor) {
   for (let x = 1; x < W - 1; x += 2.1 + rand() * 1.2) {
     for (const zz of [-1.6, H + 1.6]) {
       if (!free(x, zz, 0.7)) continue;
@@ -833,32 +774,34 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       reserve(xx, zz, 0.6);
     }
   }
-  g.add(fence(X0 + 1, X1 - 1, Z1).translateY(GRASS));
+}
 
-  // the small things that make it look lived in
+/** The small things that make it look lived in. */
+function smallThings({ g, W, H, X0, X1, Z0, Z1, span, bank, scatter }: Decor) {
   scatter(Math.round(60 * span), X0, X1, Z0, Z1, tuft, 1);
   scatter(5, X0, -1.5, 0, H, mushroom, 1);
   scatter(4, W + 1.5, X1, -1, H, mushroom, 1);
   g.add(bunting(new THREE.Vector3(X0 + 6.5, GRASS + bank(X0 + 6.5, -2.4), -2.4), new THREE.Vector3(X1 - 3, GRASS + bank(X1 - 3, -2.4), -2.4)));
+}
 
-  // evening and night: lanterns along the lane, and at night fireflies
-  const time = timeOf(s.hole);
+/** Evening and night: lanterns along the lane, and at night fireflies. */
+function nightLights({ g, W, H, rand, time, bank, free, reserve }: Decor) {
   if (time !== "day") {
     for (let x = 4; x < W - 2; x += 10) {
       for (const zz of [-2.4, H + 2.4]) if (free(x, zz, 0.5)) { const l = lantern(x, zz); l.position.y += bank(x, zz); g.add(l); reserve(x, zz, 0.5); }
     }
   }
   if (time === "night") g.add(fireflies(rand, W, H));
+}
 
-  // the sky and the air over the garden
-  // (the clouds are the sky's, drawn behind the canvas: in 3D they sat too
-  // high for the camera and were cut by the top of the screen)
-  // butterflies by day; after dark the fireflies have the air to themselves
+/** Butterflies by day; after dark the fireflies have the air to themselves. */
+function butterflies({ g, H, rand, time, X0, X1 }: Decor) {
   const wingColors = [C.sun, C.petal, 0xffffff];
   if (time !== "night") for (let i = 0; i < 3; i++) g.add(butterfly(rand, X0 + (X1 - X0) * (0.2 + i * 0.3), H + 2.5 - i * 5, wingColors[i]));
+}
 
-  // a course hole's number: its slot's ("garden/7"; its look is keyed by its old realm, garden/10's hole11), else its
-  // id's ("…/gnogolf/hole4", "garden/7/v2"); a built hole (an author's g1… address, the Builder's draft) has none, nor a sign
+/** A course hole's number on a signpost, from its slot or else its id. A built hole has no number, and no sign. */
+function holeSign({ s, g, H, bank }: Decor) {
   const id = String(s.slot ?? s.hole);
   const place = /^g1/.test(id) ? undefined : /(?:^|\/)[a-z]+\/?(\d+)$/.exec(id.replace(/\/v\d+$/, ""))?.[1];
   if (place) {
@@ -868,16 +811,39 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     sign.rotation.y = -0.5; // readable from the front and from the tee end
     g.add(sign);
   }
+}
+
+/** The garden around the green: decoration only, kept on the island. Tall things go behind and to the right, never between a camera and the green. */
+function decor(s: Hole, bank: Height = () => 0): THREE.Group {
+  if (cloudy(s.hole)) return cloudSea({ rand: seeded(lookSeed(s)), W: s.board.w, H: s.board.h });
+  const d = startDecor(s, bank), { g, W, H, rand, X0, X1, Z0, Z1, free, reserve, put } = d;
+  // the picket fence along the front: nothing grows through it
+  for (let x = X0 + 1; x <= X1 - 1; x += 0.7) reserve(x, Z1, 0.3);
+  steppingStones(d);
+
+  // Behind: the backdrop, then a row of trees. Tall things start clear of the left end, the foreground on a portrait screen.
+  reserve(-3.6, H + 1.2, 1.3); // the signpost
+  const backdrop = BACKDROPS[themeOf(s.hole)];
+  const bd = backdrop({ rand, X0, X1, Z0, W, H, reserve, free });
+  g.add(bd);
+  if (ud(bd).fade) ud(g).fade = ud(bd).fade;
+  gnomeHome(d);
+  // the pond on the right, if the village left it room
+  for (const pz of [H * 0.62, H * 0.3, H * 0.9]) if (free(W + 4.2, pz, 2.7)) { put(pond(rand), W + 4.2, pz, 1, 2.7).rotation.y = 0; break; }
+  backWoods(d, backdrop);
+  sidesAndFront(d);
+  laneBed(d);
+  g.add(fence(X0 + 1, X1 - 1, Z1).translateY(GRASS));
+  smallThings(d);
+  nightLights(d);
+  butterflies(d);
+  holeSign(d);
 
   weatherLooks(g, (w) => (w.rain || w.storm || w.snow ? "wet" : "clear"));
   return g;
 }
 
-/**
- * The banks round the lane: rolling hills that rise a couple of units away
- * from the board and fall away before the island's edge, so the green sits
- * sunken in its garden. Each hole gets its own height and its own wobble.
- */
+/** The banks round the lane: hills that rise a couple of units from the board and fall away before the island's edge, each hole its own height and wobble. */
 function berms(s: Hole): { group: THREE.Object3D; height: Height } {
   if (cloudy(s.hole)) return { group: new THREE.Group(), height: () => 0 };
   const W = s.board.w, H = s.board.h;
@@ -885,11 +851,9 @@ function berms(s: Hole): { group: THREE.Object3D; height: Height } {
   const base = ({ hills: 1.7, mountains: 1.3, stream: 0.9, giants: 1.1, clouds: 0.8 } as Record<string, number>)[themeOf(s.hole)] || 1.2;
   const amp = base * (0.55 + rand() * 0.9), ph = rand() * 6, ph2 = rand() * 6;
   const X0 = -ISLAND.x, X1 = W + ISLAND.x, Z0 = -ISLAND.back, Z1 = H + ISLAND.front;
-  // knolls, not a levee: round mounds of their own sizes dotted round the
-  // board, each a soft dome, where a ring of even height read as a square
+  // Round mounds of their own sizes dotted round the board: a ring of even height read as a square.
   const knolls: { x: number; z: number; r: number; h: number }[] = [];
-  // not along the back: the backdrop (peaks, stream, hills) stands there on
-  // flat ground; and none under the pond or the signpost
+  // None along the back, where the backdrop stands on flat ground, nor under the pond or the signpost.
   const perim = W + 2 * H, n = Math.round(perim / 7);
   const clear = [[W + 4.2, H * 0.62, 3], [-3.6, H + 1.2, 1.5]];
   for (let k = 0; k < n; k++) {

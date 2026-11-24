@@ -13,7 +13,7 @@ import TITLE_HOLES from "./title-holes.json";
 import { loadWorld } from "./worlds";
 import { buildHole } from "./course";
 import { state } from "./state";
-import { makeRenderer, makeScene, weakGpu, setLighting } from "./camera";
+import { makeRenderer, makeScene, weakGpu, setLighting } from "./studio";
 import { makeBall, gnomeById, rewear, type Skin } from "./gnome";
 import { makeConfetti } from "./fx";
 import { BALL_R, smoothstep } from "../terrain";

@@ -1,13 +1,12 @@
 // @ts-check
 // What the site serves of the gnome collection, made from the repo before
-// `npm run dev` and `npm run build` (web/package.json): every gnome's
-// thumbnail (media/gnomes/thumbs/<id>.webp) and the Legendaries' turntables
-// (media/gnomes/turntables/<id>.webp) copied to web/public/gnomes/ and
-// web/public/gnomes/turn/, and the catalogue as the screens read it,
-// web/public/gnomes/catalogue.json: the series' names, each gnome's id, series, tier,
-// home, archetype, name, line and traits, and the earned kinds (the skins
-// are not sent: the client draws them from the traits). Only what changed
-// is written; web/public/gnomes/ is not committed (web/.gitignore).
+// `npm run dev` and `npm run build` (web/package.json):
+//   web/public/gnomes/<id>.webp       every gnome's thumbnail (media/gnomes/thumbs/)
+//   web/public/gnomes/turn/<id>.webp  the Legendaries' turntables (media/gnomes/turntables/)
+//   web/public/gnomes/catalogue.json  the catalogue as the screens read it, without the skins
+//                                     (the client draws them from the traits)
+// Only what changed is written. web/public/gnomes/ is not committed.
+//
 //   node scripts/gnomeassets.mjs
 import fs from "node:fs";
 

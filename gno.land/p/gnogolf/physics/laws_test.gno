@@ -11,8 +11,7 @@ import (
 // flat is an open green of the course's usual Friction.
 func flat() *Field { return &Field{Friction: 0.87, Radius: 0.5} }
 
-// A ball on the flat stops after v²/2a, in v/a substeps, a the green's
-// rolling deceleration Crr·G: the half-kicks make it exact whenever v is a
+// a is the rolling deceleration Crr·G. The half-kicks make it exact when v is a
 // whole number of a, and never off by more than a/8.
 func TestRollingStopsAtVSquaredOverTwoA(t *testing.T) {
 	a := Rolling(0.87, 1) * G
@@ -36,8 +35,7 @@ func TestRollingStopsAtVSquaredOverTwoA(t *testing.T) {
 	}
 }
 
-// Sand holds harder than grass, ice less, and a surface of scale 0 holds the
-// ball where it is.
+// Sand holds harder than grass, ice less; scale 0 holds the ball where it is.
 func TestSurfacesAreRollingResistance(t *testing.T) {
 	sand, grass, ice := Rolling(0.87, 0.5), Rolling(0.87, 1), Rolling(0.87, 1.18)
 	if !(sand > grass && grass > ice && ice > 0) {
@@ -63,9 +61,7 @@ func uphill(g, scale float64) *Field {
 	}
 }
 
-// A ball rolling up a hill slows down on every substep it climbs, head on or
-// at a slant, on grass or ice: gravity and rolling resistance both take from
-// it, and nothing gives.
+// On every substep it climbs, head on or at a slant, on grass or ice.
 func TestUphillAlwaysSlows(t *testing.T) {
 	for _, scale := range []float64{1, 1.18} {
 		for _, g := range []float64{0.12, 0.2, 0.3, 0.35} {
@@ -88,9 +84,7 @@ func TestUphillAlwaysSlows(t *testing.T) {
 	}
 }
 
-// A ball at rest on a hill rolls down it when the hill pulls harder than its
-// rolling resistance holds (tan θ above Crr), and does not move at all when
-// it does not: no creeping.
+// Steeper means tan θ above Crr; below it the ball stays put: no creeping.
 func TestAHillSteeperThanItsFrictionRollsTheBallBack(t *testing.T) {
 	a := Rolling(0.87, 1) * G // 0.224
 	for _, c := range []struct {
@@ -121,8 +115,7 @@ func TestAHillSteeperThanItsFrictionRollsTheBallBack(t *testing.T) {
 	}
 }
 
-// Two hills over the same ground are one hill: the first listed. The ball
-// is pushed by its Vec only, not by the two added up.
+// The first listed hill's Vec pushes the ball, not the two added up.
 func TestOverlappingHillsAreTheFirst(t *testing.T) {
 	one := uphill(0.3, 1)
 	two := uphill(0.3, 1)
@@ -133,9 +126,8 @@ func TestOverlappingHillsAreTheFirst(t *testing.T) {
 	}
 }
 
-// The contact impulse: the speed into the surface comes back times the
-// restitution (an energy ratio of e²), the speed along it loses µ times the
-// normal impulse.
+// The speed into the surface comes back times the restitution; the speed along
+// it loses µ times the normal impulse.
 func TestRestitutionAndCoulomb(t *testing.T) {
 	n := V(-1, 0) // a wall at the ball's right, facing it
 	for _, e := range []float64{0, 0.5, 0.7} {
@@ -174,9 +166,7 @@ func TestRestitutionAndCoulomb(t *testing.T) {
 	}
 }
 
-// A bumper (Bounce above 1) kicks the ball back faster than it came, at most
-// MaxKick times, and never past SpeedCap; two facing bumpers cannot pump a
-// ball without end.
+// At most MaxKick times the speed it came at, and never past SpeedCap.
 func TestABumperKicksWithinBounds(t *testing.T) {
 	n := V(-1, 0)
 	if out, _ := contact(V(2, 0), n, 1.25); math.Abs(out.X+2.5) > 1e-12 {
@@ -211,11 +201,8 @@ func TestABumperKicksWithinBounds(t *testing.T) {
 	}
 }
 
-// No passive contact gives the ball speed: a rail, a statue or a mole marked
-// above 1 plays at MaxBounce, and the impulse, its Coulomb friction and the
-// rest of the move from the contact never add to |v|. Over random contacts,
-// and over random shots into a wall and a post, where each substep with no
-// bounce in it goes no further than the last one before it.
+// A passive piece marked above 1 plays at MaxBounce. Checked over random
+// contacts, and random shots into a wall and a post.
 func TestNoPassiveContactGainsSpeed(t *testing.T) {
 	seed := uint64(7)
 	rnd := func() float64 {
@@ -261,9 +248,8 @@ func TestNoPassiveContactGainsSpeed(t *testing.T) {
 	}
 }
 
-// Every hazard sends the ball back where the stroke was played from, not
-// to its Vec: a pond rolled into, the sea off a rail-less lane, and a timed
-// hazard (falling ice) that comes on over a ball at rest.
+// Not to the hazard's Vec: a pond rolled into, the sea off a rail-less lane, a
+// timed hazard coming on over a ball at rest.
 func TestAHazardSendsTheBallBackToTheStroke(t *testing.T) {
 	far := V(1, 1) // a hazard's Vec, which no rule reads
 	pond := Zone{Kind: Hazard, Min: V(16, 6), Max: V(24, 14), Vec: far, Round: true}
@@ -296,8 +282,7 @@ func TestAHazardSendsTheBallBackToTheStroke(t *testing.T) {
 	}
 }
 
-// A ball pressed into a rail by a hill slides along it: a resting contact,
-// with no bounce counted and no jitter off it.
+// A resting contact: no bounce counted, no jitter off the rail.
 func TestAHillPressesTheBallAlongARail(t *testing.T) {
 	f := &Field{
 		Walls:    []Wall{{Seg: Segment{V(-100, 5), V(100, 5)}}},
@@ -318,8 +303,7 @@ func TestAHillPressesTheBallAlongARail(t *testing.T) {
 	}
 }
 
-// A move that hits spends the rest of itself from the contact: a ball fired
-// at a wall ends the substep as far back from it as it would have gone past.
+// A ball ends the substep as far back from the wall as it would have gone past.
 func TestAMoveGoesOnFromItsContact(t *testing.T) {
 	f := &Field{Walls: []Wall{{Seg: Segment{V(10, -50), V(10, 50)}}}, Friction: 0.87, Bounce: 1, Radius: 0.5}
 	s := f.Step(V(8.5, 0), V(1.4, 0), 1)
@@ -332,8 +316,7 @@ func TestAMoveGoesOnFromItsContact(t *testing.T) {
 	}
 }
 
-// A timed wall of a single segment that comes up across a moving ball is
-// never crossed: the ball, already within its radius, is stopped by it.
+// It comes up across a moving ball already within its radius, and stops it.
 func TestATimedSegmentIsNeverCrossed(t *testing.T) {
 	for phase := 0; phase < 6; phase++ {
 		w := Wall{Seg: Segment{V(10, -5), V(10, 5)}, Every: 6, On: 3, Phase: phase}
@@ -352,10 +335,8 @@ func TestATimedSegmentIsNeverCrossed(t *testing.T) {
 	}
 }
 
-// A stroke costs at most MaxWork (and one step past it): a hostile field of
-// bumper walls across the whole board, the steepest hill and polygons under
-// every move, which would roll on for ever, ends there, and says so in its
-// Work. A course stroke is far from it.
+// A hostile field that would roll on for ever ends at MaxWork, plus one step,
+// and says so in its Work.
 func TestAStrokeCostsAtMostMaxWork(t *testing.T) {
 	var ws []Wall
 	for i := 0; i < 160; i++ {
@@ -403,10 +384,7 @@ func TestAStrokeCostsAtMostMaxWork(t *testing.T) {
 	}
 }
 
-// Every square root a sweep takes is counted: a ball of radius 1 beside the
-// end of 160 short walls tests each end cap, the distance to it and the
-// swept circle (two roots), and above their faces both caps are hit (two
-// each). Those roots are most of what a test costs.
+// Square roots are most of what a wall or post test costs.
 func TestASweepCountsItsSquareRoots(t *testing.T) {
 	f := &Field{Radius: 1}
 	for i := 0; i < 160; i++ {

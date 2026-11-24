@@ -7,12 +7,13 @@
 // names the new version. The chain is read first, and the hole judged once
 // more as it will be published (publish.ts holeHolds, publishSteps).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { messageOf, shortAddr, useCopied } from "@/components/common";
+import { messageOf } from "@/lib/words";
+import { useCopied } from "@/components/hooks";
 import { Button, InfoTip } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import Share from "@/components/Share";
 import { aboutGnot, connect, hasAdena, publishHole, PRICE } from "@/lib/adena";
-import { BYTE_PRICE, landed, makeChain } from "@/lib/chain";
+import { BYTE_PRICE, landed, makeChain, shortAddr } from "@/lib/chain";
 import { keepOwn } from "@/lib/community";
 import { explain } from "@/lib/builder/explain";
 import { endpoints, playLink } from "@/lib/builder/holes";

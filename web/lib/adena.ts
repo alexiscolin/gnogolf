@@ -1,14 +1,5 @@
-// Adena, the gno.land browser wallet. The page asks it two things only: who is
-// playing, and to sign one round.
-//
-// A round is recorded as one call, PlayRound, which replays the shot list
-// from the tee: a holed round is not kept on the chain (its best is), so a new
-// one starts there. A round too heavy for one transaction goes in two (or
-// more): the first plays the first strokes, the next continue it
-// (splitRound). Only a round of the player's left under way on the chain
-// needs a Reset first, in the same transaction. The chain re-runs every shot
-// itself — the page sends decisions, never outcomes — so a recorded score is
-// one nobody can type in.
+// Adena, the gno.land browser wallet: who is playing, and signing a round.
+// The page sends decisions, never outcomes: the chain re-runs every shot itself.
 
 import { RULES, PKG_PATH, isAddress, isSlug, nameShape, errorKind, type Chain } from "./chain";
 import { trackError } from "./analytics";
@@ -40,7 +31,7 @@ interface Send {
   type: "/bank.MsgSend";
   value: { from_address: string; to_address: string; amount: string };
 }
-/** The part of Adena's injected API this page calls (docs.adena.app). */
+/** The part of Adena's injected API this page calls. */
 export interface Adena {
   AddEstablish(name: string): Promise<AdenaRes>;
   GetAccount(): Promise<AdenaRes<{ address: string; chainId: string }>>;
@@ -55,28 +46,23 @@ declare global {
     adena?: Adena;
   }
 }
-/** A transaction Adena did not send; cancelled when the player said no.
- *  maybe: Adena failed without a reason that says nothing went (no refusal
- *  in the chain's words, not locked, busy or unconnected: a timeout, say),
- *  so it may have landed all the same; hash: the transaction's, when Adena
- *  gives it, by which the chain can tell. */
+/** A transaction Adena did not send. cancelled: the player said no. maybe: it failed without saying nothing went, so it may have landed. hash: the transaction's, when Adena gives it. */
 export interface SendError extends Error {
   cancelled?: boolean;
   maybe?: boolean;
   hash?: string;
 }
-/** What the work model counts for a round (the engine's snapshot has them):
- *  walls, pieces, the forecast's kind, each stroke's path length. */
+/** What the work model counts for a round, as the engine's snapshot has them. */
 interface Work {
   walls?: number;
   pieces?: number;
   kind?: string;
   pts?: readonly number[];
-  /** each stroke's work (Shot.Work, the realm's SimulateFrom "work") */
+  /** each stroke's work, the realm's SimulateFrom "work" */
   works?: readonly number[];
-  /** what the realm says a commit spends before its shots (Weather() "gas"; 0 or none: not said) */
+  /** the gas a commit spends before its shots, Weather()'s "gas"; 0 or none: not said */
   fixed?: number;
-  /** each shot's share of setting the hole's pulses up (newWork's setup: per pulse wall and post) */
+  /** each shot's share of setting the hole's pulses up */
   setup?: number;
 }
 
@@ -84,10 +70,10 @@ const wallet = () => (typeof window !== "undefined" ? window.adena : undefined);
 
 export const hasAdena = () => !!wallet();
 
-// Adena's status codes worth telling apart (docs.adena.app, "errors")
+// Adena's status codes worth telling apart
 const CANCELLED = 4000, LOCKED = 2000, BUSY = 1001, NOT_CONNECTED = 1000;
 
-/** What went wrong, in words a player can act on (and told analytics, with Adena's code). */
+/** What went wrong, in words a player can act on, and told to analytics. */
 function why(res: AdenaRes | null | undefined, fallback: string) {
   const said = words(res, fallback);
   trackError("adena", said, { code: res && res.code, type: res && res.type, what: fallback });
@@ -103,29 +89,20 @@ function words(res: AdenaRes | null | undefined, fallback: string) {
   if (code === NOT_CONNECTED) return "Adena is not connected to this page yet.";
   return refusal(res) || (res && res.message) || fallback;
 }
-/** A refused transaction: the chain's own words, where Adena passes them on ("" for none). */
+/** A refused transaction: the chain's own words where Adena passes them on, "" for none. */
 function refusal(res: AdenaRes | null | undefined) {
   const d = res && (res.data as { error?: { message?: string } | string; log?: string } | undefined);
-  // (typeof null is "object": an error of null falls through to the log)
+  // typeof null is "object": an error of null falls through to the log
   const chain = d && ((d.error && typeof d.error === "object" && d.error.message) || d.log || d.error);
   return typeof chain === "string" ? chain : "";
 }
 
 // the same address written the same way: Adena compares RPCs as strings
 const norm = (u: string | null | undefined) => String(u || "").trim().replace(/\/+$/, "");
-/** The node as a wallet reaches it: NEXT_PUBLIC_WALLET_RPC in the local playground's build (NEXT_PUBLIC_PLAYGROUND,
- *  scripts/try-local.sh: the page reads its own /rpc, the wallet signs on the node's raw port), else the page's own
- *  RPC. The site never takes it (next.config.mjs refuses both on Netlify): its wallet signs on the node it reads. */
+/** The node as a wallet reaches it. In the local playground the page reads its own /rpc and the wallet signs on the node's raw port. */
 const walletNode = (rpc: string) => (process.env.NEXT_PUBLIC_PLAYGROUND === "1" && process.env.NEXT_PUBLIC_WALLET_RPC) || rpc;
 
-/**
- * Puts Adena on this page's chain (id and RPC), adding the network if it has
- * never seen it. Adena's approval screen waits — fee and deposit blank, Approve
- * greyed — until its active network is exactly networkInfo's, so this runs
- * before every signature. Adena refuses a second network on an RPC it already
- * knows: one left from an older chain on this node (same address, another
- * chain id) has to be removed in Adena by hand, and the error says how.
- */
+/** Puts Adena on this page's chain, adding the network if it has never seen it. Runs before every signature: Adena's approval screen stays greyed until its active network is exactly networkInfo's. */
 async function ensureNetwork(a: Adena, { chainId, rpc, name = `gno.land (${chainId})` }: { chainId?: string | null; rpc: string; name?: string }) {
   // no chain id, no signature: Adena would sign on whatever network it has on
   if (!chainId) throw new Error("The chain's id is not known yet (is the node up?). Try again in a moment.");
@@ -178,8 +155,7 @@ export async function connect({ chainId, rpc, name }: { chainId?: string | null;
   return { address, chainId: on, rpcOk: await onOurNode(rpc) };
 }
 
-// Adena simulates on networkInfo's RPC, but only once its active network is
-// that very network (same chain id, same RPC string): this tells whether it is.
+// a URL's host and port, so that localhost and 127.0.0.1 compare equal
 const port = (u: string) => {
   try {
     const x = new URL(u);
@@ -202,8 +178,7 @@ export async function onOurNode(rpc: string | null | undefined) {
   }
 }
 
-/** The account Adena already shares with this page, or null — no popup: a
- *  page Adena has not established with gets an error, and stays anonymous. */
+/** The account Adena already shares with this page, or null. No popup: a page Adena has not established with stays anonymous. */
 export async function current() {
   const a = wallet();
   if (!a) return null;
@@ -214,12 +189,13 @@ export async function current() {
     return null;
   }
 }
+/** The connected Adena account. */
+export type Account = NonNullable<Awaited<ReturnType<typeof current>>>;
 
-/** Follows the account and network chosen in Adena. */
-// Adena has no way to take a listener back: one pair is registered for the
-// page, and each subscriber is added to and removed from a set of its own
+// Adena has no way to take a listener back: one pair is registered for the page, and subscribers come and go in a set.
 const listeners = new Set<(...x: unknown[]) => void>();
 let listening = false;
+/** Follows the account and network chosen in Adena. */
 export function onWalletChange(fn: (...x: unknown[]) => void) {
   const a = wallet();
   if (!a || !a.On) return () => {};
@@ -233,24 +209,12 @@ export function onWalletChange(fn: (...x: unknown[]) => void) {
   return () => void listeners.delete(fn);
 }
 
-// A commit's work, by the realm's own model (golf.gno, work: newWork, next,
-// add), computed here exactly: per shot 10M, plus 150K per wall, plus, per
-// point of its path, 1.2M and 15K per piece on the board, plus its pulses'
-// set-up (700K per pulse wall, 200K per pulse post: setup). c: { walls, pieces,
-// pts: [path length per stroke] }, as the engine's snapshot gives them: walls
-// are the hole's and its pulses', pieces every wall, post and zone of the
-// hole, its pulses and the forecast, each polygon edge one more.
-// (a stroke whose length is not known counts as the longest path the realm takes)
-// The realm also counts a shot by the work its physics did (Shot.Work, which
-// SimulateFrom says) and takes the larger, as here. A round kept from before
-// it said so has no work: the realm may then cut sooner, with "commit the
-// first N", and splitRound follows it.
+// A commit's work by the realm's own model (golf.gno newWork, next, add), computed here exactly.
+// The realm takes the larger of the path's count and the work its physics did, as here.
 const WORK = RULES.work;
 // zones as the work model counts them: one piece each, and one per polygon edge
 const piecesOf = (zs: readonly { poly?: readonly unknown[] }[]) => zs.reduce((n, z) => n + 1 + ((z.poly && z.poly.length) || 0), 0);
-/** The board's walls, pieces and set-up as the work model counts them (s: the hole, none
- *  before it loads): as HoleState says them, else (a realm before it said them) the hole's
- *  own and its pulses' seen so far in the strokes' extras (seen); the forecast's zones on top. */
+/** The board's walls, pieces and set-up as the work model counts them, the forecast's zones on top. A realm that does not say them: the hole's own and the pulses seen so far. */
 export function boardWork(s: HoleState | null, seen: { walls: number; posts: number; pieces: number }, weather: readonly Zone[] = []) {
   if (!s) return { walls: 0, pieces: 0, setup: 0 };
   const w = s.work || {
@@ -262,19 +226,13 @@ export function boardWork(s: HoleState | null, seen: { walls: number; posts: num
 }
 // what every shot of a commit costs before its own: the shot and the walls
 const baseOf = (c: Work) => WORK.shot + (c.walls || 0) * WORK.wall;
+// a stroke of unknown length counts as the longest path the realm takes
 const workOf = (c: Work, i: number) => {
   const base = baseOf(c);
   return Math.max(base + ((c.pts || [])[i] ?? RULES.maxPath) * (WORK.point + (c.pieces || 0) * WORK.piece), base + ((c.works || [])[i] || 0) * WORK.unit) + (c.setup || 0);
 };
 
-/**
- * The commits a round is recorded in: [[from, to), …], cut where the chain
- * would cut them, starting at stroke start. Its work.next refuses a shot,
- * after the first of a commit, once spent + the heaviest so far passes the
- * budget, or once the shot's own work passes what is left of the budget (less
- * its fixed gas and MaxWorkStep, in work units: the shot's cap); the list is
- * 12 at most. The same sums, so no commit of the split is one the chain refuses.
- */
+/** The commits a round is recorded in, [[from, to), …] from stroke start, cut by the same sums as the realm's work.next: no commit of the split is one the chain refuses. */
 export function commitsOf(c: Work, n = (c.pts || []).length, start = 0) {
   const parts: [number, number][] = [];
   const base = baseOf(c);
@@ -291,33 +249,25 @@ export function commitsOf(c: Work, n = (c.pts || []).length, start = 0) {
   return parts;
 }
 
-// what is asked of the account: the gas at the price, with half again for a
-// price that rises between the reading and the block
+/** The fee asked: the gas at the price, with half again for a price that rises before the block. */
 export const feeFor = (gasWanted: number, price: number) => Math.ceil(gasWanted * price * 1.5);
-// what is asked of the account to store bytes at price ugnot a byte (the
-// chain's: vm params), a tenth more: the chain takes what is really written
+/** The deposit asked to store bytes at price ugnot a byte, a tenth more: the chain takes what is really written. */
 export const depositFor = (bytes: number, price: number) => Math.ceil(bytes * price * 1.1);
-/** A figure (a deposit, a fee) up to the hundredth of a GNOT, in ugnot: never under what the wallet may be asked. */
+/** Ugnot rounded up to the hundredth of a GNOT: never under what the wallet may be asked. */
 export const upToHundredth = (ugnot: number) => Math.ceil(ugnot / 1e4) * 1e4;
 /** That figure in GNOT, as a bill says it: 124900 → "0.13". */
 export const aboutGnot = (ugnot: number) => (upToHundredth(ugnot) / 1e6).toFixed(2);
-// the price asked when the chain's is not given: ugnot a gas
+/** Ugnot a gas, asked when the chain's price is not given. */
 export const PRICE = 0.001;
-// Gas asked for one commit, calibrated on gno_call simulate=true: the work model already bounds the shots
-// (1.2x-1.6x their measured gas); the call costs ~30M (a Reset with it too);
-// what the commit spends before its shots (decoding the hole, drawing the
-// forecast) is the realm's own figure (Weather() "gas"). A round without it: the forecast's
-// most, rain and a storm on the heaviest course holes (town/14, island/14:
-// 193M and 204M), the rest ~7M.
+// Gas for one commit, calibrated on gno_call simulate=true: the work model bounds the shots at 1.2x to 1.6x their measured gas.
 // Adena simulates every tx with 2e9 gas at most: the ask stays under it.
 export const MAX_GAS = 1_900_000_000;
-export const PER_CALL = 30e6;
-// a round's last commit, the one that holes it, also keeps its finish in
-// store (its best, the board, the standing, the drain's share): some 30M to
-// 40M golf's work model leaves out (golf.gno storeGas)
+export const PER_CALL = 30e6; // the call itself, a Reset with it too
+// a round's last commit also stores its finish: 30M to 40M the work model leaves out
 const FINISH = 40e6;
+// without the realm's own figure: rain and a storm on the heaviest course holes, 193M and 204M measured
 const FORECAST: Record<string, number> = { rain: 200e6, storm: 210e6 };
-/** The gas one commit of these strokes should need. c: { walls, pieces, kind (the forecast's), pts, works, fixed }. */
+/** The gas one commit of these strokes should need. */
 export function gasOf(c: Work, from = 0, to = (c.pts || []).length) {
   let g = PER_CALL + (c.fixed || FORECAST[c.kind || ""] || 0) + (c.pts?.length && to > from && to >= c.pts.length ? FINISH : 0);
   for (let i = from; i < to; i++) g += workOf(c, i);
@@ -326,21 +276,11 @@ export function gasOf(c: Work, from = 0, to = (c.pts || []).length) {
 /** The gas a round of n strokes should need in all: each of its commits pays its own call and fixed gas. */
 export const roundGas = (c: Work, n: number) => commitsOf(c, n).reduce((g, [from, to]) => g + gasOf(c, from, to), 0);
 
-/** Why a round the chain replays otherwise cannot be saved: where its replay ended (strokes, holed or not). */
+/** Why a round the chain replays otherwise cannot be saved. */
 export const replayDiffers = (strokes: number | null, holed: boolean) =>
   `The chain's replay ended differently (${strokes ?? "?"} strokes, ${holed ? "holed" : "not holed"}): this hole moves between shots. Play it again to save.`;
 
-/**
- * The commits a round is recorded in, each checked by the chain before Adena
- * opens. Each is cut by the realm's work model (commitsOf), then asked of the
- * chain — check(list, from, ball) resolves with the chain's answer for that
- * commit (its "rest" is where the next one starts) — so every commit is one
- * the chain has already accepted as a read. If the chain cuts sooner than the
- * model, its "commit the first N" wins and the rest is split again from
- * there. Every commit must play all its shots, and only the last hole the
- * round: one holed sooner is not kept, so the next would start a new round
- * from the tee. Any other refusal throws, in words: nothing goes to Adena then.
- */
+/** The commits a round is recorded in, each accepted by the chain as a read before Adena opens. check resolves with the chain's answer for a commit: its "rest" is where the next starts. The chain's "commit the first N" wins over the model. */
 async function splitRound(shots: readonly string[], check: (list: string[], from: number, ball: Vec2 | null | undefined) => Promise<{ rest?: Vec2; holed?: boolean; strokes?: number } | null | undefined>, c: Work = {}) {
   const out: [number, number][] = [];
   for (let from = 0, ball: Vec2 | null | undefined = null; from < shots.length; ) {
@@ -355,7 +295,7 @@ async function splitRound(shots: readonly string[], check: (list: string[], from
       to = from + n;
       r = await check(shots.slice(from, to), from, ball);
     }
-    // (strokes counts from the tee: a commit's shots end at stroke to, unless holed sooner)
+    // strokes counts from the tee. Only the last commit may hole: a round holed sooner is not kept.
     if (!r || r.strokes !== to || !!r.holed !== (to === shots.length)) throw new Error(replayDiffers(r ? r.strokes ?? null : null, !!(r && r.holed)));
     out.push([from, to]);
     ball = r && r.rest;
@@ -364,45 +304,29 @@ async function splitRound(shots: readonly string[], check: (list: string[], from
   return out;
 }
 
-/**
- * A round's commits as the chain itself cuts them (splitRound), each one asked
- * of it: from the tee a SimulateRound(At), every next one a SimulateCommit from
- * where the one before leaves the ball. What Adena and gnokey both send.
- * ms: each read's time limit.
- */
+/** A round's commits as the chain cuts them: a SimulateRound from the tee, then a SimulateCommit from where the one before leaves the ball. ms: each read's time limit. */
 export function chainSplit(chain: Pick<Chain, "simulateRound" | "simulateCommit">, s: SaveRound & { id: string }, period: number, ms = 8000) {
   const hole = s.id, shots = s.shots || [];
   return splitRound(shots, (list, from, ball) => (from && ball ? chain.simulateCommit(hole, ball, from, list, period, ms) : chain.simulateRound(hole, list, s.period, ms)), s);
 }
 
-// a chain without a registrar (chain.nameReg() ""): nothing is sent to an empty package path
+// nothing is sent to an empty package path
 const NO_REGISTRAR = "This chain has no name registrar: no name can be taken here.";
 
-/** A commit's play, by Adena or by gnokey: PlayRoundPro for a pro round (the pro board's: the mode it was
- *  played in), PlayRoundAt in the weather it was played in (its period: the chain takes the current one or
- *  the one before), PlayRound with none. shots: the commit's, as the call carries them. */
+/** A commit's call: PlayRoundPro for a pro round, PlayRoundAt in the period it was played in, PlayRound with none. */
 const playOf = (mode: Mode, hole: string, shots: string, period: number | null | undefined): [string, string[]] =>
   mode === "pro" ? ["PlayRoundPro", [hole, shots, String(period)]] : period == null ? ["PlayRound", [hole, shots]] : ["PlayRoundAt", [hole, shots, String(period)]];
 
-/**
- * Signs one commit of this round: PlayRound… from the tee for the first, or
- * where the chain has the round for the next ones. reset: a Reset first, in
- * the same transaction, for a first commit over a round of the player's left
- * under way (a holed one is not kept, and needs none). named: a gno.land name
- * taken in the same signature, before the round (Register), so it is ranked
- * as it lands, and the rounds saved before it after (Claim). Resolves with
- * the tx (hash, height).
- */
+/** Signs one commit of this round. reset: a Reset first, in the same transaction, over a round left under way. named: a gno.land name taken in the same signature, so the round is ranked as it lands. */
 export async function recordRound({ address, realm, hole, shots, gas, period, reset = false, mode = "assisted", price = PRICE, chainId, rpc, named }: {
   address: string; realm: string; hole: string; shots: readonly string[]; gas?: number; period?: number | null; reset?: boolean; mode?: Mode; price?: number; chainId?: string | null; rpc: string;
   named?: { registrar: string; name: string } | null;
 }) {
   if (named && !named.registrar) throw new Error(NO_REGISTRAR);
-  // no balance gate here: Adena itself says when an account cannot pay, and
-  // the page warns beforehand (shortOf) without keeping the wallet shut
-  // a pro round always has its period (HoleState gives one): never a 0 the chain refuses
+  // no balance gate here: Adena says when an account cannot pay, and the page warns beforehand
+  // a pro round has its period: never a 0 the chain refuses
   if (mode === "pro" && period == null) throw new Error("This round has no weather period, so it cannot be saved. Play it again.");
-  // the period the chain checked (as a whole number) is the one signed
+  // the period signed is the whole number the chain checked
   if (period != null && !Number.isSafeInteger(period)) throw new Error("This round's weather period is not one the chain knows. Play it again.");
   return calls(
     address,
@@ -417,8 +341,7 @@ export async function recordRound({ address, realm, hole, shots, gas, period, re
   );
 }
 
-/** One transaction from the connected account: Adena simulates it and sets the final fee (gasWanted, at price: a starting point).
- *  Exported for the calls of other realms built on it (lib/gnomes/tx.ts). */
+/** One transaction from the connected account. Adena simulates it and sets the final fee: gasWanted at price is a starting point. */
 export async function send(messages: (Call | Send)[], gasWanted: number, price: number, chainId: string | null | undefined, rpc: string, failed: string, memo = "gnogolf") {
   const a = wallet();
   if (!a) throw new Error("Adena is not installed in this browser.");
@@ -428,7 +351,7 @@ export async function send(messages: (Call | Send)[], gasWanted: number, price: 
     gasFee: feeFor(gasWanted, price),
     gasWanted,
     memo,
-    // this exact chain: id and RPC (Adena's own "dev" is another node)
+    // this exact chain: Adena's own "dev" is another node
     ...(chainId && rpc ? { networkInfo: { chainId, rpcUrl: norm(walletNode(rpc)) } } : {}),
   });
   if (res.status !== "success") {
@@ -442,21 +365,15 @@ export async function send(messages: (Call | Send)[], gasWanted: number, price: 
   return res.data ?? null;
 }
 
-/** One transaction of plain calls from the connected account (maxDeposit: each call's storage deposit capped, "600000ugnot"). */
+/** One transaction of plain calls from the connected account. maxDeposit caps each call's storage deposit ("600000ugnot"). */
 const calls = (address: string, list: readonly (readonly [string, string, readonly string[]])[], gasWanted: number, price: number, chainId: string | null | undefined, rpc: string, failed: string, maxDeposit = "") =>
   send(list.map(([pkg_path, func, args]): Call => ({ type: "/vm.m_call", value: { caller: address, send: "", pkg_path, func, args: [...args], ...(maxDeposit && { max_deposit: maxDeposit }) } })), gasWanted, price, chainId, rpc, failed);
 
-/** PublishMine's realm, slug, data (hex) and storage deposit, of the shapes the chain takes: what a publish checks, by Adena or by gnokey. */
+/** Whether PublishMine's realm, slug, data and deposit are of the shapes the chain takes. */
 export const publishArgs = ({ realm, slug, hex, deposit }: { realm: string; slug: string; hex: string; deposit: number }) =>
   PKG_PATH.test(realm) && isSlug(slug) && /^(?:[0-9a-f]{2})+$/.test(hex) && Number.isSafeInteger(deposit) && deposit >= 0;
 
-/**
- * A hole published from the Builder: golf's PublishMine of slug, data (hex)
- * and note, from the connected account, at the gas and the storage deposit
- * the bill showed (lib/builder/publish.ts), the deposit capped at it. The
- * note is any text: no shell sees it here. Refused before Adena opens for a
- * slug, data or realm not of their shape.
- */
+/** Publishes a hole from the Builder: golf's PublishMine at the gas and deposit the bill showed, the deposit capped at it. Refused before Adena opens for a slug, data or realm not of their shape. */
 export function publishHole({ address, realm, slug, hex, note, gas, deposit, price = PRICE, chainId, rpc }: {
   address: string; realm: string; slug: string; hex: string; note: string; gas: number; deposit: number; price?: number; chainId?: string | null; rpc: string;
 }) {
@@ -469,38 +386,21 @@ export function publishHole({ address, realm, slug, hex, note, gas, deposit, pri
 // a bank send is a few hundred thousand gas: asked with room, Adena sets the final fee
 const TIP_GAS = 2_000_000;
 export const TIPS = [1, 5, 10] as const; // the GNOT a tip can be
-/** A tip: GNOT sent from the player's account to the game's maker (the realm's
- *  owner, read on the chain), confirmed in Adena like any send. No contract. */
+/** A tip: GNOT sent from the player's account to the realm's owner. No contract. */
 export async function sendTip({ from, to, gnot, price, chainId, rpc }: { from: string; to: string; gnot: number; price: number; chainId?: string | null; rpc: string }) {
   if (!isAddress(from) || !isAddress(to) || !TIPS.some((t) => t === gnot)) throw new Error("Nothing to send.");
   return send([{ type: "/bank.MsgSend", value: { from_address: from, to_address: to, amount: `${gnot * 1e6}ugnot` } }], TIP_GAS, price, chainId, rpc, "The tip was not sent.", "gnogolf tip");
 }
 
-// golf's Claim reads the course's slots once (90, two modes: a read of store
-// each) and seats each best the player kept unnamed: 70.2M with 3 bests on an
-// onyx gnodev, and about 4M a best more (golf/v2 filetests: the seat written
-// through store), so a whole course unnamed in both modes, 180 bests, takes
-// about 780M: 850M covers any player; Register takes 28M to 29.5M there
+// Claim seats each best the player kept unnamed: 70.2M with 3 bests, about 4M a best more.
+// 180 bests, a whole course in both modes, take about 780M. Register takes 28M to 29.5M.
 const CLAIM_GAS = 850_000_000, REGISTER_GAS = 60_000_000;
-/** What a name taken with a save adds to its gas: Register and Claim's. */
+/** The gas a name taken with a save adds: Register's and Claim's. */
 export const NAME_GAS = REGISTER_GAS + CLAIM_GAS;
-/**
- * The bytes a name taken with a save stores: Register's (5,216 measured with
- * a Claim of 2 bests in the pearl rehearsal, less that Claim's
- * 1,588), and Claim's, which seats the player's unranked bests of each mode:
- * 620 and 504 a best (golf filetests: 0, 1,084, 1,588, 2,596, 4,612 bytes for
- * 0, 1, 2, 4, 8, measured before the standing kept its par: +38 bytes, and its
- * ranking key a digit longer, rounded up). holes: the player's bests per mode
- * (Rank() "holes"), this save's counted in.
- */
+/** The bytes a name taken with a save stores: Register's 3,628, and Claim's 620 a mode with a best plus 504 a best, all measured. holes: the player's bests per mode, this save's counted in. */
 export const nameBytes = (holes: readonly number[]) => 3628 + holes.reduce((b, n) => b + (n > 0 ? 620 + 504 * n : 0), 0);
 
-/**
- * Takes a gno.land name for the connected account, and ranks at once the
- * rounds it saved without one (golf's Claim): one transaction, two calls.
- * Register is free on onyx and mainnet (nothing is sent with it), and only
- * a direct call registers, which a message of this transaction is.
- */
+/** Takes a gno.land name for the connected account and ranks the rounds saved without one: one transaction, two calls. Only a direct call registers, which a message of this transaction is. */
 export const registerName = ({ address, registrar, realm, name, price = PRICE, chainId, rpc }: {
   address: string; registrar: string; realm: string; name: string; price?: number; chainId?: string | null; rpc: string;
 }) =>
@@ -512,62 +412,44 @@ export const registerName = ({ address, registrar, realm, name, price = PRICE, c
 export const claimRounds = ({ address, realm, price = PRICE, chainId, rpc }: { address: string; realm: string; price?: number; chainId?: string | null; rpc: string }) =>
   calls(address, [[realm, "Claim", []]], CLAIM_GAS, price, chainId, rpc, "Your rounds were not ranked.");
 
-// Decoding a hole's data is in each commit's gas too, in the realm's figure
-// (fixed). Without it, a community hole may be as large as the format allows
-// (golf.gno decodeBase + decodePerByte a byte: 115M for the largest one
-// publishable), so gnokey (which, unlike Adena, does not simulate first) asks
-// that much more for one.
+// A community hole's data may be as large as the format allows: 115M to decode the largest.
+// gnokey does not simulate first, so it asks that much more when the realm's figure is missing.
 const DECODE_MAX = 115e6;
 /** A holed round as gnokeyPlan reads it: the engine's snapshot. */
 interface SaveRound extends Work {
   id: string | null;
-  /** one of the course's holes (false: a community hole, of any size) */
+  /** false: a community hole, of any size */
   official?: boolean;
   name?: string;
   shots?: readonly string[];
   period?: number | null;
   roundMode?: Mode | null;
 }
-// A gnokey paste's parts. Nothing the chain or the page's link says goes in
-// unchecked: a package path is a realm's (chain.ts PKG_PATH), the chain's id and
-// RPC are theirs or a placeholder, and an argument is checked (or quoted) by
-// the plan it is in.
-/** Where the save flow's gnokey panel (components/Gnokey.tsx) keeps the key's address, typed once: the Builder knows its author by it too. */
+// A gnokey paste goes into a shell: nothing the chain or the page's link says goes in unchecked.
+/** Where the gnokey panel keeps the key's address, typed once. The Builder knows its author by it too. */
 export const GNOKEY_ADDR_KEY = "gnogolf.gnokey.addr";
 // an RPC as a command may carry it, "" for anything else
 const remoteOf = (rpc: string) => (/^https?:\/\/[\w.:[\]-]+(\/[\w./-]*)?$/.test(norm(rpc)) ? norm(rpc) : "");
-/** The end of every command: sent to this chain (its id and RPC, a placeholder for anything else), signed by <your-key-name>. */
+/** The end of every command: this chain's id and RPC, a placeholder for anything not of their shape, then the key's name. */
 export function gnokeyOn(chainId: string | null | undefined, rpc: string, key = "<your-key-name>") {
   const chain = chainId && /^[\w.-]{1,64}$/.test(chainId) ? chainId : "<chain-id>";
   return `-broadcast -chainid ${chain} -remote ${remoteOf(walletNode(rpc)) || "<rpc-url>"} ${key}`;
 }
-/** One plain `gnokey maketx call`, at gas (its fee as Adena's ask, feeFor), on: gnokeyOn's; send: ugnot with it (0: none); maxDeposit: its storage deposit capped, in ugnot (none: uncapped). */
+/** One plain gnokey maketx call at gas, its fee as Adena's ask. on: gnokeyOn's. send: ugnot with it. maxDeposit: its storage deposit's cap, in ugnot. */
 export const gnokeyCall = (pkg: string, func: string, args: readonly string[], gas: number, price: number, on: string, send = 0, maxDeposit?: number) =>
   `gnokey maketx call -pkgpath ${pkg} -func ${func}${args.map((a) => ` -args ${a}`).join("")}${send ? ` -send ${send}ugnot` : ""} -gas-fee ${feeFor(gas, price)}ugnot -gas-wanted ${gas}${maxDeposit === undefined ? "" : ` -max-deposit ${maxDeposit}ugnot`} ${on}`;
 
-/**
- * The same save for gnokey: one plain `gnokey maketx call` per commit, the
- * call Adena would send (PlayRoundAt, PlayRoundPro, or PlayRound with no
- * period), for the player to run with their own key (<your-key-name>). It
- * starts with a Reset of its own (nothing is sent with it; with no round of
- * the player's under way it only pays its gas): a round they left unfinished
- * (a paste whose second part failed, a shot from gnoweb) would otherwise go
- * on from where it lies, or be refused in its own weather, and a paste run
- * again starts afresh from the tee. The page cannot ask the chain first: it
- * does not know the key's address. s: the engine's snapshot of a holed round
- * (id, shots, period, roundMode, and the work model's walls, pieces, kind, pts).
- */
+/** The same save for gnokey: one maketx call per commit, after a Reset of its own. The page does not know the key's address, so it cannot ask the chain first: a round left under way would otherwise go on from where it lies. */
 export function gnokeyPlan(s: SaveRound, { realm, price = PRICE, chainId, rpc, parts: checked }: { realm: string; price?: number; chainId?: string | null; rpc: string; parts?: readonly (readonly [number, number])[] | null }) {
   const shots = s.shots || [], mode = s.roundMode || "assisted";
   if (!shots.length) return [];
   if (mode === "pro" && s.period == null) return []; // a pro round has its period, or it cannot be saved
-  // the player pastes this into a shell: nothing the chain or the page's link
-  // says goes in unchecked (a shot is digits, a sign, dots and commas)
+  // pasted into a shell: a shot is digits, a sign, dots and commas, and nothing else goes in
   if (s.period != null && !Number.isSafeInteger(s.period)) return [];
   if (!/^[\w./-]{1,128}$/.test(String(s.id)) || !PKG_PATH.test(realm) || !shots.every((x) => /^[\d.,-]+$/.test(x))) return [];
   const on = gnokeyOn(chainId, rpc);
   const call = (func: string, args: readonly string[], gas: number) => gnokeyCall(realm, func, args, gas, price, on);
-  // the chain's own cut when it was asked (chainSplit); the work model's otherwise
+  // the chain's own cut when it was asked, the work model's otherwise
   const parts = checked && checked.length ? checked : commitsOf(s, shots.length);
   const plays = parts.map(([from, to]) => {
     // the shots are quoted: ";" ends a shell command
@@ -578,13 +460,7 @@ export function gnokeyPlan(s: SaveRound, { realm, price = PRICE, chainId, rpc, p
   return [call("Reset", [String(s.id)], PER_CALL), ...plays];
 }
 
-/**
- * What a save's paste runs first: the chain's weather asked (Period(), a
- * query: no key, no fee), and a round whose weather is over (the chain takes
- * a round in its period or the next) stops there, nothing sent, its Reset
- * neither. A chain that does not answer lets it go on: the chain judges it
- * again. "" for a round with no period, or an RPC or realm not shown.
- */
+/** What a save's paste runs first: the chain's Period() asked, and a round whose weather is over stops there, nothing sent. A chain that does not answer lets it go on. "" for a round with no period, or an RPC or realm not of their shape. */
 export function gnokeyLate(period: number | null | undefined, { realm, rpc }: { realm: string; rpc: string }) {
   const remote = remoteOf(rpc);
   if (period == null || !Number.isSafeInteger(period) || !remote || !PKG_PATH.test(realm)) return "";
@@ -594,15 +470,7 @@ export function gnokeyLate(period: number | null | undefined, { realm, rpc }: { 
   ].join("\n");
 }
 
-/**
- * gnokeyPlan's commands as one paste for bash or zsh, the key name (who)
- * quoted in: a subshell that stops at the first that fails. Each goes through
- * send, which prints gnokey's output as it comes (the password prompt too)
- * and sends it again a block later, the password asked again, when the node
- * refused it for the account's sequence before the one before had landed
- * ("signature verification failed", as scripts/publishdata.sh does).
- * first: run before them (gnokeyLate's check).
- */
+/** gnokeyPlan's commands as one paste for bash or zsh: a subshell that stops at the first failure. Its send prints gnokey's output as it comes, and sends again a block later when the node refused the account's sequence. first: run before them. */
 export function gnokeyPaste(plan: readonly string[], who: string, first = "") {
   const send = [
     "send() {",
@@ -622,55 +490,37 @@ export function gnokeyPaste(plan: readonly string[], who: string, first = "") {
   return `(\nset -e\n${send}\n\n${first ? `${first}\n\n` : ""}${body}\n)`;
 }
 
-/** Where a gnokey paste goes: this chain (its id and RPC), at its gas price. */
+/** Where a gnokey paste goes: this chain, at its gas price. */
 export interface GnokeyAt { price?: number; chainId?: string | null; rpc: string }
-/**
- * A name taken with gnokey, as registerName does with Adena: Register, then
- * golf's Claim, which ranks the rounds saved before it. Two transactions
- * (gnokey sends one call each), each at its own gas; Register must be a direct
- * call, which a `maketx call` is. name: whole ("nym-…"), as the name form
- * checked it; [] for none of the registrar's shape, or no registrar.
- */
+/** A name taken with gnokey: Register, then golf's Claim, a transaction each. name: whole ("nym-…"). [] for a name or a registrar not of their shape. */
 export function gnokeyName({ registrar, realm, name, price = PRICE, chainId, rpc }: GnokeyAt & { registrar: string; realm: string; name: string }) {
   if (!PKG_PATH.test(registrar) || !PKG_PATH.test(realm) || !nameShape(name)) return [];
   const on = gnokeyOn(chainId, rpc);
   return [gnokeyCall(registrar, "Register", [`'${name}'`], REGISTER_GAS, price, on), gnokeyCall(realm, "Claim", [], CLAIM_GAS, price, on)];
 }
-/** The rounds saved before a name ranked with gnokey, as claimRounds does with Adena (golf's Claim). */
+/** golf's Claim with gnokey: ranks the rounds saved before a name. */
 export const gnokeyClaim = ({ realm, price = PRICE, chainId, rpc }: GnokeyAt & { realm: string }) =>
   PKG_PATH.test(realm) ? [gnokeyCall(realm, "Claim", [], CLAIM_GAS, price, gnokeyOn(chainId, rpc))] : [];
-/** A tip with gnokey, as sendTip does with Adena: one plain send of gnot (one of TIPS) to the realm's owner (to, read on the chain). */
+/** A tip with gnokey: one plain send of gnot, one of TIPS, to the realm's owner. */
 export const gnokeyTip = ({ to, gnot, price = PRICE, chainId, rpc }: GnokeyAt & { to: string; gnot: number }) =>
   isAddress(to) && TIPS.some((t) => t === gnot)
     ? [`gnokey maketx send -send ${gnot * 1e6}ugnot -to ${to} -gas-fee ${feeFor(TIP_GAS, price)}ugnot -gas-wanted ${TIP_GAS} ${gnokeyOn(chainId, rpc)}`]
     : [];
 
-/** The strokes a save's result says its round was holed in (PlayRound's
- *  "holed in N strokes", in a transaction's result), null if it says none. */
+/** The strokes a save's result says its round was holed in, null if it says none. */
 export const holedIn = (result: string | null | undefined) => {
   const m = String(result || "").match(/holed in (\d+) strokes/);
   return m ? Number(m[1]) : null;
 };
 
-/** A transaction's result by its hash (its Data, "" for none), or null while
- *  the chain cannot say (its RPC down, the transaction not found yet); one
- *  that failed on the chain throws its log (errorKind "chain"). */
+/** A transaction's result by its hash, or null while the chain cannot say. One that failed on the chain throws its log. */
 export const resultOf = (chain: Pick<Chain, "txResult">, hash: string) =>
   chain.txResult(hash).catch((e: unknown) => {
     if (errorKind(e) === "chain") throw e;
     return null;
   });
 
-/**
- * What a save's last commit did, as the chain says it, for a round of
- * strokes: { holed, left } (the strokes it was holed in, or left under way
- * after), undefined while the chain cannot say (its RPC down, the transaction
- * not found yet): never a save without that evidence. First its result, by
- * its hash (a holed round is not kept); a transaction that failed on the
- * chain throws its log (errorKind "chain"). Else, once Adena said it went
- * (sent), the round the chain shows: one still under way is the replay ending
- * otherwise, none is the round holed (not before: it may be one never sent).
- */
+/** What a save's last commit did, as the chain says it: { holed, left }, or undefined while the chain cannot say. Its result first, by its hash; else, once Adena said it went, the round the chain shows: none means holed. */
 export async function readBack(chain: Pick<Chain, "txResult" | "round">, { hole, player, strokes, hash, sent }: { hole: string; player: string; strokes: number; hash?: string; sent: boolean }) {
   if (hash) {
     const result = await resultOf(chain, hash);
@@ -681,23 +531,12 @@ export async function readBack(chain: Pick<Chain, "txResult" | "round">, { hole,
   return now === undefined ? undefined : now && now.strokes >= strokes ? { holed: null, left: now.strokes } : { holed: strokes, left: null };
 }
 
-// The storage a save writes, in bytes, measured on an onyx gnodev from the
-// final realm (a holed round is not kept: only its best and rows): a named
-// player's first finish on a hole wrote 1,040 bytes, and 512 more for the
-// hole's wear if it is the hole's first play; their first finish in a mode,
-// which also writes their course standing (its par too) and ranking rows,
-// 2,929 to 2,965 (38 more than with no par: an onyx gnodev, before and after);
-// a replay writes nothing, or a few bytes for an improving best. A first
-// best also keeps its shots, the ghost a duel races (Ghost): about 30 bytes
-// and 23 a stroke more. Asked with about a tenth more; the chain charges what
-// is really written.
+/** The bytes a save stores, rounded up from an onyx gnodev's: 1,040 for a first finish on a hole and 512 for the hole's first play, 2,965 for a first finish in a mode, 30 and 23 a stroke for the ghost. */
 export const depositBytes = (first: boolean, firstOnCourse = false, strokes = 0) => (!first ? 300 : (firstOnCourse ? 3200 : 1750) + 30 + 23 * strokes);
 
 /** How much GNOT an account lacks to save a round (gas and deposit), 0 if it has enough; null if unknown. */
 export const shortOf = (gas: number, price: number, deposit: number, balance: number | null | undefined) =>
   balance == null ? null : Math.max(0, feeFor(gas, price) + deposit - balance) / 1e6;
 
-/** What a round's gas costs, in GNOT, shown before anyone signs: the gas at
- *  today's price (the ask adds half again for a rising price; Adena charges
- *  what it simulates). */
+/** A round's gas in GNOT at today's price, shown before anyone signs. */
 export const costOf = (gas: number, price = PRICE) => ((gas * price) / 1e6).toFixed(3);

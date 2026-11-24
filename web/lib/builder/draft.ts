@@ -1,9 +1,5 @@
-// The builder's Draft: the hole as the editor works on it, in grid units
-// (multiples of a quarter: what Fit shifts exactly), each piece a palette
-// entry placed. gg1.ts writes it for builder.wasm, whose fit gives the bytes
-// that will be published. A draft read from a file or from the browser is
-// untrusted: parseDraft takes it only whole, on the grid and within its
-// limits. Its history (undo, redo) and its keeping in the browser are here.
+// The Builder's Draft: the hole as the editor works on it, on a grid of quarters.
+// A draft read from a file or the browser is untrusted: parseDraft takes it only whole.
 import { isObj, isHoleId, isSlug } from "../chain";
 import { FIELD, gameWorld, MAX_PAR, notABuilderWorld } from "./rules";
 
@@ -16,11 +12,11 @@ export type Geometry =
   | { t: "rect"; min: V; max: V }
   | { t: "round"; min: V; max: V }
   | { t: "poly"; pts: V[]; outside?: boolean };
-/** A zone piece's shape as terrain.ts inZone reads it (a polygon's box closed a hair past its points); null for a rail, a bar, a post. */
+/** A zone piece's shape as inZone reads it; null for a rail, a bar or a post. A polygon's box closes a hair past its points. */
 export const shapeOfPiece = (g: Geometry) =>
   g.t === "poly" ? { min: [Math.min(...g.pts.map((q) => q[0])), Math.min(...g.pts.map((q) => q[1]))] as V, max: [Math.max(...g.pts.map((q) => q[0])) + 1e-9, Math.max(...g.pts.map((q) => q[1])) + 1e-9] as V, round: false, poly: g.pts, outside: !!g.outside }
   : g.t === "rect" || g.t === "round" ? { min: g.min, max: g.max, round: g.t === "round" } : null;
-/** A piece's settings, each within its entry's ranges: dir a slope's push (a unit of the lattice), to a tunnel's or a loop's way out. */
+/** A piece's settings, each within its entry's ranges. dir: a slope's push, a unit vector; to: a tunnel's or a loop's way out. */
 export interface Params {
   bounce?: number;
   scale?: number;
@@ -31,7 +27,7 @@ export interface Params {
 /** How a piece comes and goes: always there, within a stroke (substeps), or with a pulse (strokes). */
 export type ClockSpec = { k: "fixed" } | { k: "substep"; every: number; on: number; phase: number } | { k: "stroke"; pulse: number };
 export interface Piece {
-  /** the draft's own name for it, unique in the draft */
+  /** unique in the draft */
   id: string;
   /** its palette entry ("island/post/palm", "*\/rail/") */
   entry: string;
@@ -39,18 +35,13 @@ export interface Piece {
   params: Params;
   clock: ClockSpec;
 }
-/** A pulse: on the strokes where (stroke+phase) mod every is below on. Its pieces say they are in it (clock). */
+/** A pulse is on at the strokes where (stroke + phase) mod every is below on. */
 export interface Pulse {
   every: number;
   on: number;
   phase: number;
 }
-/**
- * A round that holed the exact hole in one weather, replayed by the chain's
- * code (proof.ts): key, the hole's (proofKey); kind, the weather's ("" clear);
- * commits, [from, to) as a save cuts it; maxWork, its heaviest shot's work.
- * A file's proofs are kept as given: publishing replays each again.
- */
+/** A round that holed the exact hole in one weather. key: the hole's proof key; kind: the weather, "" for clear; commits: [from, to) as a save cuts it; maxWork: its heaviest shot's work. */
 export interface Proof {
   key: string;
   id: string;
@@ -61,12 +52,7 @@ export interface Proof {
   strokes: number;
   maxWork: number;
 }
-/**
- * The green as painted (surface.ts), the editor's own: its unit cells (each
- * its low corner, on the hole's lattice) and the outline's unit edges left
- * open (each its middle); its rails are found from them (surface.ts owned).
- * Never in the bytes (gg1.ts): the chain sees only the rails.
- */
+/** The green as painted: its unit cells, each by its low corner, and the outline's unit edges left open, each by its middle. Never in the bytes: the chain sees only the rails. */
 export interface Surface {
   cells: V[];
   open: V[];
@@ -74,7 +60,7 @@ export interface Surface {
 export interface Draft {
   v: 1;
   world: string;
-  /** fixed before test mode: the hole's id, so its weather, depends on it ("" until then) */
+  /** "" until test mode fixes it: the hole's id, and so its weather, depends on it */
   slug: string;
   title: string;
   /** 1..19 once the proofs suggest it; 0 until then */
@@ -85,32 +71,25 @@ export interface Draft {
   pulses: Pulse[];
   note: string;
   proofs: Proof[];
-  /** the green as painted; none: read from its rails, if they make one (surface.ts surfaceIn) */
+  /** the green as painted; when missing, it is read from the rails */
   surface?: Surface;
-  /** the published version it is of (its id: opened from the chain, or published from it): its next version a new one of that hole (testmode.ts cameFrom) */
+  /** the id of the published version it comes from: its next version is a new one of that hole */
   from?: string;
 }
 
-/** A draft's limits, beside GG1's own (gg1.ts LIMITS): what the editor holds at once. */
-export const MAX_PIECES = 224; // GG1's walls, posts and zones (160 + 32 + 32): a piece takes one at least (a test holds it)
-/**
- * Where the browser keeps each draft: a key of its own (newKey), so a save
- * writes that draft only, and two tabs never write over each other's.
- */
+/** GG1's 160 walls, 32 posts and 32 zones: a piece takes one at least. */
+export const MAX_PIECES = 224;
+/** Each draft has a key of its own, so a save writes that draft only and two tabs never overwrite each other. */
 export const DRAFT_PREFIX = "gnogolf.builder.draft.";
-/** Where earlier Builders kept every draft in one list: moved to keys of their own (loadDrafts), or left as it is. */
+/** The one list earlier Builders kept every draft in. loadDrafts moves each to a key of its own. */
 export const DRAFTS_KEY = "gnogolf.builder.drafts";
-/** A hole's name and note at most (runes), as the realm keeps them. */
+/** The realm's limits for a hole's name and note, in runes. */
 export const MAX_TITLE = 40, MAX_NOTE = 140;
 const MAX_PULSES = 16;
-/** A painted green's cells at most: the board's whole (96 a side). */
+// A painted green covers the whole board at most: 96 a side.
 const MAX_CELLS = 96 * 96;
 
-/**
- * A grid value: a multiple of a quarter from origin, the tee's (the hole's
- * grid: framing shifts a whole hole, by a post's rim at times, off the
- * board's quarters), to a millionth.
- */
+/** Whether x is a multiple of a quarter from origin, to a millionth. The origin is the tee: framing shifts a hole off the board's quarters. */
 export const onGrid = (x: number, origin: number) => Number.isFinite(x) && Math.abs((x - origin) * 4 - Math.round((x - origin) * 4)) < 1e-6;
 
 /** A new draft in a world: an empty board, the tee and the cup apart. */
@@ -121,7 +100,7 @@ const isInt = (x: unknown, lo: number, hi: number): x is number => Number.isInte
 const isV = (x: unknown): x is V => Array.isArray(x) && x.length === 2 && isNum(x[0]) && isNum(x[1]);
 const gridV = (x: unknown, tee: V): x is V => isV(x) && onGrid(x[0], tee[0]) && onGrid(x[1], tee[1]);
 
-/** A piece's shape, or why not: "shape" (unknown), "grid" (off the grid from the tee). */
+/** null for a good shape, else why not: "shape" for an unknown one, "grid" for one off the grid. */
 function geometryOf(g: unknown, tee: V): "shape" | "grid" | null {
   if (!isObj(g)) return "shape";
   switch (g.t) {
@@ -154,7 +133,7 @@ const isProof = (x: unknown) =>
   Array.isArray(x.shots) && x.shots.every((s) => typeof s === "string") && Array.isArray(x.commits) && x.commits.every((c) => Array.isArray(c) && c.length === 2 && c.every(Number.isInteger)) &&
   Number.isInteger(x.strokes) && isNum(x.maxWork);
 
-/** A painted green: cells on the grid, all on one unit lattice (their corners a whole unit apart), open edges on it too. */
+/** A painted green: its cells on the grid and all on one unit lattice, its open edges too. */
 function isSurface(s: unknown, tee: V): s is Surface {
   if (!isObj(s) || !Array.isArray(s.cells) || !Array.isArray(s.open)) return false;
   if (!s.cells.length || s.cells.length > MAX_CELLS || s.open.length > MAX_CELLS) return false;
@@ -209,11 +188,7 @@ export function parseDraft(text: string): Draft | string {
   return rebuild(d as unknown as Draft);
 }
 
-/**
- * A checked draft copied field by field: only what a Draft has, nothing else
- * a file carried (a piece's raw GG1 element, any other key) reaches the data
- * the board does not show.
- */
+/** A checked draft copied field by field, so nothing else a file carried gets in. */
 function rebuild(d: Draft): Draft {
   const v = (p: V): V => [p[0], p[1]];
   const geometry = (g: Geometry): Geometry => {
@@ -245,8 +220,8 @@ function rebuild(d: Draft): Draft {
 /** The draft as a file. */
 export const exportDraft = (d: Draft) => JSON.stringify(d, null, 1);
 
-/** Undo and redo over whole drafts, HISTORY steps deep: a drag is one push. */
 const HISTORY = 200;
+/** Undo and redo over whole drafts, HISTORY steps deep. A drag is one push. */
 export function history(first: Draft) {
   const past: Draft[] = [];
   let now = first, future: Draft[] = [];
@@ -258,7 +233,7 @@ export function history(first: Draft) {
       now = d;
       future = [];
     },
-    /** The step as it is, changed in place: no step of its own (proofs carried over to it). */
+    /** Changes the current step in place, with no step of its own. */
     amend(d: Draft) {
       now = d;
     },
@@ -275,34 +250,26 @@ export function history(first: Draft) {
   };
 }
 
-/** A draft as this browser keeps it: under its key. */
+/** A draft and the key this browser keeps it under. */
 export interface Kept {
   key: string;
   draft: Draft;
 }
 
 let last = 0;
-/** A new draft's key: when it was started (the drafts' order, never twice the same in a tab), then a random tail (another tab's). */
+/** A new draft's key: its start time, which orders the drafts, then a random tail against another tab's. */
 export function newKey() {
   last = Math.max(Date.now(), last + 1);
   return `${DRAFT_PREFIX}${last}-${Math.random().toString(36).slice(2, 10)}`;
 }
-/**
- * A draft kept by a Builder that let a proved hole's address drift from its
- * rounds' (typed again, or following its name): the latest round's address
- * again, as the hole's address is fixed once proved (templates.ts retitle).
- */
+/** A draft whose address drifted from its proofs' takes the latest proof's address again: an address is fixed once proved. */
 export function slugSettled(d: Draft): Draft {
   const at = d.proofs.at(-1)?.id.split("/").at(-2);
   return at && at !== d.slug && isSlug(at) ? { ...d, slug: at } : d;
 }
 const started = (key: string) => Number.parseInt(key.slice(DRAFT_PREFIX.length), 10);
 
-/**
- * The drafts kept in this browser, oldest first; none if it keeps nothing (a
- * private window). A stored draft this Builder cannot read (edited by hand,
- * another version's) is left out, and left as it is: no save writes its key.
- */
+/** The drafts kept in this browser, oldest first; none in a private window. A stored draft that does not parse is left out and left alone. */
 export function loadDrafts(): Kept[] {
   try {
     const out = fromList();
@@ -317,12 +284,7 @@ export function loadDrafts(): Kept[] {
   }
 }
 
-/**
- * An earlier Builder's list, each draft moved as it is to a key of its own
- * (unless that key is there already: a later save of it), the list removed
- * once every one is; the readable drafts the store refused to take, from the
- * list. A list this Builder cannot read stays as it is.
- */
+/** Moves each draft of an earlier Builder's list to a key of its own, and removes the list once all are moved. Returns the readable drafts the store refused to take. */
 function fromList(): Kept[] {
   let j: unknown;
   try {
@@ -347,7 +309,7 @@ function fromList(): Kept[] {
   return unmoved;
 }
 
-/** Keeps a draft in this browser, under its key; false if it keeps nothing (the page then says so once). */
+/** Keeps a draft under its key. false: the browser keeps nothing. */
 export function saveDraft(key: string, d: Draft): boolean {
   try {
     localStorage.setItem(key, JSON.stringify(d));
@@ -357,7 +319,7 @@ export function saveDraft(key: string, d: Draft): boolean {
   }
 }
 
-/** What this browser keeps under a key, as written (null: nothing, or it keeps nothing). */
+/** The text kept under a key; null for nothing, or in a browser that keeps nothing. */
 export function keptText(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -366,20 +328,13 @@ export function keptText(key: string): string | null {
   }
 }
 
-/**
- * Keeps an open draft under its key, if what is kept there is still what
- * this tab last read or wrote (was; null for a key nothing was kept under):
- * kept, the text written (the next save's was). "elsewhere": another tab changed or
- * deleted it since, and nothing is written (the last save would win, a
- * delete come back); null: the browser keeps nothing.
- */
+/** Keeps a draft only if what is kept is still what this tab last read or wrote (was). "elsewhere": another tab changed or deleted it since; null: the browser keeps nothing. */
 export function saveOver(key: string, d: Draft, was: string | null): { kept: string } | "elsewhere" | null {
   if (keptText(key) !== was) return "elsewhere";
   const text = JSON.stringify(d);
   return saveDraft(key, d) ? { kept: text } : null;
 }
 
-/** A draft deleted from this browser. */
 export function dropDraft(key: string) {
   try {
     localStorage.removeItem(key);
@@ -392,7 +347,7 @@ export function nextId(d: Pick<Draft, "pieces">): string {
   return `p${n + 1}`;
 }
 
-/** The draft without the pulses no piece is in, each piece kept in its own (numbered again); as it is when every pulse has one. */
+/** The draft without the pulses no piece is in, the pieces' pulse numbers shifted to match. */
 export function withoutEmptyPulses(d: Draft): Draft {
   const used = d.pulses.map((_, i) => d.pieces.some((p) => p.clock.k === "stroke" && p.clock.pulse === i));
   if (!used.includes(false)) return d;

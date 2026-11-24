@@ -1,8 +1,8 @@
-// Package weblink is the rule a link the owner of a realm sets must follow
-// before a page or an answer shows it: https://, at most MaxLen of letters,
-// digits and "-._~/:%", with no query or fragment (a page adds its own), no
-// space and nothing a markdown link could break out of. golf/v2's SetPlayURL
-// holds a link to the same rule, in its own copy (owner.gno validURL).
+// Package weblink is the rule for a link a realm's owner sets, before a page or
+// an answer shows it: https://, at most MaxLen of letters, digits and
+// "-._~/:%". So no query or fragment (a page adds its own), no space, and
+// nothing a markdown link could break out of. golf/v2's SetPlayURL keeps its
+// own copy of the rule (owner.gno validURL).
 package weblink
 
 import "strings"

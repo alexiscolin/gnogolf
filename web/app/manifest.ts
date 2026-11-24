@@ -3,7 +3,6 @@ import { DESCRIPTION } from "@/lib/site";
 
 export const dynamic = "force-static";
 
-// the game added to a phone's home screen: its name, badge and paper colour
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Gnogolf",

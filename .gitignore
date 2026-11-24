@@ -5,6 +5,7 @@ out/
 # working screenshots stay local; the promo's and og's scripts are kept
 media/*
 !media/tsconfig.json
+!media/README.md
 !media/promo/
 !media/lib/
 !media/og/

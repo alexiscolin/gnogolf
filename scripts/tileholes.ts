@@ -1,11 +1,9 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The palette's pictures' holes (media/builder/tiles.mjs draws them): for
-// every look of every Builder world, a lane with that one piece in it, as
-// placed from the palette, as a player's client gets it (builder.wasm's
-// HoleState, at period 1, the census's), and where to look at it: the
-// piece's middle on the board, how far it reaches, how high to look (and
-// from where, for a hill: more from the side).
-// Written as JSON to the file named (stdout without one).
+// The holes behind the palette's pictures (media/builder/tiles.mjs draws
+// them): for every look of every Builder world, a lane with that one piece
+// in it, as a player's client gets it (builder.wasm's HoleState, at period
+// 1), and where to look at it: the piece's middle, how far it reaches, how
+// high to look. Written as JSON to the file named (stdout without one).
 //
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../scripts/tileholes.ts [out.json] [world/kind-skin …]
 

@@ -59,6 +59,16 @@ export const T = {
 const SHARED = new Set<unknown>();
 /** Marks a material, texture or geometry as shared; returns it. */
 export const share = <T extends Disposable>(x: T): T => (SHARED.add(x), x);
+const ONCE = new Map<string, unknown>();
+/** A material, texture or geometry made once for the whole game, by its key, and shared: a piece built on every
+ *  hole reuses it rather than leaving a new one behind each build. One map for every module, so a key starts
+ *  with its module's name ("town:cobbles"; the mines' modules all say "mines:"): two that picked the same key
+ *  would be handed one object. */
+export function once<T extends Disposable>(key: string, make: () => T): T {
+  let x = ONCE.get(key) as T | undefined;
+  if (!x) ONCE.set(key, (x = share(make())));
+  return x;
+}
 
 const ink = share(new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.85 }));
 
@@ -335,10 +345,8 @@ export function waterTone(c: THREE.Color, skin: string, d: number, depth: number
   const [a, b] = own(WATERS, skin) || WATERS.water;
   return c.copy(shallowC.set(a)).lerp(deepC.set(b), smoothstep((d - 0.3) / 2.2)).lerp(foamC, 0.6 * (1 - smoothstep(depth / 0.1)));
 }
-let waterM: THREE.MeshBasicMaterial | null = null;
 /** The shared water material (vertex colours from waterTone). */
-export function waterMat() {
-  if (waterM) return waterM;
+export const waterMat = () => once("materials:water", () => {
   const m = new THREE.MeshBasicMaterial({ vertexColors: true });
   m.onBeforeCompile = (sh: Shader) => {
     sh.uniforms.uTime = clock;
@@ -372,8 +380,8 @@ export function waterMat() {
   };
   m.customProgramCacheKey = () => "water2";
   md(m).hook = "water2";
-  return (waterM = share(m));
-}
+  return m;
+});
 
 /** One row of a bank's face: its height, how far out it leans, the colour
  *  of the band below it. */
@@ -409,14 +417,9 @@ export function bankRows(x: number, z: number, top: number, water: number, foot:
 /** Board coordinates are (x right, y away); the world uses y for height. */
 export const at = (p: Vec2, h = 0) => new THREE.Vector3(p[0], h, p[1]);
 
-let lanternGlowMat: THREE.SpriteMaterial | null = null;
-function lanternGlow() {
-  return (lanternGlowMat ||= share(new THREE.SpriteMaterial({ map: glowTex(), color: 0xffc86b, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
-}
+const lanternGlow = () => once("materials:lantern glow", () => new THREE.SpriteMaterial({ map: glowTex(), color: 0xffc86b, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
 
-let glowCache: THREE.CanvasTexture | null = null;
-function glowTex() {
-  if (glowCache) return glowCache;
+const glowTex = () => once("materials:glow", () => {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
   const x = c.getContext("2d")!;
@@ -426,8 +429,8 @@ function glowTex() {
   gr.addColorStop(1, "rgba(255,255,255,0)");
   x.fillStyle = gr;
   x.fillRect(0, 0, 64, 64);
-  return (glowCache = share(texOf(c)));
-}
+  return texOf(c);
+});
 
 function texOf(canvas: HTMLCanvasElement) {
   const t = new THREE.CanvasTexture(canvas);

@@ -12,19 +12,10 @@ import (
 	"gno.land/p/gnogolf/physics"
 )
 
-// Every course hole published as data plays through golf as the hole its
-// realm declares, bit for bit.
-//
-// The chain of proof: each hole's own test (fingerprint.Check) proves that
-// Decode(Encode(me)) is its realm value me field by field, prep included,
-// and plays the same shots; data/holes.txt is that Encode(me), logged by the
-// same check (scripts/holedata.sh), and courseData is data/holes.txt. So the
-// course.Simple decoded here from that data is the realm's hole. This test
-// then plays that Simple directly against the published version, in the same
-// weather laid on both: calm, rain, wind and storm, from the tee, on stroke 0
-// at tick 0 and on stroke 1 at tick 5; and checks that both give a renderer
-// the same pieces, and golf's listing the hole's own name, par, world and
-// order.
+// Each course hole published as data plays through golf bit for bit as the hole
+// its realm declares. The hole's own test (fingerprint.Check) proves that
+// data/holes.txt decodes to its realm value; this one plays that decoded hole
+// against the published version, in every kind of weather.
 func TestDataPlaysAsTheRealmHole(cur realm, t *testing.T) {
 	for _, d := range courseData {
 		raw, err := hex.DecodeString(d[3])

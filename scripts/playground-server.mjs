@@ -2,15 +2,15 @@
 // The playground's site (scripts/try-local.sh): the static build (web/out)
 // served on 127.0.0.1 alone, and the page's own /rpc streamed to the local
 // node, so a device on the tailnet reads the chain on the page's origin (no
-// CORS, no second host). A production build: no dev server's on-demand
-// compiles, hot reloads nor its client's reloads over a proxied link.
+// CORS, no second host). A static build, not the dev server: its compiles
+// and reloads do not hold over a proxied link.
 //
 //   node scripts/playground-server.mjs <out dir> <port> <rpc: http://127.0.0.1:<port>>
 //
-// Only what the static host would serve: a file under the root (no dotfile,
-// nothing a link leads out of it to), a folder's index.html, the build's
-// 404.html; GET and HEAD. /rpc/* goes to the node as /* (any method: the
-// node's JSON-RPC is POST), and to a node on this machine only.
+// It serves only what the static host would: a file under the root (no
+// dotfile, nothing a link leads out of it to), a folder's index.html, the
+// build's 404.html; GET and HEAD. /rpc/* goes to the node as /*, any method
+// (JSON-RPC is POST), and only to a node on this machine.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -33,8 +33,8 @@ export function playgroundServer({ root, rpc }) {
   if (!LOCAL_RPC.test(rpc)) throw new Error(`the node is on this machine, http://127.0.0.1:<port>, not "${rpc}"`);
   const node = new URL(rpc).origin;
   if (!fs.statSync(fs.realpathSync(root)).isDirectory()) throw new Error(`the build is a folder, not "${root}"`); // (missing: realpath's own error, naming it)
-  /** The file a path names under the root, or null: the root resolved anew each time (a link try-local.sh rebuild swaps
-   *  to a new build in one rename: every request is the old build's or the new one's, whole). @param {string} p */
+  /** The file a path names under the root, or null. The root is resolved on every request: try-local.sh rebuild
+   *  swaps that link to a new build in one rename. @param {string} p */
   const fileOf = (p) => {
     // (no dotfile, no "..", nor a path a redirect would read as another host: "//host", a backslash)
     if (p.startsWith("//") || p.includes("\\") || p.split("/").some((s) => s.startsWith("."))) return null;

@@ -8,7 +8,8 @@ import { buttonClass } from "@/components/button";
 import { REALM_PATH, RULES as LIMITS, pkgsPath, storePath } from "@/lib/chain";
 import { sound } from "@/lib/feel";
 import { optedOut, optOut } from "@/lib/analytics";
-import { courseCount, holesWord, plural } from "@/components/common";
+import { courseCount } from "@/lib/card";
+import { holesWord, plural } from "@/lib/words";
 import { sight } from "@/lib/scene/data";
 
 // About: how it works, what is in it, where to go next, and who made it.

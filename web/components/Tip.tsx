@@ -1,26 +1,21 @@
 "use client";
 
-// A tip for the game's maker: GNOT sent from the player's Adena to the golf
-// realm's owner, as the chain has it (never an address the page carries), in
-// one plain send the player confirms in Adena, or signs with gnokey (a paste:
-// the only way without Adena, a quiet other one with it). Playing stays free; a testnet's
-// GNOT is test GNOT, and said so. Not on mainnet while its ugnot is
-// transfer-locked (bank restricted_denoms): the chain refuses a plain send.
+// A tip in GNOT to the golf realm's owner, read from the chain. Not on mainnet while ugnot is transfer-locked there.
 import { useEffect, useState } from "react";
 import { hasAdena, resultOf, sendTip, gnokeyTip, TIPS, type SendError } from "@/lib/adena";
 import { isTouch } from "@/lib/device";
 import { networkOf } from "@/lib/network";
 import { Button, Segmented } from "@/components/ui";
 import { GnokeyTx } from "@/components/Gnokey";
-import { messageOf, shortAddr } from "@/components/common";
-import { wait, type Chain } from "@/lib/chain";
+import { messageOf } from "@/lib/words";
+import { wait, shortAddr, type Chain } from "@/lib/chain";
 
 const AMOUNTS = TIPS.map(String);
-// the owner as read once per chain: read ahead (Golf, at the game's build), so the tip is whole as its sheet opens
+// the owner, read once per chain, ahead of the sheet
 const owners = new WeakMap<Chain, string>();
 export const readOwner = (chain: Chain) => chain.owner().then((o) => (owners.set(chain, o), o));
 
-// bare: in a sheet of its own (its title is the sheet's)
+// bare: in a sheet of its own, which has the title
 export default function Tip({ chain, me, chainId, price, onConnect, bare = false }: { chain: Chain; me: string | null; chainId: string | null; price: number; onConnect: () => void; bare?: boolean }) {
   const [owner, setOwner] = useState<string | null>(() => owners.get(chain) ?? null);
   const [late] = useState(!owners.has(chain));
@@ -30,29 +25,28 @@ export default function Tip({ chain, me, chainId, price, onConnect, bare = false
   useEffect(() => {
     if (owners.has(chain)) return setOwner(owners.get(chain)!);
     let live = true;
-    void readOwner(chain).then((o) => live && setOwner(o), () => live && setOwner("")); // ("": not read, a node down or an owner renounced)
+    void readOwner(chain).then((o) => live && setOwner(o), () => live && setOwner("")); // "": the owner could not be read
     return () => void (live = false);
   }, [chain]);
   if (networkOf(chain.rpc) === "mainnet")
     return <section>{!bare && <h3 className="about__h">Support the game</h3>}<p>Tips open once GNOT can be sent on mainnet: until then the chain refuses a plain send.</p></section>;
   if (!owner || owner === me) return bare ? <p>{owner ? "You made the game: nothing to tip yourself." : owner === "" ? "No one to tip on this chain: its owner could not be read." : "Reading the chain…"}</p> : null;
-  const unit = "test GNOT"; // (mainnet's tips are not open: said above)
-  // a phone with no Adena: it is a computer's browser extension (as saving a round)
+  const unit = "test GNOT"; // mainnet returned above
+  // a phone without Adena: it is a desktop browser extension
   const adena = hasAdena(), away = !me && isTouch() && !adena;
   const thanks = `Thank you! ${gnot} ${unit} sent to ${shortAddr(owner)}.`;
   const send = async () => {
     if (!me) return onConnect();
     setBusy(true);
     try {
-      // (the chain's id read now if the page has not yet: an account connected before the game was built)
+      // the chain's id is read now when the account connected before the game was built
       await sendTip({ from: me, to: owner, gnot: Number(gnot), price, chainId: chainId || (await chain.chainId()), rpc: chain.rpc });
       setSaid({ good: true, text: thanks });
     } catch (e) {
       const err = e as SendError;
       if (err.cancelled) return setSaid(null);
       if (!err.maybe) return setSaid({ good: false, text: err.message });
-      // Adena failed for no reason that says it never went: the chain is asked by its hash, as a
-      // save's is, and without its answer the player checks before a second tip
+      // Adena failed without saying the send never went: the chain is asked by its hash.
       try {
         for (let k = 0; err.hash && k < 5; k++) {
           if (k) await wait(3000);

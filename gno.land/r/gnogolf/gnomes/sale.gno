@@ -6,12 +6,10 @@ import (
 	"time"
 )
 
-// A series is sold in one sale: the owner opens all of its ids at once,
-// from a start (a day back to a year ahead), its first hours for players
-// only (a record in store), at the prices of the day it was opened. A sale
-// is never changed, and withdrawn only before it starts (CancelSale), so
-// once on sale a series stays on sale at its prices: a later SetPrice moves
-// the sales yet to open, never undercuts anyone who bought.
+// A sale puts a whole series on sale from its start, its first hours for
+// players only (a record in store), at the prices of the day it was opened.
+// It is never changed, and withdrawn only before it starts (CancelSale): a
+// later SetPrice never undercuts a buyer.
 type sale struct {
 	series       string            // its series' name, one sale a series
 	start        int64             // block time, unix seconds
@@ -19,15 +17,13 @@ type sale struct {
 	prices       [len(tiers)]int64 // ugnot, per tier, as opened
 }
 
-// The sales, in opening order: at most one a series, so as many as the
-// catalogue bounds (maxSeries).
+// sales are in opening order, at most one a series.
 var sales []sale
 
 // prices is what the next sale opens at, per tier.
 var prices [len(tiers)]int64
 
-// SetPrice sets a tier's price for the sales opened from now on. Owner
-// only.
+// SetPrice sets a tier's price for sales not yet opened. Owner only.
 func SetPrice(cur realm, tierName string, ugnot int64) {
 	assertOwner(0, cur)
 	i := tierAt(tierName)
@@ -41,12 +37,11 @@ func SetPrice(cur realm, tierName string, ugnot int64) {
 	chain.Emit("PriceSet", "tier", tierName, "price", itoa(ugnot))
 }
 
-// OpenSale puts every gnome of series name on sale from start (unix
-// seconds, block time, from a day before now to a year after), to wallets
-// with a record only for its first playerHours (0 for none), at today's
-// prices. Owner only, once a series; for the genesis, refused once its sale
-// has closed, or from a start at or after its closing date if one is set
-// (close.gno).
+// OpenSale puts every gnome of series name on sale from start (unix seconds,
+// block time, from a day before now to a year after) at the current prices.
+// For its first playerHours (0 for none) only wallets with a record may buy.
+// Owner only, once a series. A genesis sale must start before its closing
+// date, if one is set (close.gno).
 func OpenSale(cur realm, name string, start, playerHours int64) {
 	assertOwner(0, cur)
 	if err := openSale(name, start, playerHours); err != nil {
@@ -61,7 +56,7 @@ func openSale(name string, start, playerHours int64) error {
 	if si < 0 {
 		return errors.New("gnomes: no series " + name)
 	}
-	// (a start in milliseconds would hold every genesis close after it)
+	// A start in milliseconds would hold every genesis close after it.
 	if t := now(); start < t-maxSaleBehind || start > t+maxSaleAhead {
 		return errors.New("gnomes: a sale starts from a day before now to a year after (unix seconds)")
 	}
@@ -75,14 +70,13 @@ func openSale(name string, start, playerHours int64) error {
 		return errors.New("gnomes: series " + name + " is on sale already")
 	}
 	sales = append(sales, sale{series: name, start: start,
-		playersUntil: start + playerHours*3600, prices: prices}) // (start and hours bounded: no overflow)
+		playersUntil: start + playerHours*3600, prices: prices}) // both bounded: no overflow
 	return nil
 }
 
-// CancelSale withdraws series name's sale before it starts, when none of
-// its gnomes can have sold: the owner's way back from a wrong start or
-// window. The series is on no sale again, free to open anew. A sale under
-// way is never withdrawn: a buyer may have counted on it. Owner only.
+// CancelSale withdraws series name's sale before it starts, while none of its
+// gnomes can have sold. The series may then be opened again. A sale under way
+// is never withdrawn. Owner only.
 func CancelSale(cur realm, name string) {
 	assertOwner(0, cur)
 	s, err := cancelSale(name)

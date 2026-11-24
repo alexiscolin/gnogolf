@@ -1,26 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { makePreview } from "@/lib/scene";
-import type { Act, Skin } from "@/lib/scene/gnome";
+import { makePreview, type Act, type Skin } from "@/lib/scene/gnome";
 
-/** A gnome turning on a stage of its own (the preview renderer): the ref of
- *  the box it is drawn in. The picker's tile, the cup's new-gnome card, the
- *  game's choice's panels (act, and playing: a panel's act plays under the
- *  pointer only, and holds its pose otherwise). */
+/** A gnome turning in its own WebGL canvas. Returns the ref of the box to draw it in. */
 export function useGnomeStage<T extends HTMLElement = HTMLDivElement>(skin: Skin, { act = "hop", playing = true }: { act?: Act; playing?: boolean } = {}) {
   const box = useRef<T>(null);
   const preview = useRef<ReturnType<typeof makePreview> | null>(null);
   useEffect(() => {
-    // a canvas of its own each time: a WebGL context that was released cannot
-    // be taken again from the same element (React mounts twice in dev)
+    // A fresh canvas on every mount: a released WebGL context cannot be taken again on the same element.
     const el = document.createElement("canvas");
-    // its size only: the locked look is the wrapper's filter (a "--locked" class
-    // on this canvas would stay for good, every gnome dark)
-    el.className = "pick__canvas";
+    el.className = "pick__canvas"; // sizing only; the locked look is the wrapper's CSS filter
     box.current!.appendChild(el);
     let p: ReturnType<typeof makePreview>;
-    try { p = preview.current = makePreview(el, { act, still: !playing }); } catch { return () => el.remove(); } // no WebGL to spare: no stage, the screen stands
+    try { p = preview.current = makePreview(el, { act, still: !playing }); } catch { return () => el.remove(); } // no WebGL to spare: no stage
     const onResize = () => p.resize();
     window.addEventListener("resize", onResize);
     return () => {
@@ -28,7 +21,7 @@ export function useGnomeStage<T extends HTMLElement = HTMLDivElement>(skin: Skin
       p.destroy();
       el.remove();
     };
-  }, [act]); // eslint-disable-line react-hooks/exhaustive-deps -- (playing: the effect below, not a new stage)
+  }, [act]); // eslint-disable-line react-hooks/exhaustive-deps -- playing has its own effect below
   useEffect(() => {
     preview.current && preview.current.show(skin);
   }, [skin]);

@@ -14,9 +14,8 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// The golden tests pin exact outputs: a change that only makes the code
-// cheaper must leave every one of these byte for byte as it was. A change to
-// them is a change to the game, and says so by failing here.
+// The golden tests pin exact outputs: an optimisation must leave them byte for
+// byte. A change here is a change to the game.
 
 func lane(zones []physics.Zone, walls ...[]physics.Wall) *physics.Field {
 	return &physics.Field{
@@ -28,7 +27,7 @@ func lane(zones []physics.Zone, walls ...[]physics.Wall) *physics.Field {
 	}
 }
 
-// the fixtures: one of each thing a stroke can meet
+// goldHoles is the fixtures: one of each thing a stroke can meet.
 func goldHoles() map[string]*course.Simple {
 	sea := []physics.Vec2{physics.V(1, 3), physics.V(39, 3), physics.V(39, 7), physics.V(1, 7)}
 	return map[string]*course.Simple{
@@ -56,7 +55,7 @@ func sum(s string) string {
 	return hex.EncodeToString(h[:8])
 }
 
-// the period of a kind of weather for a hole: the first at or before now
+// periodOf is the latest period with that kind of weather for a hole.
 func periodOf(id, world string, h *course.Simple, kind string) int64 {
 	for p := Period(); p > Period()-2000; p-- {
 		if course.ForecastFor(id, world, h, p).Kind == kind {
@@ -66,10 +65,9 @@ func periodOf(id, world string, h *course.Simple, kind string) int64 {
 	panic("no " + kind + " period")
 }
 
-// golden: fixture -> sha256 prefix of its replay (SimulateRoundIn, in a
-// period of the weather chosen for it), its forecast, and its HoleState with
-// "official":true, the flag these were taken with (a fixture is a community
-// entry here, goldAt).
+// golden maps a fixture to the sha256 prefixes of its replay (SimulateRoundIn,
+// in a period of its chosen weather), its forecast and its HoleState. The
+// hashes were taken with "official":true, so the test rewrites that flag.
 var golden = map[string][3]string{
 	"pulse":  {"2df4849397343b5c", "076ac3e7c0d705a9", "e80fe259799b6bb7"},
 	"sea":    {"9cc043701ff301c4", "c3224daa821020f4", "e73fad3555ef963b"},
@@ -79,9 +77,8 @@ var golden = map[string][3]string{
 	"tunnel": {"325ffde22c9b1a13", "c3224daa821020f4", "8746d7b3047b3df4"},
 }
 
-// goldAt keeps h as data under id, listed as the hashes have it: the world
-// "garden" when it names none (data always names one), and no order of its
-// own.
+// goldAt stores h as data under id, as the hashes were taken: world "garden"
+// when h names none, and no order.
 func goldAt(id string, h *course.Simple) {
 	if h.World == "" {
 		h.World = "garden"

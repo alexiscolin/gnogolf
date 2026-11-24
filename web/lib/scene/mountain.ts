@@ -10,7 +10,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { C, flat, drawn, rbox, lanternGlow, glowTex, share, ownFade, fadeLoop, type FadeItem, geoOf, gridGeo } from "./materials";
 import { animate, report, state } from "./state";
 import { inZone, mod, onAt, untilOn, segDist, wallDist, smoothstep, boxOf, closest, terrain } from "../terrain";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { hidesPlay } from "./sight";
 import { gnomelet, bunting, stone, smoke } from "./props";
 import { bakeLocal, look, weatherLooks, instances } from "./bake";
@@ -1104,7 +1104,9 @@ function archSpots(s: Hole) {
   return out;
 }
 
-function decor(s: Hole, bank: Height = () => 0) {
+/** A hole's decor as it is laid: its group, its seed, the shelf's bounds, and what stands a thing on the snow where
+ *  it fits. Every part of decor() takes it and draws from its seed: the order decor() calls them in is the hole's look. */
+function startDecor(s: Hole, bank: Height) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
   const rand = seeded("mountain" + lookSeed(s));
@@ -1124,30 +1126,37 @@ function decor(s: Hole, bank: Height = () => 0) {
     reserve(x, z, r);
     return m;
   };
+  return { s, g, W, H, rand, X0, X1, Z0, Z1, night, bank, free, reserve, fits, place };
+}
+type Decor = ReturnType<typeof startDecor>;
+
+/** What takes its room before anything is placed: the crack, the edging's rocks, the lane lift's stations, the
+ *  canopy's roots and feet. */
+function keepRoom({ s, W, H, Z0, Z1, reserve }: Decor) {
   // the crack, wherever it runs
   for (const [a, b] of crevasses(s)) for (let z = Z0 - 30; z < Z1 + CLIFF; z += 1) reserve((a + b) / 2, z, (b - a) / 2 + 0.8);
   // the edging's rocks (edging is built on its own): decor keeps off them
   for (const { x, z } of edgeRocks(W, H, s.hole)) reserve(x, z, 0.8);
   // the lane lift's stations (mountain8), before the groves take the room
-  {
-    const L = liftPlan(s);
-    if (L) for (const x of [L.xA - 1.3, L.xB + 1.3]) for (const z of [L.zc - L.half - 1.1, L.zc + L.half + 1.1]) reserve(x, z, 1.8);
-  }
+  const L = liftPlan(s);
+  if (L) for (const x of [L.xA - 1.3, L.xB + 1.3]) for (const z of [L.zc - L.half - 1.1, L.zc + L.half + 1.1]) reserve(x, z, 1.8);
   // the canopy's roots and feet, before anything else takes the room
   if (canopyOf(s) === "arches") for (const a of archSpots(s).slice(0, 2)) for (const z of [a.z - a.r, a.z + a.r]) reserve(a.x, z, 0.8);
   else if (canopyOf(s) === "pines") for (const x of pineSpots(s)) reserve(x, -2.4, 1.2);
+}
 
-  // the chair lift up the slope behind, on the left
-  {
-    const la = new THREE.Vector3(X0 + 1, 0, -4.2), lb = new THREE.Vector3(X0 + 7, 0, -20);
-    g.add(chairLift(la, lb, 3, 10, (x, z) => GRASS + bank(x, z), night));
-    for (let k = 0; k <= 3; k++) reserve(la.x + ((lb.x - la.x) * k) / 3, la.z + ((lb.z - la.z) * k) / 3, 1.2);
-    reserve(la.x, la.z + 1.4, 1.6);
-  }
+/** The chair lift up the slope behind, on the left. */
+function chairLiftBehind({ g, X0, night, bank, reserve }: Decor) {
+  const la = new THREE.Vector3(X0 + 1, 0, -4.2), lb = new THREE.Vector3(X0 + 7, 0, -20);
+  g.add(chairLift(la, lb, 3, 10, (x, z) => GRASS + bank(x, z), night));
+  for (let k = 0; k <= 3; k++) reserve(la.x + ((lb.x - la.x) * k) / 3, la.z + ((lb.z - la.z) * k) / 3, 1.2);
+  reserve(la.x, la.z + 1.4, 1.6);
+}
 
-  // behind, big things: the chalet right of centre, the frozen fall at the
-  // back right, a forest of pines. The chalet is built only for a spot that
-  // fits: its chimney's smoke rises wherever one was built.
+/** Behind, big things: the chalet right of centre, the frozen fall at the back right, a forest of pines; prayer
+ *  flags across the back. The chalet is built only for a spot that fits: its chimney's smoke rises wherever one
+ *  was built. */
+function backSlope({ g, W, H, rand, X0, X1, night, bank, reserve, fits, place }: Decor) {
   for (const [x, rot] of [[X0 + (X1 - X0) * 0.72, -0.15], [X1 - 3.4, 0]]) if (fits(x, -6.4, 2.8)) { place(chalet(night, true), x, -6.4, 2.8, rot); break; }
   place(frozenFall(), X1 - 2.5, -8.5, 3.4, -0.3);
   for (let i = 0; i < Math.round((X1 - X0) / 2.2); i++) {
@@ -1163,9 +1172,11 @@ function decor(s: Hole, bank: Height = () => 0) {
   // prayer flags across the back
   g.add(bunting(new THREE.Vector3(X0 + 3, GRASS + bank(X0 + 3, -3.2), -3.2), new THREE.Vector3(X1 - 4, GRASS + bank(X1 - 4, -3.2), -3.2)));
   for (let x = X0 + 3; x < X1 - 4; x += 1.2) reserve(x, -3.2, 0.25);
+}
 
-  // the left and the front: only low things — a snowman, skis, sledges,
-  // gnomes, snowdrifts; nothing that would stand between the camera and the lane
+/** The left and the front: only low things — a snowman, skis, sledges, gnomes, stones; nothing that would stand
+ *  between the camera and the lane. */
+function lowThings({ H, rand, X0, X1, place }: Decor) {
   place(snowman(), -3.4, H * 0.5, 0.8, 0.4);
   for (let i = 0; i < 4; i++) place(skis(rand), X0 + rand() * (X1 - X0), H + 1.8 + rand() * 1.4, 0.5, (rand() - 0.5) * 0.6);
   for (let i = 0; i < 3; i++) place(sledge(), X0 + rand() * (X1 - X0), H + 2 + rand() * 1.2, 0.9, rand() * 6);
@@ -1175,8 +1186,11 @@ function decor(s: Hole, bank: Height = () => 0) {
     st.scale.multiplyScalar(0.7);
     place(st, X0 + rand() * (X1 - X0), rand() < 0.5 ? H + 1.6 + rand() * 2 : -1.8 - rand() * 1.5, 0.6, rand() * 6);
   }
-  // gnomes skiing down the slope behind, on a long S
-  // (on the left, down to the back corner of the board: small, and clear of the peaks)
+}
+
+/** Gnomes skiing down the slope behind, on a long S: on the left, down to the back corner of the board, small, and
+ *  clear of the peaks. */
+function skiersOnPiste({ s, g, rand, X0, bank }: Decor) {
   const piste = new THREE.CatmullRomCurve3([
     new THREE.Vector3(X0 + 2, 0, -13),
     new THREE.Vector3(X0 + 9, 0, -10),
@@ -1185,9 +1199,11 @@ function decor(s: Hole, bank: Height = () => 0) {
   ]);
   if (timeOf(s.hole) === "night") rand(); // the skiers have gone home (their one draw kept, so the rest stays put)
   else g.add(skiers(rand, piste, bank, 3));
+}
 
-  // the snow field, filled like the town is: all of it low in front of the
-  // lane, taller only behind and at the far sides
+/** The snow field, filled like the town is: all of it low in front of the lane, taller only behind and at the far
+ *  sides. */
+function snowShelf({ s, g, W, H, rand, X0, X1, bank, free, reserve, place }: Decor) {
   const front0 = H + 2, front1 = H + CLIFF + ISLAND.front - 1.5;
   // a frozen pond with gnomes skating on it, front left
   const pondAt: MutVec2 = [X0 + (X1 - X0) * 0.2, (front0 + front1) / 2 + 0.5];
@@ -1231,6 +1247,17 @@ function decor(s: Hole, bank: Height = () => 0) {
   g.add(tracks(X0, X1, front0, front1, W, bank, crevasses(s)));
   // a ski jump far off on the slope behind, left of centre
   place(skiJump(), X0 + (X1 - X0) * 0.36, -11, 2.5, 0);
+}
+
+/** The mountain round the board, part by part: each draws from the hole's seed, so their order is the hole's look. */
+function decor(s: Hole, bank: Height = () => 0) {
+  const d = startDecor(s, bank), { g, W, H, rand, X0, X1, night, reserve } = d;
+  keepRoom(d);
+  chairLiftBehind(d);
+  backSlope(d);
+  lowThings(d);
+  skiersOnPiste(d);
+  snowShelf(d);
 
   g.add(cableCar(W));
   g.add(bobsleigh(X0, X1, bank, reserve));

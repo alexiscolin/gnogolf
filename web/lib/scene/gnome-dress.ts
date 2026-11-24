@@ -1,9 +1,5 @@
-// The collection's wardrobe, as makeBall takes it (gnome.ts Wardrobe): its
-// hats, patterned bodies, small things, Rares' pieces, Epics' props, matter
-// and Legendaries' pieces, and where a headlamp clips on all of them. A chunk
-// of its own, loaded only where a collection gnome is drawn (loadWardrobe):
-// the title, the holes' pages and GNOMES' fourteen never fetch it. On import
-// it gives itself to makeBall.
+// The collection's wardrobe, registered with makeBall on import.
+// A chunk of its own: fetched only where a collection gnome is drawn.
 import * as THREE from "three";
 import { setWardrobe, type Skin, type Wardrobe } from "./gnome";
 import { kitHat, kitWear, kitPiece, hatTop, patternedBody } from "./gnome-kit";
@@ -11,9 +7,7 @@ import { propOf } from "./gnome-props";
 import { dressMatter } from "./gnome-matter";
 import { dressLegend } from "./gnome-legend";
 
-/** The collection's traits onto a gnome makeBall has built: his small things,
- *  a Rare's piece, an Epic's prop, a Legendary's piece, then his material
- *  over all of it. Returns what moves. */
+/** Dresses a built gnome in his traits, his material last, over all of them. Returns what moves. */
 function dress(g: THREE.Group, hat: THREE.Group, skin: Skin, body: THREE.Mesh, beard: THREE.Group) {
   kitWear(g, hat, skin);
   kitPiece(g, hat, skin);
@@ -24,7 +18,7 @@ function dress(g: THREE.Group, hat: THREE.Group, skin: Skin, body: THREE.Mesh, b
   }
   const ticks = [dressLegend(g, hat, skin)];
   if (skin.material) {
-    // the solids (not their ink) of a part: the hat's in the hat's colour, all of the beard
+    // A part's solids, without their ink hulls.
     const solids = (o: THREE.Object3D, keep: (m: THREE.MeshToonMaterial) => boolean) => {
       const out: THREE.Mesh[] = [];
       o.traverse((m) => m instanceof THREE.Mesh && m.material instanceof THREE.MeshToonMaterial && m.material.side !== THREE.BackSide && keep(m.material) && out.push(m as THREE.Mesh));
@@ -36,15 +30,7 @@ function dress(g: THREE.Group, hat: THREE.Group, skin: Skin, body: THREE.Mesh, b
   return ticks.filter((f): f is (t: number) => void => !!f);
 }
 
-/**
- * Where a lamp clips on a collection gnome: found, not guessed, his hats and
- * pieces being many. A ray from in front along the hat's centre line, from
- * just over the brim (over the brow and what he wears there) up, onto the
- * first surface that faces forward within the crown's width (a brim's edge
- * is wider: higher then): the hat, or what lies on its front (a band, a
- * badge). In the body's space, the lamp's centre just off the surface; null
- * when none is found.
- */
+/** Where a headlamp clips on: the first forward-facing surface a ray from the front finds up the hat's centre line. In the body's space; null when none. */
 function lamp(g: THREE.Group, hat: THREE.Group) {
   const solids: THREE.Mesh[] = [];
   g.updateMatrixWorld(true);

@@ -8,7 +8,7 @@ import { stillsOnly } from "@/lib/prefs";
 import { CLIP, Green, canHover, cupStill, stillsReady, warmClips } from "@/components/Title";
 import { FrontScreen } from "@/components/About";
 import { Button, Frame, VsPar } from "@/components/ui";
-import { plural } from "@/components/common";
+import { plural } from "@/lib/words";
 import { Sketch } from "@/components/Sketch";
 import { authorOf } from "@/lib/builder/holes";
 import "@/app/title.css";

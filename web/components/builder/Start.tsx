@@ -13,7 +13,7 @@ import { useGnomeStage } from "@/components/Stage";
 import { Emblem } from "@/components/Worlds";
 import { Button, Segmented, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
-import { gnomeById } from "@/lib/scene";
+import { gnomeById } from "@/lib/scene/gnome";
 import { exportDraft, type Draft, type Kept } from "@/lib/builder/draft";
 import { draftMap, draftState } from "@/lib/builder/cards";
 import { draftFile, fromFile, openPublished, type Opened } from "@/lib/builder/importing";

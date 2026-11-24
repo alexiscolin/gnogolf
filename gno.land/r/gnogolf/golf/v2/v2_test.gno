@@ -21,15 +21,14 @@ func rowFor(m int, p string) *row {
 	return decodeRow(x)
 }
 
-// saved sends a test's own writes to store, as these rules (a call's writes go
-// when it returns; a test that writes by hand sends its own)
+// saved flushes a test's own writes to store, as the realm: a test that writes
+// by hand has no entrypoint to do it.
 func saved(cur realm) {
 	testing.SetRealm(testing.NewCodeRealm(self))
 	flush(cur)
 }
 
-// A row reads back field for field whatever its fields hold (a ":", digits, a
-// newline: a name or note), and a row not as join writes it is refused.
+// A field may hold anything a name or note can: ":", digits, a newline.
 func TestARowReadsBackByItsLengths(cur realm, t *testing.T) {
 	e := newEntry("garden/1/v1", "12:3 \"odd\"\n", 3, "garden", 1.5)
 	e.note, e.out = "a:b", &draining{from: [modes]string{"g1x", ""}, done: [modes]bool{true, false}}
@@ -46,9 +45,7 @@ func TestARowReadsBackByItsLengths(cur realm, t *testing.T) {
 	}
 }
 
-// A view's walks, forward and back, bounded or not, read store's rows with
-// this call's writes merged in as they stand (a set, a change, a removal),
-// across store's pages (more rows than a first page); and the same once sent.
+// The rows span several store pages, with a set, a change and a removal queued.
 func TestAViewWalksStoreWithTheCallsWrites(cur realm, t *testing.T) {
 	v := view{"meta", "wt "}
 	begin()

@@ -301,8 +301,7 @@ void test("a hole's meter level, kept by its version on its chain (its id, genes
   await assert.doesNotReject(keepLevel({ ...chain, genesis: () => Promise.reject(new Error("down")) }, id, 1), "its chain not read: nothing kept, nothing thrown");
 });
 
-// A publish with gnokey skips the Builder's proof, and the rules alone pass a hole no round can hole: a community
-// hole is listed, linked, played and picked for the day only once its author holds a best on it.
+// A publish with gnokey skips the Builder's proof, and the rules alone pass a hole no round can hole.
 void test("a community hole its author has not holed: not listed, not played, not the day's; once they hold a best, all three", async () => {
   let held = false;
   const chain = chainOf({ [`${A}/good/v1`]: goodHex, [`${A}/bad/v1`]: hostileHex }, "dev", "G1", () => held);

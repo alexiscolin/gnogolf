@@ -7,9 +7,8 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// The deployer owns the collection. Only `gno test` (chain "dev") deploys
-// with no signer: the owner is then the tests' deployer, so that a filetest
-// can publish; anywhere else that deploy is refused.
+// Only `gno test` (chain "dev") deploys with no signer: the owner is then the
+// tests' deployer. Anywhere else that deploy is refused.
 func TestTheDeployerOwns(cur realm, t *testing.T) {
 	uassert.Equal(t, alice, ownerAtDeploy(alice, "gnoland1"))
 	uassert.Equal(t, alice, ownerAtDeploy(alice, "dev"))

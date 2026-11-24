@@ -1,16 +1,10 @@
-// Test mode's chain: the slice of makeChain the engine plays a hole on,
-// answered by builder.wasm (the realm's own code) for a hole the chain does
-// not have yet. Every answer agrees on one clock, the proof's period p:
-// period() is p, now() a time inside it (so the engine never moves the round
-// to another weather), the state and the weather are p's, and a weather past
-// it is refused as the realm refuses it, by every read but simulateRound (the
-// replay, which has no clock). Answers are checked as the chain's
-// are (chain.ts checks); a refusal is the realm's sentence, as from the chain.
+// Test mode's chain: builder.wasm answers as the realm would, for a hole not on the chain yet.
+// Every answer is at one period, so the engine never moves the round to another weather.
 import { checks, RULES, type Chain } from "../chain";
 import type { HoleRow, Vec2 } from "../types";
 import type { BuilderHost } from "./wasm";
 
-/** What the engine and the proof read of a chain, locally. */
+/** The part of a chain the engine and the proof read. */
 export type LocalChain = Pick<Chain, "holes" | "state" | "period" | "now" | "weather" | "simulateFrom" | "simulateRound" | "simulateCommit" | "extras">;
 
 const answer = <T>(out: string, ok: (v: unknown) => v is T): Promise<T> => {
@@ -22,10 +16,10 @@ const answer = <T>(out: string, ok: (v: unknown) => v is T): Promise<T> => {
   return Promise.reject(new Error("The builder's answer is not one the chain would give."));
 };
 
-/** The draft's hole (row: as the chain would list it; hex: its canonical data), played at period p. */
+/** A chain for the draft's hole at period p. row: as the chain would list it; hex: its canonical data. */
 export function makeLocalChain(host: BuilderHost, row: HoleRow, hex: string, p: number): LocalChain {
   host.load(row.id, hex);
-  // (the host is shared: its clock set again before each read that depends on it)
+  // The host is shared: its clock is set again before each read.
   const at = <T>(f: () => string, ok: (v: unknown) => v is T) => (host.setperiod(p), answer(f(), ok));
   return {
     holes: () => Promise.resolve([row]),

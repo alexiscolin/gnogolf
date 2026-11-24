@@ -5,20 +5,16 @@ import (
 	"errors"
 )
 
-// The catalogue: every gnome that can be minted, published by the owner a
-// series at a time. The genesis comes first, as the config says; a later
-// drop is one more AddSeries, of any size, with no new code. A series is
-// never changed once published: its gnomes may be owned.
-//
-// A series is its rows as published, one gnome per line,
+// A series is one drop of the catalogue, published whole by the owner and
+// never changed: its gnomes may be owned. The genesis comes first; a later
+// drop is one more AddSeries, with no new code. Its rows are one gnome a
+// line,
 //
 //	id|tier|name|traits
 //
-// ids following on from the last series with no gap, tier one of the
-// config's, traits the designer's compact encoding (version-prefixed, read
-// by the portrait and the client). The rows are kept as one string, read
-// in place (rows.gno): as structs they would cost several times the
-// deposit.
+// ids following on from the last series with no gap. They are kept as one
+// string and read in place (rows.gno): as structs they would cost several
+// times the deposit.
 type series struct {
 	name        string
 	first, last int64  // the ids of its first and last rows
@@ -35,8 +31,8 @@ type gnome struct {
 	traits string
 }
 
-// The bounds of the catalogue: the series, which every read walks, and the
-// rows of one, which AddSeries checks in one call.
+// Bounds: every read walks the series, and AddSeries checks a series' rows in
+// one call.
 const (
 	maxSeries     = 64
 	maxSeriesRows = 1000
@@ -45,8 +41,8 @@ const (
 	maxTraits     = 256
 )
 
-// AddSeries publishes the next series of the catalogue. Owner only. It is
-// refused whole if any row is wrong.
+// AddSeries publishes the next series of the catalogue from its rows.
+// Refused whole if any row is wrong. Owner only.
 func AddSeries(cur realm, name, data string) {
 	assertOwner(0, cur)
 	if err := addSeries(name, data); err != nil {

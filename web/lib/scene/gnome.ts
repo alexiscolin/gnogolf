@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { BALL_R } from "../terrain";
 import { C, flat, inked, disposeCourse, releaseShared, texOf, motion, ownFade, setFade, THIN_HULL, lanternGlow, share } from "./materials";
-import { makeRenderer, makeScene } from "./camera";
+import { makeRenderer, makeScene } from "./studio";
 import { bake } from "./bake";
 import { ud, type Gnome } from "./data";
 import type { UnlockId } from "../card";
@@ -15,10 +15,10 @@ export interface Skin {
   id: string;
   name: string;
   line: string;
-  /** the unlock that earns him (lib/card.ts UNLOCKS); none: everyone's */
+  /** The unlock that earns him; none: everyone has him. */
   unlock?: UnlockId;
   hat: number;
-  /** a hat other than the cone: GNOMES' three, or one of the collection's (gnome-kit.ts) */
+  /** A hat other than the cone. */
   shape?: "tricorn" | "toque" | "tophat" | KitHat;
   beard: Beard;
   hair?: number;
@@ -27,13 +27,13 @@ export interface Skin {
   glasses?: boolean; pompom?: boolean; flower?: boolean; cheeks?: boolean; stars?: boolean; tall?: boolean;
   horns?: boolean; helmet?: boolean; patch?: boolean; parrot?: boolean; mask?: boolean; flour?: boolean;
   sash?: boolean; monocle?: boolean; crown?: boolean; cape?: boolean;
-  /** a lit headlamp on the hat's front (the Miner's, in every world) */
+  /** A lit headlamp on the hat's front, worn in every world. */
   lamp?: boolean;
-  /** the brim's colour, when not the hat's (a helmet's: dark wood) */
+  /** The brim's colour, when not the hat's. */
   brim?: number;
-  // The collection's traits (lib/gnomes): none of GNOMES wears them.
+  // The collection's traits: none of GNOMES wears them.
   goggles?: boolean; earring?: boolean; neckerchief?: boolean; leaf?: boolean; soot?: boolean; freckles?: boolean; moon?: boolean;
-  /** the small things' colour (a neckerchief, goggles' strap, an earring) */
+  /** The small things' colour. */
   accent?: number;
   /** a Rare's patterned body, in body and patternColor */
   pattern?: Exclude<Pattern, "plain">;
@@ -41,21 +41,20 @@ export interface Skin {
   /** a Rare's piece, and its colour */
   piece?: Piece;
   pieceColor?: number;
-  /** what he is made of (an Epic's, a Legendary's), tinted materialColor */
+  /** What he is made of, tinted materialColor. */
   material?: Exclude<Material, "toon">;
   materialColor?: number;
-  /** what he leaves behind rolling, and what the cup does when he drops in (gnome-fx.ts) */
+  /** What he leaves behind rolling, and what the cup does when he drops in. */
   trail?: Trail;
   trailColor?: number;
   holing?: Exclude<Holing, "confetti">;
   holingColor?: number;
-  /** an Epic's or a Legendary's own thing (lib/gnomes/props.ts), and its colour */
+  /** An Epic's or a Legendary's prop, and its colour. */
   prop?: string;
   propColor?: number;
 }
 
-/** The ball is a gnome. Which one is the player's choice — cosmetic only: the
- *  chain moves a point, it never hears about beards. */
+/** The game's own gnomes. The choice is cosmetic: the chain moves a point. */
 export const GNOMES: readonly Skin[] = [
   { id: "classic", name: "The Classic", line: "Red hat, white beard. Why change a winning team?",
     hat: C.cap, beard: "full", hair: 0xffffff },
@@ -67,7 +66,6 @@ export const GNOMES: readonly Skin[] = [
     hat: 0xf2b94a, beard: "moustache", hair: 0x6b4a2f },
   { id: "gardener", name: "The Gardener", line: "A flower on her hat. She knows every blade of grass out here.",
     hat: 0xe98fb0, beard: "none", flower: true, cheeks: true },
-  // earned, not given: see lib/card.ts
   { id: "wizard", name: "The Wizard", line: "Finished the Garden Cup, and now the hat has stars on it.", unlock: "wizard",
     hat: 0x4b3a9a, beard: "long", hair: 0xffffff, stars: true, tall: true },
   { id: "viking", name: "The Viking", line: "The Garden Cup at par or under. The horns are earned.", unlock: "viking",
@@ -88,9 +86,7 @@ export const GNOMES: readonly Skin[] = [
     hat: 0xf2c14e, brim: 0xf2c14e, helmet: true, lamp: true, beard: "bushy", hair: 0x9a8b7a },
 ];
 
-// the headlamp: an iron housing on the hat's front, its lens lit (unlit
-// white-gold) and a small glow (a sprite, as the town's lanterns): real 3D,
-// inked like the rest of him
+// The headlamp: an inked iron housing, an unlit lens and a sprite for its glow.
 const LENS = share(new THREE.MeshBasicMaterial({ color: 0xfff3b0 }));
 function lampOn(body: THREE.Object3D, at: THREE.Vector3) {
   const lamp = new THREE.Group();
@@ -108,10 +104,9 @@ function lampOn(body: THREE.Object3D, at: THREE.Vector3) {
 }
 
 const FOUND = new WeakMap<THREE.Object3D, THREE.Object3D>();
-/** The player's gnome in a scene (the engine's ball; a duel's ghost is not
- *  him): a world that lights his way finds him here (the mines' headlamp). */
+/** The player's gnome in a scene, never a duel's ghost. */
 export function gnomeIn(scene: THREE.Object3D): Gnome | undefined {
-  // (found once and kept while he is still in it: the lamps ask every frame, and a search walks the whole course)
+  // Kept while he is still in the scene: the lamps ask every frame, and a search walks the whole course.
   let o: THREE.Object3D | null = FOUND.get(scene) ?? null;
   const gn = o;
   while (o && o !== scene) o = o.parent;
@@ -121,14 +116,7 @@ export function gnomeIn(scene: THREE.Object3D): Gnome | undefined {
   return found;
 }
 
-/**
- * A gnome's headlamp, lit: the Miner's own (in every world), or a clip-on one
- * any gnome wears while a world asks for it (the mines: on while he is
- * there, off when he leaves; the Miner's own never goes out). Returns the
- * lamp's glow, at its lens: its world position is where the light comes
- * from (a world's cone decal on the ground hangs from it, the gnome its
- * root); null once off.
- */
+/** Lights a gnome's headlamp, or takes a clip-on one off; the Miner's own never goes out. Returns the glow at its lens, where the light comes from, or null once off. */
 export function headlamp(gnome: Gnome, on = true): THREE.Object3D | null {
   const d = gnome.userData;
   if (on && !d.lamp) (d.lamp = lampOn(d.body, d.lampAt)), (d.clip = true);
@@ -136,7 +124,7 @@ export function headlamp(gnome: Gnome, on = true): THREE.Object3D | null {
   return d.lamp && d.lamp.parent!.visible ? d.lamp : null;
 }
 
-/** Horizontal stripes on the body (the pirate's shirt). */
+/** Horizontal stripes on the body. */
 function stripedBody([a, b]: readonly [number, number]) {
   const c = document.createElement("canvas");
   c.width = c.height = 32;
@@ -149,24 +137,20 @@ function stripedBody([a, b]: readonly [number, number]) {
   return flat(0xffffff, { map: t });
 }
 
-// The collection's gnomes met this visit (a token's skin under its id,
-// "t<id>": lib/gnomes/wear.ts makes them from the chain's traits), and the
-// gnome each player wears for everyone. gnomeById and rivalSkin read them,
-// so the ball, the clip, a duel's ghost and a board's face dress a player
-// alike in every world; one never met is the game's first gnome.
+// The collection gnomes met this visit, by id, and the gnome each player wears for everyone.
+// A gnome never met is drawn as the game's first.
 const met = new Map<string, Skin>(), worn = new Map<string, string>();
 /** A collection gnome, known from now on by its id. */
 export const knowGnome = (skin: Skin) => void met.set(skin.id, skin);
-/** What a player wears for everyone (a gnome's id), or nothing (null): their ghost and their face. */
+/** Sets the gnome a player wears for everyone, by id; null for none. */
 export const wears = (player: string, id: string | null) => void (id ? worn.set(player, id) : worn.delete(player));
 export const gnomeById = (id: string | null | undefined) => GNOMES.find((g) => g.id === id) || (id && met.get(id)) || GNOMES[0];
-// (test hooks only: ?rivaltraits, never a player's choice) the gnome every rival's ghost wears
 let rivalWears: Skin | null = null;
-/** (test hooks only) The gnome every rival's ghost wears, or null for rivalSkin's own pick. */
+/** Test hooks only: the gnome every rival's ghost wears, or null for rivalSkin's own pick. */
 export const setRivalGnome = (skin: Skin | null) => void (rivalWears = skin);
 
 function beardOf(k: Skin["beard"], hair: number | undefined) {
-  const m = flat(hair ?? 0xffffff); // (a beardless gnome has no hair colour: nothing is drawn with it)
+  const m = flat(hair ?? 0xffffff); // a beardless gnome has no hair colour, and draws nothing with it
   const g = new THREE.Group();
   if (k === "full") {
     const b = inked(new THREE.SphereGeometry(0.3, 14, 10), m);
@@ -232,34 +216,26 @@ function beardOf(k: Skin["beard"], hair: number | undefined) {
   return g;
 }
 
-/**
- * The collection's wardrobe (gnome-dress.ts): its hats, patterns, pieces,
- * props, matter and Legendaries' pieces, and where a lamp clips on them.
- * GNOMES' fourteen never need it, so it is not in the game's first load:
- * loadWardrobe() fetches it, and a collection gnome is known (knowGnome)
- * only once it is in. A collection skin drawn before then is drawn plain.
- */
+/** The collection's wardrobe, kept out of the first load: loadWardrobe() fetches it. A collection skin drawn before then is drawn plain. */
 export interface Wardrobe {
   /** a patterned body's material */
   body(skin: Skin): THREE.Material;
-  /** builds a collection hat into the hat's group: whether the skin wears one */
+  /** Builds a collection hat into the hat's group. Returns whether the skin wears one. */
   hat(hat: THREE.Group, skin: Skin): boolean;
   /** the highest point of the hat, in its space */
   top(skin: Skin): number;
-  /** his small things, piece, prop, Legendary's piece and material onto the built gnome: what moves */
+  /** Dresses the built gnome in his traits. Returns what moves. */
   dress(g: THREE.Group, hat: THREE.Group, skin: Skin, body: THREE.Mesh, beard: THREE.Group): ((t: number) => void)[];
-  /** where a lamp clips on his hat, in the body's space (null: none found) */
+  /** Where a lamp clips on his hat, in the body's space; null when none is found. */
   lamp(g: THREE.Group, hat: THREE.Group): THREE.Vector3 | null;
 }
 let wardrobe: Wardrobe | null = null;
-/** The wardrobe in use from now on (gnome-dress.ts gives itself on import). */
 export const setWardrobe = (w: Wardrobe) => void (wardrobe = w);
 const dress = chunk(() => import("./gnome-dress"));
-/** The wardrobe, fetched once (its own chunk, lib/chunk.ts): a failed fetch (offline, a deploy mid-flight) is
- *  asked again by the next call, never kept as a failure for the visit. */
+/** Fetches the wardrobe once. A failed fetch is asked again by the next call. */
 export const loadWardrobe = () => dress.load().then(() => undefined);
 
-/** The game's own hats (the cone, tall or not, the helmet, the tricorn, the toque, the top hat), into the hat's group. */
+/** Builds one of the game's own hats into the hat's group. */
 function gameHat(hat: THREE.Group, skin: Skin) {
   if (skin.shape === "tricorn") {
     // a black three-cornered hat: a low crown and three turned-up corners
@@ -297,7 +273,7 @@ function gameHat(hat: THREE.Group, skin: Skin) {
     dome.position.y = -0.3;
     hat.add(dome);
   } else {
-    // cut just under the brim: a foot any wider poked out of his brow, a red fleck over the eyes
+    // Cut just under the brim: a wider foot poked out of his brow, a red fleck over the eyes.
     const top = skin.tall ? 1.02 : 0.575, h = top + 0.3;
     const cone = inked(new THREE.ConeGeometry(h * 0.5 / (skin.tall ? 1.6 : 1.15), h, 16), flat(skin.hat));
     cone.position.y = top - h / 2;
@@ -306,13 +282,13 @@ function gameHat(hat: THREE.Group, skin: Skin) {
 }
 
 export function makeBall(skin: Skin = GNOMES[0]): Gnome {
-  const w = GNOMES.includes(skin) ? null : wardrobe; // (the fourteen: never the wardrobe)
+  const w = GNOMES.includes(skin) ? null : wardrobe; // GNOMES never take the wardrobe
   const g = new THREE.Group();
   const body = inked(new THREE.SphereGeometry(0.55, 22, 16), skin.stripes ? stripedBody(skin.stripes) : skin.pattern && w ? w.body(skin) : flat(skin.body || C.cream));
   g.add(body);
 
   const hat = new THREE.Group();
-  const kit = !!w && w.hat(hat, skin); // a collection hat, built: none of the game's own then
+  const kit = !!w && w.hat(hat, skin); // true once a collection hat is built
   if (!kit) gameHat(hat, skin);
   if (skin.crown) {
     // a gold crown round the foot of the red hat
@@ -364,7 +340,7 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
   if (skin.shape === "tricorn" || skin.shape === "toque") brim.visible = false;
   brim.rotation.x = Math.PI / 2;
   brim.position.y = -0.2;
-  if (!kit) hat.add(brim); // (the collection's hats have their own)
+  if (!kit) hat.add(brim); // a collection hat has its own brim
   if (skin.pompom) {
     const pom = inked(new THREE.SphereGeometry(0.17, 10, 8), flat(0xffffff));
     pom.position.y = kit && w ? w.top(skin) + 0.03 : 0.6;
@@ -384,9 +360,7 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
   hat.position.set(0, 0.62, -0.08);
   hat.rotation.x = -0.2;
   g.add(hat);
-  // where a headlamp clips on: the hat's front, just over the brim (on the
-  // helmet's dome, a hat's band, the cone where it is that wide; over a
-  // diver's mask, in front of a crown), in the body's own space
+  // Where a headlamp clips on: the hat's front, just over the brim, in the body's space.
   const [ly, lz] = skin.helmet ? [-0.05, 0.45] : skin.shape === "tophat" ? [0, 0.4] : skin.shape ? [0.05, 0.47] : skin.mask ? [0.12, 0.27] : [-0.1, skin.crown ? 0.5 : skin.tall ? 0.37 : 0.32];
   hat.updateMatrix();
   let lampAt = new THREE.Vector3(0, ly, lz).applyMatrix4(hat.matrix);
@@ -394,8 +368,7 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
   const eyes: THREE.Object3D[] = [];
   const dark = skin.body !== undefined && darkBody(skin.body);
   for (const side of [-1, 1]) {
-    // (on a body too dark for ink, where he looks must still read: a white
-    // round each eye, or lit eyes on lava)
+    // On a body too dark for ink his eyes must still read: a white round each, or lit eyes on lava.
     const eye = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 8), dark && skin.material === "lava" ? LENS : flat(C.ink));
     eye.position.set(side * 0.18, 0.08, 0.5);
     g.add(eye);
@@ -446,7 +419,7 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
     glass.rotation.x = Math.PI / 2 - 0.4;
     glass.scale.x = 1.7;
     glass.position.set(0, 0.52, 0.36);
-    // the strap hugs the hat just above its brim (the cone is ~0.4 wide there)
+    // The strap hugs the hat just above its brim, where the cone is about 0.4 wide.
     const strap = new THREE.Mesh(new THREE.TorusGeometry(0.41, 0.03, 4, 28), flat(0x1f2328));
     strap.rotation.x = Math.PI / 2 + 0.2;
     strap.position.set(0, 0.46, -0.06);
@@ -467,7 +440,7 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
     g.add(sash);
   }
   if (skin.cape) {
-    // a purple cape with an ermine collar (white, dotted black)
+    // A purple cape with an ermine collar.
     const cape = inked(new THREE.SphereGeometry(0.6, 18, 12, Math.PI * 0.15, Math.PI * 1.7, Math.PI * 0.45, Math.PI * 0.5), flat(0x6b3fa0, { side: THREE.DoubleSide }));
     cape.rotation.y = Math.PI;
     const collar = inked(new THREE.TorusGeometry(0.45, 0.09, 8, 24), flat(0xffffff));
@@ -485,7 +458,7 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
   const beard = beardOf(skin.beard, skin.hair);
   g.add(nose, beard);
   const ticks = w ? w.dress(g, hat, skin, body.children[0] as THREE.Mesh, beard) : [];
-  // a collection gnome's lamp: found on his hat (the fourteen keep theirs, to the vertex)
+  // A collection gnome's lamp point is found on his hat.
   if (w) lampAt = w.lamp(g, hat) || lampAt;
 
   const shade = new THREE.Mesh(
@@ -494,28 +467,25 @@ export function makeBall(skin: Skin = GNOMES[0]): Gnome {
   );
   shade.rotation.x = -Math.PI / 2;
 
-  // one draw for the whole gnome (per shader), the eyes apart: they blink
+  // One draw per shader for the whole gnome, but for the eyes: they blink.
   for (const e of eyes) ud(e).live = true;
   bake(g);
-  // the body is exactly the ball the chain rolls (Field.Radius), so a gnome
-  // against a wall touches it instead of sinking into it
+  // The body is exactly the ball the chain rolls: a gnome against a wall touches it.
   g.scale.setScalar(BALL_R / 0.55);
-  // ...but his nose, beard and hat stick out past it: how far, standing (the
-  // replay keeps that much off a wall, engine/replay.ts offWalls)
+  // How far his nose, beard and hat stick out past it: the replay keeps him that far off a wall.
   const box = new THREE.Box3().setFromObject(g, true);
   const reach = Math.max(-box.min.x, box.max.x, -box.min.z, box.max.z);
 
   const root = new THREE.Group() as Gnome;
-  root.name = "gnome"; // (gnomeIn; a ghost is renamed)
+  root.name = "gnome"; // what gnomeIn looks for; a ghost is renamed
   root.add(g, shade);
   root.userData = { body: g, eyes, shade, reach, mid: (box.min.y + box.max.y) / 2, lampAt };
   if (ticks.length) (root.userData.tick = (t) => ticks.forEach((f) => f(t)))(0);
-  if (skin.lamp) root.userData.lamp = lampOn(g, lampAt); // (after the bake: his glow stays a sprite of its own)
+  if (skin.lamp) root.userData.lamp = lampOn(g, lampAt); // after the bake: his glow stays a sprite of its own
   return root;
 }
 
-/** Another gnome in one's place (a scene's cast dressed as the player): the same
- *  parent, position and facing; the old one leaves the scene, freed. */
+/** Swaps a gnome for another skin's at the same parent, position and facing. The old one is freed. */
 export function rewear(old: Gnome, skin: Skin): Gnome {
   const now = makeBall(skin), parent = old.parent;
   now.position.copy(old.position);
@@ -525,14 +495,12 @@ export function rewear(old: Gnome, skin: Skin): Gnome {
   return now;
 }
 
-// a duel's ghost: paper white, inked thin as a gnome is (and nobody's skin)
+// A duel's ghost: paper white, and nobody's skin.
 const GHOST: Skin = { id: "ghost", name: "Ghost", line: "", hat: C.cream, body: C.cream, hair: C.cream, beard: "full" };
-/** A duel's rival's gnome: the one they wear (wears), else one of the others
- *  than the player's, the same for the same rival (their address picks it),
- *  so two gnomes never look alike. */
+/** A rival's gnome: the one they wear, else one their address picks among those the player does not wear. */
 export function rivalSkin(player: string, mine: string) {
   if (rivalWears) return rivalWears;
-  // the one they wear for everyone, once met (theirs, even if it is the player's too)
+  // The one they wear, even if it is the player's too.
   const w = worn.get(player), theirs = w ? gnomeById(w) : null;
   if (theirs && theirs.id === w) return theirs;
   const others = GNOMES.filter((k) => k.id !== mine);
@@ -541,15 +509,13 @@ export function rivalSkin(player: string, mine: string) {
   return others[h % others.length];
 }
 
-/** A see-through gnome (a duel's ghost), in its skin (a plain cream
- *  one by default): its own materials, no shadow; fade(o) sets how
- *  see-through, each part hiding what is behind it. */
+/** A see-through gnome with its own materials and no shadow; fade(o) sets how see-through. */
 export function makeGhost(o: number, skin: Skin = GHOST) {
   const ball = makeBall(skin);
   ball.name = "ghost";
   const mats = ownFade(ball, THIN_HULL);
-  ball.userData.shade.visible = false; // no shadow: a ghost
-  if (ball.userData.lamp) ball.userData.lamp.visible = false; // nor a glow: a Miner's lamp is his lens alone
+  ball.userData.shade.visible = false;
+  if (ball.userData.lamp) ball.userData.lamp.visible = false; // no glow: a Miner's lamp is his lens alone
   // its outline drawn after its body, against the body's depth: an ink rim, not an x-ray
   ball.traverse((o) => { if ("material" in o && (o.material as THREE.Material).side === THREE.BackSide) o.renderOrder = 1; });
   const fade = (x: number) => mats.forEach((m) => (setFade(m, x), (m.depthWrite = true)));
@@ -557,29 +523,23 @@ export function makeGhost(o: number, skin: Skin = GHOST) {
   return { ball, fade };
 }
 
-/** A little act a preview plays: "hop" (the picker: he hops, turning), "solo"
- *  (he rolls on the spot, rights himself, blinks, hops), "duel" (he and a
- *  duel's ghost hop in turn, as a duel's strokes go), "build" (he hammers:
- *  three eased leans forward and a little hop) or "shop" (he sways to show
- *  either side of himself, with a small bow). */
+/** An act a preview plays: hop (the picker), solo, duel (he and a ghost hop in turn), build (he hammers) or shop (he sways and bows). */
 export type Act = "hop" | "solo" | "duel" | "build" | "shop";
 
 const ease = (x: number) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
-/** One gnome at time k (ms) of the solo act's 3.6 s: a roll of two turns
- *  about his middle (a tall hat stays in frame, never under the ground), a
- *  wobble as he rights himself, a blink, then a hop. */
+/** One gnome at k ms of the solo act's 3.6 s: a roll of two turns about his middle, a wobble, a blink, then a hop. */
 function soloAt(g: Gnome, k: number) {
   const { body, eyes, mid } = g.userData;
   const roll = Math.min(k / 1300, 1), wob = k > 1300 && k < 1800 ? (1800 - k) / 500 : 0, a = ease(roll) * Math.PI * 4;
   body.rotation.set(a, 0.35, Math.sin(k / 45) * 0.18 * wob);
   const hop = k > 2900 && k < 3300 ? Math.sin(((k - 2900) / 400) * Math.PI) * 0.34 : 0;
-  // (turned about his middle: his body's centre goes round it)
+  // He turns about his middle: his body's centre goes round it.
   body.position.set(0, mid * (1 - Math.cos(a)) + hop, -mid * Math.sin(a));
   for (const e of eyes || []) e.scale.y = k > 2300 && k < 2430 ? 0.12 : 1;
   return hop;
 }
 
-/** He hops, turning (the picker, and a duel's pair). */
+/** He hops, turning. */
 function hopAt(g: Gnome, t: number) {
   const { body } = g.userData;
   const hop = Math.abs(Math.sin((t + 900) / 380)) * 0.22;
@@ -587,8 +547,7 @@ function hopAt(g: Gnome, t: number) {
   body.position.y = hop;
   return hop;
 }
-/** He hammers, as at a workbench: three leans forward from his feet, each eased in and out (0.8 s), then a
- *  little hop (3.2 s in all); rest, the pose he starts and ends in. */
+/** He hammers: three eased leans forward from his feet, 0.8 s each, then a little hop; 3.2 s in all. */
 function buildAt(g: Gnome, t: number) {
   const { body } = g.userData, k = t % 3200;
   const lean = k < 2400 ? (1 - Math.cos(((k % 800) / 800) * Math.PI * 2)) / 2 : 0;
@@ -597,37 +556,32 @@ function buildAt(g: Gnome, t: number) {
   body.position.set(0, hop, 0);
   return hop;
 }
-/** He shows himself off: he sways to show one side then the other, with a small bow at each (4 s). */
+/** He sways to show one side then the other, with a small bow at each; 4 s. */
 function shopAt(g: Gnome, t: number) {
   const { body } = g.userData, a = ((t % 4000) / 4000) * Math.PI * 2;
   body.rotation.set(Math.max(0, Math.sin(a * 2)) * 0.12, Math.sin(a) * 0.75, 0);
   body.position.set(0, 0, 0);
   return 0;
 }
-/** Each act's pose at time t (ms): his body moved and turned; what it returns, his hop's height (his shadow follows).
- *  Each loops seamlessly and turns no faster than the others' calm pace (tested). */
+/** Each act's pose at time t (ms). Returns his hop's height, which his shadow follows. Each loops seamlessly. */
 export const ACTS: Record<Act, (g: Gnome, t: number) => number> = { hop: hopAt, duel: hopAt, solo: (g, t) => soloAt(g, t % 3600), build: buildAt, shop: shopAt };
-/** Each act's stage: how far back the camera stands (z) and how much higher it looks (lift: the gnome stands lower
- *  in the frame), so every panel's gnome stands on the same baseline (a duel's pair, a step back to fit both). */
+/** Each act's stage: how far back the camera stands (z) and how much higher it looks (lift), so every panel's gnome stands on the same baseline. */
 export const STAGES: Record<Act, { z: number; lift: number }> = {
   hop: { z: 4.2, lift: 0 }, solo: { z: 4.2, lift: 0 }, build: { z: 4.2, lift: 0 }, shop: { z: 4.2, lift: 0 }, duel: { z: 5.2, lift: 0.2 },
 };
 
-/** A turntable for the gnome picker, and the game's choice's panels (act; a
- *  duel's ghost hops beside him in "duel"): its own small renderer, nothing
- *  else. Still, it holds the pose it stopped in and draws nothing more until
- *  it plays again (a panel plays under the pointer only). */
+/** A turntable with its own small renderer, for the picker and the panels. Still, it holds its pose and draws nothing until it plays. */
 export function makePreview(canvas: HTMLCanvasElement, { act = "hop", still = false }: { act?: Act; still?: boolean } = {}) {
   const renderer = makeRenderer(canvas);
   const scene = makeScene();
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50), stage = STAGES[act];
   camera.position.set(0, 0.95 + stage.lift, stage.z);
-  camera.lookAt(0, 0.38 + stage.lift, 0); // pompom at the top of a hop to the shadow, in frame
+  camera.lookAt(0, 0.38 + stage.lift, 0); // frames the pompom at the top of a hop down to the shadow
   let gnome: Gnome | null = null, alive = true;
   // the ghost, a step to his right
   const rival = act === "duel" ? makeGhost(0.55).ball : null;
-  if (rival) (rival.scale.setScalar(0.82), rival.position.set(0.46, 0, -0.25), scene.add(rival)); // (the pair: its stage a step back, room at both sides)
-  // the act's own clock: it runs only while playing (and never under reduced motion)
+  if (rival) (rival.scale.setScalar(0.82), rival.position.set(0.46, 0, -0.25), scene.add(rival));
+  // The act's own clock: it runs only while playing, never under reduced motion.
   let t = 0, last = 0, playing = !still, drawn = false;
   const size = () => {
     const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -645,11 +599,11 @@ export function makePreview(canvas: HTMLCanvasElement, { act = "hop", still = fa
     else if (drawn) return;
     if (gnome) {
       const { shade } = gnome.userData;
-      // his act's pose; his shadow stays on the ground and shrinks as he rises
+      // His shadow stays on the ground and shrinks as he rises.
       const hop = ACTS[act](gnome, t);
       shade.scale.setScalar(1 - hop * 1.6);
       shade.material.opacity = 0.18 * (1 - hop * 1.4);
-      gnome.userData.tick?.(t); // (a Legendary's piece moves with the act)
+      gnome.userData.tick?.(t); // a Legendary's piece moves with the act
     }
     // the ghost hops when he lands: their turns
     if (rival) {

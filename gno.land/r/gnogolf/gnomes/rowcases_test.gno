@@ -6,10 +6,9 @@ import (
 	"testing"
 )
 
-// rowCases: what a row's name and traits may be (plainName, printable), one
-// case a line: its field, "ok" or "no", and the text Go-quoted. The client's
-// own check reads this same list (web/test/gnomes.test.ts: lib/gnomes/rows.ts
-// plainName and printable), so the two rules never drift apart.
+// rowCases is what a row's name and traits may be, a case a line: its field,
+// "ok" or "no", and the text Go-quoted. web/test/gnomes.test.ts reads this
+// list to hold the client's rule (lib/gnomes/rows.ts) to this one.
 const rowCases = `
 name ok "Heat-Suit Hal"
 name ok "O'Brien Jr."

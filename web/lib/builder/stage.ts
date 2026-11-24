@@ -8,7 +8,7 @@
 // lost (a GPU reset, a driver update), the board is drawn in 2D until the
 // browser gives it back; then whoever holds the canvas is told, to draw again.
 import type * as THREE from "three";
-import { makeRenderer } from "../scene/camera";
+import { makeRenderer } from "../scene/studio";
 
 let canvas: HTMLCanvasElement | null = null, renderer: THREE.WebGLRenderer | null | undefined, lost = false;
 const holders: { el: HTMLElement; back: () => void }[] = [];

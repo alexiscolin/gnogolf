@@ -1,4 +1,5 @@
-// components/Golf.tsx, read as source (no DOM here): the hole-finished card is said (finished_shown) once the
+// The game's screen, read as source (no DOM here; components/Golf.tsx, its parts in components/game, its screens'
+// names in lib/screens.ts): the hole-finished card is said (finished_shown) once the
 // player's best on the round on offer was asked, answered or not, and each round asks afresh; the community's holes
 // are one of the game's screens (components/Title.tsx: no title scene behind their address); a link to the author's
 // own unheld hole opens only while they are still on the cups.
@@ -6,7 +7,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const golf = fs.readFileSync(new URL("../components/Golf.tsx", import.meta.url), "utf8");
+const GAME = new URL("../components/game/", import.meta.url);
+const golf = [new URL("../components/Golf.tsx", import.meta.url), ...fs.readdirSync(GAME).map((f) => new URL(f, GAME)), new URL("../lib/screens.ts", import.meta.url)].map((f) => fs.readFileSync(f, "utf8")).join("\n");
 const title = fs.readFileSync(new URL("../components/Title.tsx", import.meta.url), "utf8");
 
 void test("finished_shown waits for this round's best: the hole played again in the same mode is not answered yet", () => {

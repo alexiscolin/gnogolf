@@ -1,17 +1,14 @@
 #!/bin/sh
 # check.sh [--smoke]: everything that must pass before a commit or a deploy,
-# the quick checks first. The client's types (its tests', the scripts' and
-# media's too), lint, the realm sync check, the gnome catalogue and looks, the
-# scene's golden builds; then the Gno packages' tests with the onyx toolchain
-# (their gas and storage goldens included), the course holes' fingerprints,
-# the deployed packages staged as addpkg takes them (stage.sh: at the deploy's
-# paths, the repo's files byte for byte, linted), the gnomes' portrait art
-# (art.gno, as the client's gnome traces it; headless Chrome), and the aim
-# preview's wasm (wasm.sh --check: the build of these sources, bit for bit,
-# and the realm's answers on the whole course, byte for byte; TinyGo and
-# binaryen's wasm-opt needed); then the unit tests with their coverage floor,
-# and with --smoke the end-to-end run against a local chain and dev server.
-# Stops at the first failure. This is also what a CI would run.
+# the quick checks first. It stops at the first failure. A CI would run the same.
+#
+#   the client  types, lint, selfcheck, the gnome catalogue and looks, the scene's golden builds
+#   Gno         the packages' tests, the holes' fingerprints, the staged packages (stage.sh),
+#               the gnomes' portrait art (headless Chrome), the aim preview's wasm (TinyGo, wasm-opt)
+#   the tests   the unit tests, with their coverage floor
+#   --smoke     then the end-to-end run against a local chain and dev server
+#
+# Env: GNO_TOOLCHAIN, GNO, SKIP_GNO (below). What it needs: docs/development.md.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -28,10 +25,9 @@ echo "== the realm's rows: each series' as the catalogue makes them, each row's 
 echo "== the gnomes' golden looks: every one drawn as it was" && npm run -s gnomes:looks
 echo "== the scene's golden: every course hole, stroke and palette piece built as it was" && npm run -s scene:looks
 
-# The onyx toolchain: GNO_TOOLCHAIN is the folder of the gno, gnokey and
-# gnodev built from a gno checkout at the tag chain/onyx, each finding its
-# GNOROOT (that checkout) by itself; GNO is the gno binary alone. Without it
-# the check fails: SKIP_GNO=1 checks the client alone, and says so.
+# GNO_TOOLCHAIN is the folder of the onyx gno, gnokey and gnodev, built from a
+# gno checkout at the tag chain/onyx. GNO is the gno binary alone. Without one
+# the check fails; SKIP_GNO=1 checks the client alone, and says so.
 toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 GNO=${GNO:-$toolchain/gno}
 skipped=""
@@ -48,9 +44,7 @@ elif [ -x "$GNO" ]; then
 	trap 'rm -rf "$stage"' EXIT
 	GNO=$GNO "$root/scripts/stage.sh" nym-stagecheck000 "$stage" # any name will do
 	MAINNET=1 GNO=$GNO "$root/scripts/stage.sh" nym-stagecheck000 "$stage" # without v1, nor the import of its records
-	# the gnomes' portrait art: art.gno, what media/gnomes/portrait/build.mjs
-	# traces from the client's gnome (headless Chrome; CHROME, see
-	# media/lib/cdp.mjs), byte for byte
+	# headless Chrome (CHROME: see media/lib/cdp.mjs)
 	echo "== the gnomes' portrait art: art.gno, as the client's gnome traces it"
 	node "$root/media/gnomes/portrait/build.mjs" --check
 	echo "== the aim preview's wasm: the build of these sources, answering as the realm, byte for byte"
@@ -58,12 +52,12 @@ elif [ -x "$GNO" ]; then
 	# the holes' par plans: the solver's, kept out of the public repo
 	[ -f "$root/private/botcheck/hole-bests.json" ] || skipped="$skipped (the wasm parity: random shots only, no par plans)"
 else
-	echo "check.sh: no onyx gno at $GNO. Build the toolchain there (the README, \"Run it\"), or set GNO_TOOLCHAIN (or GNO) to one; SKIP_GNO=1 checks the client alone." >&2
+	echo "check.sh: no onyx gno at $GNO. Build the toolchain there (docs/development.md, \"The toolchain\"), or set GNO_TOOLCHAIN (or GNO) to one; SKIP_GNO=1 checks the client alone." >&2
 	exit 1
 fi
 
 echo "== unit tests" && npm test --silent
-# the bot check's scoring: its rules are the private notes' (private/, beside the code), when checked out
+# the bot check's scoring, when private/ is checked out
 if [ -f ../private/botcheck/score.test.ts ]; then
 	echo "== the bot check: its types and its scoring" && npx tsc --noEmit -p ../private/botcheck/tsconfig.json
 	node --experimental-strip-types --disable-warning=ExperimentalWarning --test ../private/botcheck/score.test.ts

@@ -1,12 +1,9 @@
-// The collection's wardrobe: its hats, the small
-// things its gnomes wear, a Rare's piece and patterned body. Built as the
-// gnome is, flat colours under a thin ink line, and only for a Skin that asks:
-// GNOMES' fourteen never reach here.
+// The collection's hats, small things, Rare pieces and patterned bodies, built in flat colours under a thin ink line.
 import * as THREE from "three";
 import { C, flat, inked, texOf } from "./materials";
 import type { Skin } from "./gnome";
 
-/** The collection's hats (Skin.shape), each with its own brim. */
+/** The collection's hats, each with its own brim. */
 export const KIT_HATS = ["straw", "bucket", "sailor", "bandana", "beret", "beanie", "alpine", "slouch", "pith",
   "skullcap", "souwester", "mill", "mushroom"] as const;
 export type KitHat = (typeof KIT_HATS)[number];
@@ -16,27 +13,23 @@ const Q = Math.PI / 2;
 const at = <T extends THREE.Object3D>(o: T, x: number, y: number, z: number) => (o.position.set(x, y, z), o);
 /** A dome: the top half of a sphere, its rim at y 0. */
 const dome = (r: number, w = 16, h = 8) => new THREE.SphereGeometry(r, w, h, 0, Math.PI * 2, 0, Math.PI / 2);
-/** A cone's frustum, closed or open (a brim turned up or down). */
+/** A cone's frustum; open for a brim. */
 const frustum = (top: number, bottom: number, h: number, open = false) => new THREE.CylinderGeometry(top, bottom, h, 18, 1, open);
 const accentOf = (skin: Skin) => skin.accent ?? C.sun;
 
-// Each hat stands in the hat's space, as makeBall's cone does: the head's top
-// is about y -0.3 there, a 0.38-wide circle; top is its highest point (where
-// a pompom or an Epic's prop sits).
+// In the hat's space the head's top is a 0.38-wide circle at about y -0.3.
+// top is the hat's highest point, where a pompom or a prop sits.
 const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material) => THREE.Object3D[] }> = {
-  // a wide straw sun hat, a ribbon round its crown
   straw: { top: 0.06, build: (s, m) => [
     at(inked(frustum(0.3, 0.36, 0.32), m), 0, -0.1, 0),
     at(inked(frustum(0.6, 0.62, 0.04), m), 0, -0.25, 0),
     at(new THREE.Mesh(frustum(0.365, 0.37, 0.08, true), flat(accentOf(s), { side: THREE.DoubleSide })), 0, -0.2, 0),
   ] },
-  // a fisherman's bucket hat, its brim sloping down
   bucket: { top: 0.12, build: (s, m) => [
     at(inked(frustum(0.3, 0.38, 0.34), m), 0, -0.05, 0),
     at(inked(new THREE.SphereGeometry(0.3, 14, 6, 0, Math.PI * 2, 0, 0.5), m), 0, -0.11, 0),
     at(inked(frustum(0.4, 0.56, 0.13, true), flat(s.hat, { side: THREE.DoubleSide })), 0, -0.26, 0),
   ] },
-  // a sailor's white cap, its brim turned up all round
   sailor: { top: 0.14, build: (s, m) => [
     at(inked(frustum(0.36, 0.4, 0.36), m), 0, -0.08, 0),
     // its top a shallow dome, rim on the crown's
@@ -44,7 +37,6 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     at(inked(frustum(0.47, 0.4, 0.15, true), flat(s.hat, { side: THREE.DoubleSide })), 0, -0.2, 0),
     at(new THREE.Mesh(frustum(0.365, 0.37, 0.04, true), flat(s.accent ?? 0x24406e, { side: THREE.DoubleSide })), 0, 0.04, 0),
   ] },
-  // a bandana tied over the head, its knot and ends at the back, spotted
   bandana: { top: 0.1, build: (s, m) => {
     const cloth = at(inked(dome(0.46), m), 0, -0.3, 0);
     cloth.scale.y = 0.92;
@@ -54,7 +46,7 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
       e.rotation.set(-0.5, 0, side * 0.5);
       return e;
     });
-    // spots on its surface: [round the head, down from the top]
+    // Spots as [angle round the head, angle down from the top].
     const dots = [[1.0, 0.9], [2.1, 1.0], [1.6, 0.35], [0.2, 1.1], [2.9, 1.1], [1.3, 1.35], [0.6, 0.6], [2.5, 0.6]].map(([az, pol]) => {
       const d = new THREE.Mesh(new THREE.SphereGeometry(0.026, 6, 4), flat(s.accent ?? 0xffffff));
       d.scale.set(1, 1, 0.4);
@@ -64,7 +56,6 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     });
     return [cloth, knot, ...ends, ...dots];
   } },
-  // a painter's beret, tipped to one side, its stalk on top
   beret: { top: 0.06, build: (_, m) => {
     const b = at(inked(new THREE.SphereGeometry(0.47, 16, 10), m), 0.06, -0.14, 0);
     b.scale.set(1, 0.32, 1);
@@ -72,14 +63,12 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     const stalk = at(inked(new THREE.CylinderGeometry(0.025, 0.03, 0.08, 6), m), 0.05, 0.03, 0);
     return [b, stalk];
   } },
-  // a knitted beanie with a turned-up cuff
   beanie: { top: 0.2, build: (s, m) => {
     const b = at(inked(dome(0.43), m), 0, -0.27, 0);
     b.scale.y = 1.08;
     const cuff = at(inked(frustum(0.45, 0.45, 0.16), flat(s.accent ?? s.hat)), 0, -0.24, 0);
     return [b, cuff];
   } },
-  // an alpine felt hat: a creased crown, a narrow brim up at the back, a band and a small feather
   alpine: { top: 0.18, build: (s, m) => {
     const crown = at(inked(frustum(0.22, 0.36, 0.42), m), 0, -0.03, 0);
     const brim = at(inked(frustum(0.5, 0.5, 0.035), m), 0, -0.24, 0);
@@ -90,7 +79,6 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     feather.rotation.z = -0.45;
     return [crown, brim, band, feather];
   } },
-  // a prospector's slouch hat: a dented crown, a wide brim that droops
   slouch: { top: 0.1, build: (s, m) => {
     const crown = at(inked(frustum(0.28, 0.36, 0.32), m), 0, -0.08, 0);
     const top = at(inked(new THREE.SphereGeometry(0.28, 14, 6), m), 0, 0.07, 0);
@@ -99,7 +87,6 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     brim.rotation.x = -0.12;
     return [crown, top, brim];
   } },
-  // an explorer's pith helmet, its band, a brim all round
   pith: { top: 0.12, build: (s, m) => {
     const d = at(inked(dome(0.46), m), 0, -0.27, 0);
     d.scale.y = 0.85;
@@ -108,7 +95,6 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     const knob = at(inked(new THREE.SphereGeometry(0.05, 8, 6), m), 0, 0.13, 0);
     return [d, brim, band, knob];
   } },
-  // a smith's leather skullcap with a short peak
   skullcap: { top: -0.02, build: (_, m) => {
     const d = at(inked(dome(0.44), m), 0, -0.3, 0);
     d.scale.y = 0.62;
@@ -117,17 +103,15 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     peak.rotation.y = -Q;
     return [d, peak];
   } },
-  // a sou'wester: a rain hat whose brim runs long down the back
   souwester: { top: 0.06, build: (s, m) => {
     const d = at(inked(dome(0.42), m), 0, -0.3, 0);
     d.scale.y = 0.85;
-    // (its top edge tucked inside the dome: no gap shows as it tips back)
+    // Its top edge sits inside the dome: no gap shows as it tips back.
     const brim = at(inked(frustum(0.38, 0.62, 0.16, true), flat(s.hat, { side: THREE.DoubleSide })), 0, -0.29, -0.07);
     brim.rotation.x = 0.22;
     return [d, brim];
   } },
-  // the Miller's: a soft miller's cap, a small mill standing on it, whitewashed, its roof
-  // in the accent (its sails: gnome-legend.ts "mill-sails", on the tower's front)
+  // The Miller's: the sails on the tower's front are his Legendary piece.
   mill: { top: 0.6, build: (s, m) => {
     const cap = at(inked(frustum(0.3, 0.4, 0.26), m), 0, -0.17, 0);
     const puff = at(inked(new THREE.SphereGeometry(0.32, 16, 8), m), 0, -0.04, 0);
@@ -138,7 +122,7 @@ const HATS: Record<KitHat, { top: number; build: (skin: Skin, m: THREE.Material)
     const door = at(new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.11, 0.01), flat(C.woodDark)), 0, 0.08, 0.18);
     return [cap, puff, tower, roof, door];
   } },
-  // the Ancient Mushroom's: a wide cap, its gills under it (its glowing spots: gnome-legend.ts)
+  // The Ancient Mushroom's: the glowing spots are his Legendary piece.
   mushroom: { top: 0.32, build: (_, m) => {
     const cap = at(inked(dome(0.62, 18, 9), m), 0, -0.1, 0);
     cap.scale.y = 0.68;
@@ -158,14 +142,14 @@ export function hatTop(skin: Skin) {
   return skin.tall ? 1.02 : 0.575;
 }
 
-/** One of the collection's hats, into the hat's group: whether the skin wears one. */
+/** Adds the skin's collection hat to the hat's group. Returns whether it wears one. */
 export function kitHat(hat: THREE.Group, skin: Skin) {
   if (!isKitHat(skin.shape)) return false;
   hat.add(...HATS[skin.shape].build(skin, flat(skin.hat)));
   return true;
 }
 
-/** A dab on the face: a disc lying on the head's surface at (x, y). */
+/** A disc lying on the head's surface at (x, y). */
 function onFace(x: number, y: number, r: number, color: number) {
   const z = Math.sqrt(Math.max(0, 0.552 * 0.552 - x * x - y * y));
   const d = at(new THREE.Mesh(new THREE.CircleGeometry(r, 10), flat(color)), x, y, z);
@@ -173,8 +157,7 @@ function onFace(x: number, y: number, r: number, color: number) {
   return d;
 }
 
-/** The collection's small things (goggles, an earring, a neckerchief, a
- *  leaf, soot, freckles, a moon), into the body g and the hat's group. */
+/** Adds the skin's small things to the body g and the hat's group. */
 export function kitWear(g: THREE.Group, hat: THREE.Group, skin: Skin) {
   const accent = accentOf(skin);
   if (skin.goggles) {
@@ -226,7 +209,7 @@ export function kitWear(g: THREE.Group, hat: THREE.Group, skin: Skin) {
   }
 }
 
-/** A Rare's piece (Skin.piece): a scarf, a bow tie, a plume, earmuffs, a satchel or a medal. */
+/** Adds a Rare's piece: a scarf, a bow tie, a plume, earmuffs, a satchel or a medal. */
 export function kitPiece(g: THREE.Group, hat: THREE.Group, skin: Skin) {
   const m = flat(skin.pieceColor ?? C.cap);
   switch (skin.piece) {
@@ -263,7 +246,7 @@ export function kitPiece(g: THREE.Group, hat: THREE.Group, skin: Skin) {
         muff.scale.x = 0.55;
         g.add(muff);
       }
-      // the band over the head from one muff to the other (a half torus stands across, in x and y, as it is made)
+      // The band over the head between the muffs: a half torus already stands across, in x and y.
       g.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.025, 4, 24, Math.PI), flat(0x5c6670)), 0, 0.12, 0));
       break;
     }
@@ -288,8 +271,7 @@ export function kitPiece(g: THREE.Group, hat: THREE.Group, skin: Skin) {
   }
 }
 
-/** A Rare's patterned body: the pattern drawn on a canvas round the body
- *  (u its way round, v from the head to the feet), in body and patternColor. */
+/** A Rare's patterned body: a canvas wrapped round it, u going round and v from head to feet. */
 export function patternedBody(skin: Skin) {
   const N = 64, c = document.createElement("canvas");
   c.width = c.height = N;

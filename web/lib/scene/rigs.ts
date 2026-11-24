@@ -1,0 +1,252 @@
+// Where the camera stands: the boxes it frames (the course, the lane, the
+// island) and the rigs that hold them in the part of the screen the HUD
+// leaves free.
+import * as THREE from "three";
+import { ISLAND } from "./common";
+import type { Board, HoleState } from "../types";
+
+/** The screen the camera frames: its size in CSS pixels, and what the HUD covers of it. */
+export interface View {
+  w: number;
+  h: number;
+  top: number;
+  bottom: number;
+  side: number;
+}
+/** Where the camera is: what it looks at, from how far, the picture's slide
+ *  (ox, oy), its tilt (0 overview .. 1 follow), a yaw round the target, and
+ *  (the Far view) the share of ORBIT it has room for. */
+export interface Rig {
+  target: THREE.Vector3;
+  dist: number;
+  ox: number;
+  oy: number;
+  tilt?: number;
+  yaw?: number;
+  orbit?: number;
+}
+
+/** What the overview frames: the course, with a little of the garden around
+ *  it. The island may run off the edges; the green is what the player needs. */
+export const courseBox = (board: Board) =>
+  new THREE.Box3(new THREE.Vector3(-1.5, -1, -1.5), new THREE.Vector3(board.w + 1.5, 1.5, board.h + 1.5));
+
+/** What the Far view frames: the lane itself (its rails, pieces, tee and
+ *  cup), not the whole board, which a narrow or an L-shaped lane fills only
+ *  in part, with the same margin. Given the ground's height, its floor and
+ *  top follow the relief (a hill, a sunk pond) under it. */
+export function laneBox(s: Pick<HoleState, "board" | "walls" | "posts" | "zones" | "start" | "cup">, height?: (x: number, z: number) => number) {
+  const b = new THREE.Box3(), p = new THREE.Vector3();
+  const add = (x: number, z: number) => b.expandByPoint(p.set(Math.min(Math.max(x, 0), s.board.w), 0, Math.min(Math.max(z, 0), s.board.h)));
+  for (const w of s.walls) add(w.a[0], w.a[1]), add(w.b[0], w.b[1]);
+  for (const q of s.posts) add(q.c[0] - q.r, q.c[1] - q.r), add(q.c[0] + q.r, q.c[1] + q.r);
+  for (const z of s.zones) add(z.min[0], z.min[1]), add(z.max[0], z.max[1]);
+  add(s.start[0], s.start[1]), add(s.cup[0], s.cup[1]);
+  if (b.isEmpty()) return courseBox(s.board);
+  let y0 = 0, y1 = 0;
+  // the relief under the lane, sampled every unit (a hole is 60 by 40 at most: a few thousand calls, once per hole or resize)
+  if (height)
+    for (let x = b.min.x; x <= b.max.x + 0.5; x++)
+      for (let z = b.min.z; z <= b.max.z + 0.5; z++) {
+        const y = height(Math.min(x, b.max.x), Math.min(z, b.max.z));
+        if (Number.isFinite(y)) (y0 = Math.min(y0, y)), (y1 = Math.max(y1, y));
+      }
+  b.min.set(b.min.x - 1.5, y0 - 1, b.min.z - 1.5);
+  b.max.set(b.max.x + 1.5, y1 + 1.5, b.max.z + 1.5);
+  return b;
+}
+
+/** Where the island sits in the world. */
+export const islandBox = (board: Board) =>
+  new THREE.Box3(new THREE.Vector3(-ISLAND.x, -ISLAND.soil, -ISLAND.back),
+                 new THREE.Vector3(board.w + ISLAND.x, 4, board.h + ISLAND.front));
+
+/** Portrait screens look down the long axis instead of across it. */
+const isPortrait = (w: number, h: number) => h > w * 1.05;
+
+// the two viewing directions, made once: applyRig runs every frame
+const LOOK_PORTRAIT = new THREE.Vector3(-0.7, 0.9, 0).normalize(), LOOK_WIDE = new THREE.Vector3(0, 0.72, 0.8).normalize();
+// following the gnome the camera sits a few degrees lower (about 36° over
+// the ground instead of 42°): closer to the grass, the cup still in view.
+// A rig's tilt (0 overview, 1 follow) blends the two, eased like the rest.
+const LOOK_PORTRAIT_LOW = new THREE.Vector3(-0.78, 0.8, 0).normalize(), LOOK_WIDE_LOW = new THREE.Vector3(0, 0.6, 0.83).normalize();
+const _dir = new THREE.Vector3(), _yawed = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+const lookDir = (w: number, h: number, tilt = 0) => {
+  const hi = isPortrait(w, h) ? LOOK_PORTRAIT : LOOK_WIDE, lo = isPortrait(w, h) ? LOOK_PORTRAIT_LOW : LOOK_WIDE_LOW;
+  return tilt <= 0 ? hi : _dir.copy(hi).lerp(lo, Math.min(1, tilt)).normalize();
+};
+
+/** Where the camera is: what it looks at, from how far, and how the picture is
+ *  slid so that point lands in the middle of the space the HUD leaves free. */
+export function applyRig(camera: THREE.PerspectiveCamera, rig: Rig, view: Pick<View, "w" | "h">) {
+  camera.aspect = view.w / view.h;
+  const dir = lookDir(view.w, view.h, rig.tilt || 0);
+  // a yaw (the Far view's mouse orbit) swings the camera round the target, a few degrees
+  camera.position.copy(rig.target).addScaledVector(rig.yaw ? _yawed.copy(dir).applyAxisAngle(UP, rig.yaw) : dir, rig.dist);
+  camera.lookAt(rig.target);
+  camera.setViewOffset(view.w, view.h, rig.ox, rig.oy, view.w, view.h);
+  camera.updateMatrixWorld();
+  // the far plane follows the rig: the scene reaches ~220 past the target, and
+  // a tight far keeps the depth buffer precise (no shimmer on flat ground)
+  const far = Math.max(120, rig.dist + 220);
+  if (Math.abs(camera.far - far) > 5) camera.far = far;
+  camera.updateProjectionMatrix();
+}
+
+// The lens the rig modes draw with (engine/camera.ts: 30° for classic and far).
+// The framing is solved through a camera of its own with that lens, never the
+// live one: that one may be mid third person (58° and more) when a hole loads
+// or the window is resized, and a rig solved through it came out twice too close.
+const RIG_FOV = 30;
+const _lens = new THREE.PerspectiveCamera(RIG_FOV, 1, 3, 260);
+
+/**
+ * The overview: the whole island inside the free part of the screen, whatever
+ * its shape. The distance is searched, not guessed — a guess is right for one
+ * aspect ratio and cuts the garden off on every other one. `fill` below 1
+ * leaves a margin round it; `tilt` lowers the view toward the follow angle.
+ */
+export function overviewRig(box: THREE.Box3, view: View, { fill = 1, tilt = 0 } = {}): Rig {
+  const { w, h, top, bottom, side } = view;
+  const target = box.getCenter(new THREE.Vector3());
+  const fw = (w - 2 * side) * fill, fh = (h - top - bottom) * fill;
+  const rig: Rig = { target, dist: 0, ox: 0, oy: 0, tilt };
+  let lo = 5, hi = 480; // no overview is further off than this (a long town hole on a phone: ~250)
+  for (let i = 0; i < 32; i++) {
+    rig.dist = (lo + hi) / 2;
+    const r = frameOf(box, view, rig);
+    if (r.x1 - r.x0 <= fw && r.y1 - r.y0 <= fh) hi = rig.dist; else lo = rig.dist;
+  }
+  rig.dist = hi;
+  const r = frameOf(box, view, rig);
+  return Object.assign(rig, { ox: (r.x0 + r.x1) / 2 - w / 2, oy: (r.y0 + r.y1) / 2 - (top + (h - top - bottom) / 2) });
+}
+
+// where the box's 8 corners land on screen, in CSS pixels, for a rig (its
+// slide included), or null when one is behind the lens
+const _corner = new THREE.Vector3();
+function frameOf(box: THREE.Box3, view: Pick<View, "w" | "h">, rig: Rig) {
+  applyRig(_lens, rig, view);
+  const r = { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9, behind: false };
+  for (const x of [box.min.x, box.max.x])
+    for (const y of [box.min.y, box.max.y])
+      for (const z of [box.min.z, box.max.z]) {
+        const q = _corner.set(x, y, z).project(_lens);
+        if (q.z >= 1) r.behind = true;
+        const px = ((q.x + 1) / 2) * view.w, py = ((1 - q.y) / 2) * view.h;
+        r.x0 = Math.min(r.x0, px); r.x1 = Math.max(r.x1, px);
+        r.y0 = Math.min(r.y0, py); r.y1 = Math.max(r.y1, py);
+      }
+  return r;
+}
+
+/** The Far view's mouse orbit at its widest: this much yaw, this much tilt either way. */
+export const ORBIT = { yaw: (24 * Math.PI) / 180, tilt: 0.35 };
+/** The least share of ORBIT the mouse always has (±8° of yaw). */
+const FAR_MIN_ORBIT = 0.35;
+/** The Far view's pitch: halfway from the overview's to the follow camera's (a 3/4 view). */
+const FAR_TILT = 0.5;
+// the mouse's reach: the centre, the four corners and the four edges' middles
+const LEANS = [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1], [1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/**
+ * The Far view: the whole hole (`box`, laneBox) inside the free part of the
+ * screen, from the mouse orbit's one end to the other, as close as that
+ * allows. For a distance, every pose the mouse can lean the camera to is
+ * projected (the box's 8 corners through the real lens and pitch); their
+ * union must fit the free width with no sideways slide (the live camera
+ * slides up or down only) and the free height, which the slide `oy` then
+ * centres it in. The distance is the least that fits, with FAR_MIN_ORBIT of
+ * the orbit (none on a screen with no mouse); `orbit`, the share of ORBIT
+ * the mouse then gets, is as much as still fits at that distance.
+ */
+export function farRig(box: THREE.Box3, view: View, mouse = typeof matchMedia === "undefined" || matchMedia("(any-pointer: fine)").matches): Rig & { orbit: number; tilt: number } {
+  const { w, h, top, bottom, side } = view;
+  const rig = { target: box.getCenter(new THREE.Vector3()), dist: 0, ox: 0, oy: 0, tilt: FAR_TILT, orbit: 0 };
+  const t: Rig = { ...rig, target: rig.target };
+  // the union of the poses' frames at rig.dist with orbit share k, unslid
+  const span = (k: number) => {
+    const u = { x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9, behind: false };
+    t.dist = rig.dist;
+    for (const [a, b] of LEANS) {
+      t.yaw = a * k * ORBIT.yaw;
+      t.tilt = FAR_TILT + b * k * ORBIT.tilt;
+      const r = frameOf(box, view, t);
+      u.x0 = Math.min(u.x0, r.x0); u.x1 = Math.max(u.x1, r.x1);
+      u.y0 = Math.min(u.y0, r.y0); u.y1 = Math.max(u.y1, r.y1);
+      u.behind ||= r.behind;
+    }
+    return u;
+  };
+  const fits = (k: number) => {
+    const u = span(k);
+    return !u.behind && u.x0 >= side && u.x1 <= w - side && u.y1 - u.y0 <= h - top - bottom;
+  };
+  const k0 = mouse ? FAR_MIN_ORBIT : 0;
+  let lo = 5, hi = 480;
+  for (let i = 0; i < 32; i++) {
+    rig.dist = (lo + hi) / 2;
+    if (fits(k0)) hi = rig.dist; else lo = rig.dist;
+  }
+  rig.dist = hi;
+  // more orbit where the screen has room for it (a wide hole on a tall screen)
+  let a = k0, b = mouse ? 1 : 0;
+  if (fits(b)) a = b;
+  else for (let i = 0; i < 10; i++) {
+    const mid = (a + b) / 2;
+    if (fits(mid)) a = mid; else b = mid;
+  }
+  // the slide centres the orbit's span in the free height (the picture's
+  // slide moves every pose alike: the one oy suits them all)
+  const u = span(a);
+  return Object.assign(rig, { orbit: a, oy: (u.y0 + u.y1) / 2 - (top + (h - top - bottom) / 2) });
+}
+
+/** The follow camera, nearer the gnome than focusRig frames it (engine/camera.ts). */
+export const FOLLOW_CLOSER = 0.7;
+
+// The camera on the ball stands off half the overview's distance. A board
+// longer or wider than any of the first four cups' (garden13's 90, town18's
+// 47: the mines' marathons, 96 by 80) would put it off so far the gnome is a
+// speck on a phone: it stands off as it would on the largest of those (the
+// overview of the board cut down to that size); any other hole, as ever.
+const FOLLOW_BOARD = { w: 90, h: 47 };
+/** The overview's distance the follow camera stands off from (focusRig's overview), for a board seen in view. */
+export function followDist(b: Board, view: View, over = overviewRig(courseBox(b), view)) {
+  return b.w > FOLLOW_BOARD.w || b.h > FOLLOW_BOARD.h ? Math.min(over.dist, overviewRig(courseBox({ w: Math.min(b.w, FOLLOW_BOARD.w), h: Math.min(b.h, FOLLOW_BOARD.h) }), view).dist) : over.dist;
+}
+
+/** The classic camera at rest on a ball at p (engine/camera.ts goal): close on it, leaning toward the cup. */
+export function restRig(s: Pick<HoleState, "board" | "cup">, p: THREE.Vector3, view: View): Rig {
+  const r = focusRig(p, { dist: followDist(s.board, view) }, view, new THREE.Vector3(s.cup[0], p.y, s.cup[1]));
+  r.dist *= FOLLOW_CLOSER;
+  return r;
+}
+
+/** The player's view as a hole opens on the gnome at its tee: the camera at rest on the tee.
+ *  height: the course's ground (Course userData.height). */
+export const teeRig = (s: Pick<HoleState, "board" | "start" | "cup">, height: (x: number, z: number) => number, view: View): Rig =>
+  restRig(s, new THREE.Vector3(s.start[0], height(s.start[0], s.start[1]), s.start[1]), view);
+
+/** Close on a point — the ball — centred in the free part of the screen. */
+// pass `out` (a rig from an earlier call) to reuse it: called every frame,
+// it then allocates nothing
+export function focusRig(point: THREE.Vector3, overview: Pick<Rig, "dist">, view: View, cup: THREE.Vector3 | null = null, out: Rig | null = null): Rig {
+  const r = out || { target: new THREE.Vector3(), dist: 0, ox: 0, oy: 0 };
+  r.target.copy(point);
+  r.dist = Math.max(overview.dist * 0.5, 18);
+  // with a cup given, frame the ball and the cup together: the target sits
+  // between them, nearer the ball, and the camera backs off as they part —
+  // you aim seeing where you aim
+  if (cup) {
+    const gap = Math.hypot(cup.x - point.x, cup.z - point.z);
+    // close on the gnome, leaning a little toward the cup so its direction
+    // shows; "Whole course" is there to see everything
+    r.target.lerp(cup, Math.min(0.22, 6 / Math.max(gap, 1)));
+    r.dist += Math.min(gap * 0.12, 5);
+  }
+  r.ox = 0;
+  r.oy = view.h / 2 - (view.top + (view.h - view.top - view.bottom) / 2);
+  r.tilt = 1;
+  return r;
+}

@@ -1,27 +1,23 @@
 #!/usr/bin/env bash
-# e2e-builder.sh: holes made with the Builder, published for real, on a local
-# chain of its own. It starts a gnodev with throwaway keys, stages and
-# deploys what golf/v2 needs (store and golf/v2 and their packages, under the
-# test name NS, as scripts/stage.sh does), opens publishing as golf's owner,
-# then hands over to scripts/e2e-builder.ts: drafts built with the Builder's
-# code, checked, proved in test mode, published with the exact gnokey
-# command the Builder prints, then read and played back from the chain; a
-# few holes the Builder refuses, published around it; what each publish
-# stored and cost against the bill the Builder shows. Each step is a call
-# and what it must give; the table goes to OUT, a markdown file.
+# e2e-builder.sh: holes made with the Builder and published for real, on a
+# local chain of its own. It starts a gnodev with throwaway keys, deploys what
+# golf/v2 needs under the test name NS, opens publishing as golf's owner, then
+# hands over to scripts/e2e-builder.ts. Each step is a call and what it must
+# give; the table goes to OUT, a markdown file.
 #
 #   scripts/e2e-builder.sh
 #
-# Local only. The chain is a gnodev on its own ports (RPC 127.0.0.1:26757,
-# gnoweb :8898 by default: 26657 is often another gnodev's), its keys made in
-# WORK (test1 is gnodev's well-known deploy key, golf's owner; the authors
-# and the player are generated each run). Nothing reads or writes another
-# keybase, and no chain but that gnodev is ever named.
+# Local only: the keys are made in WORK, and no other keybase or chain is
+# touched. Needs the onyx toolchain and web/node_modules.
 #
-# Needs web/node_modules (npm ci in web/: the census draws with three). Env:
-# NS (nym-buildtest000), RPC_ADDR, WEB_ADDR, WORK (a new temp dir), OUT
-# ($WORK/e2e.md), KEEP=1 leaves the chain running, GNO_TOOLCHAIN as in
-# check.sh.
+# Env:
+#   NS             the realms' test name (nym-buildtest000)
+#   RPC_ADDR       the node's RPC (127.0.0.1:26757: 26657 is often another gnodev's)
+#   WEB_ADDR       gnoweb (127.0.0.1:8898)
+#   WORK           the run's folder (a new temp dir)
+#   OUT            the report ($WORK/e2e.md)
+#   KEEP=1         leaves the chain running
+#   GNO_TOOLCHAIN  as in check.sh
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -58,9 +54,9 @@ OWNER=$(addr test1) A1=$(addr a1) A2=$(addr a2) PL=$(addr pl)
 if curl -s "http://$RPC_ADDR/status" >/dev/null; then die "a node answers on $RPC_ADDR already: stop it, or set RPC_ADDR"; fi
 pre=()
 for a in $A1 $A2 $PL; do pre+=(-add-account "$a=1000000000ugnot"); done
-# the examples the packages import, loaded at start: gnodev loads one lazily
-# by reloading the node, which a transaction then in flight does not survive
-# (refused "unauthorized")
+# The examples the packages import are loaded at start: gnodev loads one
+# lazily by reloading the node, and a transaction in flight then fails
+# ("unauthorized").
 deps=gno.land/p/nt/bptree/v0,gno.land/p/nt/ufmt/v0,gno.land/r/sys/users
 mkdir -p "$WORK/devroot"
 (cd "$WORK/devroot" && exec "$GNODEV" local -no-watch -empty-blocks -empty-blocks-interval 1 \

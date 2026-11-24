@@ -5,14 +5,14 @@
 // glowing, lanterns on posts and chains, a vault of rock overhead with its
 // stalactites, crystal veins and glowworms, galleries going off into the dark
 // with their lamps, and, where the lane has no rails, the void: a drop into
-// the dark. The light is the scene's own (camera.ts "cave"): the crystals and
+// the dark. The light is the scene's own (studio.ts "cave"): the crystals and
 // lanterns spill it as pools baked into the merged meshes' colours (baked),
 // and "Lights out" puts the lanterns out. Decoration only: nothing out here is
 // in the physics. The lane's own pieces are mines-rides.ts's, then
 // mines-pieces.ts's (piece, extras).
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { flat, drawn, relief, share, glowTex, quality, geoOf, gridGeo, uTime, windNow, motion, hullOf, ownFade, fadeLoop, type FadeItem } from "./materials";
+import { flat, drawn, relief, share, once, glowTex, quality, geoOf, gridGeo, uTime, windNow, motion, hullOf, ownFade, fadeLoop, type FadeItem } from "./materials";
 import { weatherLooks, look, bakeLocal } from "./bake";
 import { animate } from "./state";
 import { seeded, GRASS, placer, shown, type Rand } from "./common";
@@ -2104,8 +2104,7 @@ function heat(cv: Cave, s: Hole, rand: Rand) {
   return g;
 }
 // (round and soft, the glow's own falloff: not square flakes; made when first drawn, the canvas a browser's)
-let emberMat: THREE.PointsMaterial | null = null, moteMat: THREE.PointsMaterial | null = null;
-const EMBER = () => (emberMat ||= share(new THREE.PointsMaterial({ map: glowTex(), color: 0xffa040, size: 0.28, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })));
+const EMBER = () => once("mines:ember", () => new THREE.PointsMaterial({ map: glowTex(), color: 0xffa040, size: 0.28, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
 
 /** Dust motes turning slowly in the lanterns' light. */
 function motes(cv: Cave, rand: Rand) {
@@ -2128,7 +2127,7 @@ function motes(cv: Cave, rand: Rand) {
   });
   return g;
 }
-const MOTE = () => (moteMat ||= share(new THREE.PointsMaterial({ map: glowTex(), color: 0xffe6b0, size: 0.1, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false })));
+const MOTE = () => once("mines:mote", () => new THREE.PointsMaterial({ map: glowTex(), color: 0xffe6b0, size: 0.1, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
 
 /**
  * Every glow of the hole (lanterns, crystals, lava, glowworms) as one set of

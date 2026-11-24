@@ -9,8 +9,7 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// The reads the screens call (mint page, gallery, token page, locker): JSON,
-// one query each, every answer versioned.
+// The screens' reads: JSON, one query each, every answer versioned.
 
 func TestCollectionSaysWhatTheMintPageShows(cur realm, t *testing.T) {
 	fresh(t, cur)
@@ -75,9 +74,8 @@ func TestGnomesOfIsTheLocker(cur realm, t *testing.T) {
 	uassert.Equal(t, `{"version":1,"owner":"`+bob.String()+`","total":1,"next":-1,"rows":[`+lockerRow(id)+`]}`, GnomesOf(bob, 0))
 }
 
-// The locker pages a wallet best first (a tier's rows in id order), 100
-// rows a page, "next" the following page's offset or -1: a holder of many
-// cannot make a read unbounded.
+// GnomesOf pages a wallet best first, 100 rows a page: a holder of many cannot
+// make a read unbounded.
 func TestGnomesOfPagesAWallet(cur realm, t *testing.T) {
 	fresh(t, cur)
 	// 205 Commons: one tier, so their rows come in id order (best first is worn_test's)

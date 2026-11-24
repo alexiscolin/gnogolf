@@ -1,4 +1,4 @@
-// The page's own aim previews (lib/sim.ts): the real golf.wasm, in its real
+// The page's own aim previews (lib/sim/client.ts): the real golf.wasm, in its real
 // host, behind a stand-in Worker that answers in-process as sim/worker.ts
 // does; the chain a fake that serves the repo's files as a deploy under a
 // name would (stage.sh's prefix) and data/holes.txt's data. Then the aim
@@ -24,7 +24,7 @@ class FakeWorker {
   terminate() {}
 }
 (globalThis as { Worker?: unknown }).Worker = FakeWorker;
-const { startSim, simHole, simReady, simStroke, same } = await import("../lib/sim.ts");
+const { startSim, simHole, simReady, simStroke, same } = await import("../lib/sim/client.ts");
 
 const NS = "nym-tester000";
 const asked: string[] = [];

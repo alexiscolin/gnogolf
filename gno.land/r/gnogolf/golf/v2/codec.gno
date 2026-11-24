@@ -5,16 +5,12 @@ import (
 	"strings"
 )
 
-// How golf's rows are kept in store: strings, never golf's own types (a value
-// of a realm's type kept in another realm would carry this realm's methods into
-// it, and would not outlive these rules). A version of a hole, a round and a
-// standing are each their format's version, then their fields, each as its
-// length, ":" and itself (store's own rows are so): a row reads back by its
-// lengths, not by a scan of every byte (a scan, as strings.Split, costs
-// several times more gas), whatever its fields hold. The other rows are plain
-// values: ids, players, counts, flags, a best as bestOf writes it, a hole's
-// data. A later version of the rules reads every format ever written, row by
-// row.
+// format is the version every encoded row starts with. Rows are kept in store
+// as strings, never golf's own types: a value of a realm's type kept in another
+// realm would carry this realm's methods into it. A hole version, a round and a
+// standing are their fields, each as its length, ":" and itself: reading by
+// lengths costs several times less gas than strings.Split. Later rules must
+// read every format ever written.
 const format = "1"
 
 func join(fs ...string) string {
@@ -26,7 +22,7 @@ func join(fs ...string) string {
 	return sb.String()
 }
 
-// fields is a row's fields, its format checked: n of them, or it panics.
+// fields decodes a row of n fields. It panics on any other shape or format.
 func fields(s, what string, n int) []string {
 	f := make([]string, 0, n+1)
 	for rest := s; len(rest) > 0; {
@@ -49,7 +45,7 @@ func fields(s, what string, n int) []string {
 
 func itoa(n int) string     { return strconv.Itoa(n) }
 func i64(n int64) string    { return strconv.FormatInt(n, 10) }
-func ftoa(x float64) string { return strconv.FormatFloat(x, 'g', -1, 64) } // (exact: it reads back to the same float)
+func ftoa(x float64) string { return strconv.FormatFloat(x, 'g', -1, 64) } // exact: reads back to the same float
 func btoa(b bool) string {
 	if b {
 		return "1"

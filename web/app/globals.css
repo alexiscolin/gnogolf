@@ -1708,7 +1708,7 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 .cup__sum div { padding: 6px 10px; min-width: 58px; }
 .cup__sum dd { margin: 0; font-size: 20px; font-weight: 800; color: var(--green); }
 .cup__next { margin: 0; font-size: 14px; color: var(--ink-soft); }
-.nil { font-weight: 300; color: var(--ink-soft); } /* (a figure not there yet: Golf.tsx Nil) */
+.nil { font-weight: 300; color: var(--ink-soft); } /* (a figure not there yet: ui.tsx Nil) */
 
 /* the menu's head: the cup being played, with a way to another */
 /* a button: the cup being played, the name big on two lines */

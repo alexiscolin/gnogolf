@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type Re
 import "@/app/title.css";
 import { sound } from "@/lib/feel";
 import { Button } from "@/components/ui";
-import { GNOME } from "@/components/common";
+import { GNOME } from "@/lib/brand";
 import { AboutButton, ICON } from "@/components/About";
 import { lowGfx } from "@/lib/engine/pace";
 import { camlog } from "@/lib/testhooks";

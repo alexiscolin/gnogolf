@@ -73,4 +73,4 @@ func genesis() string {
 // gno.land/r/test/storedbuy: 0
 
 // Gas:
-// 1350592047
+// 1350592041

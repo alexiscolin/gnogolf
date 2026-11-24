@@ -5,21 +5,16 @@ import (
 	golf "gno.land/r/gnogolf/golf/v2"
 )
 
-// The Builder's publish numbers (web/lib/builder/publish.ts: the storage
-// deposit and the gas a PublishMine asks for), on the rules it publishes
-// under (golf/v2, its records in store). Each z_builder_publish_* filetest
-// publishes the same warm-up hole first (store made the community's and the
-// authors' first index leaves when it was deployed: a first publish pays no
-// more than another); its Storage and Gas less z_builder_publish_warm_filetest's
-// are its own publish's:
-// the heaviest hole v2 takes from the Builder's worlds, grown until its
-// work check refused one piece more (a 90×46 garden lane: 8 flowerbeds of 32
-// polygon points, 3 rails, 2 posts; 5,346 bytes), by the same author: the
-// data at its largest. (golf's own heaviest, at the limits, is refused by v2:
-// in its dearest weather a commit would leave too little room for a shot.)
-// The data are course.Encode's own, written out: a transaction is handed
-// the hex, so the Gas is PublishMine's work alone. The warm-up is
-// a plain 32×16 lane, z_storage_publish_filetest's at par 3, titled "Warm".
+// The Builder's publish numbers: web/lib/builder/publish.ts fits its storage
+// deposit and gas on the z_builder_publish_* filetests, and its test reads
+// their Storage and Gas. Each publishes the same warm-up first, a plain 32×16
+// lane titled "Warm", so its own publish is its numbers less
+// z_builder_publish_warm_filetest's. The data is course.Encode's hex, as a
+// transaction sends it: the Gas is PublishMine's work alone.
+//
+// This one: the heaviest hole golf takes from the Builder's worlds, grown until
+// the work check refused one piece more. A 90×46 garden lane with 8 flowerbeds
+// of 32 polygon points, 3 rails and 2 posts: 5,346 bytes, by the same author.
 
 const (
 	warm  = "47473120001000030e000667617264656e0000000000000000045761726d000000000000004000000000000020400000000000003c400000000000002040333333333333f33f00000000000000009a9999999999e93fcdccccccccccec3f000000000000e03f01000004000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000404000000000000000000000000000004040000000000080404000000000008040400000000000004040000000000000000000000000000040400000000000003040000000000000304000000000000031400000000000003140000000000000404000000000000030400000000000000000000000000000304000000000000040400000000000804040000000000080404000000000000000000000000000003040000000000000000000000000000000000000000000003040000000000000314000000000000031400000000000"
@@ -41,4 +36,4 @@ func main(cur realm) {
 // gno.land/r/test/builderpublishv2heavy: 0
 
 // Gas:
-// 147051857
+// 147051849

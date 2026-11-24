@@ -1,22 +1,21 @@
 "use client";
 
 // The first choice, before the cups: play alone, race a player's ghost, or
-// build a hole (the Builder, once out: onBuild). A duel asks whom to race on a
+// build a hole (the Builder: onBuild). A duel asks whom to race on a
 // screen of its own (Rival), then on which of the holes they have a best on
 // (Ghosts), in place of the cups. Panels of their own, a kart game's modes.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Emblem, WORLDS } from "@/components/Worlds";
 import { HoleMap, NoMap } from "@/components/HoleMap";
 import { useGnomeStage } from "@/components/Stage";
-import { gnomeById } from "@/lib/scene";
-import { rivalSkin, type Act, type Skin } from "@/lib/scene/gnome";
+import { gnomeById, rivalSkin, type Act, type Skin } from "@/lib/scene/gnome";
 import type { Snapshot } from "@/lib/engine";
 import { FrontScreen } from "@/components/About";
 import { Button, Dice, InfoTip } from "@/components/ui";
 import { FullBoard, Sticker, useRivalPicks, useWho, type Placed } from "@/components/Leaderboard";
-import { countWord, courseCount, ghostsWord, golfTerm, holeNumber, holesWord, plural, standingVs } from "@/components/common";
+import { countWord, ghostsWord, holesWord, plural } from "@/lib/words";
 import { isAddress, type Chain } from "@/lib/chain";
-import { CLASSIC, cupOf, parOf, scoreOf, vsPar, type Card } from "@/lib/card";
+import { CLASSIC, cupOf, parOf, scoreOf, vsPar, courseCount, golfTerm, holeNumber, standingVs, type Card } from "@/lib/card";
 import { bestOf, inTurn, showcases, shotsOf, vsBest } from "@/lib/duel";
 import { track, type RivalKind } from "@/lib/analytics";
 import { motion } from "@/lib/scene/materials";

@@ -1,29 +1,24 @@
 #!/bin/sh
 # publishdata.sh <key>: publishes every course hole of data/holes.txt into its
-# slot, as the course's owner (<key>, a gnokey key name): one plain
-# `gnokey maketx call` of golf's Publish(slot, hex, "") a hole, in order,
-# each simulated first (-simulate only) and then sent asking the gas the
-# simulation used. A slot whose current version already holds the data is
-# refused by the simulation ("nothing to publish") and skipped, so the
-# script can be run again after a failure.
-# Then it checks every slot (below). The key's password is asked once and
-# handed to each call on its stdin.
+# slot, as the course's owner (<key>, a gnokey key name). Each hole is one
+# `gnokey maketx call` of golf's Publish(slot, hex, ""), simulated first, then
+# sent. A slot that already holds the data is skipped ("nothing to publish"),
+# so the script can be run again after a failure. Then it checks every slot.
+# The key's password is asked once and handed to each call on its stdin.
 #
-# publishdata.sh -verify: only the check, a read (vm/qeval, no key): the
-# current version of every slot has the sha data/holes.txt lists it with.
-# It fails (exit 1) when a slot is missing or holds other data, and so does
-# the check after publishing.
-#
-# REALM is the golf realm (default gno.land/r/gnogolf/golf/v2), REMOTE the node
-# (default 127.0.0.1:26657), CHAINID its chain id (default dev), GNOKEY the
-# gnokey (default the onyx toolchain's, in GNO_TOOLCHAIN: see check.sh). A
-# call asks the gas its simulation used and a tenth more (below) at the
-# node's gas price (auth/gasprice), and its storage deposit is capped at
-# MAX_DEPOSIT (default 10000000ugnot; a hole stores 4 to 35 KB).
+# publishdata.sh -verify: the check alone, a read with no key. It fails when a
+# slot is missing or does not hold the sha data/holes.txt lists it with.
 #
 #   scripts/publishdata.sh test1                                  a local gnodev
 #   REALM=gno.land/r/nym-alexiscolin000/gnogolf/golf/v2 REMOTE=https://rpc.onyx.testnets.gno.land:443 \
 #     CHAINID=onyx-1 scripts/publishdata.sh <your-key-name>
+#
+# Env:
+#   REALM        the golf realm (gno.land/r/gnogolf/golf/v2)
+#   REMOTE       the node (127.0.0.1:26657)
+#   CHAINID      its chain id (dev)
+#   GNOKEY       the gnokey (the onyx toolchain's: see check.sh)
+#   MAX_DEPOSIT  a call's storage deposit cap (10000000ugnot; a hole stores 4 to 35 KB)
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 realm=${REALM:-gno.land/r/gnogolf/golf/v2}
@@ -33,9 +28,8 @@ toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 gnokey=${GNOKEY:-$toolchain/gnokey}
 holes=$root/data/holes.txt
 
-# verify: one read over every slot. vm/qeval evaluates an expression in the
-# realm, where only its own names are in reach: a slot's entry in Versions
-# is found by hand.
+# verify: one read over every slot. vm/qeval reaches only the realm's own
+# names, so a slot's entry in Versions is found by hand.
 verify() {
 	list=$(awk '{printf "%s{\"%s\", \"%s\"}", (NR > 1 ? ", " : ""), $1, $3}' "$holes")
 	expr='func() string { at := func(s, sub string) int { for i := 0; i+len(sub) <= len(s); i++ { if s[i:i+len(sub)] == sub { return i } }; return -1 }; bad := ""; for _, h := range [][2]string{'"$list"'} { id := Current(h[0]); v := Versions(h[0]); i := at(v, `"id":"`+id+`"`); if id != "" && i >= 0 { v = v[i:]; if j := at(v, "}"); j >= 0 && at(v[:j], `"sha":"`+h[1]) >= 0 { continue } }; bad += " " + h[0] }; if bad == "" { return "every slot holds its data" }; return "missing or other:" + bad }()'
@@ -63,11 +57,10 @@ read -r pass
 stty echo 2>/dev/null || true
 echo >&2
 
-# publish slot hex gas simulate: one Publish call (-simulate only, or test:
-# simulated and sent), paying gas at the node's price, its output in out. A
-# call signed before the one before it has landed reads the account's old
-# sequence ("signature verification failed"): sent again, a block later (the
-# web client's gnokey paste does the same: adena.ts gnokeyPaste).
+# publish <slot> <hex> <gas> <only|test>: one Publish call, simulated alone
+# (only) or simulated and sent (test), its output in out. A call signed
+# before the last one landed reads the account's old sequence ("signature
+# verification failed"): it is sent again a block later.
 publish() {
 	fee=$(echo "$price" | awk -v g="$3" '{printf "%d", g * $1 / $2 + 1}')
 	for try in 1 2 3; do
@@ -83,10 +76,10 @@ publish() {
 n=0
 while read -r slot _ _ hex; do
 	n=$((n + 1))
-	# the simulation's gas, what Publish of b bytes costs with a fifth more (a
+	# The simulation asks what Publish of b bytes costs and a fifth more (a
 	# course hole takes under 25M and 55K a byte). The call then asks what the
-	# simulation used and a tenth more, rounded up: the same run, but the state
-	# can differ by a few bytes by the time it lands.
+	# simulation used and a tenth more: the state can differ by a few bytes
+	# by the time it lands.
 	gas=$(awk -v b=$((${#hex} / 2)) 'BEGIN {printf "%d", (25000000 + 55000 * b) * 1.2}')
 	printf '%2d %-12s ' "$n" "$slot"
 	if publish "$slot" "$hex" "$gas" only; then

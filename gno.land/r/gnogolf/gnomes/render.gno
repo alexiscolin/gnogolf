@@ -8,19 +8,18 @@ import (
 )
 
 // The pages gnoweb shows: the collection (""), a gnome ("<id>"), an earned
-// kind ("<kind>"), a player ("<address>"). Every string on them comes from
-// the catalogue, the config or an address; names are the owner's rows, held
-// to plain letters by AddSeries (rows.gno plainName), and escaped as Markdown
-// wherever they go all the same (markdownEscape).
+// kind ("<kind>"), a player ("<address>"). Names are held to plain letters by
+// AddSeries (plainName) and escaped as Markdown all the same (markdownEscape).
 
-// self is this realm's pkgpath, hub its gnoweb path: every link follows
-// from them, so the same code serves under any namespace.
+// self is this realm's pkgpath, hub its gnoweb path. Every link is built from
+// them, so the same code serves under any namespace.
 var (
 	self = unsafe.CurrentRealm().PkgPath()
 	hub  = strings.TrimPrefix(self, "gno.land")
 )
 
-// Render is the page gnoweb shows at path, "Not found" for any other.
+// Render returns the page gnoweb shows at path, "Not found" for an unknown
+// one.
 func Render(path string) string {
 	switch {
 	case path == "":
@@ -106,10 +105,9 @@ func renderPlayer(player address) string {
 	return b.String()
 }
 
-// markdownEscape writes s as Markdown text: every ASCII punctuation mark
-// backslashed, which CommonMark reads as the mark itself, so a name can
-// never close a link's brackets, open an image or a tag, nor start an
-// entity, wherever it goes (a title, an alt text, a link's text).
+// markdownEscape backslashes every ASCII punctuation mark, which CommonMark
+// reads as the mark itself: a name can never close a link's brackets, open an
+// image or a tag, or start an entity.
 func markdownEscape(s string) string {
 	var b strings.Builder
 	for i := 0; i < len(s); i++ {
@@ -122,7 +120,7 @@ func markdownEscape(s string) string {
 	return b.String()
 }
 
-// gnot is a price as its number of GNOT ("815.85").
+// gnot writes a price in GNOT ("815.85").
 func gnot(ugnot int64) string {
 	s := itoa(ugnot / 1_000_000)
 	if frac := ugnot % 1_000_000; frac != 0 {

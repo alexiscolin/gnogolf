@@ -4,10 +4,12 @@
 // its port read from the profile (DevToolsActivePort: no clash with another
 // Chrome), killed by PID. Node 22+ (the built-in WebSocket).
 //
-// The paths and addresses can be set from the environment: CHROME (the
-// binary), CHROME_ARGS (more flags, each starting --; a value may hold spaces), APP (the running
-// client), RPC (the local chain), REALM (the golf realm on it; else
-// NEXT_PUBLIC_REALM, the client's).
+// Env:
+//   CHROME       the binary
+//   CHROME_ARGS  more flags, each starting -- (a value may hold spaces)
+//   APP          the running client
+//   RPC          the local chain
+//   REALM        the golf realm on it (else NEXT_PUBLIC_REALM, the client's)
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";

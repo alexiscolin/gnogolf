@@ -1,27 +1,18 @@
-// The editor's worker (meter.ts): builder.wasm off the main thread, so
-// nothing here holds a frame of the editor. Three jobs, on two hosts (the
-// carry's clock and loaded hole never the meter's):
-// - the difficulty meter: one run at a time, the latest asked for; a newer
-//   one asked mid-run takes over at the next fan (difficulty.ts pause), the
-//   older one dropped unanswered;
-// - the proofs carried over an edit (carry.ts): the author's rounds replayed
-//   on the new bytes, each ask answered;
-// - a published hole's level (the game's community list sorted by Hardest):
-//   its data measured as the meter measures a draft, on the meter's host
-//   (the game's worker, which never meters), each ask answered.
+// The editor's worker: builder.wasm off the main thread. The carry has a host
+// of its own, so its clock and loaded hole are never the meter's.
 import { estimate, estimateHole, shown, type Level, type Shown } from "./difficulty";
 import { carry, type Carried } from "./carry";
 import { loadBuilder, loadModule } from "./load";
 import { makeBuilderHost, type BuilderHost } from "./wasm";
 import type { Draft } from "./draft";
 
-/** What the editor asks: a run's number and the draft as kept (the meter), or a carry of its proofs onto its bytes; the game: a hole's level. */
+/** A meter run of a draft, a carry of its proofs onto its bytes, or a published hole's level. */
 export type Ask = { run: number; draft: Draft } | { job: "carry"; n: number; draft: Draft; hex: string; key: string; author: string } | { job: "rate"; n: number; hex: string };
-/** Its answer: the run's estimate as the editor shows it (null: fit refused the draft, or it could not run); a carry's outcome (null: it failed); a level (null: not measured). */
+/** The answer to an Ask. null: the draft does not fit, or the job failed. */
 export type Reply = { run: number; shown: Shown | null } |{ job: "carry"; n: number; carried: Carried | null } | { job: "rate"; n: number; level: Level | null };
 
 let latest = 0, replays: Promise<BuilderHost> | null = null;
-/** Between fans: the messages waiting are let in, and the run goes on only if it is still the latest. */
+// Lets the waiting messages in, then says whether this run is still the latest.
 const still = (run: number) => () => new Promise<boolean>((ok) => setTimeout(() => ok(run === latest), 0));
 
 self.onmessage = async ({ data: m }: MessageEvent<Ask>) => {
@@ -30,7 +21,7 @@ self.onmessage = async ({ data: m }: MessageEvent<Ask>) => {
     try {
       level = (await estimateHole(await loadBuilder(), m.hex))?.level ?? null;
     } catch {
-      // (not measured: the list leaves it last)
+      // not measured: the list puts it last
     }
     return postMessage({ job: "rate", n: m.n, level } satisfies Reply);
   }
@@ -40,7 +31,7 @@ self.onmessage = async ({ data: m }: MessageEvent<Ask>) => {
       replays ??= loadModule().then(makeBuilderHost);
       carried = await carry(await replays, m.draft, m.hex, m.key, m.author);
     } catch {
-      replays = null; // (none carried: the edit dropped them)
+      replays = null; // a fresh host for the next carry
     }
     return postMessage({ job: "carry", n: m.n, carried } satisfies Reply);
   }

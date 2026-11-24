@@ -1,13 +1,11 @@
 package gnomes
 
-// The collection's numbers, in one place. The genesis supply is decided:
-// 720 gnomes, ten times a par-72 course. The prices are the defaults the
-// owner starts from (SetPrice moves them, for the sales yet to open). A
-// later drop needs nothing here: its size is its rows (catalogue.gno), its
-// sale one OpenSale (sale.gno).
+// The collection's numbers. The genesis is 720 gnomes, ten times a par-72
+// course. The prices are the defaults at deploy; SetPrice moves them for the
+// sales yet to open. A later drop needs nothing here.
 
-// A tier: its name, and its price at deploy, in ugnot. Every tier is sold
-// at its sale's price, the first buyer's (Buy): there is no auction.
+// A tier has a name and a price at deploy, in ugnot. Its price in a sale is
+// fixed: there is no auction.
 type tier struct {
 	name  string
 	price int64
@@ -20,12 +18,12 @@ var tiers = [...]tier{
 	{"legendary", 1_296_000_000}, // 1,296 GNOT: eighteen holes, times par 72
 }
 
-// genesisSupply is how many gnomes of each tier the genesis series holds, in
-// the order of tiers. AddSeries refuses a genesis that differs.
+// genesisSupply is the genesis's count per tier. AddSeries refuses a genesis
+// that differs.
 var genesisSupply = [len(tiers)]int64{504, 144, 65, 7}
 
-// Per wallet: how many of each tier it may buy over its lifetime, and in a
-// sale's player window: one Legendary a wallet, ever.
+// What a wallet may buy per tier: over its lifetime, and in a sale's player
+// window.
 var (
 	lifetimeCap = [len(tiers)]int64{10, 5, 2, 1}
 	playerCap   = [len(tiers)]int64{3, 2, 1, 1}

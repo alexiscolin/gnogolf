@@ -5,14 +5,12 @@ import (
 	"time"
 )
 
-// The records the hub puts forward (as the site's boards, web/lib/featured.ts,
-// whose draw and rules these are): not the course ranking's top three, a few
-// players worth racing today, each for a reason said beside them. One a
-// player, drawn again each day (the same day, the same picks as the site's,
-// but for the players the site's bot check hides: the chain knows none).
+// The players the hub features: a few worth racing today, not the ranking's top
+// three. The draw and rules are those of web/lib/featured.ts, so both show the
+// same picks each day, except players the site's bot check hides.
 
-// featuredRead is how much of the course ranking the picks look at: its first
-// page; podium, its first places, which get no card of their own.
+// featuredRead is how many ranking rows the picks are drawn from; podium, the
+// top places that are never picked.
 const (
 	featuredRead = 50
 	podium       = 3
@@ -26,11 +24,11 @@ type pick struct {
 	tag  string
 }
 
-// today is the day, a number: the picks hold for it and change with it (block time).
+// today is the day number, from block time: the picks change with it.
 func today() int64 { return time.Now().Unix() / 86400 }
 
-// draw is a player's draw for a day: FNV-1a over their address, seeded with
-// the day (featured.ts draw: the same numbers, so the same picks).
+// draw is a player's number for a day: FNV-1a over their address, seeded with
+// the day. featured.ts draws the same numbers.
 func draw(player string, day int64) uint32 {
 	h := uint32(2166136261) ^ uint32(day)
 	for i := 0; i < len(player); i++ {
@@ -39,14 +37,13 @@ func draw(player string, day int64) uint32 {
 	return h
 }
 
-// featured is up to n picks from the course ranking in mode m: a fast start (a
-// third of the course or less, at par or better), the best average against par
-// (a third of the course played, nine holes at least), and today's picks for
-// the rest; never the first three places.
+// featured is up to n picks from the course ranking in mode m, never from the
+// podium: a fast start (at most a third of the course, at par or better), the
+// best average against par (at least a third of the course and nine holes),
+// then today's picks.
 func featured(m, n int) []pick {
-	// every named row read, the first three too (the best average is the
-	// course's, as featured.ts takes it, whoever holds it), numbered as the
-	// boards number them: a row whose name was deleted keeps no place
+	// Rows are numbered as the boards do: only named players hold a place. The
+	// podium is read too, since the best average is the whole course's.
 	var rows []pick
 	walked, at := 0, 0
 	ranks[m].Iterate("", "", func(_, p string) bool {

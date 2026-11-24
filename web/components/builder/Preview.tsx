@@ -7,7 +7,8 @@
 // motion); a drag turns it, the wheel zooms, a double click frames it again.
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { applyRig, laneBox, makeRenderer, makeScene, overviewRig, setLighting } from "@/lib/scene/camera";
+import { applyRig, laneBox, overviewRig } from "@/lib/scene/rigs";
+import { makeRenderer, makeScene, setLighting } from "@/lib/scene/studio";
 import { buildHole } from "@/lib/scene/course";
 import { disposeCourse } from "@/lib/scene/materials";
 import { loadWorld } from "@/lib/scene/worlds";

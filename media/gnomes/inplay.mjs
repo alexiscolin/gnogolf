@@ -1,14 +1,14 @@
 // @ts-check
-// Collection gnomes in the real game (the dev server at APP, the chain at RPC
-// read only: holes, simulations, a rival's ghost; nothing is ever sent):
-// each played as the player (?traits=, a test hook) on a garden hole in clear
-// weather, an island hole in a storm and a Crystal Mines gallery in Lights
-// out, and raced as a rival's ghost (?rivaltraits=). For each: the play view
-// and a close-up; the cup never under him; a holing shot played with the CPU
-// slowed 4× (a phone), its frame rate, his trail while he rolls, his holing
-// played and ended (and no shader program linked for it: compiled with the
-// hole); his ghost; his headlamp in the dark. Pictures and a report
-// (report.json) in media/gnomes/inplay/, and a contact sheet.
+// Collection gnomes in the real game: the dev server at APP, the chain at RPC
+// (read only: nothing is ever sent). Each is played as the player (?traits=,
+// a test hook) on a garden hole in clear weather, an island hole in a storm
+// and a Crystal Mines gallery in Lights out, and raced as a rival's ghost
+// (?rivaltraits=). Checked for each: the cup never under him, a holing shot
+// with the CPU slowed 4× (a phone) and its frame rate, his trail, his ghost,
+// his headlamp in the dark, and no shader program linked for his holing.
+// Pictures, a report (report.json) and a contact sheet go to
+// media/gnomes/inplay/.
+//
 //   APP=http://localhost:3417 RPC=https://rpc.onyx.testnets.gno.land:443 node media/gnomes/inplay.mjs [ids…]
 import fs from "node:fs";
 import { launch, sleep, APP, RPC } from "../lib/cdp.mjs";

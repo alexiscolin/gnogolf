@@ -14,11 +14,10 @@ import (
 	golf "gno.land/r/gnogolf/golf/v2"
 )
 
-// The hole of the day's list at its fullest page: the 390 holes of
-// z_list_base_filetest (130 authors, perAuthor each), then DayCandidates'
-// first page, pageMax (100) rows, each its born read (its v1 found). The
-// difference of its gas and z_list_base_filetest's is the read, 0.63e9 for
-// its 100 rows, which walks no more than the page however many publish.
+// DayCandidates at its fullest page: the 390 holes of z_list_base_filetest,
+// then its first page of pageMax (100) rows. This Gas less
+// z_list_base_filetest's is the read, about 0.63e9: it walks no more than the
+// page, however many publish.
 func publishAll(cur realm) {
 	data := hex.EncodeToString([]byte(course.Encode(&course.Simple{W: 32, H: 16, World: "garden", Title: "Listed", Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(20, 8), Substeps: 14, CupRadius: 1.5,
@@ -41,4 +40,4 @@ func main(cur realm) {
 // 100 100 false
 
 // Gas:
-// 8236220275
+// 8236220268

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type ReactNode } from "react";
 import type { Snapshot } from "@/lib/engine";
-import { isAddress, wait, type Chain } from "@/lib/chain";
+import { isAddress, wait, shortAddr, nameHint, nameRefusal, type Chain } from "@/lib/chain";
 import type { Bests, HoleRow, Mode, StandingRow, StrokesRow } from "@/lib/types";
 import { levelFrom, levelPick, pickOne, skyWord } from "@/lib/duel";
 import { ISSUES, SHARE_TAGS, siteURL } from "@/lib/site";
@@ -16,11 +16,13 @@ import { GnokeyTx } from "@/components/Gnokey";
 import { failure, track, trackError } from "@/lib/analytics";
 import { Button, Frame, InfoTip, Segmented, Sheet, VsPar } from "@/components/ui";
 import Share from "@/components/Share";
-import { messageOf, shortAddr, holeLink, dareLink, parHere, HONEST, nameHint, nameRefusal, strokesWord, holesWord, AIMS, AIM_NAMES, useCopied, GNOME, byStanding, standingVs, RANKED_BY } from "@/components/common";
-import { vsPar, type SkyKind } from "@/lib/card";
+import { messageOf, strokesWord, holesWord, AIMS, AIM_NAMES, HONEST } from "@/lib/words";
+import { holeLink, dareLink } from "@/lib/links";
+import { GNOME } from "@/lib/brand";
+import { useCopied } from "@/components/hooks";
+import { vsPar, parHere, byStanding, standingVs, RANKED_BY, type SkyKind } from "@/lib/card";
 import { SkyIcon } from "@/components/Weather";
-import { gnomeById } from "@/lib/scene";
-import { rivalSkin, type Skin } from "@/lib/scene/gnome";
+import { gnomeById, rivalSkin, type Skin } from "@/lib/scene/gnome";
 import { SHOP, onWear, wearVersion } from "@/lib/gnomes/door";
 import { Collector, askWorn } from "@/components/gnomes/Door";
 

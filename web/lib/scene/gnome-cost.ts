@@ -1,13 +1,10 @@
-// What a gnome costs to draw: triangles,
-// ink hulls and instanced copies included, and draws, once makeBall has baked
-// him; how high and how far he reaches. The budget's test and the generator
-// (which keeps no gnome over it) both count with this.
+// What a gnome costs to draw, as the budget's test and the generator count it.
 import * as THREE from "three";
 import { makeBall, type Skin } from "./gnome";
-import "./gnome-dress"; // (a collection gnome costs what his wardrobe adds)
+import "./gnome-dress"; // registers the wardrobe: a collection gnome is counted dressed
 import type { Gnome } from "./data";
 
-/** A built gnome's cost. */
+/** A built gnome's triangles (ink hulls and instanced copies counted), draws, height and reach. */
 export function costOf(g: Gnome) {
   let tris = 0, draws = 0;
   g.traverse((o) => {
@@ -20,5 +17,4 @@ export function costOf(g: Gnome) {
   return { tris, draws, top: box.max.y, reach: g.userData.reach };
 }
 
-/** A skin's triangles, as built. */
 export const trianglesOf = (skin: Skin) => costOf(makeBall(skin)).tris;

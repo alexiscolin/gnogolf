@@ -1,15 +1,12 @@
 "use client";
 
-// The game's own controls, one of each: every button, switch and sheet in the
-// game is one of these, so they all hover, press, focus and disable alike.
-// Their look is in globals.css under "shared controls".
+// The shared controls: every button, switch and sheet is one of these, so they all behave alike.
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type ChangeEventHandler, type HTMLAttributes, type ReactNode } from "react";
-import { vsPar } from "@/lib/card";
-import { vsParWords } from "@/components/common";
+import { vsPar, vsParWords } from "@/lib/card";
 import { buttonClass, type ButtonLook } from "@/components/button";
 
-/** A button (its variants and sizes: button.ts); keycap: its key, in a cap after the words (never taller than the button). */
+/** keycap: the button's key, in a cap after the words. */
 interface ButtonProps extends ComponentProps<"button">, ButtonLook {
   keycap?: ReactNode;
 }
@@ -22,7 +19,7 @@ export function Button({ variant, size, keycap, className = "", children, ...pro
   );
 }
 
-/** What only shows in a row of buttons (a gnome card's state in Buy's place, the board's quick shot): their height and edge, flat (it is not pressed). size as Button's. */
+/** A flat label with a button's height and edge, for a row of buttons. */
 export function Chip({ size = "l", className = "", children, ...props }: HTMLAttributes<HTMLSpanElement> & { size?: ButtonLook["size"] }) {
   return (
     <span className={["chip", size === "l" ? "" : `chip--${size}`, className].filter(Boolean).join(" ")} {...props}>
@@ -31,8 +28,7 @@ export function Chip({ size = "l", className = "", children, ...props }: HTMLAtt
   );
 }
 
-/** Two or more choices side by side, one on: the aim mode, the board's tabs. full: the width of its container, halves equal.
- *  Pressed buttons, each its own Tab stop (radios and tabs would promise arrow keys). */
+/** Choices side by side, one on. Pressed buttons, each a Tab stop: radios or tabs would promise arrow keys. */
 interface SegmentedProps<T extends string> {
   options: readonly (readonly [T, ReactNode])[];
   value: T;
@@ -59,7 +55,7 @@ export function Segmented<T extends string>({ options, value, onChange, label, f
   );
 }
 
-/** An on/off switch with its label (sound, vibration). */
+/** An on/off switch with its label. */
 export function Toggle({ label, checked, onChange }: { label: ReactNode; checked: boolean; onChange: ChangeEventHandler<HTMLInputElement> }) {
   return (
     <label className="switch">
@@ -70,12 +66,7 @@ export function Toggle({ label, checked, onChange }: { label: ReactNode; checked
   );
 }
 
-/**
- * A note a tap away (a tooltip never shows on touch): a button, the (i) or
- * what it is given (the weather's card), opens it under itself, said to a
- * screen reader too; it stays inside the window, and closes on a tap
- * elsewhere, Escape or the focus leaving.
- */
+/** A note opened by a tap, as a tooltip never shows on touch. Closes on a tap elsewhere, Escape or blur. */
 export function InfoTip({ label, note, className = "aimset__info", tabIndex, children = "ⓘ" }: { label: string; note: ReactNode; className?: string; tabIndex?: number; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -83,7 +74,7 @@ export function InfoTip({ label, note, className = "aimset__info", tabIndex, chi
   useLayoutEffect(() => {
     const el = pop.current;
     if (!el) return;
-    // moved back inside the window by what it spills over (16px in: the screens' frame)
+    // pushed back inside the window, 16px from its edge
     el.style.marginLeft = "";
     const r = el.getBoundingClientRect();
     el.style.marginLeft = `${Math.min(0, innerWidth - 16 - r.right) || Math.max(0, 16 - r.left)}px`;
@@ -91,7 +82,7 @@ export function InfoTip({ label, note, className = "aimset__info", tabIndex, chi
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent) => box.current && !box.current.contains(e.target as Node) && setOpen(false);
-    // (before a dialog's own Escape: the note closes, not the menu it is in)
+    // captured before a dialog's own Escape: the note closes, not the menu it is in
     const esc = (e: KeyboardEvent) => e.key === "Escape" && (e.stopPropagation(), setOpen(false));
     document.addEventListener("pointerdown", away);
     window.addEventListener("keydown", esc, true);
@@ -107,20 +98,20 @@ export function InfoTip({ label, note, className = "aimset__info", tabIndex, chi
   );
 }
 
-/** A score against par ("−2", "E", "+1"; words: "level par" for E), green under it, red over it. */
+/** A score against par ("−2", "E", "+1"), green under it, red over it. words: "level par" for E. */
 export const VsPar = ({ vs, words = false }: { vs: number; words?: boolean }) => (
   <b className={vs < 0 ? "good" : vs > 0 ? "bad" : undefined}>{(words ? vsParWords : vsPar)(vs)}</b>
 );
+/** No figure yet: a light dash. */
+export const Nil = () => <span className="nil">–</span>;
 
-/** The X in a sheet's corner, the same everywhere. */
 const CloseX = () => (
   <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4 4 16 16M16 4 4 16" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" /></svg>
 );
-/** The arrow of a way back, inked: a screen's corner Back, the Builder's. */
 export const BackIcon = () => (
   <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
-/** A sheet's X: in its top-right corner, or where it is put (inline). */
+/** A sheet's X, in its top-right corner unless inline. */
 export function SheetClose({ onClose, inline = false }: { onClose: () => void; inline?: boolean }) {
   return (
     <button className={"round round--icon round--small" + (inline ? "" : " sheet__close")} aria-label="Close" onClick={onClose}>
@@ -129,30 +120,21 @@ export function SheetClose({ onClose, inline = false }: { onClose: () => void; i
   );
 }
 
-// Dialogs open over one another (a confirm over the menu): only the top one
-// hears Escape and keeps Tab inside it. Each opened or closed is told to
-// whoever watches (useDialogOpen): a modal one open holds the page's news.
+// Dialogs stack: only the top one hears Escape and traps Tab.
 const open: { modal: boolean }[] = [];
 const watchers = new Set<() => void>();
 const told = () => watchers.forEach((f) => f());
 const watch = (f: () => void) => (watchers.add(f), () => void watchers.delete(f));
 const anyModal = () => open.some((d) => d.modal);
-/** Whether a modal dialog is open over the page (an order, a receipt, the menu): what must never sit under a toast waits for it. */
+/** Whether a modal dialog is open over the page. */
 export const useDialogOpen = () => useSyncExternalStore(watch, anyModal, () => false);
-// the control last pressed: a click does not focus a button everywhere
-// (Safari, a scripted click), so a dialog knows what opened it all the same
+// The control last pressed: a click does not focus a button in Safari, and a dialog must know what opened it.
 let pressed: HTMLElement | null = null;
 if (typeof document !== "undefined")
   document.addEventListener("pointerdown", (e) => void (pressed = e.target instanceof Element ? e.target.closest<HTMLElement>("button, a, summary, [tabindex]") : null), true);
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
-/**
- * What every dialog does: focus moves into it when it opens (the dialog
- * itself: no control is picked for the player, no ring shows until they Tab),
- * Tab and Shift-Tab stay inside it,
- * Escape closes it (when it can be closed), and focus goes back to what
- * opened it once it is gone. Returns the ref for the dialog's element.
- */
+/** Focus moves into the dialog, Tab stays inside, Escape closes it, and focus goes back to what opened it. Returns the dialog's ref. */
 function useDialog<T extends HTMLElement = HTMLElement>(onClose: (() => void) | null | undefined, modal = true) {
   const ref = useRef<T>(null);
   const close = useRef(onClose);
@@ -162,8 +144,7 @@ function useDialog<T extends HTMLElement = HTMLElement>(onClose: (() => void) | 
     open.push(me);
     told();
     const active = document.activeElement, el = ref.current;
-    // what opened it: the focused control, else the one last pressed (never one
-    // of its own: a dev remount finds its own control focused already)
+    // what opened it; never one of its own controls, which a dev remount finds focused
     const back = [active instanceof HTMLElement && active !== document.body ? active : null, pressed].find((x) => x && !(el && el.contains(x))) || null;
     el?.focus({ preventScroll: true });
     const onKey = (e: KeyboardEvent) => {
@@ -173,7 +154,7 @@ function useDialog<T extends HTMLElement = HTMLElement>(onClose: (() => void) | 
       const all = [...ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)].filter((x) => x.offsetParent !== null);
       if (!all.length) return e.preventDefault();
       const a = all[0], z = all[all.length - 1];
-      // from outside, or from the dialog itself: to its first control (its last going back)
+      // from outside or from the dialog itself: to its first control, or its last going back
       if (!ref.current.contains(document.activeElement) || document.activeElement === ref.current) return e.preventDefault(), (e.shiftKey ? z : a).focus();
       if (e.shiftKey && document.activeElement === a) e.preventDefault(), z.focus();
       else if (!e.shiftKey && document.activeElement === z) e.preventDefault(), a.focus();
@@ -183,20 +164,18 @@ function useDialog<T extends HTMLElement = HTMLElement>(onClose: (() => void) | 
       document.removeEventListener("keydown", onKey, true);
       open.splice(open.indexOf(me), 1);
       told();
-      // on the next task: the page's styles have caught up by then (a trigger
-      // hidden while the dialog was open can take focus again), and a dialog
-      // opened meanwhile (the menu's About) keeps its own focus
+      // Next task: a trigger hidden while the dialog was open can take focus again, and a dialog opened meanwhile keeps its own.
       if (back instanceof HTMLElement)
         setTimeout(() => {
           const now = document.activeElement;
           if (back.isConnected && (!now || now === document.body)) back.focus({ preventScroll: true });
         }, 0);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- (modal: as it opened)
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- modal is read once, as it opened
   return ref;
 }
 
-/** A sheet over the game: its dim backdrop closes it, its X in the corner. */
+/** A sheet over the game: its dim backdrop and its corner X close it. */
 interface SheetProps {
   label: string;
   onClose: () => void;
@@ -207,7 +186,7 @@ interface SheetProps {
 export function Sheet({ label, onClose, className = "", role = "dialog", children }: SheetProps) {
   const id = useId();
   const ref = useDialog<HTMLDivElement>(onClose);
-  // a press begun in the sheet and let go over the dim (a text selected by dragging) clicks the dim too: not a tap on it
+  // A drag begun in the sheet and let go over the dim clicks the dim too: not a tap on it.
   const inside = useRef(false);
   return (
     <div className="sheet" onPointerDown={(e) => (inside.current = e.target !== e.currentTarget)} onClick={() => !inside.current && onClose()}>
@@ -219,7 +198,7 @@ export function Sheet({ label, onClose, className = "", role = "dialog", childre
   );
 }
 
-/** Any other dialog (the menu drawer, the win card, an error): useDialog on an element of its own. onClose: what Escape does, or nothing. */
+/** Any other dialog. onClose: what Escape does, or nothing. */
 interface DialogProps extends HTMLAttributes<HTMLElement> {
   onClose?: (() => void) | null;
   as?: "div" | "aside";
@@ -233,7 +212,7 @@ export function Dialog({ onClose = null, as: Tag = "div", children, ...props }: 
   );
 }
 
-/** A die, inked (title.css .rival__dice): a pick at random, a name rolled. */
+/** A die, for a pick at random. */
 export const Dice = () => (
   <svg viewBox="0 0 24 24" className="rival__dice" aria-hidden="true">
     <rect x="2" y="2" width="20" height="20" rx="5" />
@@ -241,8 +220,7 @@ export const Dice = () => (
   </svg>
 );
 
-/** A round inked window, its scene clipped to it (an id of its own, so two
- *  on a screen never share a clip): a cup's emblem, a hole's map, a gnome's face. */
+/** A round inked window with its scene clipped to it. The clip id is its own, so two on a screen never share one. */
 export function Frame({ className, children }: { className?: string; children?: ReactNode }) {
   const clip = useId();
   return (

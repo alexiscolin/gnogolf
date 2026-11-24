@@ -1,11 +1,9 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The Builder video's holes (media/builder/promo.mjs): three fun holes built
 // of the Builder's own pieces, each checked by the whole pipeline as
-// scripts/starters.ts checks a starter (validate, the canonical bytes) and a
-// holing round of each in every weather its world asks for (proved: a
-// replay). Writes media/builder/holes.json: each draft with its proofs and
-// its bytes, for promo.mjs to publish and film (render.mjs finds each
-// one-stroker as it films, in the chain's weather).
+// scripts/starters.ts checks a starter, with a holing round in every weather
+// its world asks for. Writes media/builder/holes.json: each draft with its
+// proofs and its bytes, for promo.mjs to publish and film.
 //
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts [name]
 

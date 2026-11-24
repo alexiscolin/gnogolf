@@ -1,11 +1,11 @@
 // A published hole shared (components/builder/share.ts): its link is the game's own
-// (components/common.ts holeLink: a community hole by its id), on the site's
+// (lib/links.ts holeLink: a community hole by its id), on the site's
 // address; the card's words.
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { beatLine, cardLines, holeShare } from "../components/builder/share.ts";
 import { builderScore } from "../lib/builder/proof.ts";
-import { holeLink } from "../components/common.ts";
+import { holeLink } from "../lib/links.ts";
 import { SITE, siteURL } from "../lib/site.ts";
 
 const A = "g1" + "a".repeat(38), ID = `${A}/mole-run/v2`;

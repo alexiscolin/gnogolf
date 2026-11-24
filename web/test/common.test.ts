@@ -4,7 +4,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { Snapshot } from "../lib/engine.ts";
 import { sight } from "../lib/scene/data.ts";
-import { strokeFor, costLine, dareLink, fundCmd, golfTerm, holeNumber, holesWord, mmss, nameHint, nameRefusal, nextCup, nextHole, pasted, pendingOf, saveBy, shareLinks, strokesWord, suggestName, holeLink, byStanding, standingVs, courseCount, countWord, minesHint, readMs, authorFirst, authorMark } from "../components/common.ts";
+import { holeLink, dareLink, shareLinks, pasted } from "../lib/links.ts";
+import { suggestName, nameHint, nameRefusal } from "../lib/chain.ts";
+import { pendingOf, saveBy, costLine, fundCmd } from "../lib/save.ts";
+import { strokesWord, holesWord, countWord, mmss } from "../lib/words.ts";
+import { holeNumber, nextHole, nextCup, golfTerm, strokeFor, byStanding, standingVs, courseCount } from "../lib/card.ts";
+import { minesHint, readMs } from "../lib/hints.ts";
+import { authorFirst, authorMark } from "../lib/community.ts";
 
 const snap = (s: Partial<Snapshot>) => s as Snapshot;
 const onPage = (search: string, f: () => void) => {

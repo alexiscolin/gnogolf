@@ -7,11 +7,11 @@
 // then the fallbacks, on purpose, for a hole of another world that uses that
 // skin (a skin is a free string: a community hole may).
 import * as THREE from "three";
-import { C, T, flat, drawn, rbox, texOf, share } from "./materials";
+import { C, T, flat, drawn, rbox, texOf, once } from "./materials";
 import { house, smoke } from "./props";
 import { inZone, CELL } from "../terrain";
 import { seeded } from "./common";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { ud, type Hole, type Height } from "./data";
 import type { Post, Vec2, Zone } from "../types";
 import { own } from "../own";
@@ -32,11 +32,7 @@ const P = {
 };
 
 /** Stripes on a canvas: for awnings, buoys and stall covers. */
-const stripeTex = new Map<string, THREE.CanvasTexture>();
-function stripes(a: number, b: number, n: number, vertical = true) {
-  const key = `${a}-${b}-${n}-${vertical}`;
-  const had = stripeTex.get(key);
-  if (had) return had;
+const stripes = (a: number, b: number, n: number, vertical = true) => once(`pieces:stripes ${a}-${b}-${n}-${vertical}`, () => {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
   const x = c.getContext("2d")!;
@@ -45,10 +41,8 @@ function stripes(a: number, b: number, n: number, vertical = true) {
     if (vertical) x.fillRect((k * 64) / n, 0, 64 / n + 1, 64);
     else x.fillRect(0, (k * 64) / n, 64, 64 / n + 1);
   }
-  const t = texOf(c);
-  stripeTex.set(key, share(t));
-  return t;
-}
+  return texOf(c);
+});
 
 // Each takes (p, y): p.c the centre, p.r the radius; y the ground there.
 

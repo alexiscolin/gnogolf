@@ -1,61 +1,47 @@
 #!/usr/bin/env bash
-# e2e-gnomes.sh: the gnomes realm end to end, on a local chain of its own.
-# It starts a gnodev with throwaway keys, stages and deploys what gnomes
-# needs (store, golf/v2, gnomes and their packages, under the test name NS,
-# as scripts/stage.sh does), publishes the genesis rows
-# (data/gnomes/rows/genesis.txt) and plays the sale through: the genesis's
-# one sale and its player window, buys and caps, a Legendary at its fixed price (one a
-# wallet, its first buyer's), the switch paused and resumed, Equip, the
-# locker, the treasury moved and a stray coin swept to it, the site link, the
-# close, an earned gnome, the token reads and the page, and the portraits:
-# every catalogue gnome's drawn, and what TokenURI costs a tier, held to
-# URIMAX. Each step is a call and what it must give; the table of them goes
-# to OUT, a markdown file, with the gas each transaction used.
+# e2e-gnomes.sh: the gnomes realm end to end, on a local chain of its own. It
+# starts a gnodev with throwaway keys, deploys what gnomes needs under the
+# test name NS, publishes the genesis rows (data/gnomes/rows/genesis.txt) and
+# plays the sale through. Each step is a call and what it must give; the
+# table goes to OUT, a markdown file, with the gas each transaction used.
 #
-#   scripts/e2e-gnomes.sh                      everything with gnokey
-#   MCP=1 scripts/e2e-gnomes.sh                the owner's calls and the reads through gnomcp
-#   SEED=1 scripts/e2e-gnomes.sh               the setup only, a chain to try the shop on
+#   scripts/e2e-gnomes.sh          everything with gnokey
+#   MCP=1 scripts/e2e-gnomes.sh    the owner's calls and the reads through gnomcp
+#   SEED=1 scripts/e2e-gnomes.sh   the setup only, a chain to try the shop on
 #
-# Local only. The chain is a gnodev on its own ports (RPC 127.0.0.1:26757,
-# gnoweb :8898 by default: 26657 is often another gnodev's), its keys made
-# in WORK (test1 is gnodev's well-known deploy key, the collection's owner;
-# the others are generated each run). Nothing reads or writes another
-# keybase, and no chain but that gnodev is ever named.
+# Local only: the keys are made in WORK, and no other keybase or chain is
+# touched. It takes a few minutes: it waits out the player window (WINDOW
+# seconds of chain time), and up to six weather periods for an ace on
+# garden/3. Needs the onyx toolchain, jq and python3.
 #
-# It takes a few minutes: its waits are the player window's end, WINDOW
-# seconds of chain time (240), and up to six weather periods if the ace on
-# garden/3 needs one.
+# MCP=1 needs gnomcp (github.com/gnoverse/gno-mcp). It signs as test1 alone,
+# so the players still call with gnokey. A call over gnomcp's deposit cap (10
+# GNOT) or gas ceiling, or a read over gno_eval's size (about 8 KB), goes
+# through gnokey, and its row says so.
 #
-# MCP=1 needs gnomcp (github.com/gnoverse/gno-mcp, GNOMCP the binary): the
-# owner (test1, which gnomcp signs with on a local profile) calls through
-# its gno_call, the reads through gno_eval, gno_account and gno_render (an
-# answer over gno_eval's size, about 8 KB, through gnokey), the gas runs
-# through gno_run, and the p/ packages are deployed with gno_addpkg. gno_addpkg caps a deploy's
-# storage deposit at 10 GNOT, which the realms pass, so they go with
-# gnokey; a call refused for that cap, or over gnomcp's gas ceiling (the
-# genesis's AddSeries, about 1.1 billion gas), is sent again with gnokey,
-# and its row says so. The players are other accounts, so they call with gnokey.
+# SEED=1 plays no scenario. It deploys, seeds what the shop's screens show
+# (the genesis on sale, its player window an hour; p1 and b1 with a record
+# and a few gnomes; p0 and b2 with their balance alone), leaves the chain
+# running and writes $WORK/seed.env: the addresses, the realms, the keybase
+# and its password, what was seeded. Stop it with kill $DEV_PID.
 #
-# SEED=1 plays no scenario: it deploys, then seeds what the shop's screens
-# show (the genesis published, with no closing date unless SEED_CLOSE sets
-# one; its sale, every gnome of it, open
-# since a minute, its player window an hour; p1 and b1 with a record, p1 holding two Commons and a Rare, one
-# worn, b1 a Common; the Legendaries on sale at their price; p0 and b2 with
-# their balance alone), in a few minutes. The chain
-# is left running (KEEP=1) and $WORK/seed.env written: its addresses, the
-# realms, the keybase and password, each key's address, what was seeded.
-# Stop it with kill $DEV_PID (seed.env). scripts/try-local.sh seeds more for
-# a person to try it all (its env below), with the wallets' phrases it made
-# (MNEMONIC_p0, MNEMONIC_p1: written nowhere).
-#
-# Env: NS (nym-gnometest000), RPC_ADDR, WEB_ADDR (where gnodev listens, on
-# this machine), CHAINID (dev), WORK (a
-# new temp dir), OUT ($WORK/e2e.md), KEEP=1 leaves the chain running at the
-# end, SEED=1, GNO_TOOLCHAIN as in check.sh. With SEED=1: SEED_WORLDS publishes every course hole of those worlds too
-# ("garden island": garden/3 alone by default), SEED_CLOSE sets the closing
-# date that many days off (none by default: the genesis then sells until
-# sold out; the owner may set one later), SEED_PUBLISHING=1 opens
-# community publishing, SEED_TREASURY=1 moves the treasury to the treas key.
+# Env:
+#   NS                 the realms' test name (nym-gnometest000)
+#   RPC_ADDR           the node's RPC (127.0.0.1:26757: 26657 is often another gnodev's)
+#   WEB_ADDR           gnoweb (127.0.0.1:8898)
+#   CHAINID            dev
+#   WORK               the run's folder (a new temp dir)
+#   OUT                the report ($WORK/e2e.md)
+#   KEEP=1             leaves the chain running at the end
+#   WINDOW             the player window the run waits out, in seconds (240)
+#   GNOMCP             the gnomcp binary, for MCP=1
+#   GNO_TOOLCHAIN      as in check.sh
+# With SEED=1:
+#   SEED_WORLDS        publishes every course hole of those worlds ("garden island"; garden/3 alone by default)
+#   SEED_CLOSE         the genesis's closing date, that many days off (none: it sells until sold out)
+#   SEED_PUBLISHING=1  opens community publishing
+#   SEED_TREASURY=1    moves the treasury to the treas key
+#   MNEMONIC_<key>     a seed phrase the caller made for that key (try-local.sh's p0 and p1), never written to disk
 set -u
 
 root=$(cd "$(dirname "$0")/.." && pwd)
@@ -198,9 +184,9 @@ wait_until() { # wait_until <unix> <why>
 	while [ "$(chaintime)" -lt "$1" ]; do sleep 5; done
 }
 
-# q <pkg> <expr>: a read, its value unquoted (gnomcp's gno_eval with MCP=1;
-# gnokey's for an answer gno_eval will not return whole: about 8 KB and up,
-# "preview omitted", a large portrait's TokenURI)
+# q <pkg> <expr>: a read, its value unquoted. With MCP=1 it goes through
+# gno_eval, and through gnokey when gno_eval cuts the answer ("preview
+# omitted", about 8 KB and up: a large portrait's TokenURI).
 q() {
 	local r
 	if [ "$MCP" = 1 ] && r=$(py mcp gno_eval "$(jq -nc --arg p "$1" --arg e "$2" '{profile:"local",path:$p,expr:$e}')") &&
@@ -279,9 +265,8 @@ report
 has() { case $4 in *"$3"*) row "$1" "$2" "contains $3" "$(cell "$4" | cut -c1-140)" 0 ;; *) row "$1" "$2" "contains $3" "$4" 1 ;; esac; }
 jf() { py jq "$1"; } # a field of the JSON on stdin
 # findshot: a shot that holes garden/3/v1 in this weather, in shot ("" for
-# none found). (searched over the chain's own SimulateRound; the weather
-# changes each five minutes of chain time, and some holds no ace: then the
-# next one)
+# none). The weather changes every five minutes of chain time, and some
+# holds no ace: then it waits for the next.
 findshot() {
 	shot=""
 	for _ in 1 2 3 4 5 6; do
@@ -305,9 +290,9 @@ OWNER=$(addr test1) P0=$(addr p0) P1=$(addr p1) B1=$(addr b1) B2=$(addr b2) TREA
 if curl -s "http://$RPC_ADDR/status" >/dev/null; then die "a node answers on $RPC_ADDR already: stop it, or set RPC_ADDR"; fi
 pre=()
 for a in $P0 $P1 $B1 $B2 $TREAS; do pre+=(-add-account "$a=5000000000ugnot"); done
-# the examples the packages import, loaded at start: gnodev loads one lazily
-# by reloading the node, which a transaction then in flight does not survive
-# (refused "unauthorized")
+# The examples the packages import are loaded at start: gnodev loads one
+# lazily by reloading the node, and a transaction in flight then fails
+# ("unauthorized").
 deps=gno.land/p/nt/bptree/v0,gno.land/p/nt/grc721/v0,gno.land/p/nt/grc721/royalty/v0,gno.land/p/nt/ufmt/v0,gno.land/r/sys/users
 mkdir -p "$WORK/devroot"
 (cd "$WORK/devroot" && exec "$GNODEV" local -no-watch -empty-blocks -empty-blocks-interval 1 \
@@ -626,10 +611,9 @@ has "render: a gnome on gnoweb" "GET /r/$NS/gnogolf/gnomes:5" "$(awk -F'|' '$1==
 has "render: a player" "Render(\"<p1>\")" "5" "$("$GNOKEY" query vm/qrender -remote "$RPC_ADDR" -data "$GN:$P1" 2>&1)"
 has "render: not found" "Render(\"nope\")" "Not found" "$("$GNOKEY" query vm/qrender -remote "$RPC_ADDR" -data "$GN:nope" 2>&1)"
 
-# the portraits: every catalogue gnome's page carries its portrait (the
-# TokenURI drawing): each read, parsed, titled with its name; the heaviest
-# that is no Legendary bought and its TokenURI read, and what TokenURI costs
-# per tier
+# the portraits: every catalogue gnome's page read, its portrait parsed and
+# titled with its name; then the heaviest that is no Legendary bought, and
+# what TokenURI costs per tier
 set -- $(py portraits "http://$RPC_ADDR" "$GN" "$ROWS")
 is "portrait: every page draws its gnome" "Render(\"1\") … Render(\"720\") [qrender]: SVG parsed, <title> its name" "720 -" "$1 $8"
 is "portrait: no two alike" "distinct SVGs of the 720" "720" "$2"
@@ -667,10 +651,9 @@ is "earned: Equipped" "Equipped(p1).tier" "earned" "$(qg "Equipped(\"$P1\")" | j
 is "earned: TokenURI SVG" "TokenURI(\"1000001\") parsed as XML" "svg" "$(qg 'TokenURI("1000001")' | py svg 2>&1 | cut -d' ' -f1)"
 within "portrait: TokenURI gas, an earned gnome" "MsgRun TokenURI(\"1000001\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 1000001)"
 
-# close: a close is announced 7 days ahead at least (close.gno closeNotice):
-# a live run sets and moves one but cannot wait it out; the close itself
-# (buys refused, the unsold closed, the final supply) is the realm's tests'
-# (close_test.gno)
+# close: announced at least 7 days ahead (close.gno closeNotice), so a live
+# run sets and moves one but cannot wait it out. The close itself is tested
+# in close_test.gno.
 NOW=$(chaintime)
 WEEK=$((7 * 86400))
 no "close: owner only" "only the owner" p0 "$GN" SetCloseAt "$((NOW + WEEK + 3600))"

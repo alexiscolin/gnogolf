@@ -14,13 +14,13 @@
 // moves in a few merged parts of its own.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { flat, relief } from "./materials";
+import { flat, relief, once } from "./materials";
 import { seeded } from "./common";
 import { ud, md, type Hole } from "./data";
 import { bakeLocal, instances } from "./bake";
 import { MINES } from "./mines-kit";
 import { heartCrystal, overVoid } from "./mines-zones";
-import { once, darkMouth, INK_THIN, inked, paint, boulder, gem, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, RUST, beam, log, rivets, plate, knobbly, strata, facets, solid, tinted, shared } from "./mines-toon";
+import { darkMouth, INK_THIN, inked, paint, boulder, gem, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, RUST, beam, log, rivets, plate, knobbly, strata, facets, solid, tinted, shared } from "./mines-toon";
 import { mod, smoothstep, there } from "../terrain";
 import type { Terrain } from "../terrain";
 import type { Timing, Vec2 } from "../types";
@@ -195,7 +195,7 @@ function strikeSystem() {
   ud(root).live = true;
   const dustM = new THREE.MeshToonMaterial({ color: 0xa89cb8, transparent: true, depthWrite: false, opacity: 0.7 });
   const dust = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1, 0), dustM, SLOTS * 5);
-  const sparks = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.06), once("spark", () => new THREE.MeshBasicMaterial({ color: 0xffe08a })), SLOTS * 8);
+  const sparks = new THREE.InstancedMesh(new THREE.OctahedronGeometry(0.06), once("mines:spark", () => new THREE.MeshBasicMaterial({ color: 0xffe08a })), SLOTS * 8);
   dust.frustumCulled = sparks.frustumCulled = false;
   root.add(dust, sparks);
   const hits = Array.from({ length: SLOTS }, () => ({ at: new THREE.Vector3(), t: -99, spark: true, dirs: Array.from({ length: 8 }, () => new THREE.Vector3(Math.random() - 0.5, 0.5 + Math.random(), Math.random() - 0.5)) }));

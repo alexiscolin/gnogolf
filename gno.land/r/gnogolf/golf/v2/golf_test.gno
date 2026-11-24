@@ -18,8 +18,7 @@ import (
 	"gno.land/r/sys/users"
 )
 
-// flatHole is a box with nothing in it but its walls, the cup 18 units from
-// the tee: enough to exercise golf without depending on a real course.
+// flatHole is an empty box, the cup 18 units from the tee.
 func flatHole(title string) *course.Simple {
 	return &course.Simple{W: 32, H: 16, World: "garden", Title: title, Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(20, 8), Substeps: 14, CupRadius: 1.5, Shelter: 0.01,
@@ -28,9 +27,8 @@ func flatHole(title string) *course.Simple {
 
 var player = testutils.TestAddress("user")
 
-// giveName registers a gno.land name for addr in r/sys/users, as its
-// controller does on a dev chain: the rankings take named players only, and
-// the tests go through the real lookup. Registering twice is a no-op.
+// giveName registers a gno.land name for addr in r/sys/users, so the tests go
+// through the real lookup. Registering twice is a no-op.
 func giveName(cur realm, addr address, name string) {
 	if !users.ResolveAddress(addr).IsDeleted() {
 		return
@@ -41,9 +39,8 @@ func giveName(cur realm, addr address, name string) {
 	}
 }
 
-// cupHole is a small course hole: a box with the cup 1.3 units from the
-// tee, so a soft "0,1" stops in it whatever the weather (sheltered from
-// the wind), and "0,0.01" hardly moves.
+// cupHole is a small course hole, the cup 1.3 units from the tee: "0,1" holes
+// it in any weather, and "0,0.01" hardly moves.
 func cupHole(world string, order int, title string) *course.Simple {
 	return &course.Simple{W: 32, H: 16, World: world, Order: float64(order), Title: title, Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(3.3, 8), Substeps: 14, CupRadius: 1.2, Shelter: 0.01,
@@ -89,9 +86,7 @@ const (
 // register publishes a flat community hole and returns its id.
 func register(cur realm, slug string) string { return mine(cur, slug, flatHole("Flat")) }
 
-// TestPreviewMatchesPlay pins the invariant the whole client model rests on: a
-// shot resolved by the free query and the same shot committed must land in the
-// same place, or players animate something that did not happen.
+// What the free query previews is what the commit records.
 func TestPreviewMatchesPlay(cur realm, t *testing.T) {
 	id := register(cur, "mirror1")
 	preview := SimulateFrom(id, 2, 8, "17,5", 0, Period())
@@ -121,9 +116,7 @@ func TestRoundCountsStrokesAndFinishes(cur realm, t *testing.T) {
 	uassert.Equal(t, "null", Round(count, player), "the holed round is not")
 }
 
-// A holed round is not kept: its best is. The next shot starts a new round
-// from the tee with no Reset; a replay that does not beat the best leaves it,
-// one that does takes its place; a round left under way is kept and resumed.
+// Only its best is kept. A round left under way is kept and resumed.
 func TestAHoledRoundIsNotKept(cur realm, t *testing.T) {
 	id := register(cur, "unkept")
 	e := mustHole(id)
@@ -157,8 +150,7 @@ func TestAHoledRoundIsNotKept(cur realm, t *testing.T) {
 	uassert.Equal(t, 0, e.roundTree().Size())
 }
 
-// TestPlayRoundEqualsTheSameShotsOneByOne is what makes committing a whole hole
-// safe: the replay is not a shortcut, it is the same strokes.
+// What makes committing a whole hole safe: the replay is the same strokes.
 func TestPlayRoundEqualsTheSameShotsOneByOne(cur realm, t *testing.T) {
 	// one hole, so one weather: two players, one commit and two strokes
 	id := register(cur, "batch")
@@ -195,8 +187,7 @@ func TestPowerIsBounded(cur realm, t *testing.T) {
 	})
 }
 
-// SimulateRound is what the client animates; PlayRound is what gets recorded.
-// If they disagree, a player watches one round and signs another.
+// The client animates SimulateRound and signs PlayRound: they must agree.
 func TestSimulateRoundEqualsPlayRound(cur realm, t *testing.T) {
 	id := register(cur, "mirror")
 	shots := "10,2 ; -20,3 ; 5,4"
@@ -219,8 +210,7 @@ func TestJstrEscapesControlCharacters(t *testing.T) {
 	uassert.Equal(t, `"a\u000db\u0001\"c\\"`, jstr("a\rb\x01\"c\\"))
 }
 
-// NaN and infinities pass every comparison; they must be refused by name, or
-// one shot stores a NaN ball that every client of the hole then receives.
+// NaN and infinities pass every comparison: they must be refused by name.
 func TestPoisonShotsAreRefused(cur realm, t *testing.T) {
 	id := register(cur, "poison")
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -247,7 +237,7 @@ func TestNamesAreCleaned(cur realm, t *testing.T) {
 	uassert.Equal(t, "Garden Cup", cleanName("~~Garden~~ Cup"))
 	uassert.Equal(t, "g1abc x.y", cleanName("@g1abc x@.y"))
 	uassert.Equal(t, "ab", cleanText("a\u0085\u2028b", maxNote))
-	uassert.Equal(t, "a b", cleanText("a \U0002fffeb\U0010ffff", maxNote)) // (non-printable astral runes: strconv.Quote writes them \U…)
+	uassert.Equal(t, "a b", cleanText("a \U0002fffeb\U0010ffff", maxNote)) // non-printable astral runes: strconv.Quote writes them \U…
 	// format characters and nonspacing marks: Mongolian variation
 	// selectors, interlinear annotation, musical formatting, shorthand
 	// format controls, a stack of combining accents; a precomposed é stays
@@ -263,8 +253,7 @@ func timedHole() *course.Simple {
 	return h
 }
 
-// A timed hole meets the same course in the preview and in the record, stroke
-// by stroke, and the course depends on the player's own stroke count only.
+// Preview and record meet the same pieces, set by the player's stroke count.
 func TestTimedHoleFollowsTheRoundsStrokes(cur realm, t *testing.T) {
 	id := mine(cur, "timed", timedHole())
 
@@ -299,8 +288,7 @@ func TestLeaderboardRanksFinishedRounds(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(hub, "| rank | player | holes | vs par |") && strings.Contains(hub, " | [@golfer](/u/golfer) | 1 | -2 |"), hub)
 }
 
-// A finish on anyone's hole keeps no standing and ranks nobody: no 0-hole
-// rows in the top ten, and no totals row to inflate.
+// No standing is kept: no 0-hole row in the top ten, no totals row to inflate.
 func TestAnyonesHoleRanksNobody(cur realm, t *testing.T) {
 	loner := testutils.TestAddress("loner")
 	giveName(cur, loner, "loner")
@@ -335,8 +323,7 @@ func TestMarksCannotEscapeTheBoard(cur realm, t *testing.T) {
 	uassert.Equal(t, '~', mark('~', '#'))
 }
 
-// Holes lists the course world by world, then by order within one, then
-// anyone's, and says which is which.
+// Course holes by world then order, then community holes, each flagged.
 func TestHolesAreListedWorldByWorld(cur realm, t *testing.T) {
 	islet := flatHole("Flat")
 	islet.World, islet.Order = "island", 1
@@ -387,14 +374,13 @@ func TestHolesAreListedWorldByWorld(cur realm, t *testing.T) {
 	uassert.False(t, strings.Contains(Render(id), "Island Cup"))
 }
 
-// a hole open to the wind
+// windy is a hole open to the wind.
 var windy = &course.Simple{
 	W: 44, H: 16, World: "island", Title: "Windy", Tee: physics.V(2, 8), Pin: physics.V(40, 8), Substeps: 20, CupRadius: 1,
 	Course: &physics.Field{Walls: build.Box(physics.V(0, 0), physics.V(44, 16)), Friction: 0.9, Radius: 0.5},
 }
 
-// The weather is a function of (hole, period): the same for everyone, it
-// changes the shot, and a recorded round cannot pick an old one.
+// Weather is a function of (hole, period): a round cannot pick an old one.
 func TestWeatherOfTheMoment(cur realm, t *testing.T) {
 	id := mine(cur, "windy", windy)
 
@@ -422,7 +408,7 @@ func TestWeatherOfTheMoment(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(HoleState(id), `"weather":{"period":`), "State gives the weather of the moment")
 }
 
-// a gate that swings across the lane within each stroke
+// swing is a gate that swings across the lane within each stroke.
 var swing = &course.Simple{
 	W: 32, H: 16, World: "garden", Title: "Swing", Tee: physics.V(2, 3), Pin: physics.V(26, 3), Substeps: 20, CupRadius: 1,
 	Course: &physics.Field{
@@ -432,8 +418,7 @@ var swing = &course.Simple{
 	},
 }
 
-// The third field of a shot is the player's timing: it decides whether the
-// gate is there, replays the same, and is kept with the round.
+// A shot's third field is its tick: it decides whether the gate is there.
 func TestTimingIsPartOfTheShot(cur realm, t *testing.T) {
 	id := mine(cur, "swing", swing)
 	e := mustHole(id)
@@ -458,8 +443,7 @@ func TestTimingIsPartOfTheShot(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Round(id, player), `"shots":"0.0000,5.0000,3"`), "the round keeps the timing")
 }
 
-// A newer version in the same slot archives the old one: its records stay,
-// its bests leave the course-wide standing, and it no longer ranks.
+// The old version is archived: its records stay, its bests leave the standing.
 func TestNewerHoleTakesTheSlot(cur realm, t *testing.T) {
 	old := publish(cur, cupHole("island", 47, "Old seven"))
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -483,8 +467,7 @@ func TestNewerHoleTakesTheSlot(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Holes(), `"next":"`+next+`"`), "Holes says where it went")
 }
 
-// A hole's board lists its named players' bests, fewest strokes first, a
-// page at a time; players counts the board's rows, finished every finisher.
+// "players" counts the board's rows, "finished" every finisher.
 func TestHoleLeaderboardSortsBests(cur realm, t *testing.T) {
 	id := register(cur, "holeboard")
 	a, b, c := testutils.TestAddress("hba"), testutils.TestAddress("hbb"), testutils.TestAddress("hbc")
@@ -532,8 +515,7 @@ func TestHoleLeaderboardSortsBests(cur realm, t *testing.T) {
 	uassert.True(t, strings.Index(lb, row(a, 1)) < strings.Index(lb, row(c, 1)) && strings.Index(lb, row(c, 1)) < strings.Index(lb, row(b, 2)), lb)
 }
 
-// A pro round counts on the pro records only, and a round keeps its mode.
-// (Launch plays pro; the assisted board is PlayRoundAt's.)
+// A round keeps its mode. Launch plays pro, PlayRoundAt assisted.
 func TestProRoundsRankApart(cur realm, t *testing.T) {
 	giveName(cur, player, "golfer")
 	id := register(cur, "promode")
@@ -558,8 +540,7 @@ func TestProRoundsRankApart(cur realm, t *testing.T) {
 // stranger never takes a gno.land name.
 var stranger = testutils.TestAddress("stranger")
 
-// An unnamed player's finish is kept, and friends see it, but no ranking
-// lists them.
+// An unnamed player's finish is kept, and friends see it.
 func TestOnlyNamedPlayersRank(cur realm, t *testing.T) {
 	id := courseHole(cur, 33)
 	testing.SetRealm(testing.NewUserRealm(stranger))
@@ -590,10 +571,9 @@ func standingOf(mode string, p address) (holes, strokes, par int) {
 	return holes, strokes, par
 }
 
-// ghostHoles replays a player's Ghost as a duel does, from its own JSON: the
-// first stroke with SimulateRoundIn, each later one with SimulateFrom from the
-// rest before, all in the ghost's period. It reports whether the last stroke
-// holes, and only the last.
+// ghostHoles replays a player's Ghost as a duel does, stroke by stroke from its
+// own JSON, in its period. It reports whether the last stroke holes, and only
+// the last.
 func ghostHoles(id, mode string, p address) bool {
 	gj := Ghost(id, mode, p)
 	period, _ := strconv.ParseInt(jget(gj, "period"), 10, 64)
@@ -611,10 +591,7 @@ func ghostHoles(id, mode string, p address) bool {
 	return strings.Contains(sim, `"holed":true`)
 }
 
-// TestGhostKeepsTheBestRound: a best keeps its period and shots, a worse round
-// or a tie leaves them, a better one replaces them, and the best replays
-// stroke by stroke from Ghost's own answer in its own period, long after, to
-// the same strokes: what a duel races.
+// A tie leaves the best, which replays from Ghost's own answer long after.
 func TestGhostKeepsTheBestRound(cur realm, t *testing.T) {
 	id := mine(cur, "ghost", cupHole("garden", 1, "Ghost"))
 	racer := testutils.TestAddress("racer")
@@ -640,8 +617,7 @@ func TestGhostKeepsTheBestRound(cur realm, t *testing.T) {
 	uassert.True(t, strings.HasSuffix(Ghost(id, "assisted", racer), ufmt.Sprintf(`"strokes":1,"period":%d,"shots":"0.0000,1.0000,0"}`, Period())), "a better round is the ghost now")
 }
 
-// TestGhostOnATimedHole: each stroke of a ghost meets the pieces of its own
-// stroke number, at its own tick, so it replays to the round it was.
+// Each ghost stroke meets the pieces of its own stroke number and tick.
 func TestGhostOnATimedHole(cur realm, t *testing.T) {
 	id := mine(cur, "ghosttimed", timedHole())
 	racer := testutils.TestAddress("racer")
@@ -653,9 +629,7 @@ func TestGhostOnATimedHole(cur realm, t *testing.T) {
 	uassert.True(t, ghostHoles(id, "assisted", racer), "the timed ghost holes in its own strokes")
 }
 
-// TestARoundsPageSaysWhatComesNext: a round under way says its strokes right
-// for one, that an assisted one goes on in 3D (Launch plays pro rounds), and
-// once its weather is over, that it must be Reset first.
+// An assisted round goes on in 3D; one whose weather is over must be Reset.
 func TestARoundsPageSaysWhatComesNext(cur realm, t *testing.T) {
 	id := mine(cur, "roundpage", cupHole("garden", 1, "Page"))
 	walker := testutils.TestAddress("walker")
@@ -670,9 +644,7 @@ func TestARoundsPageSaysWhatComesNext(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Render(id+"/"+walker.String()), "Its weather is over: Reset (below) before the next shot."))
 }
 
-// TestABestReadsAsItIsWritten pins the one way a best is kept: bestOf writes
-// it, bestStrokes and Ghost read it, and anything else is refused (a best
-// read by the drain on every finish must never be malformed).
+// bestOf writes a best; bestStrokes and Ghost read it and refuse anything else.
 func TestABestReadsAsItIsWritten(cur realm, t *testing.T) {
 	r := &round{strokes: 3, period: 5912345, shots: "12.5000,6.2000,0;0.0000,1.0000,4;-359.9999,10.0000,1023"}
 	uassert.Equal(t, 3, bestStrokes(bestOf(r)))
@@ -684,7 +656,7 @@ func TestABestReadsAsItIsWritten(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "a best not as bestOf writes it", func() { bestFields("3 5912345 0,1,0") })
 }
 
-// TestNamesAreCheckedAsTheRegistrarWritesThem: the pages print names in links.
+// The pages print names in links.
 func TestNamesAreCheckedAsTheRegistrarWritesThem(t *testing.T) {
 	for _, ok := range []string{"a", "nym-birdie007", "test_1"} {
 		uassert.True(t, nameish(ok), ok)
@@ -694,8 +666,6 @@ func TestNamesAreCheckedAsTheRegistrarWritesThem(t *testing.T) {
 	}
 }
 
-// A page reads each record holder's name once: bestCell takes it from the
-// page's names once there.
 func TestAPageReadsEachNameOnce(cur realm, t *testing.T) {
 	id, p := register(cur, "onename"), testutils.TestAddress("onename")
 	giveName(cur, p, "onename")

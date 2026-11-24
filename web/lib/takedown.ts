@@ -1,13 +1,10 @@
-// The takedown list (the site serves it at /takedown.json): community
-// holes the site no longer shows,
-// listed or linked, whatever the chain still keeps. Read as flags.ts reads
-// its list: only what it should hold, from the chain the game plays on.
+// The takedown list, served at /takedown.json: community holes the site no longer shows, whatever the chain still keeps.
 import { isAddress, isSlug } from "./chain";
 
-// a list a few thousand holes long is some 200 kB; past this it is not read at all
+// a list of a few thousand holes is some 200 kB; past this it is not read at all
 const MAX_BYTES = 1 << 20;
 
-/** The aliases ("<address>/<slug>") taken down: none if the list is too big, not JSON, or another chain's. */
+/** The aliases taken down, "<address>/<slug>": none if the list is too big, not JSON, or another chain's. */
 export function readTakedown(text: string, chainId: string): ReadonlySet<string> {
   const out = new Set<string>();
   if (text.length > MAX_BYTES) return out;
@@ -28,7 +25,7 @@ export function readTakedown(text: string, chainId: string): ReadonlySet<string>
   return out;
 }
 
-/** The site's list (/takedown.json, read anew: no-cache, as Publish checks an alias before it is published) for the chain played on; none served, none taken down; a failed read rejects (the caller says what it falls back to). */
+/** The site's list for the chain played on, read anew. None served: none taken down. A failed read rejects. */
 export async function loadTakedown(chain: { chainId: () => Promise<string> }, get: Get = fetch): Promise<ReadonlySet<string>> {
   const [text, id] = await Promise.all([get("/takedown.json", { cache: "no-cache" }).then((r) => (r.ok ? r.text() : r.status === 404 ? "" : Promise.reject(new Error(`takedown ${r.status}`)))), chain.chainId()]);
   return readTakedown(text, id);
@@ -40,7 +37,7 @@ export const NO_TAKEN: ReadonlySet<string> = new Set();
 type Get = (url: string, init?: RequestInit) => Promise<Response>;
 // the lists read this visit, by loader and chain id
 const read = new WeakMap<Get, Map<string, Promise<ReadonlySet<string>>>>();
-/** The site's list for the chain played on, read once a visit (the game, the Builder's lists and its rewards ask the same); a failed read is not kept: the next ask reads it again. */
+/** The site's list for the chain played on, read once a visit. A failed read is not kept. */
 export async function takedownOf(chain: { chainId: () => Promise<string> }, get: Get = fetch): Promise<ReadonlySet<string>> {
   const id = await chain.chainId();
   const lists = read.get(get) ?? new Map<string, Promise<ReadonlySet<string>>>();
@@ -50,7 +47,7 @@ export async function takedownOf(chain: { chainId: () => Promise<string> }, get:
   return p;
 }
 
-/** Whether a hole (any version of an alias, or the alias) is taken down. */
+/** Whether a hole is taken down: its alias, or any version of it. */
 export function takenDown(set: ReadonlySet<string>, id: string) {
   const [addr, slug] = id.split("/");
   return set.has(`${addr}/${slug}`);

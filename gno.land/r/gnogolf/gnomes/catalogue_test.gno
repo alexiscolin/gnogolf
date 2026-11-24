@@ -102,10 +102,8 @@ func TestASeriesIsBounded(cur realm, t *testing.T) {
 	uassert.ErrorContains(t, addSeries("one-too-many", itoa(id)+"|common|A|v0.a"), "series")
 }
 
-// A name is shown by gnoweb as Markdown, by a wallet as text, by a market as
-// JSON: it is letters, digits, spaces and - ' . alone, in valid UTF-8, so
+// A name is shown as Markdown, as text and as JSON: plain letters only, so
 // none can turn into a link, an image, markup or text running backwards.
-// Markup and link payloads first, the bidi and other invisible runes after.
 func TestANameIsLettersAndPlainMarks(cur realm, t *testing.T) {
 	fresh(t, cur)
 	for _, name := range []string{
@@ -129,8 +127,7 @@ func TestANameIsLettersAndPlainMarks(cur realm, t *testing.T) {
 	}
 }
 
-// Traits are the designer's encoding: printable ASCII alone, so they too
-// are valid UTF-8 wherever they go.
+// Traits are printable ASCII alone, so valid UTF-8 wherever they go.
 func TestTraitsArePrintableASCII(cur realm, t *testing.T) {
 	fresh(t, cur)
 	for _, traits := range []string{"v0.\xff", "v0.é", "v0.\u202e", "v0\x7f"} {

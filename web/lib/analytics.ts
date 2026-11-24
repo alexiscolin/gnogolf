@@ -1,12 +1,5 @@
-// Audience measurement, and what goes wrong in the field (PostHog Cloud EU):
-// anonymous and first-party, so no banner (the CNIL's audience-measurement
-// exemption). No key (NEXT_PUBLIC_POSTHOG_KEY), nothing loads and nothing is
-// sent: local dev has none, nor a page opened with the test hooks (?camlog).
-// posthog-js comes in a chunk of its own once the page is idle; what is said
-// before waits for it. Never who: no identify(), no replay, no heatmaps, the
-// clicks' text and attributes masked, and every event scrubbed of addresses
-// and share texts before it goes (clean). A visitor who objects (optOut, the
-// About sheet) is not measured again in this browser.
+// Audience measurement on PostHog Cloud EU, anonymous and first-party: no banner.
+// Without NEXT_PUBLIC_POSTHOG_KEY nothing loads and nothing is sent. Never who: every event is scrubbed.
 import type { CaptureResult, PostHog } from "posthog-js";
 import { camlog } from "./testhooks";
 import { isTouch, reducedMotion } from "./device";
@@ -14,12 +7,11 @@ import type { Mode } from "./types";
 import type { UiAction } from "./uitrack";
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY || "";
-/** The PostHog survey the feedback sheet answers (an API survey: our own form, its answers in PostHog's Surveys). */
+/** The PostHog survey the feedback sheet answers. */
 const SURVEY = process.env.NEXT_PUBLIC_POSTHOG_SURVEY || "";
-/** The commit this build is of (next.config.mjs, from Netlify's COMMIT_REF). */
+/** The commit this build is of. */
 const BUILD = process.env.NEXT_PUBLIC_BUILD || "dev";
-/** 13 months, the CNIL's longest for an audience id: the cookie's life, and
- *  past it (every visit renews the cookie) a new id. */
+/** 13 months, the CNIL's longest for an audience id: the cookie's life. */
 const MAX_DAYS = 390;
 
 type Value = string | number | boolean | null | undefined;
@@ -32,9 +24,9 @@ export type WalletFrom = "hud" | "card" | "pending" | "phone" | "rival" | "board
 export const WALLET_STEPS = ["adena", "connect", "funds", "name", "save"] as const;
 /** What sent a Save to the wallet sheet instead of Adena: the first step missing. */
 export type SaveBlock = "no_adena" | "no_account" | "no_funds" | "wrong_node" | "no_name" | null;
-/** Why a name typed is refused (common.ts nameRefusal): a rule of the registrar's broken, taken, too close to one taken, refused otherwise. */
+/** Why a name typed is refused: a rule of the registrar's broken, taken, too close to one taken, refused otherwise. */
 export type NameRefusal = "chars" | "reserved" | "length" | "digits" | "taken" | "lookalike" | "invalid" | "no_registrar";
-/** Where a shared link was shared from: its src= (common.ts holeLink, dareLink; Golf.tsx cupLink). */
+/** Where a shared link was shared from: its src=. */
 export type ShareSrc = "hole" | "cup" | "board" | "duel";
 /** What a share button offers, by its words: a dare, a duel's dare back, a place, your own ghost, the round. */
 export type ShareKind = "dare" | "dare_back" | "share_rank" | "share_ghost" | "share";
@@ -79,15 +71,9 @@ export type Feedback = { rating: number; hard: string[]; more: string; familiar:
 
 /** A dev build with no key: the sheet shown all the same, its answers logged, nothing sent. */
 export const feedbackLocal = () => !KEY && process.env.NODE_ENV !== "production";
-/** Whether feedback can be asked here: measured (PostHog loaded or not), not objected to, not a test-hooks page. */
+/** Whether feedback can be asked here: measured, not objected to, not a test-hooks page. */
 export const canFeedback = () => (!!KEY || feedbackLocal()) && !optedOut() && !camlog();
-/**
- * The feedback sheet's answers, as the survey's (its responses by question,
- * in order), with where it was sent from: straight to PostHog's capture
- * endpoint, on a one-off id (never the visit's: the answers tie to no visit),
- * scrubbed as every event. Resolves whether it went (a blocker drops
- * posthog-js's own sends unseen; this one's answer is read).
- */
+/** Sends the feedback sheet's answers to PostHog's capture endpoint on a one-off id: they tie to no visit. Resolves whether it went. */
 export async function feedback(f: Feedback, where: Props): Promise<boolean> {
   if (!canFeedback()) return false;
   const answers = [f.rating, f.hard, f.more, f.familiar], event = SURVEY ? "survey sent" : "feedback";
@@ -100,7 +86,7 @@ export async function feedback(f: Feedback, where: Props): Promise<boolean> {
       ...Object.fromEntries(answers.map((a, i) => [i ? `$survey_response_${i}` : "$survey_response", a])),
       ...Object.fromEntries(questions.map((q, i) => [`$survey_response_${q.id}`, answers[i]])),
       ...(questions.length ? { $survey_questions: questions.map((q, i) => ({ id: q.id, question: q.question, response: answers[i] })) } : {}),
-      // (the page's URL and host, as posthog-js says them: the test-account filters read them)
+      // the page's URL and host, as posthog-js says them: the test-account filters read them
       $current_url: globalThis.location?.href, $host: globalThis.location?.host, $pathname: globalThis.location?.pathname, $lib: "web",
       build: BUILD, viewport: sizeOf(globalThis.innerWidth || 0), touch: isTouch(),
       ...where,
@@ -118,9 +104,9 @@ export async function feedback(f: Feedback, where: Props): Promise<boolean> {
 
 type Question = { id: string; question: string };
 let questionsRead: Promise<Question[]> | null = null;
-/** The survey's questions, read once a visit from PostHog's public survey list (what posthog-js reads). */
+/** The survey's questions, read once a visit from PostHog's public survey list. */
 function surveyQuestions(): Promise<Question[]> {
-  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 3000); // (slow: the answers go by their index keys alone)
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 3000); // too slow: the answers go by their index keys alone
   return (questionsRead ||= fetch(`${OPTIONS.api_host}/api/surveys/?token=${KEY}`, { signal: ac.signal })
     .finally(() => clearTimeout(t))
     .then((r) => r.json() as Promise<{ surveys?: { id: string; questions: Question[] }[] }>)
@@ -131,7 +117,7 @@ function surveyQuestions(): Promise<Question[]> {
 let ph: PostHog | null = null, started = false;
 const queue: ((p: PostHog) => void)[] = [];
 
-// the visitor's objection, kept in this browser (and for this page, storage blocked)
+// the visitor's objection, kept in this browser; off holds it for this page when storage is blocked
 const OFF = "gnogolf.noStats";
 let off = false;
 /** Whether the visitor objected to the measurement. */
@@ -142,15 +128,14 @@ export const optedOut = () => {
     return off;
   }
 };
-/** The visitor objects: nothing more goes, from this page or a later one, and nothing loads again;
- *  what PostHog kept in this browser goes (its id, and its cookies: an earlier page's too). */
+/** The visitor objects: nothing more goes, nothing loads again, and what PostHog kept in this browser goes. */
 export function optOut() {
   off = true;
   try { localStorage.setItem(OFF, "1"); } catch {}
   queue.length = 0;
-  // (never reset(): it forgets the opt-out too; opt_out_persistence_by_default takes the id away)
+  // never reset(): it forgets the opt-out too
   if (ph) ph.opt_out_capturing();
-  // (this host's only, no domain: cross_subdomain_cookie is off; its opt-out one too, OFF says it)
+  // this host's cookies only: cross_subdomain_cookie is off
   try {
     for (const c of document.cookie.split(";")) {
       const name = c.split("=")[0].trim();
@@ -159,7 +144,7 @@ export function optOut() {
   } catch {}
 }
 
-// (a page where it never loads, blocked: the first 200 wait, the rest go)
+// where PostHog never loads, the first 200 wait and the rest are dropped
 function run(f: (p: PostHog) => void) {
   if (!KEY || optedOut()) return;
   if (ph) f(ph);
@@ -168,9 +153,9 @@ function run(f: (p: PostHog) => void) {
 
 /** One of the game's events. */
 export const track = <E extends keyof Events>(event: E, props: Events[E]) => run((p) => void p.capture(event, props));
-/** One of the game's events as the page goes (a beacon: the tab may be closing). */
+/** One of the game's events as the page goes, by beacon: the tab may be closing. */
 export const trackLeaving = <E extends keyof Events>(event: E, props: Events[E]) => run((p) => void p.capture(event, props, { transport: "sendBeacon" }));
-/** Said with every event from now on (the gnome, the aim, the hole played…). */
+/** Said with every event from now on. */
 export const register = (props: Props) => run((p) => p.register(props));
 /** Once a session: true the first time key is asked. */
 export function once(key: string) {
@@ -181,8 +166,7 @@ export function once(key: string) {
   return true;
 }
 const told = new Map<string, number>();
-/** A failure the game handled (a node down, Adena refusing, a hole that would
- *  not draw), where it happened and around what; the same one 3 times at most a page. */
+/** A failure the game handled, where it happened and around what. The same one 3 times at most a page. */
 export function trackError(where: string, err: unknown, props: Props = {}) {
   if (!KEY) return;
   const e = err instanceof Error ? err : new Error(String(err)), k = `${where}:${e.message}`, n = told.get(k) || 0;
@@ -194,30 +178,24 @@ export function trackError(where: string, err: unknown, props: Props = {}) {
 /** How many holes this browser's card holds, coarsely. */
 export const cardHoles = (n: number) => (n < 1 ? "0" : n < 4 ? "1-3" : n < 10 ? "4-9" : "10+");
 
-/** The step a save is missing, but its name (the caller's): no wallet, no
- *  account, too few GNOT here (wrong_node: with Adena on another network, where
- *  its GNOT may be); null, it may go to Adena. */
+/** The step a save is missing, null if it may go to Adena. wrong_node: too few GNOT here with Adena on another network. */
 export function saveBlock({ adena, account, lack, elsewhere }: { adena: boolean; account: boolean; lack: number | null; elsewhere: boolean }): SaveBlock {
   if (!account) return adena ? "no_account" : "no_adena";
   return lack != null && lack > 0 ? (elsewhere ? "wrong_node" : "no_funds") : null;
 }
 
-/** A failure in a word, to group them: its kind (chain.ts: down, chain), or what its message names. */
+/** A failure in a word, to group them: its kind, or what its message names. */
 export function failure(err: unknown) {
   const kind = err instanceof Error && (err as Error & { kind?: string }).kind, m = err instanceof Error ? err.message : String(err);
   return kind || (/out of gas/i.test(m) ? "gas" : /insufficient/i.test(m) ? "funds" : /locked/i.test(m) ? "locked" : /already open/i.test(m) ? "busy" : /cancelled|rejected/i.test(m) ? "cancelled" : /not installed/i.test(m) ? "no_adena" : /network|chain id|RPC/i.test(m) ? "network" : "other");
 }
 
-const G1 = /g1[0-9a-z]{38}/g; // a gno.land address (chain.ts ADDR), anywhere in a string
-// what a URL keeps of its query: where in the game, never who (by=, friend=:
-// an address; a held gnome's id, gnome=t<id>: its owner) nor a share's text
-// (a network's intent link, the referrer's)
+const G1 = /g1[0-9a-z]{38}/g; // a gno.land address, anywhere in a string
+// what a URL keeps of its query: where in the game, never who nor a share's text
 const KEEP = new Set(["cup", "hole", "gnome", "screen", "src"]);
-/** A gnome as it may leave: the game's by its id, a held one (lib/gnomes/wear.ts tokenSkin) as "token". */
+/** A gnome as it may leave: the game's by its id, a held one as "token". */
 export const gnomeWord = (id: string) => (/^t\d/.test(id) ? "token" : id);
-/** A string as it may leave: URLs keep only KEEP; addresses, gno.land names (nym-…) and what follows an "address(" go. */
-// free: a player's own words (the feedback's): addresses, names and a key's hex go; a recovery phrase only
-// when the words are nothing else (a sentence of twelve plain words is no phrase)
+/** A string as it may leave: URLs keep only KEEP; addresses, gno.land names and what follows "address(" go. free: a player's own words, where a recovery phrase goes only when the words are nothing else. */
 export function scrub(v: string, free = false) {
   if (/^https?:\/\//.test(v))
     try {
@@ -231,18 +209,18 @@ export function scrub(v: string, free = false) {
     .replace(G1, "g1…")
     .replace(/nym-[a-z0-9._-]+/gi, "nym-…")
     .replace(/address\(.*/gs, "address(…)");
-  // a net for what never should pass here (the page holds no key): a private key's hex, a recovery phrase
+  // a net for what should never pass here: a private key's hex, a recovery phrase
   v = v.replace(/\b(?:0x)?[0-9a-f]{64,}\b/gi, "hex…");
   return free ? v.replace(/^\s*(?:[a-z]{3,8}\s+){11,23}[a-z]{3,8}\s*$/i, "words…") : v.replace(/\b(?:[a-z]{3,8}\s+){11,}[a-z]{3,8}\b/gi, "words…");
 }
 const deep = (v: unknown, free = false): unknown =>
   typeof v === "string" ? scrub(v, free) : Array.isArray(v) ? v.map((x) => deep(x, free)) : v && typeof v === "object" && !(v instanceof Date) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x, free || k.startsWith("$survey_response") || k === "$survey_questions")])) : v;
-/** An event scrubbed, every string in it (before_send): its properties, the person's first ones. */
+/** An event with every string scrubbed. */
 export const clean = (e: CaptureResult | null): CaptureResult | null => e && ({ ...e, properties: deep(e.properties), $set: deep(e.$set), $set_once: deep(e.$set_once) } as CaptureResult);
 
-/** The init options (tested: what is on, what is off). */
+/** PostHog's init options. */
 export const OPTIONS = {
-  api_host: process.env.NODE_ENV === "production" ? "/e" : "https://eu.i.posthog.com", // the site's own path (netlify.toml): a blocker sees no PostHog
+  api_host: process.env.NODE_ENV === "production" ? "/e" : "https://eu.i.posthog.com", // the site's own path: a blocker sees no PostHog
   ui_host: "https://eu.posthog.com",
   defaults: "2026-08-30",
   person_profiles: "identified_only", // and nobody is identified: anonymous events only
@@ -272,8 +250,7 @@ export const OPTIONS = {
 // the page as a word: what a layout is laid out for
 const sizeOf = (w: number) => (w < 600 ? "phone" : w < 1024 ? "tablet" : "desktop");
 
-/** Loads PostHog once the page is idle, then sends what was said meanwhile.
- *  Nothing without a key, under the test hooks, or for a visitor who objected. load: the import (the tests give theirs). */
+/** Loads PostHog once the page is idle, then sends what was said meanwhile. load: the import, the tests give theirs. */
 export function start(load: () => Promise<{ default: PostHog }> = () => import("posthog-js")) {
   if (!KEY || started || camlog() || optedOut()) return;
   started = true;
@@ -283,11 +260,11 @@ export function start(load: () => Promise<{ default: PostHog }> = () => import("
     const go = () =>
       void load()
         .then(({ default: p }) => {
-          if (optedOut()) return; // (objected while it loaded)
+          if (optedOut()) return; // objected while it loaded
           p.init(KEY, {
             ...OPTIONS,
             loaded: (p) => {
-              // an id older than 13 months starts again, its device id too (the cookie is renewed at each visit)
+              // an id older than 13 months starts again, its device id too
               const day = Math.floor(Date.now() / 864e5), since = Number(p.get_property("since_day"));
               if (since && day - since > MAX_DAYS) p.reset(true);
               p.register_once({ since_day: day });

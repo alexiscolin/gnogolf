@@ -100,8 +100,7 @@ func le64(x float64) string {
 	return string(b)
 }
 
-// Writes take a version's exact id; reads take its alias too, and answer
-// with the id to write with.
+// Reads take an alias too, and answer with the id to write with.
 func TestWritesTakeExactIds(cur realm, t *testing.T) {
 	id := publish(cur, cupHole("garden", 61, "Exact"))
 	for _, write := range []func(){
@@ -122,8 +121,7 @@ func TestWritesTakeExactIds(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "unknown hole", func() { HoleState("garden/62") })
 }
 
-// A course hole's life: published, played and worn; a new version archives
-// it, resets the ranking and wears afresh; both stay readable.
+// A new version archives the old and wears afresh; both stay readable.
 func TestPublishPlayWearRepublish(cur realm, t *testing.T) {
 	fan := testutils.TestAddress("fan")
 	giveName(cur, fan, "fan")
@@ -176,8 +174,7 @@ func sumWear(e *entry) int {
 	return n
 }
 
-// A data hole is decoded for each call and kept nowhere: its entry has no
-// hole, and every read and write works from its data alone.
+// A hole is decoded from its data on each call: its entry keeps no hole.
 func TestADataHoleIsNeverStored(cur realm, t *testing.T) {
 	h := cupHole("town", 63, "Stored")
 	h.Pulses = []course.Pulse{{Every: 2, On: 1, Walls: build.Bar(physics.V(10, 4), physics.V(10, 12), 0.5, '=', "gate")}}
@@ -200,10 +197,8 @@ func TestADataHoleIsNeverStored(cur realm, t *testing.T) {
 	uassert.Equal(t, 2, sumWear(e))
 }
 
-// A hole at every limit of the format is refused: its dearest weather would
-// leave a commit no room. The heaviest of its kind golf takes has its first
-// shot's room in any weather, and a commit of twelve shots on it is refused
-// before it could run out of gas.
+// Its dearest weather would leave a commit no room. heavyHole, the heaviest
+// taken, keeps room for a first shot.
 func TestTheEstimatorRefusesAHoleAtTheLimits(cur realm, t *testing.T) {
 	testing.SetRealm(testing.NewUserRealm(player))
 	urequire.AbortsContains(t, cur, errTooStormy, func() { PublishMine(cross(cur), "limits", hexOf(limitsHole()), "every limit at once") })
@@ -223,9 +218,7 @@ func TestTheEstimatorRefusesAHoleAtTheLimits(cur realm, t *testing.T) {
 }
 
 // A pulse's walls and posts are set up afresh for each shot, at a cost no
-// Shot.Work counts: the estimate charges it, so a hole whose pulse holds the
-// format's walls and posts, whose heaviest shot a transaction could not
-// replay, is refused, and one it could is charged it on every shot.
+// Shot.Work counts: the estimate charges it.
 func TestAPulsesSetUpIsCharged(cur realm, t *testing.T) {
 	pulsed := func(bars int) *course.Simple {
 		h := cupHole("garden", 1, "Pulsed")
@@ -255,16 +248,13 @@ func TestAPulsesSetUpIsCharged(cur realm, t *testing.T) {
 	uassert.True(t, w.spent >= workPerShot+68*workPerWall+w.setup, "every shot pays it")
 }
 
-// limitsHole is at every limit GG1 allows at once: a 96×48 board, 160 walls
-// (28 of them in 16 pulses), 32 posts, 32 zones (8 of them 64-point
-// polygons, 512 points in all) and 60 substeps. Its dearest weather, every
-// puddle try testing all of that, would leave a commit no room for a shot:
+// limitsHole is at every GG1 limit at once: a 96×48 board, 160 walls (28 in 16
+// pulses), 32 posts, 32 zones (8 of them 64-point polygons) and 60 substeps.
 // golf refuses it.
 func limitsHole() *course.Simple { return atLimits(course.MaxWalls-28-4, physics.Surface, "sand") }
 
-// heavyHole is limitsHole as heavy as golf takes it: 21 of its 128 inner
-// walls, and slopes for its polygons (a puddle try tests a polygon's edges on
-// ground only), so its dearest weather leaves a commit's first shot its room.
+// heavyHole is limitsHole as heavy as golf takes it: 21 of its 128 inner walls,
+// and slopes for polygons, whose edges a puddle try skips.
 func heavyHole() *course.Simple { return atLimits(21, physics.Slope, "slope") }
 
 // atLimits is limitsHole with inner walls inside its box and its polygons
@@ -338,8 +328,7 @@ func TestPublishMine(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(playLink(mustHole(v2)), "?hole="+v2))
 }
 
-// A community hole's name or note carries no web address, and what gets past
-// that the owner can take off the lists: never off the chain.
+// Hide takes a hole off the lists, never off the chain.
 func TestCommunityTextAndHide(cur realm, t *testing.T) {
 	defer asideCourse(cur)()
 	eve := testutils.TestAddress("eve")
@@ -376,10 +365,7 @@ func TestCommunityTextAndHide(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Holes(), `"id":"`+id+`"`), "back")
 }
 
-// A hidden hole leaves the lists and its author's places: their next newest
-// shows in its stead, it comes back as it was, a new version of it stays
-// hidden, and an author with only hidden holes is not in the index the lists
-// walk. Hiding it twice changes nothing.
+// The author's next newest hole shows in its stead.
 func TestAHiddenHoleTakesNoPlace(cur realm, t *testing.T) {
 	hider := testutils.TestAddress("hider")
 	var ids []string
@@ -433,8 +419,7 @@ func TestAHiddenHoleTakesNoPlace(cur realm, t *testing.T) {
 	})
 }
 
-// Community publishing is the owner's to open, and to close again: closed,
-// PublishMine is refused, and the holes already published play and list on.
+// Closed, PublishMine is refused; holes already published play and list on.
 func TestPublishingIsTheOwnersSwitch(cur realm, t *testing.T) {
 	defer func() { publishing = true }() // as the other tests find it (setUp)
 	setOwner(deployer)
@@ -466,9 +451,7 @@ func TestPublishingIsTheOwnersSwitch(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Holes(), `"id":"`+id+`"`), "still listed")
 }
 
-// A deploy has a signer, who owns the course, and leaves publishing closed;
-// only `gno test`'s signerless init (chain "dev") starts it open, and on any
-// other chain a signerless one is refused.
+// A signerless init is refused, except under gno test, where it starts open.
 func TestADeployStartsClosed(cur realm, t *testing.T) {
 	was := owner
 	defer func() { owner, publishing = was, true }()
@@ -482,8 +465,7 @@ func TestADeployStartsClosed(cur realm, t *testing.T) {
 	uassert.PanicsWithMessage(t, cur, "golf: no owner: golf must be deployed by an account", func() { setUp("", "onyx-1") })
 }
 
-// One address publishing fifty holes shows perAuthor of them in Holes, and
-// hides nobody else's; Community pages through every version of all of them.
+// Holes shows perAuthor of one address's fifty; Community pages through all.
 func TestPublishMineSpamHidesNobody(cur realm, t *testing.T) {
 	spam, other := testutils.TestAddress("spam"), testutils.TestAddress("spamfree")
 	data := hexOf(cupHole("pond", 1, "Spam"))
@@ -516,9 +498,7 @@ func TestPublishMineSpamHidesNobody(cur realm, t *testing.T) {
 	uassert.True(t, seen >= 52 && pages > 7)
 }
 
-// A first finish on an archived course hole, before the drain reaches its
-// player, is kept as a record and never counted, so the drain leaves the
-// player's standing alone; an improvement on it later does not count either.
+// It is kept as a record; the drain then leaves the player's standing alone.
 func TestAFirstFinishOnAnArchivedHoleNeverCounts(cur realm, t *testing.T) {
 	old := courseHole(cur, 66)
 	e := mustHole(old)
@@ -529,7 +509,7 @@ func TestAFirstFinishOnAnArchivedHoleNeverCounts(cur realm, t *testing.T) {
 	}
 	// archived by hand, the drain not started: nobody is reached yet
 	e.next, e.out = "garden/66/v9", &draining{}
-	saveEntry(e) // (kept in store: a version read back is decoded afresh)
+	saveEntry(e) // saved: a version read back is decoded afresh
 	setArchiving(append(archiving(), old))
 	late := testutils.TestAddress("n2late")
 	testing.SetRealm(testing.NewUserRealm(late))
@@ -550,8 +530,7 @@ func TestAFirstFinishOnAnArchivedHoleNeverCounts(cur realm, t *testing.T) {
 	}
 }
 
-// A player who takes a name after their best joins the boards at their next
-// finish, improving or not.
+// The next finish need not improve on the best.
 func TestANameTakenLaterRanksAtTheNextFinish(cur realm, t *testing.T) {
 	late := testutils.TestAddress("latename")
 	id := courseHole(cur, 67)
@@ -567,8 +546,7 @@ func TestANameTakenLaterRanksAtTheNextFinish(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Rank("", late), `"rank":`) && !strings.Contains(Rank("", late), `"rank":0,`), Rank("", late))
 }
 
-// Claim ranks at once what a name taken later would rank at the next finish:
-// the caller's own bests, never anyone else's, and only with a name.
+// Claim seats the caller's own bests at once, and only with a name.
 func TestClaimRanksRoundsKeptWithoutAName(cur realm, t *testing.T) {
 	late := testutils.TestAddress("claimer")
 	id := courseHole(cur, 65)
@@ -597,7 +575,6 @@ func TestClaimRanksRoundsKeptWithoutAName(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(page, "Finish it again") && !strings.Contains(page, "Claim"), page)
 }
 
-// Rank is a player's place in the course ranking.
 func TestRankCountsThePlayersAhead(cur realm, t *testing.T) {
 	a, b := testutils.TestAddress("rka"), testutils.TestAddress("rkb")
 	giveName(cur, a, "rka")
@@ -620,8 +597,7 @@ func TestRankCountsThePlayersAhead(cur realm, t *testing.T) {
 	uassert.True(t, strings.HasSuffix(CourseLeaderboard("pro", 0, 1), `],"next":1}`), "a page short of the end says where the next one starts")
 }
 
-// SimulateCommit is the next commit of a round under way, as PlayRoundAt
-// plays it, refusals included.
+// As PlayRoundAt plays it, refusals included.
 func TestSimulateCommitIsTheNextCommit(cur realm, t *testing.T) {
 	id := courseHole(cur, 68)
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -637,9 +613,8 @@ func TestSimulateCommitIsTheNextCommit(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "on the board", func() { SimulateCommit(id, -1, 8, 0, "0,1", Period()) })
 }
 
-// The reads refuse what the writes refuse: no shots or too many, a ball off
-// the board, a bad tick (a long one is clamped); friends lists each valid
-// address once.
+// No shots or too many, a ball off the board, a bad tick; a long one is
+// clamped.
 func TestTheReadsRefuseWhatTheWritesRefuse(cur realm, t *testing.T) {
 	id := register(cur, "reads")
 	for _, shots := range []string{"", ";;", " ; "} {
@@ -693,8 +668,7 @@ func TestDrainIsOpen(cur realm, t *testing.T) {
 	Drain(cross(cur), 1000)
 }
 
-// The pages: the hub says who can change what, a hole's page and its data
-// page say where it comes from.
+// The hub says who can change what; a hole's pages say where it comes from.
 func TestThePagesSayWhoHoldsPower(cur realm, t *testing.T) {
 	id := publish(cur, cupHole("town", 73, "Paged"))
 	hub := Render("")
@@ -714,8 +688,7 @@ func TestThePagesSayWhoHoldsPower(cur realm, t *testing.T) {
 	setOwner(deployer)
 }
 
-// The note and the name are cleaned once, at publish: no bidi or zero-width
-// characters, nothing that breaks the page.
+// No bidi or zero-width characters, nothing that breaks the page.
 func TestTextIsCleanedAtPublish(cur realm, t *testing.T) {
 	h := cupHole("garden", 74, "Evil‮eman|​[x]")
 	setOwner(deployer)
@@ -727,8 +700,7 @@ func TestTextIsCleanedAtPublish(cur realm, t *testing.T) {
 	uassert.False(t, strings.ContainsAny(e.note, "`⁦"))
 }
 
-// However often the course is republished, the list keeps room for
-// everyone else's holes, and shows a few archived versions only.
+// However often the course is republished, the list shows few old versions.
 func TestArchivedVersionsLeaveRoomInTheList(cur realm, t *testing.T) {
 	defer asideCourse(cur)()
 	for i := 0; i < maxArchived+5; i++ {
@@ -753,9 +725,7 @@ func TestArchivedVersionsLeaveRoomInTheList(cur realm, t *testing.T) {
 	uassert.True(t, others >= minCommunity, strconv.Itoa(others))
 }
 
-// The pages gnoweb links: a query string is ignored, a cup and an author
-// have a page, a community hole names its author, and a board too detailed
-// to draw says so.
+// A query string is ignored; a cup and an author each have a page.
 func TestThePagesGnowebLinks(cur realm, t *testing.T) {
 	h := cupHole("pond", 5, "Hedged")
 	h.Course.Walls = append(h.Course.Walls, build.Bar(physics.V(10, 2), physics.V(10, 6), 0.5, 0, "hedge")...)
@@ -782,10 +752,8 @@ func TestThePagesGnowebLinks(cur realm, t *testing.T) {
 	uassert.False(t, strings.Contains(page, "too detailed"))
 }
 
-// Community rows are the newest first: sixteen addresses that sort low
-// (bech32 "g1qqq…", cheap to grind for) publishing three holes each, on a
-// full course (the parity test's 90 in a full run; 72 filler slots when this
-// test runs alone), cannot keep a later author's hole off the list or the hub.
+// Sixteen addresses that sort low (bech32 "g1qqq…", cheap to grind), three
+// holes each, cannot keep a later author's hole off the list or the hub.
 func TestNewestCommunityHolesAreListed(cur realm, t *testing.T) {
 	for i := slots.Size(); i < 72; i++ {
 		publish(cur, cupHole("filler", i+1, "Filler"))
@@ -808,9 +776,8 @@ func TestNewestCommunityHolesAreListed(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Render(""), "Latecomer"), "and on the hub")
 }
 
-// One author publishing as many holes as they like fills perAuthor rows and
-// no more: everyone else's, older or newer, stay listed, the older ones even
-// past a flood of 1000.
+// One author fills perAuthor rows: older holes stay listed past a flood of
+// 1000.
 func TestOneAuthorCannotFloodTheList(cur realm, t *testing.T) {
 	defer asideCourse(cur)()
 	data := hexOf(cupHole("pond", 1, "Flood"))
@@ -851,8 +818,8 @@ func TestOneAuthorCannotFloodTheList(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Holes(), `"id":"`+early[0]+`"`) && strings.Contains(Render(""), ":"+strings.TrimSuffix(early[1], "/v1")+")"), "in Holes and on the hub")
 }
 
-// Every course hole fits one commit in its dearest weather: decoding, a
-// storm whose puddle tries all fail, and its heaviest shot (worstGas).
+// The dearest weather: decoding, a storm whose puddle tries all fail, and the
+// heaviest shot (worstGas).
 func TestTheCourseFitsItsWorstWeather(t *testing.T) {
 	for _, d := range courseData {
 		raw, err := hex.DecodeString(d[3])
@@ -865,9 +832,8 @@ func TestTheCourseFitsItsWorstWeather(t *testing.T) {
 	}
 }
 
-// asideCourse takes the course's own slots (published by the parity test:
-// 90 with the Crystal Mines) out of the list while a test models the list's
-// room on a small course of its own, and puts them back after it.
+// asideCourse takes the course's own slots out of the list, so a test can model
+// the list's room on a small course. It returns what puts them back.
 func asideCourse(cur realm) func() {
 	var keys, ids []string
 	for _, d := range courseData {
@@ -887,9 +853,8 @@ func asideCourse(cur realm) func() {
 	}
 }
 
-// DayCandidates: every community hole's alias in alias order, its current
-// version as a Holes row with the block its first version was published at,
-// none hidden; paged, a page at most pageMax keys walked.
+// Every community alias in order, as its current version's Holes row with the
+// block of its first version; none hidden.
 func TestDayCandidates(cur realm, t *testing.T) {
 	a := testutils.TestAddress("dayone")
 	testing.SkipHeights(1)

@@ -1,6 +1,6 @@
 "use client";
 
-// What the game's picker (Golf.tsx Picker) adds for a player who holds
+// What the game's picker (game/Picker.tsx) adds for a player who holds
 // gnomes: one line saying who sees what, one row of their gnomes' faces (a tap
 // plays one, free, kept in this browser), and, apart, the one call that costs:
 // showing everyone another than their best (Equip). Loaded with the shop's
@@ -12,7 +12,7 @@ import { PRICE, type SendError } from "@/lib/adena";
 import { sendGnome, gnomeCall, GNOME_TX } from "@/lib/gnomes/tx";
 import type { Chain } from "@/lib/chain";
 import { GNOMES_REALM } from "@/lib/chain";
-import { messageOf } from "@/components/common";
+import { messageOf } from "@/lib/words";
 import { seen, tokenSkin } from "@/lib/gnomes/wear";
 import { shareWords, type Worn } from "@/lib/gnomes/shop";
 import { thumb } from "./parts";

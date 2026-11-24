@@ -12,35 +12,31 @@ import (
 	"gno.land/r/gnogolf/store"
 )
 
-// The nine gnomes players earn (web/lib/card.ts UNLOCKS), minted free once
-// store proves the feat, and bound to their player. The proof reads store
-// with golf/v2's own key layout and never calls golf/v2:
+// The nine gnomes players earn (web/lib/card.ts UNLOCKS): minted free once
+// store proves the feat, and bound to their player. The proof reads store's
+// rows in golf/v2's key layout and never calls golf/v2:
 //
-//   - a cup's holes: store's "slots", "<world rank><world>/<order>" -> the
-//     slot's current version id (golf/v2 slotKey);
-//   - a player's best on a version: "bests", "<id> <mode> <player>" ->
-//     "<strokes> <height> <period> <shots>" (bestOf); a best with a
-//     "copies" row (a record sent again) does not count, as golf's Claim
-//     skips it;
-//   - a version's par: "holes", "<id>" -> the entry, field 2 (encodeEntry).
+//   - "slots": "<world rank><world>/<order>" -> the slot's current version
+//     id (slotKey);
+//   - "bests": "<id> <mode> <player>" -> "<strokes> <height> <period>
+//     <shots>" (bestOf). A best with a "copies" row does not count, as in
+//     golf's Claim;
+//   - "holes": "<id>" -> the entry, whose field 2 is the par (encodeEntry).
 //
-// bests carry no format version, so the proof refuses while store's writer
-// is not the rules it reads: a later format can refuse a mint, never prove
-// a false one. After a rules change the owner accepts the new rules
-// (AcceptRules), once checked to keep these rows as golf/v2 writes them,
-// and the proof reads again.
+// bests carry no format version, so the proof refuses unless store's writer
+// is the rules it reads: a new format can refuse a mint, never prove a false
+// one. AcceptRules follows a rules change.
 
-// rulesAtDeploy is the golf realm whose rows the proof reads at deploy
-// (stage.sh rewrites it with the other paths); rules is the one it reads now.
+// rulesAtDeploy is the golf realm whose rows the proof reads at deploy.
+// stage.sh rewrites this path.
 const rulesAtDeploy = "gno.land/r/gnogolf/golf/v2"
 
+// rules is the golf realm whose rows the proof reads.
 var rules string
 
-// AcceptRules makes path the rules the proof reads: store's current writer
-// and no other, so the owner can follow a rules change store's own public
-// delay has carried out, never point the proof elsewhere. A paused store
-// has no writer (""): nothing to accept, and the proof stays refused until
-// it resumes. Owner only.
+// AcceptRules makes path the rules the proof reads. path must be store's
+// current writer: the owner can follow a rules change, never point the proof
+// elsewhere. Panics while store is paused, when it has no writer. Owner only.
 func AcceptRules(cur realm, path string) {
 	assertOwner(0, cur)
 	w := golfRows.Writer()
@@ -54,17 +50,16 @@ func AcceptRules(cur realm, path string) {
 	chain.Emit("RulesAccepted", "rules", path)
 }
 
-// Earned ids start above any id a catalogue can reach (64 series of 1,000
-// rows end at 64,000).
+// firstEarned is above any id a catalogue can reach: 64 series of 1,000 rows
+// end at 64,000.
 const firstEarned = 1_000_001
 
-// earnedTier is an earned token's tier: none of the sale's.
+// earnedTier is an earned token's tier, outside the sale's.
 const earnedTier = -1
 
-// earnedKinds are the earned gnomes in UNLOCKS order: a token's kind byte is
-// the index + 1. earnedNames are theirs in GNOMES (web/lib/scene/gnome.ts),
-// earnedNeeds what earns each (UNLOCKS' need). selfcheck.ts holds all three
-// to the client's.
+// earnedKinds are in UNLOCKS order: a token's kind byte is the index + 1.
+// earnedNames are GNOMES' (web/lib/scene/gnome.ts), earnedNeeds UNLOCKS'
+// need. selfcheck.ts holds all three to the client's.
 var (
 	earnedKinds = []string{"wizard", "viking", "golden", "pirate", "diver", "baker", "mayor", "king", "miner"}
 	earnedNames = []string{"The Wizard", "The Viking", "The Golden Gnome", "The Pirate", "The Diver", "The Baker", "The Mayor", "The Gnome King", "The Miner"}
@@ -79,12 +74,11 @@ var (
 	earnedOpen bool           // the owner's switch over MintEarned alone; starts open
 )
 
-// EarnedOpen reports whether earned gnomes are minted.
+// EarnedOpen reports whether MintEarned is open.
 func EarnedOpen() bool { return earnedOpen }
 
-// SetEarnedOpen opens or closes MintEarned: the owner's switch for a fault
-// in the proof, apart from the sale's (SetMintOpen), which never stops it,
-// since it sells nothing. Open at deploy. Owner only.
+// SetEarnedOpen opens or closes MintEarned alone, apart from the sale's
+// switch (SetMintOpen): the owner's stop for a fault in the proof. Owner only.
 func SetEarnedOpen(cur realm, open bool) {
 	assertOwner(0, cur)
 	if open == earnedOpen {
@@ -129,11 +123,9 @@ func (storeReader) Writer() string                      { return store.Writer() 
 var golfRows reader = storeReader{}
 
 // MintEarned mints the caller's earned gnome of kind ("wizard" … "miner")
-// once store proves the feat, and returns its id. Free: nothing may be sent
-// with it; the caller pays the deposit. Once per player and kind, until it
-// is burned. A direct user call, as every call that could be paid for is.
-// Its own switch closes it (SetEarnedOpen); the switch over sales does not,
-// since it sells nothing.
+// once store proves the feat, and returns its id. It is free: the caller pays
+// only the deposit. Once per player and kind, until it is burned. Panics
+// unless called directly by a user, with no coins, while EarnedOpen.
 func MintEarned(cur realm, kind string) string {
 	if !cur.Previous().IsUserCall() {
 		panic(errNotUserCall)
@@ -184,8 +176,8 @@ func kindIndex(kind string) int {
 // isEarned reports whether id is in the earned range.
 func isEarned(id int64) bool { return id >= firstEarned }
 
-// earnedAt is earned token id as a gnome, false when it was not minted (or
-// was burned).
+// earnedAt returns earned token id as a gnome, false if it was never minted
+// or was burned.
 func earnedAt(id int64) (gnome, bool) {
 	v := kindOf.Get(itoa(id))
 	if v == nil {
@@ -195,9 +187,9 @@ func earnedAt(id int64) (gnome, bool) {
 	return gnome{id: id, series: "earned", tier: earnedTier, kind: k, name: earnedNames[k-1], traits: earnedTraits(k)}, true
 }
 
-// earnedTraits are an earned gnome's traits as the designer's codec writes
-// them (web/lib/gnomes/codec.ts, format 1): tier 0, its kind, every other
-// field plain. The client draws GNOMES' own gnome for the kind.
+// earnedTraits are kind k's traits in the designer's codec
+// (web/lib/gnomes/codec.ts, format 1): tier 0, the kind, every other field
+// plain. The client draws GNOMES' own gnome for the kind.
 func earnedTraits(k int) string {
 	return "010000" + string(hexDigits[k>>4]) + string(hexDigits[k&0xf]) + "000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff"
 }
@@ -224,8 +216,8 @@ func (c *cup) add(o cup) {
 func (c cup) all() bool   { return c.holes > 0 && c.finished == c.holes }
 func (c cup) clean() bool { return c.all() && c.strokes <= c.par }
 
-// prove is what MintEarned(kind) would find for player: whether it is
-// proven, the cups' results, and why it cannot be asked ("" when it can).
+// prove returns whether player has proven kind, the cups' results, and why
+// the proof cannot be read ("" when it can).
 func prove(kind, player string) (bool, cup, string) {
 	if kindIndex(kind) == 0 {
 		panic(errKind + kind)
@@ -258,14 +250,14 @@ func prove(kind, player string) (bool, cup, string) {
 	return ok, c, ""
 }
 
-// cupOf reads a player's results on a cup's current versions: one page of
-// slots, a best per mode a slot, and the pars when asked.
+// cupOf reads player's results on world's current versions: one page of
+// slots, a best per mode and slot, and the pars if withPar.
 func cupOf(world, player string, withPar bool) cup {
 	d := strconv.Itoa(worldRank(world))
 	start, end := d+world+"/", d+world+"0"
 	slots := pageRows(golfRows.Page("slots", start, end, maxCupSlots))
-	// A cup the proof cannot read in one page is refused, never proven from
-	// its first page (golf takes up to 999 slots a world).
+	// A cup that does not fit one page is refused, never proven from its first
+	// page (golf takes up to 999 slots a world).
 	if len(slots) == maxCupSlots && golfRows.Page("slots", slots[maxCupSlots-1][0]+"\x00", end, 1) != "" {
 		panic("gnomes: " + world + ": cup too large for the proof")
 	}
@@ -307,8 +299,8 @@ func slotName(key string) string {
 	return s[:i] + strings.TrimLeft(s[i:], "0")
 }
 
-// lowerBest is the player's lower best on a version, either mode, a copy not
-// counting; 0 for none.
+// lowerBest is player's lower best on version id across both modes, 0 for
+// none. A copy does not count.
 func lowerBest(id, player string) int {
 	low := 0
 	for _, mode := range []string{"assisted", "pro"} {
@@ -360,8 +352,8 @@ func parOf(id string) int {
 	return n
 }
 
-// pageRows is a store page's rows, key and value (store's row: each its
-// length, ":" and itself).
+// pageRows splits a store page into key and value pairs, each written as its
+// length, ":" and itself.
 func pageRows(p string) [][2]string {
 	var out [][2]string
 	for i := 0; i < len(p); {
@@ -389,13 +381,13 @@ func field(s string, i int) (string, int, bool) {
 	return s[j+1 : j+1+n], j + 1 + n, true
 }
 
-// Proof says what MintEarned(kind) would find for player, free:
+// Proof returns what MintEarned(kind) would find for player, as JSON:
 //
 //	{"version":1,"kind":"viking","player":"g1…","ok":false,"minted":"",
 //	 "holes":18,"finished":16,"strokes":48,"par":54,"missing":["garden/1",…]}
 //
-// with a "reason" when it cannot be asked: "paused" (SetEarnedOpen) or
-// "rules changed".
+// "reason" is set when the proof cannot be read: "paused" (SetEarnedOpen) or
+// "rules changed". Panics for an unknown kind.
 func Proof(kind string, player address) string {
 	ok, c, why := prove(kind, player.String())
 	if !earnedOpen {

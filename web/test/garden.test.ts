@@ -32,7 +32,7 @@ void test("a course hole's signpost reads its number in the cup, not its old rea
     if (!slot.startsWith("garden/")) continue;
     host.load(slot, hex);
     host.setperiod(5967997);
-    // (dressed as the game dresses it: its look keyed by its old realm, engine.ts decorOf)
+    // (dressed as the game dresses it: its look keyed by its old realm, engine/loader.ts decorOf)
     const s: Hole = { ...(JSON.parse(host.state(slot)) as Hole), official: true, hole: legacyOf(slot) || slot };
     for (const text of writes(() => build(s)).filter((t) => t.startsWith("N° "))) (signs++, assert.equal(text, `N° ${slot.split("/")[1]}`, slot));
   }

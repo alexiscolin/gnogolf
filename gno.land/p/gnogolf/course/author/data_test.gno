@@ -71,7 +71,7 @@ func TestAHoleSurvivesAsData(t *testing.T) {
 	}
 }
 
-// Diff sees every field: change one, anywhere, and it says which.
+// Change one field, anywhere, and it says which.
 func TestDiffSeesEveryField(t *testing.T) {
 	for _, c := range []struct {
 		field string
@@ -107,10 +107,10 @@ func TestDiffSeesEveryField(t *testing.T) {
 	}
 }
 
-// The tripwire: these literals name every field of every type GG1 stores,
-// by position. A field added to any of them stops this from building —
-// Encode, Decode, Diff and fingerprint.Full must learn it first
-// (physics.Field's own is in physics).
+// The tripwire: these literals name every field of every type GG1 stores, by
+// position. A field added to any of them stops this from building until Encode,
+// Decode, Diff and fingerprint.Full learn it. physics.Field's own is in
+// physics.
 var _ = []any{
 	physics.Vec2{0, 0},
 	physics.Segment{physics.Vec2{}, physics.Vec2{}},

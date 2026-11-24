@@ -10,7 +10,8 @@
 // view (PlayerView.tsx).
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { applyRig, makeScene, setLighting, teeRig } from "@/lib/scene/camera";
+import { applyRig, teeRig } from "@/lib/scene/rigs";
+import { makeScene, setLighting } from "@/lib/scene/studio";
 import { buildHole } from "@/lib/scene/course";
 import { disposeCourse, motion, setTime } from "@/lib/scene/materials";
 import { loadWorld } from "@/lib/scene/worlds";

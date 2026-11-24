@@ -40,9 +40,8 @@ func TestFastBallSkimsOver(t *testing.T) {
 }
 
 // Holmes's criterion: over the middle of a 1.2 cup a 0.5 ball drops up to
-// (2·1.2 − 0.5)·sqrt(G/1) = 1.9 a substep; off the middle the chord is
-// shorter, and a ball that crosses near the rim must be slower; a graze past
-// about 1.17 never drops.
+// (2·1.2 − 0.5)·sqrt(G/1) = 1.9 a substep. Nearer the rim it must be slower; a
+// graze past about 1.17 never drops.
 func TestTheCupCapturesByHolmes(t *testing.T) {
 	if c := Capture(1.2, 0.5, 0); math.Abs(c-1.9) > 1e-12 {
 		t.Fatalf("over the middle: %v, want 1.9", c)
@@ -108,9 +107,7 @@ func TestPulseZoneComesAndGoes(t *testing.T) {
 	}
 }
 
-// A ball left where the next stroke's pulse opens a hazard goes back to
-// where its stroke started, as under a timed hazard: the next stroke is
-// played, not lost to the water it stands in.
+// It goes back to where its stroke started: the next stroke is not lost.
 func TestAHazardComingBackSendsTheBallBackNow(t *testing.T) {
 	h := &Simple{
 		Tee: physics.V(2, 5), Pin: physics.V(38, 5), Substeps: 40, CupRadius: 1,
@@ -180,8 +177,7 @@ func TestWeatherIsLaidUnderTheCourse(t *testing.T) {
 	}
 }
 
-// Each kind of weather is pinned bit for bit: its wind, and its zones on a
-// lane as GG1 writes them (fingerprint.Of plays only the rain and the wind).
+// fingerprint.Of plays only the rain and the wind: this pins every kind.
 func TestEachWeatherIsPinned(t *testing.T) {
 	h := &Simple{
 		W: 40, H: 10, Tee: physics.V(2, 5), Pin: physics.V(38, 5), Substeps: 20, CupRadius: 1,
@@ -208,10 +204,8 @@ func TestParIsThreeUnlessSaid(t *testing.T) {
 	}
 }
 
-// WorstForecastWork bounds every forecast's Work, and meets it on a hole
-// where every puddle try walks every piece: a cage of walls round the tee in
-// a corner, thin hazards along the far edge, the rest of the board off the
-// lane (each try fails at the lane test, the last).
+// The bound is met where every puddle try walks every piece: a cage round the
+// tee in a corner, thin hazards along the far edge, the rest off the lane.
 func TestWorstForecastWorkBoundsTheForecast(t *testing.T) {
 	cage := &Simple{W: 96, H: 96, World: "island", Tee: physics.V(5, 5), Pin: physics.V(93, 3), Substeps: 20, CupRadius: 1,
 		Course: &physics.Field{Walls: build.Box(physics.V(3, 3), physics.V(7, 7)), Friction: 0.9, Radius: 0.5,

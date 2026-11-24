@@ -1,7 +1,4 @@
-// A hole drawn from above in a round inked window, as a cup's diorama: a
-// duel's rival's best hole with their ghost's path (Modes.tsx), a Builder's
-// starter or draft (components/builder/Start.tsx), a community hole's card
-// (Worlds.tsx). Flat SVG: no WebGL, as many on a screen as it needs.
+// Flat SVG, no WebGL: a screen can show as many as it needs.
 import { useEffect, useId, useState } from "react";
 import type { Chain } from "@/lib/chain";
 import { Frame } from "@/components/ui";
@@ -9,20 +6,14 @@ import { mapFit, mapView, mapZone, pathD, railRuns, type MapHole, type MapKind }
 import { BALL_R, cupRadius, inSea } from "@/lib/terrain";
 import type { Vec2, Zone } from "@/lib/types";
 
-/** A hole from above, in a round window as a cup's diorama, in
- *  its cup's colours (the ground round the rails, the lane's felt inside
- *  them): its rails (a moving one dashed red), posts, what the ball meets
- *  (water, a drop, sand, ice, a slope's fall, what passes over or under), the
- *  tee and the cup, framed on the hole's shape; a ghost's path on it in
- *  ink, drawn again, the ball rolling along it, under the pointer (CSS).
- *  No path: the hole alone. */
+/** A hole from above in a round window, in its cup's colours. path: a ghost's path, drawn over it. */
 export function HoleMap({ hole, path = [], className = "rival__map" }: { hole: MapHole; path?: readonly Vec2[]; className?: string }) {
   const lane = useId(), { at, k } = mapView(mapFit(hole, path), hole), line = pathD(path, at);
   const [cx, cy] = at(hole.cup), [tx, ty] = at(hole.start);
-  // (the mines' board frame, out in the void, is the chain's and not drawn: course.ts inSea)
+  // the mines' board frame, out in the void, is the chain's and not drawn
   const rails = (moving: boolean) => railRuns(hole.walls.filter((w) => !!w.every === moving && !(hole.world === "mines" && inSea(w, hole.zones))));
   const [still, gates] = [rails(false), rails(true)].map((runs) => runs.map((run) => pathD(run, at)).join(""));
-  // the lane: the rails' closed runs (one inside another, a hole in it) and a rail-less lane's outline
+  // the lane: the rails' closed runs, and the outline of a lane without rails
   const closed = (run: readonly Vec2[]) => run.length > 3 && at(run[0]).join() === at(run[run.length - 1]).join();
   const outside = hole.zones.filter((z) => z.outside && z.poly);
   const felt = [...rails(false).filter(closed), ...outside.map((z) => [...z.poly!, z.poly![0]])].map((run) => pathD(run, at)).join("");
@@ -31,13 +22,13 @@ export function HoleMap({ hole, path = [], className = "rival__map" }: { hole: M
     <Frame className={`${className} tint--${hole.world}`}>
       <defs><clipPath id={lane}><path d={felt} clipRule="evenodd" /></clipPath></defs>
       <rect width="120" height="120" className="map__turf" />
-      {/* a lane with no rails: the sea or the drop round it, then the lane over it */}
+      {/* a lane without rails: what surrounds it first, then the lane over it */}
       {outside.map((z, i) => <ZoneShape key={i} z={{ ...z, poly: undefined }} kind={mapZone(z) || "pond"} at={at} />)}
       <path d={felt} className="map__felt" />
       <g clipPath={felt ? `url(#${lane})` : undefined}>
         {zones.map(({ z, kind }, i) => kind && <ZoneShape key={i} z={z} kind={kind} at={at} />)}
       </g>
-      {/* the rails: inked, paper on top (a moving one, red and dashed) */}
+      {/* the rails: ink, then paper on top */}
       <path d={still + gates} className="map__walls" />
       <path d={still} className="map__rails" />
       <path d={gates} className="map__rails map__rails--moving" />
@@ -56,23 +47,22 @@ export function HoleMap({ hole, path = [], className = "rival__map" }: { hole: M
   );
 }
 
-/** A zone on a map: its outline (a polygon's own, a round one's, its box's),
- *  filled as what it does; a slope's fall, a chevron along it. */
+/** A zone on a map, filled as what it does. A slope gets a chevron pointing down its fall. */
 function ZoneShape({ z, kind, at }: { z: Zone; kind: MapKind; at: (p: Vec2) => Vec2 }) {
   const [x0, y0] = at(z.min), [x1, y1] = at(z.max), box = { x: Math.min(x0, x1), y: Math.min(y0, y1), width: Math.abs(x1 - x0), height: Math.abs(y1 - y0) };
   const cls = `map__${kind}`;
   const shape = z.poly ? <path d={pathD([...z.poly, z.poly[0]], at)} className={cls} />
     : <rect {...box} rx={z.round ? box.width / 2 : 2} ry={z.round ? box.height / 2 : 2} className={cls} />;
   if (kind !== "slope") return shape;
-  // the fall's way on the map (its turn and flip): a chevron pointing it, at the zone's middle
+  // a chevron at the zone's middle, pointing the way of the fall
   const c: Vec2 = [(z.min[0] + z.max[0]) / 2, (z.min[1] + z.max[1]) / 2], [mx, my] = at(c), [fx, fy] = at([c[0] + z.vec[0], c[1] + z.vec[1]]);
   const l = Math.hypot(fx - mx, fy - my) || 1, [ux, uy] = [(fx - mx) / l, (fy - my) / l], r = Math.min(4, box.width / 3, box.height / 3);
   return (<>{shape}{r >= 1.5 && <path d={`M${mx - r * (ux + uy)} ${my - r * (uy - ux)}L${mx + r * ux} ${my + r * uy}L${mx - r * (ux - uy)} ${my - r * (uy + ux)}`} className="map__fall" />}</>);
 }
 
-// a version's map, read once a session (its lanes are its id's: they never change); a read that failed is asked again next time
+// A version's map never changes: read once a session. A failed read is asked again.
 const read = new Map<string, Promise<MapHole>>();
-/** The maps of holes on the chain (their HoleState, all a map draws), by id, as each read comes in: only those asked (a list's page). */
+/** The maps of the holes asked for, by id, as each read comes in. */
 export function useHoleMaps(chain: Pick<Chain, "state"> | null, ids: readonly string[]): ReadonlyMap<string, MapHole> {
   const [maps, setMaps] = useState<ReadonlyMap<string, MapHole>>(new Map());
   const key = ids.join(" ");

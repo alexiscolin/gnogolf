@@ -7,15 +7,12 @@ import (
 	"gno.land/r/gnogolf/store"
 )
 
-// The data lives in store (the realm apart from these rules: a new version of
-// the rules takes it on). A view is the rows of one of its collections under a
-// prefix, read straight from store and written through this transaction's
-// writes: queued as the call goes, read back by Get and Has, and sent to store
-// in one batch as the entrypoint returns (flush). Iterate and ReverseIterate
-// merge this call's writes into store's rows as they come; Size, index and
-// IterateByOffset, a page by place, read store as it stands, so one over rows
-// this call has written to panics instead (only the reads take them, which
-// write nothing).
+// view is the rows of one of store's collections under a prefix. The data lives
+// in store, a realm apart from these rules, so that later rules can take it on.
+// Writes are queued, read back by Get and Has, and sent in one batch when the
+// entrypoint returns (flush). Iterate and ReverseIterate merge the queued
+// writes in. Size, index and IterateByOffset read store as it stands and panic
+// over rows this call has written: only read paths use them.
 type view struct {
 	c string // the collection
 	p string // the prefix: "" for the whole collection, else ending with a space, which no id holds
@@ -24,7 +21,7 @@ type view struct {
 var (
 	queued []string          // set/del ops, four strings each, in order
 	over   map[string]string // collection + "\x00" + key -> its value now; "\x00" for removed
-	seen   map[string]*entry // the versions found in this call that writes: one object each (find)
+	seen   map[string]*entry // versions loaded by this writing call, one object each (find)
 )
 
 // begin opens a call that writes: every crossing entrypoint that writes
@@ -77,9 +74,9 @@ func queue(op, c, k, x string) {
 	over[c+"\x00"+k] = x
 }
 
-// flush sends this call's writes to store, in batches of what store takes in
-// one call: every crossing entrypoint that writes ends with it, once it went
-// through (begin opens it).
+// flush sends the queued writes to store, in batches store accepts. Every
+// writing entrypoint ends with it, once its work went through: a refusal writes
+// nothing.
 func flush(cur realm) {
 	for i := 0; i < len(queued); i += 4 * 64 {
 		j := i + 4*64
@@ -91,7 +88,7 @@ func flush(cur realm) {
 	queued, over, seen = nil, nil, nil
 }
 
-// clean refuses a walk over rows this call has written to (store has not got them yet)
+// clean panics if this call has written to the view: store lacks those rows.
 func (v view) clean() {
 	for k := range over {
 		if strings.HasPrefix(k, v.c+"\x00"+v.p) {
@@ -115,14 +112,14 @@ func (v view) index(k string) int {
 	return store.Index(v.c, v.p+k) - store.Index(v.c, v.p)
 }
 
-// Iterate is the rows in [start, end) ascending, end "" for no bound; cb
+// Iterate walks the rows in [start, end) ascending, end "" for no bound. cb
 // returning true stops it, and Iterate then reports true.
 func (v view) Iterate(start, end string, cb func(key, x string) bool) bool {
 	return v.walk(start, end, cb, false)
 }
 
-// ReverseIterate is the rows in [start, end] descending (store's back walk
-// keeps its end), end "" for no bound.
+// ReverseIterate walks the rows in [start, end] descending, end "" for no
+// bound. Like store's back walk, it includes its end.
 func (v view) ReverseIterate(start, end string, cb func(key, x string) bool) bool {
 	return v.walk(start, end, cb, true)
 }
@@ -132,8 +129,8 @@ func (v view) walk(start, end string, cb func(key, x string) bool, back bool) bo
 	if end != "" {
 		hi = v.p + end
 	}
-	// this call's own writes in the range, in walk order: merged into store's
-	// rows as they come (a finish on an archived hole, then its drain over it)
+	// This call's own writes in the range, in walk order, merged into store's
+	// rows as they come: a finish on an archived hole, then its drain.
 	in := func(k string) bool { return k >= lo && (hi == "" || k < hi || back && k == hi) }
 	var mine []string
 	for ck := range over {
@@ -143,7 +140,7 @@ func (v view) walk(start, end string, cb func(key, x string) bool, back bool) bo
 	}
 	sortKeys(mine, back)
 	emit := func(k, x string) bool { return cb(k[len(v.p):], x) }
-	// ours before k (or all of them, k ""), as they stand; true if the walk stopped
+	// Our writes before k (all for k ""); true if the walk stopped.
 	flushMine := func(k string) bool {
 		for len(mine) > 0 && (k == "" || (!back && mine[0] < k) || (back && mine[0] > k)) {
 			m := mine[0]
@@ -154,9 +151,9 @@ func (v view) walk(start, end string, cb func(key, x string) bool, back bool) bo
 		}
 		return false
 	}
-	// (store's back walk keeps its end, its forward one does not: a back page
-	// after the first starts with the last one's key again, skipped). Pages
-	// start small and double: most walks stop after a row or a few.
+	// Pages start small and double: most walks stop after a few rows. A back
+	// page includes its end, so each one after the first repeats the last key,
+	// which is skipped.
 	again, size := "", firstRead
 	for {
 		var page string
@@ -192,7 +189,7 @@ func (v view) walk(start, end string, cb func(key, x string) bool, back bool) bo
 		if back {
 			hi, again = last, last
 		} else {
-			lo = last + "\x00" // (the next key up)
+			lo = last + "\x00" // the next key up
 		}
 		if size *= 2; size > maxRead {
 			size = maxRead
@@ -200,7 +197,8 @@ func (v view) walk(start, end string, cb func(key, x string) bool, back bool) bo
 	}
 }
 
-// sortKeys sorts keys ascending, or descending for back (a handful: insertion sort).
+// sortKeys sorts keys ascending, or descending for back. Insertion sort: there
+// are only a handful.
 func sortKeys(ks []string, back bool) {
 	for i := 1; i < len(ks); i++ {
 		for j := i; j > 0 && (!back && ks[j] < ks[j-1] || back && ks[j] > ks[j-1]); j-- {
@@ -235,13 +233,14 @@ func (v view) IterateByOffset(offset, count int, cb func(key, x string) bool) bo
 	return false
 }
 
-// A page of store: the first a walk asks for, and the largest.
+// Page sizes asked of store: a walk's first, and the largest.
 const (
 	firstRead = 8
 	maxRead   = 300
 )
 
-// nextRow is a page's first row (store.Page: each length, ":", itself) and the rest.
+// nextRow splits a store page into its first row and the rest. Each field is
+// its length, ":" and itself.
 func nextRow(page string) (string, string, string) {
 	k, rest := field(page)
 	x, rest := field(rest)

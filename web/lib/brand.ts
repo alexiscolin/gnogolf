@@ -1,48 +1,45 @@
-// The game's name on what leaves the page: the shared picture and
-// the shot clip carry the badge, the name and the site's address on a card at
-// the bottom, and the clip ends on a card of its own that asks for a go. Drawn
-// on a 2D canvas in the page's own colours and font (Fredoka, once loaded).
+// The game's name on what leaves the page: the card on the shared picture and the clip, and the clip's last card.
 import { siteHost } from "./site";
 
-/** The page's ink, green and paper, for what is drawn on a canvas (the cards, the clip, the Builder's card). */
+/** The page's ink, green and paper, for what is drawn on a canvas. */
 export const INK = "#144134", GREEN = "#226c57", PAPER = "#fdf6e9";
 const INK_SOFT = "#4f7a6c", HAT = "#e0524b";
-/** The site's font stack, for text drawn on a canvas (the cards, the clip, the mines' signs). */
+/** The site's font stack, for text drawn on a canvas. */
 export const FONT = "Fredoka, ui-rounded, system-ui, sans-serif";
 
-/** What the card says of the hole, as its link card does: its cup, number and
- *  par over its name, and the score; term, the clip's word for it (Birdie!). */
+/** The gnome's head as the logo draws it, in a 200 box. app/icon.svg keeps its own copy. */
+export const GNOME = {
+  face: { x: 40, y: 100, width: 120, height: 44, rx: 6 },
+  beard: "M 40 116 Q 34 190 100 214 Q 166 190 160 116 Q 140 146 100 142 Q 60 146 40 116 Z",
+  hat: "M 28 95 Q 40 91 48.7 76 L 96.5 7 Q 100 -1.5 103.5 7 L 151.3 76 Q 160 91 172 95 Z",
+  brim: { x: 26, y: 90, width: 148, height: 20, rx: 10 },
+} as const;
+
+/** What the card says of the hole: its cup, number and par over its name, and the score. term: the clip's word for it. */
 export interface Caption {
   eyebrow: string;
   title: string;
   score: string;
   term?: string;
-  /** the clip's closing ask, when not the hole and the score (a duel: the ghost to race) */
+  /** the clip's closing ask, when not the hole and the score */
   challenge?: string;
 }
 
-// the badge (app/icon.svg, the favicon; its PNG, apple-icon.png, where a
-// browser won't draw the SVG): fetched once, drawn when it is in; relative,
-// as the game's other files, for a site served under a path
+// The badge is the favicon, or its PNG where a browser won't draw the SVG. Relative: the site may be served under a path.
 let badge: Promise<HTMLImageElement | null> | null = null;
 let drawn: HTMLImageElement | null = null;
 const fetchImg = (src: string) => {
   const img = Object.assign(new Image(), { src });
   return img.decode().then(() => (img.naturalWidth ? img : null), () => null);
 };
-/** The badge, loaded (null if it can't be: the cards go without it). */
+/** The badge, loaded; null if it can't be: the cards go without it. */
 export function loadBadge(): Promise<HTMLImageElement | null> {
   if (typeof Image === "undefined") return Promise.resolve(null);
   return (badge ||= fetchImg("icon.svg").then((img) => img || fetchImg("apple-icon.png")).then((img) => (drawn = img)));
 }
 const ready = () => drawn;
 
-/**
- * The card at the bottom: the badge, "Gnogolf" and the site's address on the
- * left; on the right the hole as its link card has it (cup, number and par
- * over its name) and the score. k scales it (the clip's is smaller than the
- * picture's).
- */
+/** The card at the bottom: the badge, "Gnogolf" and the site's address on the left; the hole and the score on the right. k scales it. */
 export function drawCard(x: CanvasRenderingContext2D, W: number, H: number, { eyebrow, title, score }: Caption, k = 1) {
   const w = W / k, logo = ready();
   x.save();
@@ -74,12 +71,11 @@ export function drawCard(x: CanvasRenderingContext2D, W: number, H: number, { ey
   x.fillText(score, w - 64, -52);
   const room = x.measureText(score).width + 24;
   x.fillStyle = INK;
-  x.fillText(title, w - 64 - room, -52, w - 64 - room - end); // (a long name squeezed, short of the left block)
+  x.fillText(title, w - 64 - room, -52, w - 64 - room - end); // a long name is squeezed, short of the left block
   x.restore();
 }
 
-/** A word shouted over the picture, as the win card's title: filled, inked
- *  round, and a paper halo so it reads on any ground. Centred at (0, 0). */
+/** A word shouted over the picture, centred at (0, 0): filled, inked round, with a paper halo so it reads on any ground. */
 function shout(x: CanvasRenderingContext2D, text: string, px: number, fill: string) {
   x.textAlign = "center";
   x.textBaseline = "middle";
@@ -120,10 +116,7 @@ function pill(x: CanvasRenderingContext2D, cx: number, cy: number, parts: readon
   });
 }
 
-/**
- * The result, large over the course once the ball is in ("Triple bogey!"), as
- * the card's own title. t (0..1) pops it in.
- */
+/** The result, large over the course once the ball is in. t (0..1) pops it in. */
 export function drawTerm(x: CanvasRenderingContext2D, W: number, H: number, term: string, t: number) {
   const p = Math.max(0, Math.min(1, t)), s = H / 720;
   // an ease out that overshoots a little, then settles
@@ -137,11 +130,7 @@ export function drawTerm(x: CanvasRenderingContext2D, W: number, H: number, term
   x.restore();
 }
 
-/**
- * The clip's last card, faded in by a (0..1), as the site's link card: the
- * course's last moment blurred under the sky's light and its dots, an inked
- * frame, the badge, the dare, the shot to beat, and where to play.
- */
+/** The clip's last card, faded in by a (0..1): the course's last moment blurred, an inked frame, the badge, the dare, the shot to beat, and where to play. */
 export function drawOutro(x: CanvasRenderingContext2D, W: number, H: number, a: number, still: CanvasImageSource | null, challenge: string) {
   const logo = ready(), s = H / 720, p = Math.max(0, Math.min(1, a));
   x.save();

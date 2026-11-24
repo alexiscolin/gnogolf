@@ -1,59 +1,40 @@
 #!/usr/bin/env bash
-# try-local.sh: the whole game on this machine, to try by hand, from this
-# machine or another one on the tailnet: a local chain with the game, the
-# gnome shop and the Builder on it, throwaway wallets, and the site built as
-# the real one is. Ctrl+C stops everything.
+# try-local.sh: the whole game on this machine, to try by hand. A local chain
+# with the game, the gnome shop and the Builder on it, throwaway wallets, and
+# the site built as the real one is. Ctrl+C stops everything. The guide:
+# docs/try-local.md.
 #
-#   scripts/try-local.sh          start it all (a new chain each time)
-#   scripts/try-local.sh close [days]  set the genesis's closing date, or bring it forward, to days
-#                                 from now (30); there is none at start (the genesis sells until sold out)
-#   scripts/try-local.sh rebuild  build the site again from this checkout and swap it in, the chain and the
-#                                 links running all along (the old site serves until the new one is in)
-#   scripts/try-local.sh down     clean up after a crash: its processes and its Serve entries
+#   scripts/try-local.sh               start it all (a new chain each time)
+#   scripts/try-local.sh close [days]  set the genesis's closing date, days from now (30), or bring it forward
+#   scripts/try-local.sh rebuild       build the site again and swap it in, the chain and the links still running
+#   scripts/try-local.sh down          clean up after a crash: its processes and its Serve entries
 #
-# What it does: scripts/e2e-gnomes.sh SEED=1 starts gnodev (the onyx
-# toolchain's) and deploys physics, course, weblink, jsonq, store, golf/v2 and
-# gnomes under the test name NS; publishes the Garden's eighteen holes; the
-# genesis series, with no closing date (it is optional: "close" sets one,
-# then only brings it forward), the whole genesis on sale
-# in its one sale (its players' window an hour); community publishing open; the treasury moved to a test key; p1 and
-# b1 with a record and a few gnomes; all the course, the four classic cups
-# and the Crystal Mines. Then the site built as the real one is (next build:
-# no dev server's compiles or reloads over a proxied link), with the shop,
-# the Builder and the community holes on (NEXT_PUBLIC_GNOMES, BUILDER,
-# COMMUNITY) and the test hooks (?geo=blocked), pointed at that chain, and
-# served by scripts/playground-server.mjs. The build is web/out's, as `npm
-# run build` writes it; the site is served from a copy in WORK, through a
-# link the server reads on every request, so "rebuild" swaps a new build in
-# at once (one rename) while the old one keeps serving.
+# Needs the onyx toolchain (docs/development.md) and web/node_modules.
 #
-# Every server listens on 127.0.0.1 alone. With Tailscale, the tailnet-preview
-# script (TAILNET_PREVIEW, ~/bin/tailnet-preview) opens Tailscale
-# Serve entries, tailnet only, never Funnel, and removes them on exit: the site
-# as https on the machine's ts.net name (a secure context: copying and sharing
-# links need one) and as raw TCP on its Tailscale IP (the fallback, plain
-# http: the rest works there too), the node's RPC as raw TCP for a
-# wallet, which signs straight to it, and gnoweb as raw TCP for the "read
-# its code" links. The page reads the chain on its own origin, /rpc, which
-# the site's server streams to the node: no CORS, no second host, both links
-# alike.
+# Every server listens on 127.0.0.1 alone. With Tailscale up and
+# TAILNET_PREVIEW set, the site, the node's RPC and gnoweb are opened on the
+# tailnet too (Serve, never Funnel), and closed on exit.
 #
-# The wallets' seed phrases are made each run, held in memory and printed in
-# the terminal only; the keybase in WORK holds the keys under a throwaway
-# password, for this chain alone.
+# The wallets' seed phrases are made each run and printed in the terminal,
+# never written to disk. The keybase in WORK holds the keys under a throwaway
+# password.
 #
-# Env: APP_PORT (the site, 5175 or the next free port), RPC_PORT
-# (26667) and GNOWEB_PORT (8868: not gnodev's own 26657 and 8888, often
-# another node's), CHAINID (gnogolf-local: not "dev", which Adena keeps for its
-# own network), NS (nym-trylocal000), WORK (a new folder under
-# ~/.cache/gnogolf-try-local), TAILNET=0 (this machine alone), GNO_TOOLCHAIN
-# as in check.sh. Local only: nothing is sent anywhere else.
+# Env:
+#   APP_PORT         the site (5175, or the next free port)
+#   RPC_PORT         the node's RPC (26667: gnodev's own 26657 is often another node's)
+#   GNOWEB_PORT      gnoweb (8868: not gnodev's own 8888, for the same reason)
+#   CHAINID          gnogolf-local (not "dev", which Adena keeps for its own network)
+#   NS               the realms' test name (nym-trylocal000)
+#   WORK             the run's folder (a new one under ~/.cache/gnogolf-try-local)
+#   TAILNET_PREVIEW  a script of yours that opens the Serve entries (`up NAME PORT...`, `down NAME`, `list`)
+#   TAILNET=0        this machine alone, even with TAILNET_PREVIEW set
+#   GNO_TOOLCHAIN    as in check.sh
 set -u
 root=$(cd "$(dirname "$0")/.." && pwd)
 toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 GNOKEY=${GNOKEY:-$toolchain/gnokey}
-PREVIEW=${TAILNET_PREVIEW:-$HOME/bin/tailnet-preview}
-NAME=gnogolf-try # the Serve entries' name in tailnet-preview
+PREVIEW=${TAILNET_PREVIEW:-}
+NAME=gnogolf-try # the Serve entries' name
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/gnogolf-try-local
 last=$cache/last # the WORK of the playground running, for its commands
 log() { printf '%s\n' "$*" >&2; }
@@ -61,9 +42,9 @@ die() { log "try-local: $*"; exit 1; }
 # shellcheck source=lib/e2e.sh
 . "$root/scripts/lib/e2e.sh"
 tree() { local c; for c in $(pgrep -P "$1"); do tree "$c"; done; echo "$1"; } # a process and all it started
-# the site built as the real one is, with the playground's settings ($WORK/site.env), into a new folder, then swapped
-# in: $WORK/site is a link the server reads on every request, replaced in one rename. Kept: the build served until
-# then (a request still reading it finishes) and the new one; the folders' numbers only grow.
+# Builds the site with the playground's settings ($WORK/site.env) into a new numbered folder, then swaps the
+# $WORK/site link to it in one rename: the server reads the link on every request. The build served until
+# then is kept, so a request still reading it finishes.
 build_site() {
 	[ ! -e "$WORK/site" ] || [ -L "$WORK/site" ] || die "this playground's site is a folder, from before rebuild: restart the playground once"
 	# shellcheck disable=SC1091
@@ -150,15 +131,15 @@ fi
 RPC_PORT=${RPC_PORT:-26667} GNOWEB_PORT=${GNOWEB_PORT:-8868}
 CHAINID=${CHAINID:-gnogolf-local}
 NS=${NS:-nym-trylocal000}
-[ -x "$GNOKEY" ] && [ -x "$toolchain/gnodev" ] || die "no onyx toolchain in $toolchain (the README, \"Run it\"), or set GNO_TOOLCHAIN"
+[ -x "$GNOKEY" ] && [ -x "$toolchain/gnodev" ] || die "no onyx toolchain in $toolchain (docs/development.md, \"The toolchain\"), or set GNO_TOOLCHAIN"
 [ -d "$root/web/node_modules" ] || die "the client's packages are not installed: (cd web && npm ci)"
 for p in "$APP_PORT" "$RPC_PORT" "$GNOWEB_PORT"; do
 	! taken "$p" || die "port $p is taken (another gnodev or dev server?): stop it, or set APP_PORT, RPC_PORT, GNOWEB_PORT"
 done
 # the tailnet: this machine's Tailscale IP and ts.net name, and the script that opens the Serve entries
 TS_IP="" TS_NAME=""
-if [ "${TAILNET:-1}" = 1 ] && command -v tailscale >/dev/null && TS_IP=$(tailscale ip -4 2>/dev/null | head -1) && [ -n "$TS_IP" ]; then
-	[ -x "$PREVIEW" ] || die "the tailnet-preview script is not at $PREVIEW (set TAILNET_PREVIEW, or TAILNET=0 for this machine alone)"
+if [ -n "$PREVIEW" ] && [ "${TAILNET:-1}" = 1 ] && command -v tailscale >/dev/null && TS_IP=$(tailscale ip -4 2>/dev/null | head -1) && [ -n "$TS_IP" ]; then
+	[ -x "$PREVIEW" ] || die "TAILNET_PREVIEW is not a script that runs: $PREVIEW (unset it, or TAILNET=0, for this machine alone)"
 	! "$PREVIEW" list | grep -qx "$NAME:" || die "Serve entries of a former run are still up: scripts/try-local.sh down"
 	TS_NAME=$(tailscale status --json | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')
 fi
@@ -200,7 +181,6 @@ echo "$DEV_PID" >"$WORK/dev.pid"
 
 # the site
 WALLET_RPC=http://127.0.0.1:$RPC_PORT WEB_URL=http://127.0.0.1:$GNOWEB_PORT
-# the site as the real one is built, the playground's settings in it; served from WORK
 start_app() {
 	printf 'WALLET_RPC=%s\nWEB_URL=%s\n' "$WALLET_RPC" "$WEB_URL" >"$WORK/site.env"
 	build_site
@@ -209,7 +189,7 @@ start_app() {
 	APP_PID=$!
 	echo "$APP_PID" >"$WORK/app.pid"
 }
-# the Serve entries first (the wallet's RPC and gnoweb are the client's settings), then the site
+# The Serve entries come first: the build takes the wallet's RPC and gnoweb addresses from them.
 APP_HTTPS="" APP_TCP=""
 if [ -n "$TS_NAME" ]; then
 	SERVED=1 # (set first: what a failing `up` opened is removed on exit all the same)

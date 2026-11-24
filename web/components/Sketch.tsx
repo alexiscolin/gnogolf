@@ -1,6 +1,3 @@
-// The Builder's sketch, drawn in its own module: the game's choice's Builder panel (Modes.tsx) and the
-// community's band under the cups (Worlds.tsx) both show it.
-
 /** The Builder's sketch: a blueprint, its lane, flag and pencil. */
 export const Sketch = () => (
   <svg className="mode__sketch" viewBox="0 0 120 96" aria-hidden="true">

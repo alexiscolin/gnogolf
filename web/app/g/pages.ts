@@ -1,9 +1,4 @@
-// The shop's pages, read once at build time from the catalogue (data/gnomes.json,
-// from web/, next build's working directory): one per gnome (/g/<id>/) and per
-// earned kind (/g/<kind>/, the page a token's external_url names), each with
-// its words and its link card (public/og/g/<id>.jpg once it is made,
-// else the gallery's). Off (NEXT_PUBLIC_GNOMES unset), only the gallery's page
-// exists, and it is the game's home.
+// The shop's pages, built from the catalogue. Paths are relative to web/, where next build runs.
 import fs from "node:fs";
 import { SHOP } from "@/lib/gnomes/shop";
 import { TIER_LOOK, type Catalogue } from "@/lib/gnomes/catalogue";

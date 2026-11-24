@@ -1,16 +1,11 @@
-// The "town" world: Mushroom Town, same four functions as garden.ts (see
-// worlds.ts for the contract). The board is a raised green in the middle of a
-// cobbled square: houses with mushroom caps all round, a clock tower, a
-// bakery, market stalls, lamp posts, a fountain, a tram going by at the back,
-// a canal down the left with a bridge over it, and rooftops to the horizon.
-// Decoration only: nothing out here is in the physics. Tall things stand
-// behind and to the right, as in the garden, so the lane is never hidden.
+// Mushroom Town: the board is a raised green in a cobbled square, with houses, a tram, a canal and rooftops to the horizon.
+// Decoration only; tall things stand behind and to the right, so the lane is never hidden.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"; // the skyline
-import { C, T, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
+import { C, T, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, once, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
 import { bakeLocal, look, weatherLooks } from "./bake";
 import { animate } from "./state";
-import { timeOf } from "./camera";
+import { timeOf } from "./studio";
 import { gnomelet, brolly, bunting, mailbox } from "./props";
 import { seeded, lookSeed, ISLAND, GRASS, placer, onGround, outlineOf, type Rand } from "./common";
 import { ud, type Hole } from "./data";
@@ -21,11 +16,9 @@ import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
 const CANAL = { x0: -ISLAND.x - 6.5, x1: -ISLAND.x - 1.5 }; // down the left, just off the plot
-/** Whether the lane runs over the rooftops (a `roof` zone). */
+/** Whether the lane runs over the rooftops: the hole has a roof zone. */
 const roofed = (s: Pick<Hole, "zones">) => s.zones.some((z) => z.skin === "roof");
-/** How far down this hole's town stands: a lane over the rooftops (a `roof`
- *  zone) looks down on the streets, so the square and all round it are at
- *  street level (base, edging and decor are moved down by it as a whole). */
+/** How far down this hole's town stands: under a rooftop lane the square is at street level. */
 const sunk = (s: Pick<Hole, "zones">) => (roofed(s) ? STREET_Y - GRASS : 0);
 /** The plot: the board, out to its walls where they reach past its nominal size, as [x0, z0, x1, z1]. */
 const plot = (s: Hole) => {
@@ -36,16 +29,14 @@ const plot = (s: Hole) => {
   }
   return [x0, z0, x1, z1] as const;
 };
-/** The curb round the plot (base): its width, its height, how far out from the walls it stands (clear of the rim timbers). */
+/** The curb round the plot: its width, its height, and how far out from the walls it stands, clear of the rim timbers. */
 const CURB = { w: 0.6, h: 0.55, out: 0.6 };
 const MAST_Z = -2.1; // the lantern strings' masts: between the tram's rails and the board's curb
-/** Where the lantern strings cross the board (their masts at x - 1.5). */
+/** Where the lantern strings cross the board; their masts stand at x - 1.5. */
 const stringXs = (W: number) => { const xs: number[] = []; for (let x = W * 0.16; x < W - 1; x += Math.max(8, W / 4)) xs.push(x); return xs; };
 
-// cobbles: a canvas of rounded stones, repeated over the square
-let cobbleTex: THREE.CanvasTexture | null = null;
-function cobbles() {
-  if (cobbleTex) return cobbleTex;
+// A canvas of rounded stones, repeated over the square.
+const cobbles = () => once("town:cobbles", () => {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const x = c.getContext("2d")!, rand = seeded("cobbles");
@@ -64,8 +55,8 @@ function cobbles() {
     }
   const t = texOf(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return (cobbleTex = share(t));
-}
+  return t;
+});
 
 /** The square: cobbles to the horizon, a curbed plinth under the board, the canal. */
 function base(s: Hole, box: THREE.Box3) {
@@ -76,9 +67,8 @@ function base(s: Hole, box: THREE.Box3) {
   const tex = cobbles().clone();
   tex.needsUpdate = true;
   tex.repeat.set((X1 - X0) / 7, (Z1 - Z0) / 7); // a cobble is about a ball across
-  // the square: one sheet, or with a hole where the board is, when rooftops
-  // lie down under the lane and must show
-  // (the shape is drawn with y = -z, so turning it flat puts it face up)
+  // The square: one sheet, with a hole where the board is when rooftops must show under the lane.
+  // The shape is drawn with y = -z: turned flat, it lies face up.
   const V = (x: number, z: number) => new THREE.Vector2(x, -z);
   const sq = new THREE.Shape([V(X0, Z0), V(X0, Z1), V(X1, Z1), V(X1, Z0)]);
   if (roofed(s)) sq.holes.push(new THREE.Path([V(0, 0), V(W, 0), V(W, H), V(0, H)]));
@@ -90,12 +80,11 @@ function base(s: Hole, box: THREE.Box3) {
   const square = new THREE.Mesh(sqGeo, new THREE.MeshToonMaterial({ map: tex, color: 0xffffff }));
   square.position.y = GRASS;
   g.add(square);
-  // cut the canal out visually: water a step down, stone quays either side
+  // The canal: water a step down, stone quays either side.
   const len = Z1 - Z0;
   const water = new THREE.Mesh(new THREE.PlaneGeometry(CANAL.x1 - CANAL.x0, len), new THREE.MeshToonMaterial({ color: C.pond }));
   water.rotation.x = -Math.PI / 2;
-  // heights over the cobbles, each well clear of the next (no shimmer far off):
-  // haze 0.06, water, grates and rails 0.08, the lawn under the board 0.12
+  // Heights over the cobbles, far enough apart not to shimmer: haze 0.06, water, grates and rails 0.08, the lawn 0.12.
   water.position.set((CANAL.x0 + CANAL.x1) / 2, GRASS + 0.08, (Z0 + Z1) / 2);
   g.add(water);
   for (const x of [CANAL.x0, CANAL.x1]) {
@@ -116,12 +105,8 @@ function base(s: Hole, box: THREE.Box3) {
     const u = (t * 0.03 + off) % 1;
     m.position.set((CANAL.x0 + CANAL.x1) / 2 + lane * 1.3, GRASS + 0.16, Z0 + u * len);
   }));
-  // under the whole board, a lawn: wherever the board's own ground leaves a
-  // gap (the rough dips to the square at the board's edge, a curved kerb
-  // leaves a sliver) the park shows through, never the cobbles
-  // the plot is whatever the walls enclose, which may reach past the board's
-  // nominal size: the curb and the lawn go round that, or walls would stand
-  // outside the square's curb, on the cobbles
+  // A lawn under the whole board: where the board's own ground leaves a gap the park shows, never the cobbles.
+  // It goes round the plot, which the walls may push past the board's nominal size.
   const [x0, z0, x1, z1] = plot(s);
   const PW = x1 - x0, PH = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   if (!roofed(s)) {
@@ -130,9 +115,7 @@ function base(s: Hole, box: THREE.Box3) {
     under.position.set(cx, GRASS + 0.12, cz);
     g.add(under);
   }
-  // the plinth the green stands on: a stone step round the board
-  // — a ring round it, not a slab under it: what hangs below the green (wall
-  // skirts, the rough's plants) is the board's, and its top stays below 0
+  // The plinth is a stone ring round the board, not a slab under it: what hangs below the green is the board's, and its top stays below 0.
   const { w: R, h: hgt, out: E } = CURB;
   for (const [w, d, x, z] of [
     [PW + 2 * (R + E), R, cx, z0 - E - R / 2], [PW + 2 * (R + E), R, cx, z1 + E + R / 2],
@@ -164,7 +147,7 @@ function edging(s: Hole) {
   return g;
 }
 
-// flower boxes on the curb (see base), along its back and its front: a few per side
+// Flower boxes on the curb, a few along its back and its front.
 function flowerBoxes(W: number, back: number, front: number, rand: Rand) {
   const g = new THREE.Group();
   const box = (x: number, z: number, rot: number) => {
@@ -188,11 +171,7 @@ function berms() {
   return { group: new THREE.Group(), height: () => 0 };
 }
 
-// the town's bush: three low-poly puffs (the garden's is round and heavy,
-// and the town has hundreds of them in its beds and pots)
-// and its flower: a stem and a round head, a fraction of the garden's
-// (a head is a five-sided bead, round enough at a few pixels across; the stem
-// is open, its ends in the soil and in the head)
+// The town's bush is three low-poly puffs and its flower a stem and a five-sided bead: the town has hundreds of them.
 const bead = (r: number) => new THREE.SphereGeometry(r, 5, 2);
 const flowerHead = share(bead(0.16)), flowerStem = share(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 3, 1, true));
 function tflower(rand: Rand) {
@@ -207,7 +186,7 @@ function tflower(rand: Rand) {
 
 function tbush(rand: Rand) {
   const g = new THREE.Group();
-  ud(g).foot = 0; // its sway is weighed from here (materials.ts plantFeet)
+  ud(g).foot = 0; // its sway is weighed from here
   for (let i = 0; i < 3; i++) {
     const r = 0.45 + rand() * 0.35;
     const puff = grows(new THREE.IcosahedronGeometry(r, 0), rand() < 0.5 ? C.leaf : C.leafDark);
@@ -219,12 +198,10 @@ function tbush(rand: Rand) {
 
 // a plain box, for the small and the many (benches, stalls, planks)
 const box3 = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
-/** A drum standing on something: its wall (outlined) and its top, no bottom
- *  (what it stands on hides it, and it is a quarter of the triangles; the top
- *  is not outlined — seen from above, the wall's outline rings it). */
+/** A drum standing on something: an outlined wall and a top, no bottom. From above the wall's outline rings the top. */
 function drum(rTop: number, rFoot: number, h: number, n: number, material: THREE.Material) {
   const g = drawn(new THREE.CylinderGeometry(rTop, rFoot, h, n, 1, true), material);
-  const top = new THREE.Mesh(new THREE.CircleGeometry(rTop, n, -Math.PI / 2).rotateX(-Math.PI / 2), material); // (thetaStart: on the wall's corners)
+  const top = new THREE.Mesh(new THREE.CircleGeometry(rTop, n, -Math.PI / 2).rotateX(-Math.PI / 2), material); // thetaStart puts its corners on the wall's
   top.position.y = h / 2;
   g.children[0].add(top);
   return g;
@@ -302,11 +279,7 @@ function awning(w: number, depth: number, y: number, z: number) {
   return g;
 }
 
-/**
- * A town house, in one of four shapes: the classic cap, a tall thin one, a
- * squat wide one, and a two-cap house (a small cap stacked on the big one).
- * After dark its windows glow and a lamp by the door lights the street.
- */
+/** A town house in one of four shapes: the classic cap, tall and thin, squat and wide, or two caps stacked. Its windows and door lamp glow after dark. */
 function townHouse(rand: Rand, night: boolean, only: number | null = null) {
   const g = new THREE.Group();
   const kind = only ?? Math.floor(rand() * 4);
@@ -427,7 +400,7 @@ function stall(rand: Rand, night: boolean) {
 /** A street lamp: an iron post and a lantern that glows after dark. */
 function lamp(on: boolean) {
   const g = new THREE.Group();
-  const post = drawn(new THREE.CylinderGeometry(0.07, 0.1, 2.6, 8, 1, true), flat(T.iron)); // (its ends: the street, the lantern's hood)
+  const post = drawn(new THREE.CylinderGeometry(0.07, 0.1, 2.6, 8, 1, true), flat(T.iron)); // open: the street and the lantern's hood hide its ends
   post.position.y = 1.3;
   const head = drawn(new THREE.ConeGeometry(0.34, 0.3, 8), flat(T.iron));
   head.position.y = 2.95;
@@ -455,7 +428,7 @@ function fountain() {
   water.rotation.x = -Math.PI / 2;
   water.position.y = 0.5;
   g.add(rim);
-  const column = drawn(new THREE.CylinderGeometry(0.18, 0.26, 1.1, 10, 1, true), flat(T.curb)); // (its ends: in the water, under the bowl)
+  const column = drawn(new THREE.CylinderGeometry(0.18, 0.26, 1.1, 10, 1, true), flat(T.curb)); // open: the water and the bowl hide its ends
   column.position.y = 0.95;
   const bowl = drawn(new THREE.CylinderGeometry(0.55, 0.3, 0.2, 14), flat(T.curb));
   bowl.position.y = 1.55;
@@ -471,11 +444,7 @@ function fountain() {
   return g;
 }
 
-/**
- * A street tree: a round, soft crown (not the garden's pine) over a patch of
- * grass in a stone surround — the square's greenery, so the town reads lived
- * in and not paved over.
- */
+/** A street tree: a round, soft crown over a patch of grass in a stone surround. */
 function streetTree(rand: Rand, bare = false) {
   const g = new THREE.Group();
   const bed = drum(0.85, 0.9, 0.22, 12, flat(T.curb));
@@ -485,7 +454,7 @@ function streetTree(rand: Rand, bare = false) {
   const h = 1.6 + rand() * 0.8;
   const trunk = grows(new THREE.CylinderGeometry(0.12, 0.17, h, 7, 1, true), C.bark);
   trunk.position.y = h / 2 + 0.2;
-  ud(g).foot = 0.2; // the trunk's foot: its sway is weighed from here (materials.ts plantFeet)
+  ud(g).foot = 0.2; // the trunk's foot: its sway is weighed from here
   ud(g).flex = 0.32; // a street tree: stiff, a small lean
   // bare: no bed of its own, for a tree planted in a lawn that has one
   if (bare) g.add(trunk);
@@ -500,20 +469,13 @@ function streetTree(rand: Rand, bare = false) {
 }
 
 
-// A piece over the lane gets its own see-through materials (materials.ts
-// ownFade), so it can fade out of the camera's way without fading the shared
-// palette: see-through within ~2.3 of the view line at these points, back by ~4.
+// A piece over the lane fades on its own materials, not the shared palette: see-through within about 2.3 of the view line, back by about 4.
 function fadeAt(piece: THREE.Object3D, points: readonly THREE.Vector3[]): FadeItem[] {
   const mats = ownFade(piece);
   return points.map((at) => ({ at, r: 1.8, mats }));
 }
 
-/**
- * Over the lane: strings of paper lanterns slung high across it, from a mast
- * behind to a bunch of balloons in front; two giant mushroom caps leaning in
- * over its ends; balloons drifting. It sways a little and glows after dark,
- * and fades out of the way when it comes between the camera and the ball.
- */
+/** Over the lane: strings of paper lanterns, two giant mushroom caps leaning in over its ends, balloons. It sways, glows after dark, and fades from between the camera and the ball. */
 function overhead(W: number, H: number, rand: Rand, night: boolean, foot: number) {
   const g = new THREE.Group();
   const faders: FadeItem[] = [];
@@ -527,9 +489,7 @@ function overhead(W: number, H: number, rand: Rand, night: boolean, foot: number
   const strings: { line: THREE.Group; ph: number }[] = [];
   for (const x of stringXs(W)) {
     const a = new THREE.Vector3(x - 1.5, 0, MAST_Z), b = new THREE.Vector3(x + 1.5, 0, H + 2.6);
-    // a mast at the back; the front end is held up by a bunch of balloons —
-    // a pole there would stand between the camera and the lane
-    // (from the ground: the street, `foot` down, round the rooftops)
+    // A mast at the back; balloons hold the front end up, where a pole would stand between the camera and the lane.
     const mast = drawn(new THREE.CylinderGeometry(0.06, 0.08, Y + 0.4 - foot, 6), flat(T.iron));
     mast.position.set(a.x, GRASS + foot + (Y + 0.4 - foot) / 2, a.z);
     g.add(mast);
@@ -563,8 +523,7 @@ function overhead(W: number, H: number, rand: Rand, night: boolean, foot: number
     strings.push({ line, ph: rand() * 6 });
     faders.push(...fadeAt(line, pts));
   }
-  // two giant mushrooms rooted beside the lane's ends, leaning in over them:
-  // a red and a violet cap with white spots, cream gills under, a stem you see
+  // Two giant mushrooms rooted beside the lane's ends, leaning in over them.
   const leaners: { piv: THREE.Group; ph: number }[] = [];
   const zc = H / 2;
   for (const [bx, dir, colour] of [[-2.6, 1, C.cap], [W + 2.6, -1, 0x9b7fd1]]) {
@@ -617,10 +576,7 @@ function overhead(W: number, H: number, rand: Rand, night: boolean, foot: number
   return g;
 }
 
-/**
- * A park bed: an organic blob of lawn, mounded a little, edged with stones,
- * its bushes and flowers in clumps and now and then a small tree.
- */
+/** A park bed: a mounded blob of lawn edged with stones, with clumps of bushes and flowers and now and then a small tree. */
 function parkBed(rx: number, rz: number, rand: Rand) {
   const g = new THREE.Group();
   const shape = new THREE.Shape(), n = 14, pts: MutVec2[] = [];
@@ -682,10 +638,7 @@ function pot(rand: Rand) {
   return g;
 }
 
-/** A tram on its rails along the back street: from the end of the line by
- *  the canal to a stop halfway, on out of sight and back the same way, easing
- *  into and out of every stop. Where it is is a function of the render clock
- *  alone: steady at any frame rate, and never a jump back to the start. */
+/** A tram on the back street's rails, easing into and out of every stop. Where it is depends on the render clock alone: steady at any frame rate, never a jump back. */
 function tram(z: number, x0: number, x1: number, night: boolean) {
   const g = new THREE.Group();
   for (const dz of [-0.45, 0.45]) {
@@ -765,22 +718,12 @@ function bridge(z: number) {
   return g;
 }
 
-/**
- * The town going on into the distance: rows of houses behind the square, each
- * row smaller and closer to the haze colour than the one before, with no
- * outline, over a ground that fades into haze — so the far edge reads as a
- * crowded town lost in the distance, not as empty paving.
- */
+/** The town going on into the distance: rows of houses behind the square, each smaller and nearer the haze colour, over a ground that fades into haze. */
 const HAZE = 0xf1d6c6;
 function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   const g = new THREE.Group();
-  // all of it one mesh, the colours in the vertices: hundreds of far houses
-  // for one draw call (a material per shade is a draw call per shade)
-  // Only what a camera can see is built: every camera is over the board, so
-  // a far house is only ever seen from the square's side — its walls and cap
-  // are the two thirds turned that way (+z, turned round for the right-hand
-  // rows), open at the foot and under the cap; the rows deep in the haze get
-  // a cap of two rings, a speck on screen. (A third of the triangles.)
+  // One mesh with the colours in its vertices: hundreds of far houses in one draw.
+  // Only the two thirds a camera over the board can see are built, a third of the triangles saved.
   const ARC = (Math.PI * 4) / 3;
   const body = new THREE.CylinderGeometry(1, 1.1, 2, 4, 1, true, -ARC / 2, ARC).toNonIndexed();
   const near = new THREE.SphereGeometry(1.6, 5, 3, Math.PI / 2 - ARC / 2, ARC, 0, Math.PI / 2).toNonIndexed(), far = new THREE.SphereGeometry(1.6, 5, 2, Math.PI / 2 - ARC / 2, ARC, 0, Math.PI / 2).toNonIndexed();
@@ -831,7 +774,8 @@ function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   return g;
 }
 
-function decor(s: Hole) {
+/** A hole's decor as it is laid: its group, seed, bounds, hour and placing. Every part draws from the one seed: the order decor() calls them in is the hole's look. */
+function startDecor(s: Hole) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
   const rand = seeded("town" + lookSeed(s));
@@ -840,8 +784,7 @@ function decor(s: Hole) {
   const time = timeOf(s.hole), night = time !== "day";
 
   const { free, reserve } = placer();
-  // the board and a step round it are the lane's
-  // (the walls may reach past the board's nominal size: keep clear of them too)
+  // The board and a step round it are the lane's; so are its walls, where they reach past the board's nominal size.
   const [bx0, bz0, bx1, bz1] = plot(s);
   const onBoard = (x: number, z: number, r: number) => x > bx0 - 1.9 - r && x < bx1 + 1.9 + r && z > bz0 - 1.9 - r && z < bz1 + 1.9 + r;
   const place = <T extends THREE.Object3D>(m: T, x: number, z: number, r: number, rot = 0) => {
@@ -852,51 +795,61 @@ function decor(s: Hole) {
     reserve(x, z, r);
     return m;
   };
+  return { g, W, H, rand, X0, X1, Z0, time, night, reserve, place };
+}
+type Decor = ReturnType<typeof startDecor>;
 
-  // the tram line along the back street, before anything is put on it
+/** The tram line along the back street, then its lamps and trees, before the stalls take the room. */
+function backStreet({ g, W, rand, X0, X1, night, reserve, place }: Decor) {
   const TZ = -3.3;
-  // (it starts past the canal: rails do not run over water)
+  // It starts past the canal: rails do not run over water.
   const TX0 = CANAL.x1 + 1.2;
   g.add(tram(TZ, TX0, X1 + 6, night));
   for (let x = TX0; x <= X1 + 6; x += 1) reserve(x, TZ, 1.1);
   for (const x of stringXs(W)) reserve(x - 1.5, MAST_Z, 0.3);
-  // lamps along the back street, just behind the rails, before the stalls take the room
+  // Lamps along the back street, just behind the rails.
   for (let x = X0 + 2; x < X1 - 1; x += 6.5) place(lamp(night), x, TZ - 1.5, 0.35);
-  // and a tree between every two lamps, before the stalls take the room
+  // A tree between every two lamps.
   for (let x = X0 + 5.2; x < X1 - 2; x += 6.5) place(streetTree(rand), x, TZ - 1.6, 0.8);
+}
 
-  // the back row: market stalls first (the houses find room round them),
-  // the clock tower right of centre, then the houses
+/** The back row: market stalls first, the clock tower right of centre, then the houses in the room left. */
+function backRow({ rand, X0, X1, time, night, place }: Decor) {
   for (let x = X0 + 4; x < X1 - 3; x += 7 + rand() * 4) place(stall(rand, time === "night"), x, -5.6, 1.1, (rand() - 0.5) * 0.3);
   const tower = place(clockTower(night), X0 + (X1 - X0) * 0.68, -7.2, 2);
   if (!tower) place(clockTower(night), X1 - 3, -7.2, 2);
-  // the near row of houses (the row behind is part of the skyline: one mesh, see skyline)
+  // The near row of houses; the row behind is part of the skyline's one mesh.
   for (let x = X0 + 2; x < X1 - 1; x += 2.8 + rand() * 1.2) {
     const sc = 0.45 + rand() * 0.55, h = townHouse(rand, night); // small and big side by side
     place(h.g, x, -7.2 + rand() * 0.6, h.r * sc * 0.88, (rand() - 0.5) * 0.5)?.scale.setScalar(sc);
   }
+}
 
-  // gnomes selling on the street: in front of the back row, and down the right
+/** Gnomes selling on the street: in front of the back row, and down the right. */
+function streetSellers({ W, H, rand, X0, X1, time, night, place }: Decor) {
   for (let x = X0 + 6; x < X1 - 4; x += 9 + rand() * 4) place(gnomeStand(rand, night, time === "night"), x, -4.6, 0.9, (rand() - 0.5) * 0.4);
   place(gnomeStand(rand, night, time === "night"), W + 2.6, H + 1.6, 0.9, -0.6);
+}
 
-  // the right: the bakery, the fountain, a couple of houses
+/** The right: the bakery, the fountain, a couple of houses. */
+function rightSide({ W, H, rand, X1, night, place }: Decor) {
   place(bakery(night), X1 - 2.6, H * 0.25, 2.2, -Math.PI / 2);
   place(fountain(), W + 3.8, H * 0.62 + 0.4, 1.8);
   for (let z = H - 0.5; z > -2; z -= 3.2) {
     const sc = 0.6 + rand() * 0.3, h = townHouse(rand, night);
     place(h.g, X1 - 1.5, z, h.r * sc * 0.88, -Math.PI / 2 + (rand() - 0.5) * 0.4)?.scale.setScalar(sc);
   }
+}
 
-  // the left and the front: only low things — benches, pots, lamps, gnomes
+/** The left and the front: only low things. */
+function streetLife({ W, H, rand, X0, X1, time, night, place }: Decor) {
   for (let z = 1; z < H; z += 4.5) place(bench(), -3.2, z, 0.9, Math.PI / 2);
   for (let x = 2; x < W - 1; x += 7) place(bench(), x, H + 2.6, 0.9, Math.PI);
   for (let i = 0; i < Math.round(W / 5); i++) {
     const x = X0 + rand() * (X1 - X0), z = rand() < 0.5 ? H + 1.6 + rand() * 1.4 : -1.7 - rand() * 0.6;
     place(pot(rand), x, z, 0.4);
   }
-  // street lamps: behind the lane, along the back street, at the board's
-  // corners and down the right; nothing tall in front of the lane
+  // Street lamps behind the lane, at the board's corners and down the right: nothing tall in front of the lane.
   for (let x = 4; x < W - 2; x += 8) place(lamp(night), x, -1.9, 0.35);
   for (const [x, z] of [[-1.6, -1.6], [W + 1.6, -1.6], [-1.6, H + 1.6], [W + 1.6, H + 1.6]]) place(lamp(night), x, z, 0.35);
   for (let z = 1; z < H; z += 5) place(lamp(night), W + 1.8, z, 0.35);
@@ -908,17 +861,16 @@ function decor(s: Hole) {
     if (time !== "night" || i < 2) place(gn, x, z, 0.3, turn); // after dark, only a couple out strolling
   }
   place(mailbox(), -2.4, H + 1.4, 0.35, 0.4);
+}
 
-  // greenery: trees along the back street and down the right, pocket lawns
-  // along the front; the square stays a square, but a green one
+/** Greenery: trees down the right, pocket lawns along the front. */
+function greenery({ W, H, rand, place }: Decor) {
   for (let z = 3; z < H; z += 5) place(streetTree(rand), W + 3, z, 0.9);
   for (let x = 3; x < W - 3; x += 9 + rand() * 3) place(parkBed(1.5, 0.75, rand), x, H + 3.5, 1.6);
+}
 
-  // the square closes in round the lane: a front row of low, squat houses
-  // (backs to the camera, below its line to the green) and a row down the
-  // left before the canal — so what shows round the park is town, not paving
-  // (the front is seen from above: flower beds and low hedges read there,
-  // a house would show only its cap, like a disc on the cobbles)
+/** The square closes in round the lane: low houses in front, below the camera's line to the green, and a row down the left before the canal. */
+function squareSurround({ H, rand, X0, X1, time, night, place }: Decor) {
   // a little park along the front: a few big rounded beds, low
   for (let x = X0 + 1; x < X1 + 1; x += 7 + rand() * 3) {
     const rx = 2 + rand() * 1.3, rz = 1 + rand() * 0.5;
@@ -926,8 +878,7 @@ function decor(s: Hole) {
   }
   place(gnomeStand(rand, night, time === "night"), X0 + (X1 - X0) * 0.3, H + 7.5, 0.9, Math.PI + 0.3);
   place(gnomeStand(rand, night, time === "night"), X0 + (X1 - X0) * 0.75, H + 8, 0.9, Math.PI - 0.4);
-  // and past the park, the houses on the near side of the square, of every
-  // shape and size, with trees between them
+  // Past the park, houses of every shape and size on the near side of the square, with trees between them.
   for (let x = X0 - 3; x < X1 + 4; x += 2.8 + rand() * 2) {
     if (rand() < 0.3) { place(streetTree(rand), x, H + 10 + rand(), 0.9); continue; }
     const sc = 0.45 + rand() * 0.5, h = townHouse(rand, night);
@@ -943,12 +894,10 @@ function decor(s: Hole) {
     const sc = 0.5 + rand() * 0.15, h = townHouse(rand, night, rand() < 0.5 ? 0 : 2);
     place(h.g, -6.2, z, h.r * sc * 0.88, Math.PI / 2 + (rand() - 0.5) * 0.4)?.scale.setScalar(sc);
   }
+}
 
-  // bunting across the back street, and the bridge over the canal
-  g.add(bunting(new THREE.Vector3(X0 + 2, GRASS, -4.6), new THREE.Vector3(X1 - 2, GRASS, -4.6)));
-  g.add(bridge(H * 0.5));
-  // every still glow (windows, doors, lamps, stalls) as one set of points:
-  // a sprite each is a draw call each
+/** Every still glow of g (windows, doors, lamps, stalls) as one set of points: a sprite each is a draw call each. */
+function glowsAsPoints(g: THREE.Group) {
   g.updateMatrixWorld(true);
   const moving = (o: THREE.Object3D) => { for (let p = o.parent; p; p = p.parent) if (ud(p).live) return true; return false; };
   const glows: THREE.Object3D[] = [];
@@ -961,9 +910,25 @@ function decor(s: Hole) {
     const m = lanternGlow();
     g.add(new THREE.Points(geo, new THREE.PointsMaterial({ map: m.map, color: m.color, size: 2.6, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
   }
-  // town10's canal and its lifting bridge: always there, raised or lowered by each stroke's pieces (extras)
+}
+
+/** The town round the board, part by part: each draws from the hole's seed, so their order is the hole's look. */
+function decor(s: Hole) {
+  const d = startDecor(s), { g, W, H, rand, X0, X1, Z0, night, reserve } = d;
+  backStreet(d);
+  backRow(d);
+  streetSellers(d);
+  rightSide(d);
+  streetLife(d);
+  greenery(d);
+  squareSurround(d);
+  // bunting across the back street, and the bridge over the canal
+  g.add(bunting(new THREE.Vector3(X0 + 2, GRASS, -4.6), new THREE.Vector3(X1 - 2, GRASS, -4.6)));
+  g.add(bridge(H * 0.5));
+  glowsAsPoints(g);
+  // town10's canal and its lifting bridge: always there, raised or lowered by each stroke's pieces.
   if (String(s.hole).endsWith("town10")) g.add(swingRig(s));
-  // round the rooftops the town stands at street level, the strings over the lane where they were
+  // Round the rooftops the town drops to street level; the strings stay over the lane.
   const drop = sunk(s), over = overhead(W, H, rand, night, drop);
   over.position.y = -drop;
   g.add(over);
@@ -972,25 +937,19 @@ function decor(s: Hole) {
   reserve(W + 2.6, H / 2, 0.8);
   g.add(skyline(rand, X0, X1, Z0));
   weatherLooks(g, (w) => (w.rain || w.storm || w.snow ? "wet" : "clear"));
-  g.position.y = drop; // (after the glows: they are where the pieces stood in g)
+  g.position.y = drop; // after the glows: they are where the pieces stood in g
   return g;
 }
 
-/** How the board's rough (ground inside the walls a ball never reaches)
- *  looks in town: planter soil and flower pots, not wild garden. For
- *  course.ts roughScenery, when it asks the world. */
+/** The board's rough in town: planter soil and flower pots, not wild garden. */
 const rough = {
   lo: 0x6f9f7e, hi: 0x86b58f, // a park lawn inside the walls: the green heart of the square
-  // mostly pots and flowers; a bush now and then (a bush is three spheres,
-  // and a park of them is a third of the town's triangles)
+  // Mostly pots and flowers: a bush is three spheres, and a park of them is a third of the town's triangles.
   plant: (rand: Rand) => { const k = rand(); return k < 0.4 ? pot(rand) : k < 0.85 ? tflower(rand) : tbush(rand); },
 };
 
 
-// What the town's holes put on the lane, drawn in town's look. Each matches
-// its physics footprint: a post's circle, a bar's box, a zone's rectangle or
-// ellipse. course.ts asks piece(kind, item, t, s) for every post, wall and
-// zone; null means "not a town skin, draw it the usual way".
+// What the town's holes put on the lane, each on its physics footprint. piece() returns null for a skin that is not the town's.
 
 
 /** The door of a house the ball rolls into, or comes out of: a frame, a dark way in. */
@@ -1043,14 +1002,12 @@ function well(r: number) {
 // the town's bars on the lane, drawn at their footprint: len along, thick across
 function tramAcross(len: number, thick: number, night: boolean) {
   const g = new THREE.Group();
-  // the tram, lengthwise along the bar
-  // low and bright: a tram, not a wall across the view
+  // Lengthwise along the bar, low and bright: a tram, not a wall across the view.
   const body = drawn(rbox(len, 1.3, thick, 0.35), flat(0xf2a93b));
   body.position.y = 0.85;
-  const band = drawn(box3(len + 0.04, 0.22, thick + 0.04), flat(C.cap)); // (a stripe: too thin to show a rounding)
+  const band = drawn(box3(len + 0.04, 0.22, thick + 0.04), flat(C.cap)); // a stripe too thin to show a rounding
   band.position.y = 0.45;
-  // seen mostly from above: a red roof with skylights and a pantograph,
-  // so it reads as a tram and not as a slab
+  // Seen mostly from above: a red roof with skylights and a pantograph says tram, not slab.
   const roof = drawn(rbox(len + 0.2, 0.2, thick + 0.1, 0.08), flat(C.cap));
   roof.position.y = 1.6;
   g.add(body, band, roof);
@@ -1121,25 +1078,18 @@ function awningAcross(len: number, thick: number) {
   return g;
 }
 
-// town18's own pieces: a brick floor with its patches (herringbone, a marble
-// rosette) and the tram rails set in it, a bandstand, a clock obelisk, round
-// market stalls and pigeons. Each stands on its physics footprint: a post's
-// circle, a zone's polygon, rectangle or ellipse.
+// town18's own pieces: a brick floor with its patches and tram rails, a bandstand, a clock obelisk, round market stalls and pigeons.
 
 // a paving: one tile of it drawn on a canvas, repeated over the ground
-const pavings = new Map<string, THREE.CanvasTexture>();
-function paving(key: string, px: number, draw: (x: CanvasRenderingContext2D, rand: Rand, n: number) => void) {
-  if (!pavings.has(key)) {
-    const c = document.createElement("canvas");
-    c.width = c.height = px;
-    draw(c.getContext("2d")!, seeded(key), px);
-    const tex = texOf(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.anisotropy = 4;
-    pavings.set(key, share(tex));
-  }
-  return pavings.get(key)!;
-}
+const paving = (key: string, px: number, draw: (x: CanvasRenderingContext2D, rand: Rand, n: number) => void) => once("town:paving " + key, () => {
+  const c = document.createElement("canvas");
+  c.width = c.height = px;
+  draw(c.getContext("2d")!, seeded(key), px);
+  const tex = texOf(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  return tex;
+});
 const rgb = (r: number, g: number, b: number) => `rgb(${r | 0},${g | 0},${b | 0})`;
 // red bricks in a running bond, 4 by 8 to a tile: a brick is a ball across
 const brickTex = () => paving("brick", 128, (x, rand, n) => {
@@ -1153,7 +1103,7 @@ const brickTex = () => paving("brick", 128, (x, rand, n) => {
       x.fillRect(col * 32 + (row % 2) * 16 + 1.5, row * 16 + 1.5, 29, 13);
     }
 });
-// a 90° herringbone of paler bricks, laid at 45° (the texture turns)
+// A 90° herringbone of paler bricks, laid at 45°: the texture turns.
 const herringTex = () => paving("herringbone", 128, (x, rand, n) => {
   x.fillStyle = "#e9dcc4";
   x.fillRect(0, 0, n, n);
@@ -1201,8 +1151,7 @@ const marbleTex = () => paving("marble", 256, (x, rand, n) => {
   ring(c * 0.2, 5, "#8d9ca6");
 });
 
-// a flat sheet over pts, lift above the ground; tile > 0 repeats the texture
-// every tile units of the board, 0 stretches it over the zone once
+// A flat sheet over pts, lift above the ground. tile > 0 repeats the texture every tile units; 0 stretches it over the zone once.
 function sheet(pts: readonly Vec2[], z: Zone, t: Terrain, mat: THREE.Material, tile: number, lift: number) {
   const [x0, z0] = z.min, [x1, z1] = z.max;
   const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, zz]) => new THREE.Vector2(x, -zz))));
@@ -1237,15 +1186,14 @@ function patch(z: Zone, t: Terrain, map: THREE.Texture, tile: number, kerb: numb
 function brickFloor(z: Zone, t: Terrain) {
   const g = new THREE.Group(), pts = outlineOf(z);
   g.add(sheet(pts, z, t, flat(0xffffff, { map: brickTex() }), 4, 0.012));
-  // (the tram rails are the tram lines' own: course.ts tramLine)
+  // The rails are drawn with the tram lines, not here.
   return g;
 }
 const PLAZA_GROUND: Record<string, (z: Zone, t: Terrain) => THREE.Group> = {
   brick: brickFloor,
   herringbone: (z, t) => { const tex = herringTex(); tex.rotation = Math.PI / 4; return patch(z, t, tex, 8, T.curb); },
   marble: (z, t) => patch(z, t, marbleTex(), 0, 0x8d9ca6),
-  // a parterre: lawn and low flowers in a stone kerb, low enough to read as
-  // ground a ball rolls through (slowly), not a wall of stems
+  // A parterre: lawn and low flowers in a stone kerb, low enough to read as ground a ball rolls through.
   flowerbed: (z, t) => {
     const g = patch(z, t, bedTex(), 3, T.curb), rand = seeded("bed" + z.min.join() + z.max.join());
     const { cx, cz, hx, hz } = boxOf(z);
@@ -1280,7 +1228,7 @@ function bandstand(r: number, rand: Rand, night: boolean) {
   g.add(base, deck);
   const cr = r - 0.45;
   for (let i = 0; i < 10; i++) {
-    const a = (i / 10) * Math.PI * 2, col = drawn(new THREE.CylinderGeometry(0.11, 0.14, 1.9, 8, 1, true), flat(C.cream)); // (ends in the deck and the roof)
+    const a = (i / 10) * Math.PI * 2, col = drawn(new THREE.CylinderGeometry(0.11, 0.14, 1.9, 8, 1, true), flat(C.cream)); // open: the deck and the roof hide its ends
     col.position.set(Math.cos(a) * cr, 1.6, Math.sin(a) * cr);
     g.add(col);
   }
@@ -1369,7 +1317,7 @@ function obelisk(r: number, night: boolean) {
 /** A round market stall: a counter all round, fruit on it, a striped parasol. */
 function marketStall(r: number, rand: Rand) {
   const g = new THREE.Group();
-  const counter = drawn(new THREE.CylinderGeometry(r * 0.94, r, 0.85, 18, 1, true), flat(C.wood)); // (its top: the board laid on it)
+  const counter = drawn(new THREE.CylinderGeometry(r * 0.94, r, 0.85, 18, 1, true), flat(C.wood)); // open: the board laid on it is its top
   counter.position.y = 0.425;
   const top = drum(r * 0.97, r * 0.97, 0.08, 18, flat(C.woodDark));
   top.position.y = 0.89;
@@ -1435,9 +1383,7 @@ const PLAZA_POSTS: Record<string, (r: number, rand: Rand, night: boolean) => THR
   pigeon: (r, rand) => pigeons(r, rand),
 };
 
-// town6: concrete ramps (the ground itself rises: terrain.ts), a funbox, a
-// ledge down the middle and a grind rail. The park's floor is concrete, not a
-// lawn (green below).
+// town6: concrete ramps where the ground itself rises, a funbox, a ledge down the middle and a grind rail, on a concrete floor.
 const CONCRETE = 0xd0cbc1, STEEL = 0x8e9aa3;
 const skatePark = (s: Hole) => s.zones.some((z) => z.skin === "quarter pipe");
 /** The lane's stripes: poured concrete in a skate park, the default lawn elsewhere. */
@@ -1516,7 +1462,7 @@ function plankBridge(z: Zone, t: Terrain) {
   return g;
 }
 
-/** A cat asleep, curled up: the post it is, round, ginger with a tail about it. */
+/** A cat asleep, curled up on its post's circle: ginger, its tail about it. */
 function sleepingCat(r: number) {
   const g = new THREE.Group();
   const fur = flat(0xe39a4f), dark = flat(0xb86a2c), cream = flat(0xf6e3c6);
@@ -1549,11 +1495,7 @@ function sleepingCat(r: number) {
   return g;
 }
 
-/**
- * A canal across the lane (running along z): a stone quay each side, only
- * where the lane is — it ends under the lane's kerbs, which cross it as its
- * end walls. Its water lies down a cut between them, as every water does.
- */
+/** A canal across the lane, running along z: a stone quay each side, only where the lane is. The lane's kerbs cross it as its end walls. */
 function canalOnLane(z: Zone, t: Terrain) {
   const g = new THREE.Group(), [x0, z0] = z.min, [x1, z1] = z.max, w = x1 - x0;
   // per strip across, the runs along it that are on the lane
@@ -1568,9 +1510,7 @@ function canalOnLane(z: Zone, t: Terrain) {
     }
     runs.push(out);
   }
-  // (the water itself is sunk into the lane, a quay wall each side down to
-  // it, and drawn with every other water: terrain.ts POOLS, zones.ts pondWater)
-  // the quays, along each side's runs (the first and last strips')
+  // The quays along each side's runs. The water is sunk into the lane and drawn with every other water.
   for (const [i, ex] of [[0, x0], [NX - 1, x1]] as const)
     for (const [za, zb] of runs[i]) {
       const q = carved(rbox(0.3, 0.2, zb - za, 0.05), T.quay);
@@ -1580,7 +1520,7 @@ function canalOnLane(z: Zone, t: Terrain) {
   return g;
 }
 
-/** The skins piece() draws from the piece alone (the builder's palette, worlds.ts Skins); a tram is a line of them (course.ts tramLines). */
+/** The skins piece() draws from the piece alone: the Builder's palette. */
 const skins: Skins = {
   post: ["lamp", "house", "clock", "gnome statue", "roundabout", "chimney", "cat", ...Object.keys(PLAZA_POSTS)],
   bar: ["clock hand", "stall", "awning", "rail", "ledge"],
@@ -1597,7 +1537,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
   const rand = seeded("piece" + s.hole + kind + (item.skin || "") + at[0].toFixed(2) + "," + at[1].toFixed(2));
   const skin = item.skin || "";
   if (kind === "post") {
-    const post = item as Post; // (kind says which)
+    const post = item as Post; // kind says which
     const [x, z] = post.c, r = post.r;
     let m: THREE.Object3D | null = null;
     if (skin === "lamp") {
@@ -1649,13 +1589,12 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
   }
   if (kind === "wall") {
     if (!["tram", "clock hand", "stall", "awning", "rail", "ledge"].includes(skin)) return undefined;
-    const bar = item as Bar; // (kind says which)
+    const bar = item as Bar; // kind says which
     const [cx, cz] = bar.c, len = bar.length, thick = bar.thick, ang = bar.ang, g = new THREE.Group();
     const make: Record<string, () => THREE.Group> = { tram: () => tramAcross(len, thick, night), "clock hand": () => clockHand(len, thick), stall: () => stallAcross(len, thick, rand), awning: () => awningAcross(len, thick), rail: () => grindRail(len, thick), ledge: () => skateLedge(len, thick) };
     g.add(own(make, skin)!());
-    g.rotation.y = -ang; // a timed bar is drawn still: course.ts shows and slides it with the replay
-    // one mesh per kind of material: a timed bar stays out of the bake
-    // (a ledge stands on the park's floor, whatever ramp runs up beside it)
+    g.rotation.y = -ang; // a timed bar is drawn still: the replay shows and slides it
+    // One mesh per kind of material: a timed bar stays out of the bake.
     if (skin === "ledge") {
       const m = bakeLocal(g);
       m.position.set(cx, 0, cz);
@@ -1664,7 +1603,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
     return onGround(bakeLocal(g), cx, cz, t);
   }
   if (kind === "zone") {
-    const zone = item as Zone; // (kind says which)
+    const zone = item as Zone; // kind says which
     const [x0, z0] = zone.min, [x1, z1] = zone.max, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
     const ground = own(PLAZA_GROUND, skin);
     if (ground) return ground(zone, t);
@@ -1704,7 +1643,7 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
       }
       return g;
     }
-    // (the roof zone: the shared rooftops, at their own depth, are right)
+    // No piece for a roof zone: the shared rooftops draw it.
     if (skin === "door" || skin === "well") {
       const g = new THREE.Group(), r = Math.min(w, d) / 2;
       if (skin === "well") {
@@ -1724,17 +1663,10 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
   return undefined;
 }
 
-// town10: a canal across the lane, and a bridge that is down on one stroke
-// and up on the next (the chain's pulse zones: a "bridge" surface or a
-// "canal" hazard over the same strip, per stroke, not per tick). Drawn as a
-// Dutch double-leaf lift bridge: two leaves hinged on the quays, a stone
-// tower with a signal lamp at each corner. The rig is built once with the
-// hole (decor) and never regrown; each stroke's extras only tell it down or
-// up. Between strokes it rings (the lamps blink amber, the leaves shiver),
-// then swings on a smoothstep, like the trams' come-in curve; at rest it is
-// wholly in the stroke's pose, and the lamps say which: green, cross; red, water.
+// town10: a canal across the lane, and a lift bridge down on one stroke and up on the next, from the chain's pulse zones.
+// The rig is built once with the hole; each stroke's extras only say down or up. It rings, then swings; its lamps show green to cross, red for water.
 
-const LEAF_UP = 1.2; // radians: how far a raised leaf stands (about 70 degrees)
+const LEAF_UP = 1.2; // radians a raised leaf stands at, about 70 degrees
 const WARN_S = 0.45, SWING_S = 0.9; // the bell before it moves, then the swing
 const LAMP = { down: 0x5fd17a, up: 0xe0524b, warn: 0xffc34d, dark: 0x3a3f3c };
 
@@ -1742,14 +1674,13 @@ interface Rig { set(open: boolean, z: Zone): void }
 const rigs = new WeakMap<Hole, Rig>();
 
 function swingRig(s: Hole): THREE.Group {
-  // the canal's strip, as the chain lays it (author.Fit moved the source's
-  // x 20..24 by the tee's shift): corrected to the zone at the first stroke
+  // The canal is 4 wide; where it lies is set from the chain's zone at the first stroke.
   const CW = 4;
   const rig = new THREE.Group();
   ud(rig).live = true; // it moves: kept out of the hole's bake
   rig.position.set(s.start[0] + 15, 0, 0);
   const x0 = rig.position.x, H = s.board.h;
-  // the deck is as wide as the lane where it crosses (its walls, clipped to the canal)
+  // The deck is as wide as the lane where it crosses: its walls, clipped to the canal.
   let lo = Infinity, hi = -Infinity;
   for (const w of s.walls) {
     const [ax, az] = w.a, [bx, bz] = w.b;
@@ -1768,7 +1699,7 @@ function swingRig(s: Hole): THREE.Group {
   water.rotation.x = -Math.PI / 2;
   water.position.set(CW / 2, 0.03, H / 2);
   still.add(water);
-  // the towers' lenses: one mesh, its own material, recoloured (the bake would tint a colour in for good)
+  // The towers' lenses: one mesh on its own material, recoloured live; the bake would tint a colour in for good.
   const lamp = new THREE.MeshBasicMaterial({ color: LAMP.up }), lenses: THREE.BufferGeometry[] = [];
   for (const x of [0, CW]) {
     const quay = drawn(box3(0.3, 0.16, H + 3.2), flat(T.quay));
@@ -1842,7 +1773,7 @@ function swingRig(s: Hole): THREE.Group {
       const want = open ? 1 : 0;
       if (first || !motion) return void ((first = false), (from = to = want), settle());
       if (want === to && !moving) return;
-      (from = cur), (to = want); // (from wherever it is, mid-swing or at rest)
+      (from = cur), (to = want); // from wherever it is, mid-swing or at rest
       pending = true;
     },
   });
@@ -1860,7 +1791,7 @@ function swingRig(s: Hole): THREE.Group {
   return rig;
 }
 
-/** A stroke's pieces town draws itself: the swing bridge, down or up (its rig is the hole's). */
+/** A stroke's pieces the town draws itself: the lift bridge, down or up. */
 function extras(ex: Extras, s: Hole) {
   const bridge = ex.zones.find((z) => z.skin === "bridge");
   const canal = ex.zones.find((z) => z.skin === "canal");

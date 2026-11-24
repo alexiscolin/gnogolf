@@ -10,14 +10,11 @@ import (
 	golf "gno.land/r/gnogolf/golf/v2"
 )
 
-// A data hole is stored as its data, in store (golf keeps nothing but its
-// settings): publishing one adds its string and its entry, and playing it
-// adds a round and the wear, never the decoded hole (about 40 KB for this
-// one, were it kept). z_storage_publish_filetest publishes only (3,146 bytes:
-// the data, its entry and its rows in the community and authors indexes,
-// whose first leaves store made when it was deployed); z_storage_play_filetest
-// also plays two strokes, which store 1,145 more: the round under way, its
-// shots, and the version's wear, a row a cell played.
+// A hole is stored as its data, in store: golf keeps only its settings.
+// z_storage_publish_filetest publishes one: 3,146 bytes for the data, its entry
+// and its rows in the community and authors indexes. z_storage_play_filetest
+// also plays two strokes: 1,145 more for the round under way, its shots and the
+// wear, a row per cell played. The decoded hole, about 40 KB, is never kept.
 func main(cur realm) {
 	h := &course.Simple{W: 32, H: 16, World: "garden", Title: "Stored", Tee: physics.V(2, 8), Pin: physics.V(28, 8), Substeps: 14, CupRadius: 1.2,
 		Course: &physics.Field{Walls: build.Box(physics.V(0, 0), physics.V(32, 16)), Friction: 0.8, Bounce: 0.9, Radius: 0.5}}
