@@ -20,8 +20,6 @@ function mkHole(over: Partial<Fixture> = {}): Fixture {
   return { board: { w: 10, h: 8 }, walls: [], zones: [], start: [0.5, 0.5], cup: [9.5, 7.5], ...over };
 }
 
-// ------------------------------------------------------------- small sums
-
 void test("mod is never negative", () => {
   assert.equal(mod(-1, 4), 3);
   assert.equal(mod(-5, 3), 1);
@@ -215,8 +213,6 @@ void test("airy: a slope's own air flag wins; else guessed from skin or a clock"
   assert.equal(airy(mkZone({ kind: "slope", min: [0, 0], max: [1, 1], every: 4 })), true);
   assert.equal(airy(mkZone({ kind: "surface", min: [0, 0], max: [1, 1] })), false); // not a slope at all
 });
-
-// --------------------------------------------------------------- terrain()
 
 void test("terrain: an open board is all green, height and ground flat", () => {
   const t = terrain(mkHole());

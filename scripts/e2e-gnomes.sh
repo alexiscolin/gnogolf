@@ -159,8 +159,9 @@ elif cmd == "portraits":  # every catalogue gnome's page: its portrait parsed, t
         if t is None or t.text != names[i][2]: bad.append(f"{i}: title"); continue
         out[i] = (len(svg), m.group(1)); seen.add(hashlib.sha256(svg).digest())
     heavy = max(out, key=lambda i: out[i][0])
-    # parsed, distinct, the heaviest's id, its tier, its bytes, its data URI, the first refusals
-    print(len(out), len(seen), heavy, names[heavy][1], out[heavy][0], out[heavy][1], ";".join(bad[:3]) or "-")
+    buy = max((i for i in out if names[i][1] != "legendary"), key=lambda i: out[i][0])  # (no Legendary: one a wallet, #104's is read)
+    # parsed, distinct, the heaviest's id, its tier, its bytes, the heaviest to buy's id, its data URI, the first refusals
+    print(len(out), len(seen), heavy, names[heavy][1], out[heavy][0], buy, out[buy][1], ";".join(bad[:3]) or "-")
 elif cmd == "holeshot":  # a shot that holes in one in this period's weather, "" for none
     import urllib.request
     rpc, pkg, hole = a
@@ -268,8 +269,9 @@ urigas() {
 }
 # within <step> <call> <bound> <got>: a number at most bound
 within() { if [ "$4" -eq "$4" ] 2>/dev/null && [ "$4" -le "$3" ]; then row "$1" "$2" "≤ $3" "$4" 0; else row "$1" "$2" "≤ $3" "${4:-none}" 1; fi; }
-# URIMAX: the most a TokenURI may take on a chain: the heaviest portrait's
-# 83.08M, with room (gno test's figure is lower: it charges no object loads)
+# URIMAX: the most a TokenURI may take on a chain: the dearest portrait's
+# (#199's) 81.18M, with room (gno test's figure is lower: it charges no
+# object loads)
 URIMAX=84000000
 
 report
@@ -456,8 +458,8 @@ no "sale: a start in milliseconds" "a sale starts from a day before now to a yea
 no "sale: more than a day back" "a sale starts from a day before now to a year after" test1 "$GN" OpenSale genesis "$((NOW - 86400 - 60))" 0
 no "sale: more than a year ahead" "a sale starts from a day before now to a year after" test1 "$GN" OpenSale genesis "$((NOW + 366 * 86400))" 0
 no "sale: never from the close on" "the genesis sale starts before it closes" test1 "$GN" OpenSale genesis "$((NOW + 365 * 86400))" 0
-LATER=$((NOW + 3600))
-ok "sale: the genesis in an hour" "opened" test1 "$GN" OpenSale genesis "$LATER" 0
+LATER=$((NOW + 8 * 86400)) # (past the 7 days a close is announced ahead: one before it is refused for the start)
+ok "sale: the genesis in eight days" "opened" test1 "$GN" OpenSale genesis "$LATER" 0
 is "sale: Collection().series[0].sale" "Collection().series[0].sale start,playersUntil,prices" "$LATER $LATER 36000000,72000000,336000000,1296000000" \
 	"$(qg 'Collection()' | jf '" ".join((str(d["series"][0]["sale"]["start"]), str(d["series"][0]["sale"]["playersUntil"]), ",".join(str(p) for p in d["series"][0]["sale"]["prices"])))')"
 no "sale: once a series" "series genesis is on sale already" test1 "$GN" OpenSale genesis "$NOW" 0
@@ -626,18 +628,16 @@ has "render: not found" "Render(\"nope\")" "Not found" "$("$GNOKEY" query vm/qre
 
 # the portraits: every catalogue gnome's page carries its portrait (the
 # TokenURI drawing): each read, parsed, titled with its name; the heaviest
-# bought and its TokenURI read, and what TokenURI costs per tier
+# that is no Legendary bought and its TokenURI read, and what TokenURI costs
+# per tier
 set -- $(py portraits "http://$RPC_ADDR" "$GN" "$ROWS")
-is "portrait: every page draws its gnome" "Render(\"1\") … Render(\"720\") [qrender]: SVG parsed, <title> its name" "720 -" "$1 $7"
+is "portrait: every page draws its gnome" "Render(\"1\") … Render(\"720\") [qrender]: SVG parsed, <title> its name" "720 -" "$1 $8"
 is "portrait: no two alike" "distinct SVGs of the 720" "720" "$2"
-HEAVY=$3 HTIER=$4
-within "portrait: the heaviest, #$HEAVY ($HTIER)" "its SVG's bytes (6 KiB)" 6144 "$5"
-heavyuri=$6
-if [ "$HTIER" != legendary ]; then
-	SEND=$(qg "Gnome(\"$HEAVY\")" | jf 'd["price"]')ugnot ok "portrait: b2 buys #$HEAVY" "sold" b2 "$GN" Buy "$HEAVY"
-	is "portrait: TokenURI is the page's portrait" "TokenURI(\"$HEAVY\") == its page's image" "True" "$([ "$(qg "TokenURI(\"$HEAVY\")")" = "$heavyuri" ] && echo True || echo False)"
-	within "portrait: TokenURI gas, the heaviest (#$HEAVY)" "MsgRun TokenURI(\"$HEAVY\") - MsgRun OwnerOf" "$URIMAX" "$(urigas "$HEAVY")"
-fi
+within "portrait: the heaviest, #$3 ($4)" "its SVG's bytes (6 KiB)" 6144 "$5"
+HEAVY=$6 heavyuri=$7
+SEND=$(qg "Gnome(\"$HEAVY\")" | jf 'd["price"]')ugnot ok "portrait: b2 buys #$HEAVY" "sold" b2 "$GN" Buy "$HEAVY"
+is "portrait: TokenURI is the page's portrait" "TokenURI(\"$HEAVY\") == its page's image" "True" "$([ "$(qg "TokenURI(\"$HEAVY\")")" = "$heavyuri" ] && echo True || echo False)"
+within "portrait: TokenURI gas, the heaviest b2 buys (#$HEAVY)" "MsgRun TokenURI(\"$HEAVY\") - MsgRun OwnerOf" "$URIMAX" "$(urigas "$HEAVY")"
 within "portrait: TokenURI gas, a Common (#5)" "MsgRun TokenURI(\"5\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 5)"
 within "portrait: TokenURI gas, a Rare (#73)" "MsgRun TokenURI(\"73\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 73)"
 within "portrait: TokenURI gas, an Epic (#94)" "MsgRun TokenURI(\"94\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 94)"

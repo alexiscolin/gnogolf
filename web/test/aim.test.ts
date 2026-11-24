@@ -12,8 +12,6 @@ import { pullFull } from "../lib/chain.ts";
 import { sight } from "../lib/scene/data.ts";
 import type { Stroke, Vec2 } from "../lib/types.ts";
 
-// ------------------------------------------------------------ steerAim
-
 // a desktop screen: the zone is 0.28 of its width (403 px), 50° at its edge
 const VW = 1440, VH = 900, ZONE = 0.28 * VW, DEG = Math.PI / 180;
 
@@ -52,8 +50,6 @@ void test("steerAim: down is the power, as a pull's; a 45° pull to full power d
   assert.ok((steerAim(0, 0, full / 2, 1, VW, VH).shot?.power ?? 0) > 4);
 });
 
-// ------------------------------------------------------------ makeAimer fixtures
-
 interface PendingCall {
   kind: "simulateFrom" | "simulateRound";
   args: unknown[];
@@ -84,8 +80,6 @@ function makeRig() {
 }
 
 const settle = () => Promise.resolve().then(() => Promise.resolve());
-
-// ------------------------------------------------------------ preview()
 
 void test("preview() does nothing for a pull too soft to shoot", () => {
   const { E, aimer, aim, chain } = makeRig();
@@ -190,8 +184,6 @@ void test("a post in the way shortens the provisional straight line", () => {
   const free = dots.count;
   assert.ok(blocked < free, `expected the post to cut the line short (blocked=${blocked}, free=${free})`);
 });
-
-// ------------------------------------------------------------ answers: cache, morph, guards
 
 void test("the chain's answer replaces the line, morphs the dots, and is cached for this exact shot", async (t) => {
   t.mock.timers.enable({ apis: ["setTimeout"] });

@@ -21,7 +21,8 @@ const (
 	half = 10
 )
 
-// the pond's Vec, a point on the tee's bank (no rule reads a hazard's Vec)
+// the pond's Vec, a point on the tee's bank: no shot reads a hazard's Vec,
+// the board and the 3D ground count it as ground a ball reaches
 var bank = physics.V(11, 13)
 
 var me = author.Fit(&course.Simple{

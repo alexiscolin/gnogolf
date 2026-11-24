@@ -45,7 +45,6 @@ const cdp = (await import("../media/lib/cdp.mjs")) as {
   APP: string;
 };
 const { launch, sleep, APP } = cdp;
-const { holingRound } = (await import("../media/lib/holing.mjs")) as { holingRound: (strokes: number) => string };
 interface Wallet { pump: () => Promise<void> }
 const SEED = process.env.SEED || "", KEY = process.env.KEY || "p1";
 const stand = SEED
@@ -176,7 +175,29 @@ async function holeOne(): Promise<string> {
     await until(`!!window.__g && !!document.querySelector(".tmode__chip--now:not(.tmode__chip--done)") && document.querySelector(".tmode__score strong")?.textContent === "0" && !document.querySelector(".tmode__won")`, "a weather to play", 90_000);
     const kind = await c.js<string>(`document.querySelector(".tmode__chip--now .weather__say").textContent`);
     await sleep(1500);
-    const round = await c.js<[number, number][] | null>(holingRound(6));
+    // each shot the one ending nearest the cup, within 40 degrees of it, until one holes (6 at most)
+    const round = await c.js<[number, number][] | null>(`(async () => {
+      const g = window.__g, id = g.current(), p = await g.chain.period(), s = await g.chain.state(id);
+      const pin = s.cup, shots = [];
+      let rest = s.start;
+      const of = (a, pw) => a.toFixed(4) + "," + pw.toFixed(4);
+      for (let k = 0; k < 6; k++) {
+        let best = null;
+        const toward = Math.atan2(pin[1] - rest[1], pin[0] - rest[0]) * 180 / Math.PI;
+        for (let da = -40; da <= 40; da += 2) for (let pw = 0.5; pw <= 10; pw += 0.25) {
+          const a = Math.round((toward + da) * 100) / 100;
+          let r;
+          try { r = k === 0 ? await g.chain.simulateRound(id, [of(a, pw)], p) : await g.chain.simulateFrom(id, rest, of(a, pw), k, p); } catch { continue; }
+          if (r.holed) return [...shots, [a, pw]];
+          const d = Math.hypot(r.rest[0] - pin[0], r.rest[1] - pin[1]);
+          if (!best || d < best.d) best = { a, pw, rest: r.rest, d };
+        }
+        if (!best) return null;
+        shots.push([best.a, best.pw]);
+        rest = best.rest;
+      }
+      return null;
+    })()`);
     if (!round) throw new Error(`no round found in ${kind}`);
     said(`${kind}: a round of ${round.length} found`);
     for (const [k, [a, pw]] of round.entries()) {

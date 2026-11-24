@@ -22,8 +22,6 @@ test("vsPar writes par the golf way", () => {
   assert.equal(vsPar(-1), "−1");
 });
 
-// ---- parOf / cupOf ----
-
 test("parOf: the hole's own par, 3 when unknown", () => {
   assert.equal(parOf({ par: 5 }), 5);
   assert.equal(parOf(undefined), 3);
@@ -36,8 +34,6 @@ test("cupOf: the hole's world, garden when unset", () => {
   assert.equal(cupOf({}), "garden");
 });
 
-// ---- cardKey / scoreOf ----
-
 test("cardKey: the slot when there is one, else the id", () => {
   assert.equal(cardKey({ id: "hole1", slot: "garden/1" }), "garden/1");
   assert.equal(cardKey({ id: "hole1" }), "hole1");
@@ -49,8 +45,6 @@ test("scoreOf: reads the card by cardKey", () => {
   assert.equal(scoreOf(card, { id: "hole1", slot: "garden/1" }), 3);
   assert.equal(scoreOf(card, { id: "hole2" }), undefined);
 });
-
-// ---- legacyOf / oldToSlot ----
 
 test("legacyOf: a course slot's old realm id, from the garden map", () => {
   assert.equal(legacyOf("garden/17"), "gno.land/r/gnogolf/hole19");
@@ -75,8 +69,6 @@ test("oldToSlot: the inverse of legacyOf, both mappings", () => {
   assert.equal(oldToSlot("gno.land/r/gnogolf/island5"), "island/5");
   assert.equal(oldToSlot("gno.land/r/gnogolf/nope"), "");
 });
-
-// ---- migrate ----
 
 test("migrate: rewrites old realm ids to slots, keeping the lower score on a clash", () => {
   const old = {
@@ -106,8 +98,6 @@ test("migrate: an empty or missing input is an empty card", () => {
   assert.deepEqual(migrate(undefined), {});
   assert.deepEqual(migrate({}), {});
 });
-
-// ---- loadCard / recordScore / clearCard / clearCup ----
 
 test("loadCard: an empty browser starts with an empty card, marked v2", () => {
   assert.deepEqual(loadCard(), {});
@@ -188,8 +178,6 @@ test("clearCup: removes only the given cardKeys", () => {
   assert.deepEqual(loadCard(), { "island/1": 2 });
 });
 
-// ---- totals ----
-
 const holes = [
   { id: "g1", slot: "garden/1", par: 3, world: "garden" },
   { id: "g2", slot: "garden/2", par: 4, world: "garden" },
@@ -214,8 +202,6 @@ test("totals: all is true once every hole given has a score", () => {
 test("totals: an empty hole list is never 'all'", () => {
   assert.equal(totals({}, []).all, false);
 });
-
-// ---- cupTotals ----
 
 const allHoles = [
   { id: "g1", slot: "garden/1", par: 3, world: "garden" },
@@ -253,8 +239,6 @@ test("cupTotals: aces sum across every cup", () => {
   const card = { "garden/1": 1, "garden/2": 1, "island/1": 1, "island/2": 4 };
   assert.equal(cupTotals(card, allHoles).aces, 3);
 });
-
-// ---- UNLOCKS / cupFinishLine ----
 
 test("UNLOCKS: each ok() reads the matching field off cupTotals", () => {
   const card = { "garden/1": 3, "garden/2": 3, "island/1": 3, "island/2": 3 };
@@ -304,8 +288,6 @@ test("cupFinishLine: what a finished cup earned, at par or over (the Mines: the 
   assert.equal(cupFinishLine("pond", true), "");
 });
 
-// ---- the Crystal Mines (ADR-005 §7) ----
-
 // the four classic cups of two holes each, all at par, and the mines' two
 const fiveCups = [...allHoles.filter((h) => h.world !== "extras"),
   { id: "t1", slot: "town/1", par: 3, world: "town" }, { id: "t2", slot: "town/2", par: 3, world: "town" },
@@ -354,7 +336,6 @@ test("guessCup: the cup a link names, the garden when none", () => {
   assert.equal(guessCup(""), "garden");
 });
 
-// ---- badges ----
 const cupsOf = (card: Record<string, number>) => cupTotals(card, [{ id: "a", slot: "garden/1", par: 3, world: "garden" }, { id: "b", slot: "garden/2", par: 4, world: "garden" }]);
 const finish = (f: Partial<Finish>): Finish => ({ strokes: 3, par: 3, pro: false, kind: "", timed: false, cups: cupsOf({}), weathers: [""], ...f });
 

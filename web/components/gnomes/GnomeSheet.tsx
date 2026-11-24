@@ -144,8 +144,14 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
   // the chain's word: the transaction's result by its hash, else the owner it now shows
   async function readBack(hash: string, height: number) {
     for (let i = 0; i < 6; i++) {
+      let got: string | null;
       try {
-        const got = await resultOf(chain, hash);
+        got = await resultOf(chain, hash);
+      } catch (e) {
+        // the buy itself refused, nothing bought: the order again, with the chain's reason
+        return /already sold/.test(messageOf(e)) ? taken() : setStep({ at: "review", note: <p className="note note--bad" role="alert">{messageOf(e)}</p> });
+      }
+      try {
         const now = await shop.gnome(g.id);
         if ((got != null && got.includes(String(g.id))) || (now && now.owner === me)) {
           const when = await chain.blockTime(height).then((ms) => Math.floor(ms / 1000), () => null); // (the receipt says it in seconds)
@@ -154,7 +160,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
           return setStep({ at: "done", hash, height, when });
         }
       } catch (e) {
-        if (errorKind(e) === "chain") return /already sold/.test(messageOf(e)) ? taken() : setStep({ at: "review", note: <p className="note note--bad" role="alert">{messageOf(e)}</p> });
+        if (errorKind(e) === "chain") return setStep({ at: "unsure", hash, why: messageOf(e) });
       }
       await wait(1500);
     }

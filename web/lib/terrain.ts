@@ -396,8 +396,8 @@ export function terrain(s: Pick<HoleState, "board" | "walls" | "zones" | "start"
       }
   }
 
-  // flood from everywhere a ball can be put: the tee, and wherever a tunnel or
-  // a hazard sends it
+  // flood from everywhere a ball can be: the tee, the cup, wherever a tunnel
+  // sends it, and each hazard's vec
   const reach = new Uint8Array(nx * nz);
   const stack: MutVec2[] = [];
   const seed = (p: Vec2) => {

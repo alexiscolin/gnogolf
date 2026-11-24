@@ -129,8 +129,6 @@ test("movers: each live piece as drawn, its outermost live group only, hidden wi
   assert.equal(movers({ g: { course: null } } as unknown as Live), null);
 });
 
-// ---- the rides' and the pieces' checks (the same small course, a piece or two more each)
-
 /** A box w × h × d centred at (x, y, z), of colour c as the mines build their parts (solid(): in its vertices, over the white relief()), a named group round it if named. */
 function box(w: number, h: number, d: number, x: number, y: number, z: number, c = 0x777777, name = "") {
   const m = solid(new THREE.BoxGeometry(w, h, d), c);

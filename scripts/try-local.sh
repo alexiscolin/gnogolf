@@ -280,7 +280,7 @@ else printf '  Open  http://127.0.0.1:%s/   (this machine)' "$APP_PORT"; fi)
        Duel: race a player's ghost, their gnome on the boards and as the ghost.
     4. The region gate: add ?geo=blocked to the gnomes' page (/g/?geo=blocked).
     5. The Builder: the "Builder" card on a computer (a phone gets the
-       community holes to play): the three hints (again with "?"), make a hole,
+       community holes to play): the four hints (again with "?"), make a hole,
        Play it (hole it in each weather), Publish.
     6. Find it: Solo, the cups screen's "Community holes", under the cups.
   A closing date for the genesis (or a nearer one):  scripts/try-local.sh close [days]

@@ -1,0 +1,23 @@
+# The client's half of scripts/check.sh on every push and pull request: the
+# typechecks, lint, selfcheck, the gnome and scene goldens and the unit tests.
+# The Gno half needs the onyx toolchain, TinyGo and Chrome: run it locally.
+name: check
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+        working-directory: web
+      - run: sh scripts/check.sh
+        env:
+          SKIP_GNO: 1

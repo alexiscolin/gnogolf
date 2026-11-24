@@ -51,7 +51,7 @@ const HELD: Record<string, number> = { "snow cannon": Infinity, "serac tower": 0
 const onLane = (g: Course, pts: THREE.Vector3[]) => pts.filter((p) => g.userData.terrain.onGreen(p.x, p.z));
 
 void test("the course's own snow cannon and seracs (mountain/10, mountain/15) draw exactly as they always have", () => {
-  // (each piece as built, before the merge: the serac's tower is kept out of it now, its own to fade)
+  // (each piece as built, before the merge: the serac's tower is kept out of it, its own to fade)
   const golden: Record<string, string> = { "mountain/10": "d553dbbb9e1cc447", "mountain/15": "e28a11494617b79d" };
   for (const l of fs.readFileSync(new URL("../../data/holes.txt", import.meta.url), "utf8").trim().split("\n")) {
     const [slot, , , hex] = l.split(" ");

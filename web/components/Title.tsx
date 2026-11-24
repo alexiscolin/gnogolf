@@ -287,11 +287,11 @@ function useTitleScene(host: RefObject<HTMLDivElement | null>, film: RefObject<H
   useEffect(() => {
     if (!visit) {
       // a link past the title (a hole's: ?hole=, ?cup=, its page /h/…; the
-      // cups' or a rival's: ?screen=cups, rival; the shop's pages /g/…): the
-      // title is only its loader, on the default sky, with nothing behind it
-      // (?screen=modes loads under the menu's frame, and the menu's Back opens
-      // the whole title at that address)
-      const deep = /[?&]((hole|cup)=|screen=(cups|rival)\b)/.test(location.search) || /^\/h\//.test(location.pathname) || (SHOP && /^\/g(\/|$)/.test(location.pathname));
+      // cups', a rival's or the community holes': ?screen=cups, rival,
+      // community; the shop's pages /g/…): the title is only its loader, on
+      // the default sky, with nothing behind it (?screen=modes loads under the
+      // menu's frame, and the menu's Back opens the whole title at that address)
+      const deep = /[?&]((hole|cup)=|screen=(cups|rival|community)\b)/.test(location.search) || /^\/h\//.test(location.pathname) || (SHOP && /^\/g(\/|$)/.test(location.pathname));
       const world = deep ? guessWorld() : nextWorld(), live = !deep && !wantsStill(), canvas = live ? document.createElement("canvas") : null;
       if (canvas) canvas.className = "title__canvas";
       const v: Visit = (visit = { world, canvas, video: null, phase: "splash", p: null, ready: false, bare: deep, kill: undefined, notify() {} });

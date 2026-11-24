@@ -66,8 +66,6 @@ function settle(cam: ReturnType<typeof mkCam>, n = 200, dt = 1 / 60) {
   return cam;
 }
 
-// ------------------------------------------------------------- the springs
-
 void test("update: the first frame snaps straight to the target pose (not live yet)", () => {
   const cam = mkCam(mkHole());
   cam.api.update(1 / 60);
@@ -117,8 +115,6 @@ void test("inner(): a finite, plainly-shaped probe", () => {
   for (const k of ["swing", "pen", "rise", "wide", "yaw"] as const) assert.ok(Number.isFinite(inner[k]), `${k} should be finite`);
 });
 
-// ------------------------------------------------------------- rig modes
-
 void test("classic mode: rigTarget fills g.rig from g.over", () => {
   const hole = mkHole();
   const cam = mkCam(hole, { g: { cam: "classic", view: "overview", over: { target: new THREE.Vector3(9, 0, 5), dist: 40, ox: 3, oy: -2 } } });
@@ -139,8 +135,6 @@ void test("far mode: the whole-hole rig, not the ball's own framing", () => {
   const rig = cam.g.rig as { dist: number };
   assert.equal(rig.dist, 60);
 });
-
-// --------------------------------------------------------- third person
 
 void test("third person, rest: settles along the lane's own heading (toward the cup on an open board)", () => {
   const hole = mkHole({ start: [1, 5], cup: [18, 5] }); // due east
@@ -190,8 +184,6 @@ void test("third person, in a tube: still updates without throwing", () => {
   assert.doesNotThrow(() => { for (let i = 0; i < 10; i++) cam.api.update(1 / 60); });
 });
 
-// ------------------------------------------------------------- occluded()
-
 void test("occluded: nothing between the ball and the camera", () => {
   const cam = mkCam(mkHole());
   const P = new THREE.Vector3(10, 3, 5), B = new THREE.Vector3(1, 0.5, 5);
@@ -226,8 +218,6 @@ void test("occluded: a rise in the ground between blocks the line of sight", () 
   assert.equal(cam.api.occluded(P, B), true);
 });
 
-// ---------------------------------------------------------------- laneAt
-
 void test("laneAt: with no course wired, falls back to the straight line to the cup", () => {
   const hole = mkHole({ start: [1, 5], cup: [18, 9] });
   const cam = mkCam(hole);
@@ -261,8 +251,6 @@ void test("prepare: builds the course's distance field up front, idempotently", 
   assert.ok(Number.isFinite(cam.api.laneAt(2, 5)));
 });
 
-// ----------------------------------------------------------------- hover
-
 void test("hover: a touch pointer is never leant on", () => {
   const cam = mkCam(mkHole());
   assert.doesNotThrow(() => cam.api.hover({ pointerType: "touch", clientX: 0, clientY: 0 } as unknown as PointerEvent));
@@ -293,8 +281,6 @@ void test("hover: a mouse leaning left vs right changes the Far view's framing",
   }
 });
 
-// ----------------------------------------------------------------- glide
-
 void test("finishGlide before it starts just cancels it", () => {
   const cam = settle(mkCam(mkHole()));
   cam.api.glide();
@@ -316,8 +302,6 @@ void test("glide: the wait frame changes nothing, then it eases in and a cut fin
   while (cam.api.gliding() && performance.now() - t0 < 1000) cam.api.update(1 / 60);
   assert.equal(cam.api.gliding(), false);
 });
-
-// --------------------------------------------------------- collisions
 
 void test("a wall close behind the ball: the camera rises to clear the kerb instead of sitting in it", () => {
   const walls = [mkWall([1, 3], [1, 7])]; // right behind the gnome at (1, 5), facing east
@@ -342,8 +326,6 @@ void test("a post right where the camera would sit is avoided", () => {
 test("a hole's time of day is its number in its cup's, not its version's", () => {
   assert.deepEqual(["garden/2/v1", "garden/3/v1", "garden/4/v1", "garden/4/v2", "garden/4", "hole16"].map(timeOf), ["dusk", "day", "night", "night", "night", "night"]);
 });
-
-// ------------------------------------------------ the mines' boards and rides
 
 void test("the camera on the ball: a board bigger than the four cups' is followed from as near as their biggest", () => {
   const view = { w: 1280, h: 720, top: 80, bottom: 80, side: 40 };

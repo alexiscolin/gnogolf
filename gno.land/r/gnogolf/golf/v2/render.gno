@@ -1049,8 +1049,8 @@ func short(addr string) string {
 }
 
 // blankUnreachable clears the cells no ball can reach: a flood fill from the
-// tee, the cup and where tunnels and hazards put the ball, stopped by the
-// fence. The walls drawn, fence and wall, stay.
+// tee, the cup, where tunnels put the ball and each hazard's Vec, stopped by
+// the fence. The walls drawn, fence and wall, stay.
 func blankUnreachable(g, fence, wall [][]rune, f *physics.Field, seeds ...physics.Vec2) {
 	bh := len(g)
 	if bh == 0 {

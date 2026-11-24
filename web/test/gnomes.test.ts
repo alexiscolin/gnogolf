@@ -248,7 +248,7 @@ test("rows: what the realm receives decodes to the catalogue's traits, id for id
   assert.match(checkRows(row("common", g.traits, 1, "é".repeat(25)), 1).join(), /name/, "48 bytes, not 48 characters");
   assert.match(checkRows(row("common", `${g.traits}|x`), 1).join(), /not id\|tier\|name\|traits/, "a | in the traits: a field too many");
   // the realm's rule (rows.gno plainName, printable), case for case as its own test holds them (rowcases_test.gno):
-  // the injection payloads refused, accented letters taken; each name case as a row too
+  // markup and hidden characters refused, accented letters taken; each name case as a row too
   const gno = fs.readFileSync(new URL("../../gno.land/r/gnogolf/gnomes/rowcases_test.gno", import.meta.url), "utf8");
   const cases = /const rowCases = `\n([^`]*)`/.exec(gno)![1].trim().split("\n").map((l) => /^(name|traits) (ok|no) (".*")$/.exec(l)!);
   assert.ok(cases.length > 20 && cases.every(Boolean), "the realm's cases, read");

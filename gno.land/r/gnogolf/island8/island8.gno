@@ -12,7 +12,8 @@ import (
 )
 
 // pool is a tide pool: the polygon, drawn and played as it is, with back as
-// its Vec (which no rule reads).
+// its Vec: no shot reads it, the board and the 3D ground count it as ground
+// a ball reaches.
 func pool(back physics.Vec2, pts ...physics.Vec2) physics.Zone {
 	lo, hi := pts[0], pts[0]
 	for _, p := range pts {

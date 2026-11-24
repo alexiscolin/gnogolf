@@ -1,4 +1,4 @@
-// Ghost duels (ADR-004): the best raced, the ghost's pace, and the result in words.
+// Ghost duels: the best raced, the ghost's pace, and the result in words.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { raceLeft, duelResult, duelShare, skyWord, ghostSpeed, pickGhost, shotsOf, levelFrom, levelPick, pickOne, bestOf, showcases, inTurn, mapView, mapFit, mapZone, vsBest, pathD, railRuns, type Duel } from "../lib/duel.ts";

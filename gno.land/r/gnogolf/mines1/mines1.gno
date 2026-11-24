@@ -15,7 +15,8 @@ import (
 
 var v = physics.V
 
-// tee is the hole's tee, and every hazard's Vec (which no rule reads).
+// tee is the hole's tee, and every hazard's Vec: no shot reads it, the board
+// and the 3D ground count it as ground a ball reaches.
 var tee = v(4, 4)
 
 // laneW and laneE are the ground, west and east of x = 36, each the Outside

@@ -751,7 +751,7 @@ interface Gain { pass: readonly string[]; best: boolean; sky: SkyKind; beat?: Ri
 type Rival = { player: string; name: string; strokes: number };
 const NO_GAIN: Gain = { pass: [], best: false, sky: "" };
 
-/** The chain's own name registrar on gnoweb (reg: chain.nameReg's), the words alone until it is read. */
+/** The chain's own name registrar on gnoweb (reg: chain.nameReg's, or the build's NEXT_PUBLIC_NAMEREG), the words alone until it is read. */
 const NameLink = ({ chain, reg, children }: { chain: Chain; reg: string; children: ReactNode }) =>
   reg ? (
     <a href={chain.web + "/" + reg.replace(/^(gno\.land)?\//, "")} target="_blank" rel="noopener noreferrer">
@@ -874,7 +874,7 @@ export function NameForm({ chain, account, chainId, price, lead, onNamed, typed,
                 : why === undefined
                   ? stem ? `Checking ${name}…` : "Type the name you want."
                   : `✓ ${name}`}
-        {bad && typed ? " · Fix it, or clear it to save without a name." : ""} · <NameLink chain={chain} reg={reg}>names on gno.land ↗</NameLink>
+        {bad && typed ? " · Fix it, or clear it to save without a name." : ""} · <NameLink chain={chain} reg={process.env.NEXT_PUBLIC_NAMEREG || reg}>names on gno.land ↗</NameLink>
       </small>
     </form>
     {/* (outside the form: its Copy and its key's field submit nothing) */}

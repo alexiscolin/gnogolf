@@ -2,6 +2,8 @@
 
 # Gnogolf
 
+[![check](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg)](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml)
+
 3D mini-golf where the chain rolls the ball. You pull back, you let go, and a
 realm on [gno.land](https://gno.land) plays the shot. There is no game
 server, and no way to fake a score.
@@ -30,7 +32,7 @@ a wallet. [The pitch, in one page](docs/pitch.md).
 
 Still behind a switch, and in this repo: the **Builder** (draw a hole, hole
 it in every weather that moves the ball, publish it, own it) and the **gnome
-collection** (720 gnomes to buy or to earn).
+collection** (720 gnomes to buy, and nine to earn).
 
 ## How it works
 
@@ -126,13 +128,13 @@ Without them the site plays a chain on the visitor's own machine.
 
 ## Dev mode
 
-`npm run dev` answers to things the public site never does. They all travel
-in the URL.
+What the URL opens. `npm run dev` answers to all of it; a row says when
+another build does.
 
 | In the URL | What it does |
 |---|---|
-| `?hole=garden/7`, `?cup=garden&hole=7` | opens a hole (any build) |
-| `?screen=cups` | straight to the cups; also `modes`, `rival`, `community`, `pick` (any build) |
+| `?hole=garden/7`, `?cup=garden&hole=7` | opens a hole; with `&screen=pick`, its gnome picker (any build) |
+| `?screen=cups` | straight to the cups; also `modes`, `rival`, `community` (any build) |
 | `?rpc=`, `?web=` | another node, another gnoweb (a dev or local build): this machine's, or over https a `*.gno.land` host, the build's own or one in `NEXT_PUBLIC_ALLOWED_HOSTS` |
 | `?play` | skips the title |
 | `?shot=angle,power` | fires a shot on load |

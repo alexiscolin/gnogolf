@@ -501,7 +501,8 @@ function charge(b: PBar, t: Terrain, sh: Hole, lit: boolean) {
     ud(fuse).live = true;
     fz0.add(spark);
     const P = new THREE.Vector3(), rings = tube.index ? tube.index.count / 24 : 0;
-    let t1 = -1;
+    // its clock starts with the first frame that shows it; with less motion, here: play shows it burnt down
+    let t1 = motion ? -1 : performance.now() / 1000;
     play((tt) => {
       if (t1 < 0) t1 = tt;
       const k = 1 - 0.9 * (1 - Math.exp(-(tt - t1) / 10));

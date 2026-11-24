@@ -86,8 +86,6 @@ function makeFixture(ground: (x: number, z: number) => number = () => 0) {
   return { E: E as unknown as Live, g, ball, calls };
 }
 
-// -------------------------------------------------------------- landing()
-
 void test("landing: no hole loaded, no zones, or the two points coincide", () => {
   const { E, g } = makeFixture();
   const api = makeReplay(E);
@@ -144,8 +142,6 @@ void test("landing: of several zones landing at the same point, the nearest to p
   g.s = mkHole([far, near]) as unknown as GameState["s"];
   assert.equal(api.landing([0, 0], [10, 10]), "hazard");
 });
-
-// --------------------------------------------------------------- replay()
 
 void test("replay: a plain roll ends exactly at the path's last point", async () => {
   const { E, ball, g } = makeFixture();
@@ -428,8 +424,6 @@ void test("outlived: a replay that never settles is cut once its time is spent, 
   await turn();
   assert.equal(cut, true);
 });
-
-// ------------------------------------------------------ the mines' hooks
 
 void test("landing: the stroke's own tunnels count too (a lift at this stroke's landing)", () => {
   const { E, g } = makeFixture();

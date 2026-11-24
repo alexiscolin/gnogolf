@@ -33,7 +33,6 @@ const collection = (o: Partial<Collection> = {}): Collection => ({
 });
 const can = (o: Partial<CanBuy> = {}): CanBuy => ({ version: 1, ok: false, reason: "", said: "", total: 0, left: { common: 10, rare: 5, epic: 2, legendary: 1 }, window: { until: 0, left: { common: 0, rare: 0, epic: 0, legendary: 0 } }, ...o });
 
-// ------------------------------------------------------------ the reads, on the wire
 type Asked = { realm: string; expr: string };
 function fakeChain(answers: Record<string, unknown>) {
   const asked: Asked[] = [];
@@ -126,7 +125,6 @@ test("shop: the sold bitmap reads a bit an id, id 1 the lowest bit of the first 
   assert.equal(soldSet("zz")(1), false); // not hex: nothing sold rather than nonsense
 });
 
-// ------------------------------------------------------------ words and numbers
 test("shop: GNOT exact, thousands apart; typed amounts back to ugnot", () => {
   assert.equal(gnot(30e6), "30");
   assert.equal(gnot(333_330_000), "333.33");
@@ -143,7 +141,6 @@ test("shop: a date is a date in UTC, today said as today; never a countdown", ()
   assert.equal(utcDate(Date.UTC(2027, 9, 18, 11, 46) / 1000, T0), "Mon 18 Oct 2027, 11:46 UTC", "another year's: its year");
 });
 
-// ------------------------------------------------------------ the gallery's "now" row
 const isSold = (ids: number[]) => (id: number) => ids.includes(id);
 test("shop: the now row follows the sale's life: teaser, players first, open, sold out, paused, closed", () => {
   const c = collection();
@@ -185,7 +182,6 @@ test("shop: the genesis closing closes the genesis alone: a later series' sale s
   assert.equal(pick(nowRow(collection(), every, entries, now)), "soldout genesis");
 });
 
-// ------------------------------------------------------------ the collection on the game's screens
 test("shop: the promo is the sale to see, its lowest price, its Legendary and three faces; none once sold out or closed", () => {
   const c = collection(), open = promoOf(nowRow(c, isSold([1, 2, 3, 4]), entries, T0 + 49 * 3600), c, entries)!;
   assert.equal(open.at, "open");
@@ -216,7 +212,6 @@ test("shop: the promo is the sale to see, its lowest price, its Legendary and th
   for (const p of [open]) for (const w of Object.values(promoWords(p, T0))) assert.doesNotMatch(w, /only|last|hurry|left|invest|value/i);
 });
 
-// ------------------------------------------------------------ the closing line
 test("shop: no closing line when no closing date is set (a launch may leave it unset), nor once closed", () => {
   assert.equal(showsClosing(collection({ closesAt: 0 })), false);
   assert.equal(showsClosing(collection()), true);
@@ -238,13 +233,11 @@ test("shop: a genesis with no closing date (closesAt 0) sells on: no closing, no
   assert.deepEqual(unlisted, { button: "Not on sale yet", note: "From the Garden." }, "no date: no \"or never\"");
 });
 
-// ------------------------------------------------------------ a player's gnomes
 test("shop: a player's gnomes titled by their name, else their short address, never \"Their's\"", () => {
   assert.equal(theirTitle("alice", "g1abcdefghijklmnopqrstuvwxyz0123456789cd"), "alice's gnomes");
   assert.equal(theirTitle("", "g1abcdefghijklmnopqrstuvwxyz0123456789cd"), "g1abcdef…89cd's gnomes");
 });
 
-// ------------------------------------------------------------ the gallery as a shop
 test("shop: Buy on a card on sale only", () => {
   const c = collection();
   const seen = { c, sold: isSold([2]), mine: new Set([3]), now: T0 + 49 * 3600 };
@@ -256,7 +249,6 @@ test("shop: Buy on a card on sale only", () => {
   assert.equal(canBuyCard(entries[0], { ...seen, c: collection({ open: false }) }), false, "the sale paused");
 });
 
-// ------------------------------------------------------------ why not, in plain words
 test("shop: every refusal CanBuy gives has its words: the button's and a note", () => {
   const c = collection(), until = T0 + 48 * 3600;
   const tansy = { id: 94, tier: "epic" as const, home: "garden" as const };
@@ -286,7 +278,6 @@ test("shop: no buyer to ask CanBuy for (no wallet connected): what the sale alon
   assert.deepEqual(saleWhyNot(collection({ series: [genesis({ sale: null })] }), tansy, T0), { button: "Not on sale yet", note: "From the Garden. Its sale opens before Mon 14 Dec, 18:00 UTC, or never." });
 });
 
-// ------------------------------------------------------------ a buy sent, not confirmed
 test("shop: a buy with no hash to read, by the gnome read again: landed (the buyer's), taken (another's), or not yet", () => {
   const me = "g1u6gljuvfjhfp6rzeud99567tmr5zncl6sa54vd", other = "g1f3chauez3mk9evmwczjwcwfy8pysfy9jn2p3m7";
   const g = { id: "5", series: "genesis", name: "Nell", tier: "common", traits: "", owner: "", price: 36e6, sold: false, closed: false };
@@ -296,7 +287,6 @@ test("shop: a buy with no hash to read, by the gnome read again: landed (the buy
   assert.equal(landing(null, me), null);
 });
 
-// ------------------------------------------------------------ the bill
 test("shop: the bill: each cost, at most their sum, its total said up to the hundredth, short by what the balance lacks", () => {
   const b = bill({ price: 333_330_000, bytes: 3849, storagePrice: 100, gas: 50e6, gasPrice: 0.001, balance: 120e6 });
   assert.equal(b.price, 333_330_000);
@@ -312,7 +302,6 @@ test("shop: the bill: each cost, at most their sum, its total said up to the hun
   assert.equal(bill({ price: 0, bytes: 100, storagePrice: 100, gas: 1e6, gasPrice: 0.001, balance: 10e6 }).short, 0);
 });
 
-// ------------------------------------------------------------ the shelf
 test("shop: the gallery's shelf: all, mine; tier counts; filters; a page of 48", () => {
   const c = collection();
   const sold = isSold([1, 2, 3]);
@@ -357,7 +346,6 @@ test("shop: the words of each share moment: about the game, never value", () => 
     assert.doesNotMatch(s, /\b(NFT|mint|token|floor|invest|value|limited)\b/i);
 });
 
-// ------------------------------------------------------------ the shop's sale card: a little fairway, tee to flag
 test("shop: the sale card: the series' name, the ball at the share that found a player, each tier's own, its Legendaries at the flag", () => {
   const c = collection(), at = T0 + 49 * 3600, sold = isSold([1, 2, 73, 104, 208]);
   const line = saleLine(nowRow(c, sold, entries, at), c, entries, sold, at)!;

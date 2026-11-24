@@ -22,7 +22,7 @@ import { own } from "../own";
 
 const CANAL = { x0: -ISLAND.x - 6.5, x1: -ISLAND.x - 1.5 }; // down the left, just off the plot
 /** Whether the lane runs over the rooftops (a `roof` zone). */
-const roofed = (s: Pick<Hole, "zones">) => (s.zones || []).some((z) => z.skin === "roof");
+const roofed = (s: Pick<Hole, "zones">) => s.zones.some((z) => z.skin === "roof");
 /** How far down this hole's town stands: a lane over the rooftops (a `roof`
  *  zone) looks down on the streets, so the square and all round it are at
  *  street level (base, edging and decor are moved down by it as a whole). */
@@ -30,7 +30,7 @@ const sunk = (s: Pick<Hole, "zones">) => (roofed(s) ? STREET_Y - GRASS : 0);
 /** The plot: the board, out to its walls where they reach past its nominal size, as [x0, z0, x1, z1]. */
 const plot = (s: Hole) => {
   let x0 = 0, z0 = 0, x1 = s.board.w, z1 = s.board.h;
-  for (const w of s.walls || []) for (const p of [w.a, w.b]) {
+  for (const w of s.walls) for (const p of [w.a, w.b]) {
     x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
     z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]);
   }
@@ -1449,7 +1449,7 @@ const PLAZA_POSTS: Record<string, (r: number, rand: Rand, night: boolean) => THR
 // ledge down the middle and a grind rail. The park's floor is concrete, not a
 // lawn (green below).
 const CONCRETE = 0xd0cbc1, STEEL = 0x8e9aa3;
-const skatePark = (s: Hole) => (s.zones || []).some((z) => z.skin === "quarter pipe");
+const skatePark = (s: Hole) => s.zones.some((z) => z.skin === "quarter pipe");
 /** The lane's stripes: poured concrete in a skate park, the default lawn elsewhere. */
 const green = (s: Hole): readonly [number, number] | null => (skatePark(s) ? [0xcfcac1, 0xcac5bc] : null);
 
@@ -1765,7 +1765,7 @@ function swingRig(s: Hole): THREE.Group {
   const x0 = rig.position.x, H = s.board.h;
   // the deck is as wide as the lane where it crosses (its walls, clipped to the canal)
   let lo = Infinity, hi = -Infinity;
-  for (const w of s.walls || []) {
+  for (const w of s.walls) {
     const [ax, az] = w.a, [bx, bz] = w.b;
     for (const x of [x0, x0 + CW, ax, bx]) {
       if (x < x0 || x > x0 + CW || x < Math.min(ax, bx) || x > Math.max(ax, bx) || ax === bx) continue;
@@ -1876,8 +1876,8 @@ function swingRig(s: Hole): THREE.Group {
 
 /** A stroke's pieces town draws itself: the swing bridge, down or up (its rig is the hole's). */
 function extras(ex: Extras, s: Hole) {
-  const bridge = (ex.zones || []).find((z) => z.skin === "bridge");
-  const canal = (ex.zones || []).find((z) => z.skin === "canal");
+  const bridge = ex.zones.find((z) => z.skin === "bridge");
+  const canal = ex.zones.find((z) => z.skin === "canal");
   const z = bridge || canal, rig = rigs.get(s);
   if (!z || !rig) return undefined;
   rig.set(!bridge, z);

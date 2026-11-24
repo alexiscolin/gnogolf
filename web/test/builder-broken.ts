@@ -15,7 +15,7 @@ type P = [number, number];
 export const plank = (id: string, a: P, b: P, thick: number, clock: Draft["pieces"][number]["clock"] = { k: "fixed" }) => ({ ...put(id, "*/bar/plank", a), geometry: { t: "bar" as const, a, b, thick }, clock });
 export const box = (id: string, entry: string, min: P, max: P, more = {}) => ({ ...put(id, entry, min), geometry: { t: "rect" as const, min, max }, ...more });
 export const slope = (id: string, min: P, max: P, grade: number, dir: P) => ({ ...put(id, "*/slope/", min, { grade }), geometry: { t: "rect" as const, min, max }, params: { grade, dir } });
-/** The lane cut across at x 15 but for a door 3 wide (two pieces taking turns in it shut it for good). */
+/** The lane cut across at x 15 but for a door 3 wide: two pieces taking turns in it shut it for good. */
 export const door = () => [rail("u", [15, 0], [15, 8.5]), rail("v", [15, 11.5], [15, 20])];
 
 /** Each broken hole: what it breaks, the hole, the refusals the whole pipeline gives (rule, piece, sentence). */
@@ -87,7 +87,9 @@ export const cases: [string, () => Draft, string[]][] = [
     ["E13 x: The rock stands on the wall at (13.5, 2.3)"]],
   ["E13: two bars crossing", () => lane("garden", [put("x", "*/bar/plank", [10, 9], { size: 4 }), { ...put("y", "*/bar/plank", [12, 7], { size: 4 }), geometry: { t: "bar", a: [12, 7], b: [12, 11], thick: 0.5 } }]),
     ["E13 x: The plank crosses the plank at (13.5, 10.5)"]],
-  ["E13: a bar run through a rail", () => lane("garden", [rail("a", [15, 0], [15, 8]), { ...put("x", "*/bar/plank", [13, 6]), geometry: { t: "bar", a: [13, 6], b: [17, 6], thick: 0.5 } }]),
+  ["E13: two pulses' planks crossing, each there in its turn", () => ({ ...lane("garden", [plank("x", [12, 6], [18, 12], 0.5, { k: "stroke", pulse: 0 }), plank("y", [12, 12], [18, 6], 0.5, { k: "stroke", pulse: 1 })]), pulses: [{ every: 2, on: 1, phase: 0 }, { every: 2, on: 1, phase: 1 }] }),
+    ["E13 x: The plank crosses the plank at (16.5, 10.5)"]],
+  ["E13: a bar run through a rail",() => lane("garden", [rail("a", [15, 0], [15, 8]), { ...put("x", "*/bar/plank", [13, 6]), geometry: { t: "bar", a: [13, 6], b: [17, 6], thick: 0.5 } }]),
     ["E13 x: The plank crosses the wall at (16.5, 7.5)"]],
   ["E13: a bar poking through the lane's own rail", () => lane("garden", [{ ...put("x", "*/bar/plank", [10, 18]), geometry: { t: "bar", a: [10, 18], b: [10, 21], thick: 0.5 } }]),
     ["E13 x: The plank crosses the wall at (11.5, 21)"]],

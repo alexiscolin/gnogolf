@@ -1440,7 +1440,8 @@ export default function Golf() {
     return () => window.removeEventListener("keydown", onKey);
   }, [cupsScreen]);
   // a screen in another's place (the button pressed went with the old one): the focus on its title, so a reader says
-  // where it is and Tab goes on from there; not as the page opens, nor when something kept the focus
+  // where it is and Tab goes on from there (a link's screen too, in its loader's place); not the page's first screen,
+  // nor when something kept the focus
   const screenWas = useRef(screen);
   useEffect(() => {
     if (screenWas.current === screen) return;

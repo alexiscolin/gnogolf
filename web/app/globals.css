@@ -257,9 +257,8 @@ html, body {
 }
 
 /* a small caps label (a HUD card's, a hole card's "Their best", a figure's
-   in the menu and a cup's standings, the share's, a sheet's section's, a
-   board's records', the sale card's title) */
-.eyebrow, .ghost__label, .me__stats span, .cup__sum dt, .share__label, .friends__manage h4, .featured__h, .wcard__title {
+   in the menu and a cup's standings, the share's, a sheet's section's) */
+.eyebrow, .ghost__label, .me__stats span, .cup__sum dt, .share__label, .friends__manage h4 {
   display: block;
   font-size: 11px;
   font-weight: 600;
@@ -2043,7 +2042,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .lb__mine { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: var(--rule); }
 /* a board's records put forward (featured.ts): the cups' stickers, three across, over the rows; each says why it is there */
 .featured { margin: 4px 0 14px; }
-.featured__h { margin: 0 0 10px; } /* (a small caps label: .eyebrow's) */
+.featured__h { margin: 0 0 10px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
 .lb .featured__row { overflow: visible; max-height: none; padding: 8px 0 4px; mask-image: none; animation: none; gap: 12px; } /* (not the rows' scrolling list) */
 .lb .featured__row > li { padding: 0; border: 0; background: none; }
 /* in a sheet: the phone's card at any width, face over name, the name a size down */

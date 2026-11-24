@@ -1,7 +1,8 @@
-// An author's rewards after publishing (lib/builder/rewards.ts): each published hole's players, plays and best
-// against the author's own, a dot for what is new since the author last
-// looked (kept in this browser), the Builder's badges from the chain's own
-// records, and the author's test round saved as the hole's first record.
+// An author's rewards after publishing (lib/builder/rewards.ts): each
+// published hole's players, plays and best against the author's own, a dot
+// for what is new since the author last looked (kept in this browser), the
+// Builder's badges from the chain's own records, and the author's test round
+// saved as the hole's first record.
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {

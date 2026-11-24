@@ -51,7 +51,8 @@ var me = author.Fit(&course.Simple{
 		},
 		Zones: []physics.Zone{
 			// off the roofs: back where the stroke was played from, whichever of
-			// the three a ball is in (no rule reads a hazard's Vec)
+			// the three a ball is in: no shot reads a hazard's Vec, the board and
+			// the 3D ground count it as ground a ball reaches
 			{Kind: physics.Hazard, Min: physics.V(37, 0), Max: physics.V(62, 26), Vec: physics.V(41, 21), Poly: roofs(), Outside: true, Skin: "roof"},
 			{Kind: physics.Hazard, Min: physics.V(22, 0), Max: physics.V(37, 26), Vec: physics.V(24.5, 5.5), Poly: roofs(), Outside: true, Skin: "roof"},
 			{Kind: physics.Hazard, Min: physics.V(0, 0), Max: physics.V(61, 26), Vec: physics.V(6, 7.5), Poly: roofs(), Outside: true, Skin: "roof"},

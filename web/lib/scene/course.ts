@@ -2061,7 +2061,7 @@ function wearLayer(wear: Wear, W: number, H: number, height: Height, tint: THREE
 const WEATHER = new Set([...WEATHER_SKINS, "gust"]);
 
 export function buildExtras(course: Course, ex: Extras) {
-  if ((ex.zones || []).some(emptyZone)) ex = { ...ex, zones: (ex.zones || []).filter((z) => !emptyZone(z)) }; // (as buildHole)
+  if (ex.zones.some(emptyZone)) ex = { ...ex, zones: ex.zones.filter((z) => !emptyZone(z)) }; // (as buildHole)
   const t = course.userData.terrain;
   const g = new THREE.Group();
   ud(g).live = true;
@@ -2083,13 +2083,13 @@ export function buildExtras(course: Course, ex: Extras) {
     ud(own.group).live = true;
     ud(g).steady = ud(own.group).steady;
     g.add(own.group);
-    ex = { ...ex, walls: ex.walls.filter((w) => !own.skins.has(w.skin)), posts: ex.posts.filter((p) => !own.skins.has(p.skin)), zones: (ex.zones || []).filter((z) => !own.skins.has(z.skin)) };
+    ex = { ...ex, walls: ex.walls.filter((w) => !own.skins.has(w.skin)), posts: ex.posts.filter((p) => !own.skins.has(p.skin)), zones: ex.zones.filter((z) => !own.skins.has(z.skin)) };
   }
-  for (const w of wallPieces({ ...course.userData.state, walls: ex.walls, zones: ex.zones || [] }, t)) g.add(w);
+  for (const w of wallPieces({ ...course.userData.state, walls: ex.walls, zones: ex.zones }, t)) g.add(w);
   for (const p of ex.posts) g.add(p.skin === "mole" ? mole(p, t.height) : post(p, course.userData.state, t));
   // what a stroke adds on the lane (a wave washing across...); the weather is
   // the sky's and the engine's, not drawn on the ground
-  for (const z of ex.zones || []) if (!WEATHER.has(z.skin)) g.add(zoneDetail(z, { ...course.userData.state, zones: ex.zones }, t));
+  for (const z of ex.zones) if (!WEATHER.has(z.skin)) g.add(zoneDetail(z, { ...course.userData.state, zones: ex.zones }, t));
   // a blade is a mill's sweep: stand the mill itself on its hub
   const blade = ex.walls.filter((w) => w.skin === "blade");
   if (blade.length) {

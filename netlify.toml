@@ -16,6 +16,8 @@
 #   NEXT_PUBLIC_GNOT_URL  optional: where mainnet's players get GNOT (default
 #                         the faucet above)
 #   NEXT_PUBLIC_OTHER_URL the other deployment, linked from the About sheet
+#   NEXT_PUBLIC_NAMEREG   optional: the name registrar the name form links to
+#                         (found on the chain otherwise)
 #   NEXT_PUBLIC_COMMUNITY optional: 1 shows the community's holes (a band under
 #                         the cups, their own screen; off until the builder is out)
 #   NEXT_PUBLIC_BUILDER   optional: 1 opens the hole Builder at /build (off: a

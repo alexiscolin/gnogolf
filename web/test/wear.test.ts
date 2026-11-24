@@ -1,4 +1,4 @@
-// lib/gnomes/wear.ts: wearing is free (ADR-007). Everyone sees what the realm
+// lib/gnomes/wear.ts: wearing is free. Everyone sees what the realm
 // says a player wears (Worn: the one put on, else their best); the player
 // plays any gnome they hold, picked in this browser, nothing on chain; and
 // what they see said is one line, never a double state.

@@ -1297,14 +1297,14 @@ function extras(ex: Extras, s: Hole, t: Terrain) {
     return { a, b, out: [dx / l, dz / l], len: l, thick };
   };
   const bars: Slide[] = [];
-  const av = (ex.walls || []).filter((w) => w.skin === "avalanche");
+  const av = ex.walls.filter((w) => w.skin === "avalanche");
   const len = (w: Wall) => Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]), mid = (w: Wall): Vec2 => [(w.a[0] + w.b[0]) / 2, (w.a[1] + w.b[1]) / 2];
   for (let k = 0; k + 3 < av.length; k += 4) {
     // build.Bar: its two short walls are its caps, as long as it is thick; the centre line joins their midpoints
     const [c0, c1] = av.slice(k, k + 4).sort((p, q) => len(p) - len(q));
     bars.push(pieceOf([mid(c0), mid(c1)], len(c0)));
   }
-  const warns = (ex.zones || []).filter((z) => z.skin === "avalanche-warn").map((z) => {
+  const warns = ex.zones.filter((z) => z.skin === "avalanche-warn").map((z) => {
     const { w, h, cx, cz } = boxOf(z);
     const along = w >= h;
     return pieceOf(along ? [[z.min[0], cz], [z.max[0], cz]] : [[cx, z.min[1]], [cx, z.max[1]]], along ? h : w);

@@ -7,7 +7,6 @@ import {
   makeChain, errorKind, undeclared, isAddress, isHoleId, isSlug, safeEndpoint, pullShot, shotOf, roundShots, RULES, REALM_PATH, pkgsPath, storePath, isRealmPath, DEFAULT_RPC, BYTE_PRICE, landed,
 } from "../lib/chain.ts";
 
-// ------------------------------------------------------------ the wire
 // What a Tendermint node answers, built by hand: no fixture files, since
 // each reply's shape is a one-liner and the tests read better inline.
 
@@ -66,7 +65,7 @@ const ADDR1 = "g1" + "a".repeat(38);
 const ADDR2 = "g1" + "b".repeat(38);
 const ADDR3 = "g1" + "c".repeat(38);
 
-// ------------------------------------------------------------ replies, in the shapes checks.* expects
+// replies, in the shapes checks.* expects
 const HOLES_REPLY = { version: 1, play: "garden/1", successor: "", holes: [{ id: "garden/1" }, { id: "garden/2" }] };
 const STATE_REPLY = { version: 1, hole: "garden/1", board: { w: 10, h: 10 }, start: [0, 0], cup: [5, 5], walls: [], posts: [], zones: [] };
 const SIM_FROM_REPLY = { version: 1, path: [[0, 0], [1, 1]], rest: [1, 1], air: "n", cause: "x", holed: true, bounces: 1 };
@@ -86,7 +85,6 @@ const ROUND_REPLY = {
   path: [[0, 0]], rest: [0, 0], ball: [0, 0],
 };
 
-// ------------------------------------------------------------ pure helpers, no network
 test("errorKind reads a ChainError's tag, undefined for anything else", () => {
   const tagged = Object.assign(new Error("x"), { kind: "down" as const });
   assert.equal(errorKind(tagged), "down");
@@ -223,7 +221,6 @@ test("landed: yes as soon as the chain shows it; nothing read once the page wait
   assert.equal(asked, 1, "gone: never asked");
 });
 
-// ------------------------------------------------------------ makeChain: params, clock, links
 test("gasPrice divides price by gas", async () => {
   const chain = makeChain();
   setFetch((url) => {
@@ -331,7 +328,6 @@ test("sourceURL: a package hole's gnoweb source, a data hole's data page, # othe
   assert.equal(chain.sourceURL(null), "#");
 });
 
-// ------------------------------------------------------------ holes(): the sessionStorage cache
 test("holes() fetches and caches the list under a per-rpc, per-realm key", async () => {
   const chain = makeChain();
   let calls = 0;
@@ -397,7 +393,6 @@ test("holes() reads a name the VM quoted the Go way (\\U…), a \\\\U left alone
   assert.equal(list[1].name, "a\\U000f0000"); // a backslash of the name's own, then a U: not an escape
 });
 
-// ------------------------------------------------------------ reads validated by checks.*
 test("state reads one hole's geometry", async () => {
   const chain = makeChain();
   setFetch((url) => {
@@ -604,7 +599,6 @@ test("dayCandidates: DayCandidates' page as asked (after, limit), each row a hol
   await assert.rejects(chain.dayCandidates("g1x", 25), (e) => errorKind(e) === "chain");
 });
 
-// ------------------------------------------------------------ boards, and the mode guard
 test("courseLeaderboard defaults to assisted mode, and normalizes anything that isn't 'pro'", async () => {
   const chain = makeChain();
   setFetch((url) => { assert.ok(decoded(url).expr.includes('CourseLeaderboard("assisted", 0, 10)')); return qevalReply(COURSE_BOARD_REPLY); });
@@ -752,7 +746,6 @@ test("round reads a player's round under way, is null when there is none, refuse
   await assert.rejects(chain.round("garden/1", ADDR1), (e) => errorKind(e) === "chain");
 });
 
-// ------------------------------------------------------------ names: resolveName, nameOf, namesOf, nameReg, nameProblem
 test("resolveName short-circuits an invalid name, no network call", async () => {
   const chain = makeChain();
   setFetch(() => { throw new Error("should not be called"); });
@@ -960,7 +953,6 @@ test("nameProblem: a name already taken, or a lookalike of one, or free", async 
   assert.equal(await chain.nameProblem("nesquimo"), "");
 });
 
-// ------------------------------------------------------------ the reply pipeline itself: refusal, unquote, down/retry
 test("a VM panic's own sentence is what the page shows, not the Go trace", async () => {
   const chain = makeChain();
   setFetch(() => refusedReply("panic: golf: too many shots in one commit\ngoroutine 1 [running]:\n..."));

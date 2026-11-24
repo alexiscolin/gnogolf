@@ -1,9 +1,8 @@
 // A gnome's look, written down: what makeBall builds from a token's traits,
-// read back as a record a golden file can hold (data/gnomes/looks.golden.json,
-// docs/gnomes/design.md "Permanence"). Its parts: how many meshes and
-// vertices, the body's box, every material (kind, colour, side, opacity, its
-// bands of light, the strength of its glow, and
-// what its texture's canvas was told to draw), the trail, holing and
+// read back as a record a golden file can hold (data/gnomes/looks.golden.json).
+// Its parts: how many meshes and vertices, the body's box, every material
+// (kind, colour, side, opacity, its bands of light, the strength of its glow,
+// and what its texture's canvas was told to draw), the trail, holing and
 // Legendary piece, and a hash of every vertex, index, placement and texture.
 import "./canvas.mjs";
 import { createHash } from "node:crypto";

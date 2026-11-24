@@ -63,7 +63,7 @@ void test("try-local rebuild: the build served and the new one kept, nothing els
     assert.deepEqual(left, ["site.7", "site.8"]);
     assert.equal(fs.readlinkSync(path.join(p.work, "site")), "site.8");
     assert.equal(fs.readFileSync(path.join(p.work, "site/index.html"), "utf8").trim(), "build 3");
-    // a site that is a folder (a playground from before the link): refused, the folder as it was
+    // a site that is a folder, not a link to a build: refused, the folder as it was
     const old = playground(rpc, 'echo "OK!"');
     fs.mkdirSync(path.join(old.work, "site"));
     fs.writeFileSync(path.join(old.work, "site/index.html"), "old");
