@@ -1,10 +1,5 @@
-// What a gnome of the collection leaves behind as he rolls (a trail) and what
-// the cup does when he drops in (a holing), within the limits that keep the
-// game readable: a trail is behind
-// the ball, under the aim, without depth writes, at most 0.6 opaque and 1.5
-// long, gone 0.6 s after he stops; a holing starts after the drop, lasts at
-// most 1.5 s, never flashes the screen. One instanced draw each (a ribbon is
-// one mesh). Under reduced motion, neither: the game's confetti stands.
+// A collection gnome's trail as he rolls, and the cup's effect when he drops in; neither under reduced motion.
+// Kept readable: a trail lies under the aim, at most 0.6 opaque and 1.5 long, gone 0.6 s after he stops; a holing lasts at most 1.5 s.
 import * as THREE from "three";
 import { motion, share } from "./materials";
 import type { Skin } from "./gnome";
@@ -12,7 +7,7 @@ import type { Holing, Trail as TrailKind } from "../gnomes/vocab";
 
 const MAX_LEN = 1.5, MAX_ALPHA = 0.6, FADE_S = 0.6;
 
-/** A particle's look and motion: its shape, how it leaves (up, out), what pulls it (gravity, minus to rise), its spin, how it grows. */
+/** A particle's shape and motion; g is gravity, negative to rise. */
 interface Motion { geo: THREE.BufferGeometry; up: number; out: number; g: number; spin: number; grow: number; lit?: boolean }
 const NOTE = (() => {
   // a quaver: its head and its stem, one geometry
@@ -44,7 +39,7 @@ const SHAPES: Record<string, Motion> = {
 function swarm(kind: Motion, color: number, n: number, life: number) {
   const mat = kind.lit
     ? new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, depthWrite: false })
-    : new THREE.MeshToonMaterial({ color }); // (each its own: making one draws on Math.random, its uuid, and the portrait's trace of a trail is seeded)
+    : new THREE.MeshToonMaterial({ color }); // one per swarm, never cached: its uuid draws on Math.random, which a portrait's trail seeds
   const mesh = new THREE.InstancedMesh(kind.geo, mat, n);
   mesh.frustumCulled = false;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -55,7 +50,7 @@ function swarm(kind: Motion, color: number, n: number, life: number) {
   for (let i = 0; i < n; i++) mesh.setMatrixAt(i, hide());
   return {
     mesh,
-    /** One more, at p, thrown up and out (scale: how hard, 0..1). */
+    /** Throws one more from p; scale is how hard, 0..1. */
     spawn(p: THREE.Vector3, scale = 1) {
       const q = ps[next++ % n], a = Math.random() * Math.PI * 2;
       q.p.copy(p);
@@ -86,7 +81,7 @@ function swarm(kind: Motion, color: number, n: number, life: number) {
   };
 }
 
-/** A trail: push(ball) each frame he rolls (where he is now, the scene's clock in s), step(t) every frame. */
+/** A trail: push(where he is, the scene's clock in s) each frame he rolls, step(t) every frame. */
 export interface GnomeTrail {
   group: THREE.Object3D;
   push(at: THREE.Vector3, t: number): void;
@@ -94,7 +89,7 @@ export interface GnomeTrail {
   clear(): void;
 }
 
-// a ribbon's kinds: a flat band along the ground behind him; the rest are particles
+// The trails drawn as a flat band on the ground; the rest are particles.
 const RIBBONS: Partial<Record<TrailKind, { width: number; alpha: number; additive?: boolean }>> = {
   ribbon: { width: 0.44, alpha: MAX_ALPHA },
   light: { width: 0.3, alpha: MAX_ALPHA, additive: true },
@@ -153,7 +148,7 @@ function ribbon(color: number, { width, alpha, additive }: { width: number; alph
   };
 }
 
-/** A gnome's trail (Skin.trail), or null: none, or reduced motion. */
+/** A gnome's trail, or null: he has none, or reduced motion. */
 export function makeTrail(skin: Skin): GnomeTrail | null {
   if (!skin.trail || !motion) return null;
   const color = skin.trailColor ?? 0xffffff, rib = RIBBONS[skin.trail];
@@ -163,7 +158,6 @@ export function makeTrail(skin: Skin): GnomeTrail | null {
   return {
     group: s.mesh,
     push(at, t) {
-      // a particle every 50 ms he rolls, dropped where he was, thrown lightly
       if (t - last > 0.05) (last = t), s.spawn(at, 0.25);
     },
     step(t) {
@@ -176,14 +170,14 @@ export function makeTrail(skin: Skin): GnomeTrail | null {
   };
 }
 
-/** A holing effect, the game's confetti's shape: { group, step(dt) } that says whether it is still going. */
+/** A holing effect: step(dt) returns whether it is still going. */
 export interface Holed {
   group: THREE.Group;
   step(dt: number): boolean;
 }
 
 const BURST_S = 1.5;
-/** The burst out of the cup: what each kind throws, and how many. */
+/** What each holing throws out of the cup, and how many. */
 const BURSTS: Partial<Record<Holing, { shape: string; n: number }>> = {
   sparks: { shape: "sparks", n: 32 }, shavings: { shape: "shavings", n: 24 }, shards: { shape: "shards", n: 28 },
   embers: { shape: "embers", n: 32 }, petals: { shape: "petals", n: 28 }, spores: { shape: "spores", n: 32 },
@@ -192,7 +186,7 @@ const BURSTS: Partial<Record<Holing, { shape: string; n: number }>> = {
   feathers: { shape: "feathers", n: 18 }, avalanche: { shape: "snow", n: 32 }, gale: { shape: "petals", n: 32 },
 };
 
-/** A ring that spreads from the cup and fades: a pulse of light, a ripple. */
+/** A ring that spreads from the cup and fades. */
 function ring(at: THREE.Vector3, color: number, delay: number, lit: boolean) {
   const m = new THREE.Mesh(
     new THREE.RingGeometry(0.85, 1, 32),
@@ -210,11 +204,7 @@ function ring(at: THREE.Vector3, color: number, delay: number, lit: boolean) {
   };
 }
 
-/**
- * A gnome's holing (Skin.holing) at the cup (its centre on the ground), or
- * null: the game's confetti then (none of his own, or reduced motion). Starts
- * when made: the engine makes it after the drop.
- */
+/** A gnome's holing at the cup, or null: he has none, or reduced motion. It starts when made. */
 export function makeHoling(skin: Skin, cup: THREE.Vector3): Holed | null {
   if (!skin.holing || !motion) return null;
   const color = skin.holingColor ?? 0xffd98a, group = new THREE.Group();

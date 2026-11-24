@@ -1,5 +1,3 @@
-// The difficulty meter's levels (difficulty.ts), apart from the meter: the
-// game's community list says a hole's level without loading the meter,
-// whose worker measures it (meter.ts rate).
+// Apart from the meter, so the community list names a level without loading it.
 export const LEVELS = ["Easy", "Medium", "Hard", "Very hard"] as const;
 export type Level = 0 | 1 | 2 | 3;

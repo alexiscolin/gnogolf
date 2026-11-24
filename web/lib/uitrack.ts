@@ -1,6 +1,5 @@
-// The interface's clicks, by name: one listener on the page and a table of the
-// controls worth naming, matched by the selectors they already have. Never
-// their text (it can hold a player's name): the action, and where it was.
+// The interface's clicks by name: one listener on the page and a table of the controls worth naming.
+// Never their text, which can hold a player's name.
 import { track } from "./analytics";
 
 export type UiAction = "mode_picked" | "rival_picked" | "rival_typed" | "rival_surprise" | "ghost_raced" | "board_raced" | "cup_picked" | "gnome_browsed" | "gnome_chosen" | "camera_changed" | "menu_opened" | "all_cups_clicked" | "wallet_clicked" | "mainnet_clicked" | "external_link_opened";
@@ -14,7 +13,7 @@ const hostOf = (href: string) => {
     return undefined;
   }
 };
-// what a link opens, by its class or its address's shape (chain.ts's gnoweb URLs), never the address itself
+// what a link opens, by its class or the shape of its address, never the address itself
 const linkKind = (el: Element) => {
   const href = (el as HTMLAnchorElement).href || "", host = hostOf(href) || "", has = (c: string) => [...el.classList].includes(c);
   return has("share__icon") ? "share"
@@ -37,7 +36,7 @@ export const UI: readonly (readonly [string, UiAction, ((el: Element) => Detail)
   [".lb__race", "board_raced"],
   [".world:not([disabled])", "cup_picked", (el) => ({ cup: suffix(el, "world") })],
   ['[aria-label="Previous gnome"], [aria-label="Next gnome"]', "gnome_browsed"],
-  // (a locked gnome on show: Play plays the one chosen before)
+  // a locked gnome on show: Play plays the one chosen before
   [".screen--pick .btn--play", "gnome_chosen", (el) => ({ locked: !!el.closest(".screen--pick")?.querySelector(".pick__lock") })],
   [".cam-btn", "camera_changed"],
   [".burger", "menu_opened"],
@@ -48,7 +47,7 @@ export const UI: readonly (readonly [string, UiAction, ((el: Element) => Detail)
 ];
 const ANY = UI.map(([sel]) => sel).join(", ");
 
-/** The named action a click is, if it is one: the control nearest the click that a row names. */
+/** The named action a click is, if any: the control nearest the click that a row names. */
 export function actionOf(target: EventTarget | null): ({ action: UiAction } & Detail) | null {
   if (!target || typeof (target as Element).closest !== "function") return null;
   const el = (target as Element).closest(ANY), row = el && UI.find(([sel]) => el.matches(sel));

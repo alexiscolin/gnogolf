@@ -4,8 +4,7 @@ import { BADGES, type Badge, type Finish } from "@/lib/card";
 import { badgesEarned } from "@/lib/prefs";
 import { Sheet } from "@/components/ui";
 
-// The badges: an inked medal each on its ribbon, its colour its family's, its
-// glyph drawn in the game's own strokes (24×24, as the title's facts' icons).
+// Each badge's glyph, a path in a 24×24 box.
 const GLYPH: Record<string, string> = {
   first: "M4 17 6 8l4 4 2-6 2 6 4-4 2 9Z",
   perfect: "M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.8l-5.3 2.6 1.2-6-4.5-4.1 6-.7Z",
@@ -22,16 +21,15 @@ const GLYPH: Record<string, string> = {
   snail: "M13 17a5 5 0 1 1 5-5c0 2-1.6 3.5-3.5 3.5a2.5 2.5 0 1 1 2.5-2.5M3 19h15l3-3",
   ghost: "M6 20v-8a6 6 0 0 1 12 0v8l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5zM10 11v1M14 11v1",
   sport: "M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z",
-  // the Builder's (lib/builder/rewards.ts): the workshop's hammer, a player, two players
+  // the Builder's badges
   published: "M4 20 13 11M11 6.5 15 3l6 6-3.5 4Z",
   player: "M12 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7M5 20a7 7 0 0 1 14 0Z",
   players: "M9 5a3 3 0 1 1 0 6 3 3 0 0 1 0-6M3 19a6 6 0 0 1 12 0ZM16 6a3 3 0 1 1 0 6M17 13a6 6 0 0 1 4 6h-4",
 };
-// the families, in the sheet's order, as they are said
+// the families, in the sheet's order
 const FAMILIES: readonly [Badge["family"], string][] = [["skill", "Skill"], ["weather", "Weather"], ["chain", "On-chain"], ["fun", "Just for fun"]];
 
-/** A badge's medal: a paper rim inked round its family's colour, on a red
- *  ribbon; a dashed grey one until it is earned; glyph: its picture (GLYPH's, the badge's own by default). */
+/** A badge's medal, a dashed grey one until it is earned. glyph: its picture, the badge's own by default. */
 export function Medal({ b, on, glyph = b.id }: { b: Pick<Badge, "id" | "family">; on: boolean; glyph?: string }) {
   return (
     <svg viewBox="0 0 48 54" className={`medal medal--${b.family}` + (on ? "" : " medal--off")} aria-hidden="true">
@@ -43,12 +41,9 @@ export function Medal({ b, on, glyph = b.id }: { b: Pick<Badge, "id" | "family">
   );
 }
 
-/** A hole's badges on the cup card, their medals pressed askew on its score:
- *  the ones earned on it (at), and the one its score alone earns (an ace, two
- *  under, fifteen strokes or more) wherever that was first; fresh: the ones
- *  just earned, pressed on as the card shows. */
+/** A hole's medals on the cup card. at: the badges earned on it; the one its score alone earns shows too. fresh: just earned. */
 export function CardStamps({ at, strokes, par, seed, fresh }: { at: readonly string[]; strokes: number; par: number; seed: number; fresh: readonly string[] }) {
-  // (by card.ts's own rules, the first that holds: an ace on a par 3 stamps the ace)
+  // the first that holds: an ace on a par 3 stamps the ace, not the eagle
   const own = BADGES.find((b) => (b.id === "ace" || b.id === "eagle" || b.id === "snail") && b.ok!({ strokes, par } as Finish))?.id;
   const list = BADGES.filter((b) => at.includes(b.id) || b.id === own);
   if (!list.length) return null;
@@ -63,7 +58,7 @@ export function CardStamps({ at, strokes, par, seed, fresh }: { at: readonly str
   );
 }
 
-/** The seal on a cup card's score that is on the chain too: the chain's glyph on its green. */
+/** The seal on a cup card's score that is on the chain too. */
 export const ChainSeal = () => (
   <svg viewBox="0 0 24 24" className="seal" aria-label="Saved on-chain" role="img">
     <circle cx="12" cy="12" r="10.5" className="seal__face" />
@@ -71,8 +66,7 @@ export const ChainSeal = () => (
   </svg>
 );
 
-/** The badges' sheet: how many are earned, then every badge by family, earned
- *  or not, with what earns it; fresh: the ones this round just earned. */
+/** The badges' sheet: every badge by family, with what earns it. fresh: the ones this round just earned. */
 export function Badges({ onClose, fresh = [] }: { onClose: () => void; fresh?: readonly string[] }) {
   const had = badgesEarned();
   return (
@@ -100,8 +94,7 @@ export function Badges({ onClose, fresh = [] }: { onClose: () => void; fresh?: r
   );
 }
 
-/** The badges earned, their medals in a row (the cup's card), the ones just
- *  earned pressed on like a stamp, the whole sheet a tap away. */
+/** The medals earned, in a row, with a link to the sheet. fresh: just earned. */
 export function EarnedBadges({ fresh = [], onOpen }: { fresh?: readonly string[]; onOpen: () => void }) {
   const had = badgesEarned();
   const list = BADGES.filter((b) => had.includes(b.id));
@@ -118,8 +111,7 @@ export function EarnedBadges({ fresh = [], onOpen }: { fresh?: readonly string[]
   );
 }
 
-/** The win card's line: the rarest badge just earned, its medal, how many
- *  more, a tap from the sheet. */
+/** The win card's line: the rarest badge just earned (ids[0]) and how many more. */
 export function NewBadges({ ids, onOpen }: { ids: readonly string[]; onOpen: () => void }) {
   const b = BADGES.find((x) => x.id === ids[0]);
   if (!b) return null;

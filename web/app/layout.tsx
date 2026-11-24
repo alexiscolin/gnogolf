@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 import { DESCRIPTION as description, PREVIEW, SITE, TITLE as title } from "@/lib/site";
 
-// the link card's: shorter than the search result's
+// the link card's description, shorter than the search result's
 const card = "Every hole is a contract. Every shot is computed by the chain. Play free in your browser.";
 const image = { url: "/og/default.jpg", type: "image/jpeg", width: 1200, height: 630, alt: "Gnogolf: the gnome badge, mini-golf on-chain, every shot computed by the chain" };
 
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        {/* the game's font, from this host (globals.css): asked at once, not once the CSS is read */}
+        {/* fetched at once, not once the CSS is read */}
         <link rel="preload" href="/fonts/fredoka.woff2" as="font" type="font/woff2" crossOrigin="" />
       </head>
       <body>{children}</body>

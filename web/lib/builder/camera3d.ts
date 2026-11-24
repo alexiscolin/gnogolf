@@ -1,19 +1,14 @@
-// The 3D board's camera (Scene.tsx): orthographic, so the ground is seen as
-// the board's lens maps it (view.ts): straight down, or tilted from it by
-// the look's tilt, turned a quarter at a time; a board point at (x, y) is the
-// scene's (x, 0, y), and it shows on the board's pixel toScreen gives it.
-// The overlay (the selection, the handles, the ghost) is drawn in the same
-// map, so it sits on the pieces it is about.
+// The 3D board's camera. Orthographic, so a board point (x, y), the scene's (x, 0, y), shows on the pixel toScreen gives it.
 import * as THREE from "three";
 import { toBoard, type Look, type View } from "./view";
 
-/** How far above the ground the camera stands (orthographic: only its direction counts, and what fits between near and far). */
+// Any height does for an orthographic camera, as long as the scene fits between near and far.
 const STAND = 200;
 
-/** cam set to show the ground of a board w × h pixels as the view and the look have it. */
+/** Sets cam to show the ground as the view and the look map it, on a board of w × h pixels. */
 export function orthoFor(cam: THREE.OrthographicCamera, v: View, look: Look, size: { w: number; h: number }) {
   const { w, h } = size, mid = toBoard(v, look, [w / 2, h / 2]), down = toBoard(v, look, [w / 2, h / 2 + 1]);
-  // the screen's down along the ground, a unit; the camera leans back from it by the tilt
+  // g: the screen's down along the ground, a unit. The camera leans back from it by the tilt.
   const g = new THREE.Vector3(down[0] - mid[0], 0, down[1] - mid[1]).normalize(), y = new THREE.Vector3(0, 1, 0);
   const s = Math.sin(look.tilt), c = Math.cos(look.tilt), target = new THREE.Vector3(mid[0], 0, mid[1]);
   cam.position.copy(target).addScaledVector(y, c * STAND).addScaledVector(g, s * STAND);

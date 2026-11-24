@@ -1,6 +1,4 @@
-// A shot and its round: the stroke asked of the chain (or of the page's own
-// physics, the chain's answer checked while the ball rolls), replayed, and
-// what follows it; and a fresh round on the hole.
+// A shot and its round: the stroke asked of the chain, or of the page's own physics while the chain checks it.
 import { buzz, sound } from "../feel";
 import { shotOf, RULES, errorKind } from "../chain";
 import { BALL_R } from "../terrain";
@@ -18,14 +16,11 @@ import type { makeExtras } from "./extras";
 import type { ClipOf } from "./recorder";
 import type { ErrorKind, Live, Pull } from "./types";
 
-// the realm's limit: the strokes one round holds (a save of more than 12 goes in several commits)
 const { maxRoundStrokes } = RULES;
 
 interface Needs {
   alive: () => boolean;
-  /** the ball dropped: the hole, the strokes, and the round's shots */
   onHoled: (r: { id: string; strokes: number; shots: readonly string[] }) => void;
-  /** an error the HUD shows, of a kind */
   fail: (err: unknown, kind: ErrorKind) => void;
   cam: ReturnType<typeof makeCamera>;
   rp: ReturnType<typeof makeReplay>;
@@ -33,11 +28,11 @@ interface Needs {
   aimer: ReturnType<typeof makeAimer>;
   forecast: ReturnType<typeof makeForecast>;
   extras: ReturnType<typeof makeExtras>;
-  /** the cup's holes (engine/snapshot.ts) */
+  /** the cup's holes */
   perList: () => { holes: HoleRow[] };
-  /** a hole's state read ahead (engine/loader.ts) */
+  /** a hole's state read ahead */
   prefetch: (id: string) => void;
-  /** the round's frame rate, said as it ends (engine/loop.ts) */
+  /** the round's frame rate, said as it ends */
   sayFps: () => void;
   aimable: () => void;
   placeBall: () => void;
@@ -46,31 +41,29 @@ interface Needs {
   dropConfetti: () => void;
   /** the player's holing: his own effect, else the confetti */
   cheerMine: () => void;
-  /** the gnome's trail, if he has one */
   trail: () => GnomeTrail | null;
 }
 
-/** pull: the pull held, ended by a shot or a new round. */
 export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, rival, aimer, forecast, extras, perList, prefetch, sayFps, aimable, placeBall, rightUp, dropConfetti, cheerMine, trail }: Needs) {
   const { g, causes, mood, ground, publish, tickNow } = E;
   const { dropAim, strokeFrom, known } = aimer, { restTimed, stale, freshWeather, noStroke } = forecast, { askExtras, showExtras } = extras;
   let holedIn: ReturnType<typeof setTimeout> | undefined, joyIn: ReturnType<typeof setTimeout> | undefined; // the banner's delay after a hole, so the confetti can fly; the hop's
-  // the round's holing stroke, kept for the shot clip (api.clip)
+  // the round's holing stroke, kept for the shot clip
   let won: ClipOf["stroke"] | null = null;
-  // the stroke's aim, said with it: how long it was aimed, and the aims dropped before it
+  // said with the stroke: how long it was aimed, and the aims dropped before it
   let aimed = { ms: 0, cancels: 0 };
 
   /** A fresh round on the hole already built: back to the tee, nothing kept. */
   function newRound(ask = true) {
     sayFps(); // the round before's
-    // a new round starts behind the gnome, looking at the cup: no easing in from the last pose
+    // the camera starts in its framing behind the gnome, not eased in from the last pose
     cam.resetFollow();
-    cam.jump(); // a new round: the camera starts in its framing, not eased in from the last hole
+    cam.jump();
     g.roundMode = null;
     rp.clearGlow();
     restTimed();
     g.round = (g.round || 0) + 1;
-    g.ride = null; // (no ride's or fall's camera carried into a new round, whatever ended the last)
+    g.ride = null; // no ride's or fall's camera carried into a new round
     dropConfetti();
     trail()?.clear();
     clearTimeout(holedIn);
@@ -95,14 +88,12 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
       if (ask) void showExtras();
       if (ask && stale()) void freshWeather();
     }
-    rival.reset(); // the ghost back on the tee too, beside the gnome now there
+    rival.reset(); // the ghost back on the tee too
     void publish();
   }
 
-  // Whatever happens in a shot — the chain erring, a replay throwing — the
-  // slingshot comes back: flying, aiming and the drag are reset when it is
-  // over. A round changed mid-flight has reset them itself, and may already
-  // be aimed: it is left alone.
+  // Whatever a shot does (the chain erring, a replay throwing), flying, aiming and the drag are reset
+  // when it is over. A round changed mid-flight has reset them itself: it is left alone.
   async function fire(angleDeg: number, power: number) {
     if (g.flying || !g.id || g.done || !g.course) return; // no island drawn, nothing to play on
     const round = g.round;
@@ -139,13 +130,11 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
       await freshWeather();
       if (round !== g.round) return;
     }
-    // round: the one this shot belongs to — if the player restarts or changes
-    // hole while it is in the air, its answer is dropped instead of leaking in
+    // round: the one this shot belongs to; its answer is dropped if the player restarted or changed hole meanwhile
     const tick = again ? again.tick : tickNow(); // where the timed pieces are as it is let go
     causes.shot();
     g.cause = null;
-    // a light touch in the hand where the phone can (Android; iOS has no
-    // vibration for the web) and the tock of the putter
+    // a light buzz where the phone can (Android; iOS has no web vibration), and the putter's tock
     buzz(12);
     sound("putt", 0.5 + power / 20);
     g.flying = true;
@@ -156,14 +145,11 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
     const one = shotOf(angleDeg, power, tick), from = g.rest || g.s.start, asked = performance.now();
     const was = { shots: g.shots, pts: g.pts, works: g.works, rest: g.rest, roundMode: g.roundMode, strokes: g.strokes };
     try {
-      // the aim preview already asked the chain this very stroke (same hole,
-      // period, round so far and shot string): its answer is the shot, no
-      // second round trip. Anything else differs by a hair: asked anew.
-      // (a path is points of two finite numbers, or the chain boundary refused it)
-      // Else the page's own answer sets it off, the chain's checked while the ball rolls (below).
+      // The aim preview already asked the chain this very stroke: its answer is the shot, no second trip.
+      // Else the page's own answer sets it off, and the chain's is checked while the ball rolls.
       const kept = again ? again.res : known(id, g.shots, one);
       const own = kept || g.period == null || !simReady(id) ? null : await simStroke(id, g.shots, one, g.rest, g.period);
-      // (3 s at most: slower, the chain is out of reach and the page's answer stands)
+      // 3 s at most: slower, the chain is out of reach and the page's answer stands
       if (own) (check = strokeFrom(id, g.shots, one, g.rest, 3000, undefined, own)).then(() => (checked = performance.now()), () => (checked = performance.now()));
       res = kept || own || (await strokeFrom(id, g.shots, one, g.rest));
       if (round !== g.round) return;
@@ -185,10 +171,9 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
     if (res.holed) {
       g.done = true; // no more shots, even before the banner shows
       const holed = () => {
-        // the stroke count as the round has it (SimulateFrom sends none: res.strokes is undefined,
-        // and the card would save nothing)
+        // the round's own stroke count: SimulateFrom sends none, and the card would save nothing
         onHoled({ id, strokes: g.strokes, shots: g.shots });
-        // the hole "Next hole" goes to (the win card's: the next in this cup)
+        // the hole "Next hole" goes to: the next in this cup
         const cup = perList().holes, i = cup.findIndex((h) => h.id === id);
         if (cup.length) prefetch(cup[(i + 1) % cup.length].id);
         joyIn = setTimeout(() => alive() && round === g.round && mood.joy(performance.now()), 500);
@@ -198,17 +183,14 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
       else void check.then((t) => round === g.round && JSON.stringify(t) === JSON.stringify(res) && holed(), (e) => round === g.round && errorKind(e) !== "chain" && holed());
     }
     void publish();
-    // A safety net: a replay that runs well past what its path should take
-    // (a promise that never settles, an animation stuck) is cut, and the
-    // ball is put where the chain has it — the player is never left locked out.
-    // what the path should take on screen (its steps, and a splash or
-    // a tube at most), with room to spare
+    // A safety net: a replay running well past what its path should take is cut, and the ball put
+    // where the chain has it. expect: the path's time on screen; the budget leaves room for a splash or a tube.
     let expect = 0;
     for (let i = 0; i + 1 < res.path.length; i++) expect += Math.max(MS_PER_STEP, (Math.hypot(res.path[i + 1][0] - res.path[i][0], res.path[i + 1][1] - res.path[i][1]) / SHOW_SPEED) * 1000);
     const budget = 3500 + expect * 1.5;
     if (await outlived(rp.replay(res.path, res.holed, res.air, res.cause), budget)) {
       E.stop(); // every animation of this replay stops
-      E.ball.visible = true; // (cut in a tunnel: shown again)
+      E.ball.visible = true; // cut in a tunnel: shown again
       console.warn(`gnogolf: replay cut after ${budget | 0} ms (path of ${res.path.length} steps)`);
     }
     restTimed();
@@ -219,19 +201,19 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
       const truth = await check.catch((e) => (errorKind(e) === "chain" && (refusal = e), res));
       if (round !== g.round) return;
       if (refusal || JSON.stringify(truth) !== JSON.stringify(res)) {
-        // a difference (never seen) turns the page's answers off (lib/sim) and replays the chain's
+        // a difference (never seen) turns the page's answers off and replays the chain's
         Object.assign(g, was);
         g.done = false;
         won = null;
         clearTimeout(joyIn);
         g.ball = { x: from[0], y: from[1] };
         E.ball.position.set(from[0], BALL_R + ground(from[0], from[1]), from[1]);
-        E.ball.scale.setScalar(1); // (a holed answer's drop shrank it)
+        E.ball.scale.setScalar(1); // a holed answer's drop shrank it
         if (refusal) return void ((g.flying = false), fail(refusal, "shot"));
         return shoot(angleDeg, power, round, { res: truth, tick, chainMs: checked - asked });
       }
     }
-    // (a hazard puts the ball back where the stroke was played from)
+    // a hazard puts the ball back where the stroke was played from
     const back = Math.hypot(res.rest[0] - from[0], res.rest[1] - from[1]) < 0.01 && res.path.length > 2;
     track("stroke", {
       hole: id, n: g.shots.length, power: Math.round(power), angle: (Math.round(angleDeg / 45) * 45 + 360) % 360,
@@ -243,9 +225,8 @@ export function makeShot(E: Live, pull: Pull, { alive, onHoled, fail, cam, rp, r
     const last = res.path[res.path.length - 1];
     g.ball = { x: last[0], y: last[1] };
     g.flying = false;
-    // the duel's ghost answers among this stroke's pieces; then a timed hole
-    // changes for the next stroke (at once without a duel), its pieces asked
-    // meanwhile; holed, there is no next stroke
+    // the duel's ghost answers among this stroke's pieces; then a timed hole changes for the
+    // next stroke, its pieces asked meanwhile
     if (!res.holed && g.s && g.s.timed) askExtras();
     const answered = rival.turn(g.shots.length - 1, res.holed);
     void answered.finally(() => (aimable(), res.holed || void showExtras()));

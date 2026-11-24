@@ -1,7 +1,6 @@
 "use client";
 
-// An error in the root layout itself: the page it would show in is gone, so
-// the error page comes with its own document.
+// An error in the root layout: no page is left to show it in, so this one brings its own document.
 import "./globals.css";
 import Crash from "./error";
 

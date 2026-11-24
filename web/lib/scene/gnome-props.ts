@@ -1,12 +1,11 @@
-// An Epic's prop, built from its data (lib/gnomes/props.ts): each part a
-// simple shape in a flat colour under the gnome's thin ink line, or lit.
+// An Epic's prop, built from its data.
 import * as THREE from "three";
 import { C, flat, inked, once } from "./materials";
 import { colour } from "../gnomes/vocab";
 import { PROP_DESIGNS, type Part } from "../gnomes/props";
 import type { Skin } from "./gnome";
 
-// the fewest segments that stay round under an outline at ball size
+// The fewest segments that stay round under an outline at ball size.
 const GEO: Record<Part["s"], (d: readonly number[]) => THREE.BufferGeometry> = {
   sphere: ([r, w = 10, h = 8, ...rest]) => new THREE.SphereGeometry(r, w, h, ...rest),
   cone: ([r, h]) => new THREE.ConeGeometry(r, h, 10),
@@ -31,15 +30,10 @@ function tone(c: string | undefined, skin: Skin) {
   }
 }
 
-// lit parts: no shading, as the headlamp's lens (one material per colour, kept)
+/** An unshaded material for lit parts, one per colour. */
 export const glowOf = (v: number) => once("gnome-props:lit " + v, () => new THREE.MeshBasicMaterial({ color: v }));
 
-/**
- * The skin's prop, built: { body, hat, top } groups of parts to place (in the
- * body's space, the hat's, and at the hat's tip), and the parts that take
- * his material (gnome-matter.ts dresses them with the rest of him). Nothing
- * for a skin without one, or a Legendary's (gnome-legend.ts builds those).
- */
+/** The skin's prop: its group, where it goes (body, hat or the hat's tip) and the parts that take his material. Null without one, or for a Legendary's. */
 export function propOf(skin: Skin) {
   const design = skin.prop ? PROP_DESIGNS[skin.prop] : undefined;
   if (!design || "legend" in design) return null;

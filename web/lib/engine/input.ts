@@ -1,6 +1,4 @@
-// The player's hand: a slingshot pulled on the canvas (behind the gnome, a
-// joystick), the arrow keys, the wheel that turns the view; and a pull played
-// from a script.
+// The player's hand: the pull on the canvas, the arrow keys, the wheel that turns the view, and a pull played from a script.
 import * as THREE from "three";
 import { sound, setSilent } from "../feel";
 import { pullShot, RULES, wait } from "../chain";
@@ -11,7 +9,6 @@ import type { makeCamera } from "./camera";
 import type { makeRival } from "./rival";
 import type { Live, Pull, Shot } from "./types";
 
-// the realm's limit: the power of a shot
 const { maxPower: MAX_POWER } = RULES;
 
 interface Needs {
@@ -21,11 +18,9 @@ interface Needs {
   rival: ReturnType<typeof makeRival>;
   aimer: ReturnType<typeof makeAimer>;
   placeBall: () => void;
-  /** the shot let go (engine/shot.ts) */
   fire: (angleDeg: number, power: number) => Promise<void>;
 }
 
-/** pull: the pull held, as the canvas and the keys set it. */
 export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aimer, placeBall, fire }: Needs) {
   const { g, camera, aim, band, ground, publish } = E;
   const { preview, dropAim, ghosts } = aimer;
@@ -34,7 +29,7 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
   const hit = new THREE.Vector3(), ndc = new THREE.Vector2();
   let shot: Shot = { angle: 0, power: 0 };
 
-  // the pull let go of (or dropped): nothing aimed, the HUD told; one that had a power and did not shoot, a cancel
+  // the pull let go or dropped; one that had a power and did not shoot counts as a cancel
   const endPull = (fires = false) => {
     if (pull.pulled && !fires) pull.cancels++;
     pull.pulled = pull.dragging = g.aiming = false;
@@ -43,9 +38,8 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     void publish();
   };
 
-  // the canvas is a fixed full-window backdrop: its rect changes with the
-  // window only, so it is read once per resize, not twice a pointer move (a
-  // read after the HUD's power bar moved forces a layout in the input path)
+  // The canvas is a fixed full-window backdrop: its rect is read once a resize,
+  // not on each pointer move (that would force a layout in the input path).
   let rect: DOMRect | null = null;
   const dropRect = () => (rect = null);
   window.addEventListener("resize", dropRect);
@@ -57,19 +51,16 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     return ray.ray.intersectPlane(plane, hit) ? { x: hit.x, y: hit.z } : null;
   }
 
-  // A slingshot: press anywhere, pull back, let go. The shot flies away from
-  // the pull, as if the elastic snapped into the gnome.
+  // A slingshot: press anywhere, pull back, let go. The shot flies away from the pull.
   function onMove(ev: PointerEvent) {
     if (!pull.dragging || g.flying || !pull.press) return;
     // behind the gnome: where the pointer is, steer() reads it every frame
     if (g.cam === "third" && pull.press.yaw != null) return void ((pull.press.lx = ev.clientX), (pull.press.ly = ev.clientY), steer(0));
-    // the power is the pointer's distance from where the pull began, on the
-    // screen, whatever the camera does meanwhile
+    // the power is the pointer's distance on screen from where the pull began, whatever the camera does
     const px = Math.hypot(ev.clientX - pull.press.x, ev.clientY - pull.press.y);
     if (px < 6) {
-      // back at the start: no pull at all — letting go here shoots nothing.
-      // (The shot is cleared too: a pull brought back would keep the power it
-      // had, and the elastic would not come back.)
+      // back at the start: no pull, letting go shoots nothing. The shot is cleared too,
+      // or it would keep its power and the elastic would stay out.
       if (shot.power > 0) {
         shot.power = 0;
         g.power = 0;
@@ -86,8 +77,7 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     const dir = Math.atan2(from.y - to.y, from.x - to.x);
     aimAt(pullShot(px, window.innerWidth, window.innerHeight, dir, MAX_POWER));
   }
-  // Behind the gnome (third person) the pull aims two ways at once (aim.ts
-  // steerAim): every frame (dt), and at each pointer move (0).
+  // Behind the gnome the pull steers: called every frame (dt), and at each pointer move (0).
   function steer(dt: number) {
     if (!pull.dragging || g.flying || !pull.press || pull.press.yaw == null || g.cam !== "third") return;
     const down = Math.max(0, (pull.press.ly ?? pull.press.y) - pull.press.y);
@@ -95,14 +85,13 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     pull.press.yaw = a.yaw;
     if (a.spin !== (g.spin || 0)) (g.spin = a.spin), void publish();
     if (!a.shot) {
-      // (at the start's height: no power, the aim still turning)
+      // at the start's height: no power, the aim still turns
       (shot.angle = a.dir), (g.facing = shot.angle);
       if (shot.power > 0) (shot.power = 0), (g.power = 0), (band.visible = aim.visible = false), (lastBar = 0), void publish();
       return;
     }
     aimAt(a.shot);
   }
-  // the shot as the pull has it now: the aim, the elastic, the preview, the power bar
   function aimAt({ deg, power }: { deg: number; power: number }) {
     shot.angle = (deg * Math.PI) / 180;
     shot.deg = deg;
@@ -117,8 +106,7 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     preview();
     bandTo(band, g.ball, shot.angle, shot.power, BALL_R + ground(g.ball.x, g.ball.y));
     placeBall();
-    // the HUD shows a power bar and nothing else of the pull: re-render only
-    // when the bar would move
+    // the HUD shows only the power bar: told only when the bar would move
     const bar = Math.round(g.power * 40);
     if (bar !== lastBar) {
       lastBar = bar;
@@ -128,14 +116,13 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
   let lastBar = -1;
 
   const onDown = (ev: PointerEvent) => {
-    // one finger, one primary button: a right-click is not a pull, and a
-    // second finger (a pinch, by reflex: there is no zoom) drops the pull
-    // the first began instead of letting it shoot
+    // one finger, one primary button: a second finger (a pinch by reflex, there is no zoom)
+    // drops the pull instead of letting it shoot
     if (!ev.isPrimary) return onCancel();
     if (ev.button > 0) return;
     if (g.flying || g.done) return;
-    if (rival.busy()) return; // the ghost's turn: a turn each, the next aim waits for it
-    rival.peek(false); // (their ball looked at: back to the player's)
+    if (rival.busy()) return; // the ghost's turn: the next aim waits for it
+    rival.peek(false); // back from the ghost's ball to the player's
     cam.finishGlide(); // the intro glide, if still on: finished now, quickly
     // a new press takes over whatever aim was held (a keyboard aim, a lost pull)
     pull.dragging = true;
@@ -168,7 +155,7 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
   // Keyboard: ←/→ turn the aim, ↑/↓ set the power, Space or Enter shoots,
   // Escape drops the aim. The same preview and the same fire() as the mouse.
   canvas.tabIndex = -1; // until the course is shown (cover)
-  canvas.setAttribute("role", "application"); // (a screen reader passes it the arrows and Space instead of reading with them)
+  canvas.setAttribute("role", "application"); // a screen reader passes it the arrows and Space instead of reading with them
   canvas.setAttribute("aria-label", "Course. Arrow keys aim and set the power, Space shoots.");
   const onKey = (ev: KeyboardEvent) => {
     if (g.flying || g.done || !g.s) return;
@@ -182,7 +169,7 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     if (!g.aiming && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(ev.key)) {
       g.aiming = pull.dragging = pull.pulled = true;
       ghosts(true);
-      // (behind the gnome: from where the view looks, not through the walls at the cup)
+      // behind the gnome: from where the view looks, not at the cup through the walls
       shot = { angle: g.cam === "third" && g.view === "ball" ? cam.yaw() : Math.atan2(g.s.cup[1] - g.ball.y, g.s.cup[0] - g.ball.x), power: 3 };
     }
     if (ev.key === "ArrowLeft") shot.angle -= (step * Math.PI) / 180;
@@ -192,7 +179,7 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     else if (ev.key === "Escape" && g.aiming) return void endPull();
     else if ((ev.key === " " || ev.key === "Enter") && g.aiming) {
       ev.preventDefault();
-      const fires = shot.power > 0.3; // (as a pull let go: a press held with no pull shoots nothing)
+      const fires = shot.power > 0.3; // as a pull let go: no power shoots nothing
       endPull(fires);
       if (!fires) return;
       const k = pullShot(0, 1, 1, shot.angle, MAX_POWER); // the same rounding as a pull
@@ -213,13 +200,13 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     void publish();
   };
   canvas.addEventListener("keydown", onKey);
-  // behind the gnome: the wheel, a trackpad's two-finger swipe, turns the view (there is no zoom; ctrl+wheel and a pinch are the page's zoom, left to it)
+  // behind the gnome the wheel or a two-finger swipe turns the view; ctrl+wheel and a pinch stay the page's zoom
   const onWheel = (ev: WheelEvent) => {
     if (ev.ctrlKey || g.cam !== "third" || g.view !== "ball" || !g.s || g.flying || g.done || pull.dragging) return;
     ev.preventDefault();
     const px = (Math.abs(ev.deltaX) > Math.abs(ev.deltaY) ? ev.deltaX : ev.deltaY) * (ev.deltaMode ? 16 : 1);
     cam.finishGlide();
-    cam.turn(-Math.max(-0.5, Math.min(0.5, (px * 0.3 * Math.PI) / 180))); // (the pull's sense: a swipe right turns the view left)
+    cam.turn(-Math.max(-0.5, Math.min(0.5, (px * 0.3 * Math.PI) / 180))); // the pull's sense: a swipe right turns the view left
   };
   canvas.addEventListener("wheel", onWheel, { passive: false });
 
@@ -241,16 +228,10 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
     notch = n;
   };
 
-  /**
-   * Plays a list of "angle,power" shots as a player would, pulling the
-   * elastic on screen before each one — for demos and recordings. Goes
-   * through fire(), so the chain resolves every shot exactly as usual.
-   */
+  /** Plays "angle,power" shots as a player would, pulling the elastic first. Each goes through fire(), so the chain resolves it as usual. */
   async function demo(list: readonly string[]) {
-    // A person does not pull straight to the right angle: the aim starts a
-    // few degrees off and is corrected, the pull goes a little too far and
-    // is eased back, and the pause before letting go is never the same
-    // twice. Only the moment of release has to be exact.
+    // A person does not pull straight to the right angle: the aim starts off and is corrected,
+    // the pull overshoots and eases back. Only the release has to be exact.
     let n = 0;
     setSilent(true); // a demo is nobody's pull: no creak, no putt, no knock
     for (const item of list) {
@@ -294,7 +275,6 @@ export function makeInput(E: Live, pull: Pull, { canvas, alive, cam, rival, aime
   return {
     steer,
     demo,
-    /** The pull as it stands. */
     get shot() {
       return shot;
     },

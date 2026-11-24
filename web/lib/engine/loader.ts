@@ -1,6 +1,4 @@
-// Loading: the hole list and the hole a link names at the start, then a hole:
-// its gate, its state (read ahead while the win card shows), its build, and
-// its shaders compiled before the curtain opens.
+// Loading: the hole list at the start, then a hole: its gate, its state, its build, its shaders.
 import type * as THREE from "three";
 import { gateOf, type Gate } from "../community";
 import { wait } from "../chain";
@@ -25,23 +23,19 @@ import type { makeAimer } from "./aim";
 import type { makeExtras } from "./extras";
 import type { ErrorKind, GameState, Link, Live } from "./types";
 
-/** The hole as the scene dresses it. Its decor (the theme, the time of
- *  day, every seeded layout) is keyed by the hole's name for the scene: a
- *  course hole that was a realm keeps that realm's, so it looks as it
- *  always did, and any data hole keeps its slot's through its versions. */
+/** The hole as the scene dresses it: decor is seeded by name, so a hole keeps its old realm's or its slot's across versions. */
 const decorOf = (s: Hole): Hole => ({ ...s, hole: legacyOf(s.slot) || s.slot || s.hole });
 
 interface Needs {
   renderer: THREE.WebGLRenderer;
   weather: ReturnType<typeof makeWeather>;
-  /** what is set aside, never drawn, compiled with the hole (the confetti, the player's holing) */
+  /** never drawn, compiled with the hole: the confetti, the player's holing */
   aside: THREE.Object3D;
   /** ?world=: any hole dressed in this world's look */
   forceWorld: string;
   /** the player's address, if known */
   self: () => string | null;
   alive: () => boolean;
-  /** an error the HUD shows, of a kind */
   fail: (err: unknown, kind: ErrorKind) => void;
   cam: ReturnType<typeof makeCamera>;
   rival: ReturnType<typeof makeRival>;
@@ -77,17 +71,13 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     ahead = null;
     return a && a.id === id && performance.now() - a.at < PREFETCH_MS ? a.p.catch(() => chain.state(id)) : chain.state(id);
   }
-  /** Loads hole id; passed: a link's gate already said it plays (start's: one judgement a link). */
+  /** Loads hole id. passed: a link's gate already said it plays. */
   async function load(id: string, passed = false) {
     const ticket = ++loads;
-    // any shot in the air belongs to the old hole: end its round, but ask the
-    // chain nothing for it (the new hole's round starts once it is built)
+    // a shot in the air belongs to the old hole: its round ends, and the chain is asked nothing for it
     newRound(false);
-    // a community hole plays only once the Builder's own rules pass it (lib/community.ts, judged once a
-    // browser, the Builder's code loaded only then): anyone can publish one with gnokey, past the Builder.
-    // Every way into a hole comes here (a link, the cups' list, Next); nothing of a refused one is built.
-    // Its data or the rules not read now is no verdict: the hole did not load, with Try again
-    // (and, until its author holds a best on it, a community hole is not played, but by its author: lib/community.ts gateOf)
+    // Every way into a hole comes here, and a community hole plays only once the Builder's rules pass it.
+    // Data or rules that cannot be read are no verdict: the hole did not load, with Try again.
     let gate: Gate = "";
     try {
       if (!passed) gate = await gateOf(chain, id, undefined, self());
@@ -105,14 +95,13 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     try {
       s = plainSkins(await stateOf(id));
     } catch (err) {
-      // (the hole it failed on, for the banner's Try again: g.id is still the last one's)
+      // for the banner's Try again: g.id is still the last hole's
       if (ticket === loads && alive()) (g.failed = id), fail(err, "load");
       return;
     }
     if (ticket !== loads || !alive()) return;
-    // a hole the kept list has as current that the chain has replaced since
-    // (its HoleState names the version that took its place): the list read anew,
-    // and its current version played
+    // the kept list calls this hole current, but its state names a newer version:
+    // the list is read anew, and that version played
     if (s.next && g.list.some((h) => h.id === id)) {
       try {
         setList(g, await chain.holes(true));
@@ -121,14 +110,12 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
       if (!g.list.some((h) => h.id === id)) return load(s.next);
     }
 
-    // a hole opened by its alias (a link to an unlisted one) is played by its
-    // version id: the chain saves no round by an alias
+    // played by its version id: the chain saves no round by an alias
     id = s.hole || id;
     if (id !== g.id) rival.race(null); // a duel is on one hole
     g.id = id;
     g.failed = null;
-    // the cup follows the hole played (Back to another cup's hole, a link): a
-    // course hole's cup, an archived one's too; a community hole keeps the cup
+    // the cup follows the hole played; a community hole keeps the cup it was opened from
     const row = g.list.find((h) => h.id === id);
     if (row) g.world = cupOf(row);
     else if (s.official !== false) g.world = cupOf(s);
@@ -140,8 +127,8 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
       await loadWorld(s.world);
     } catch {} // offline: the hole draws as the garden, still playable
     if (ticket !== loads || !alive()) return;
-    // a world that cuts the lane under a stroke's own hazards (a shaft opening
-    // at a landing) knows them before the hole is built: its first strokes' extras
+    // a world that cuts the lane under a stroke's hazards needs them before the build:
+    // the first four strokes' extras are read
     if (s.timed && worldOf(s).ahead && worldOf(s).open) {
       const seen = new Map<string, Zone>();
       for (const ex of await Promise.all([0, 1, 2, 3].map((k) => chain.extras(id, k).then(plainSkins, () => null))))
@@ -157,9 +144,8 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     g.course = null;
     extras.forget();
     aimer.forget(); // the hole is read anew: so are its previews
-    // from here until its shaders are ready nothing is drawn (the curtain, or
-    // the title, is over the course): the build in two tasks, then the
-    // shaders compiled off the main thread
+    // nothing is drawn from here until the shaders are ready: the build takes two tasks,
+    // then the shaders compile off the main thread
     warming = ticket;
     const built0 = performance.now();
     let course: Course | null = null;
@@ -167,7 +153,7 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
       course = buildHole(decorOf(g.s), { defer: true });
       await wait(0); // the pieces, then (next task) their merge
       if (ticket !== loads || !alive()) return void disposeCourse(course);
-      cam.collect(worldOf(g.s).camSolids ? course : null); // (the pieces' boxes, before they are merged)
+      cam.collect(worldOf(g.s).camSolids ? course : null); // the pieces' boxes, before the merge
       finishHole(course);
     } catch (err) {
       // our bug, not the chain's: say so, and leave the game usable
@@ -187,12 +173,9 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     g.period = s.period;
     g.forecast = s.weather || null;
     applyWeather();
-    // the garden's foliage and bunting lean with the wind (global: set on every hole)
     newRound();
-    // the fixed gas a commit here spends (decoding, the forecast) is only in
-    // Weather(), not in HoleState's forecast: read once, kept while the hole
-    // and the period are the same (the same period is the same forecast, a
-    // stroke played meanwhile or not)
+    // the fixed gas of a commit is only in Weather(), not in HoleState's forecast:
+    // read once a hole and a period (one period, one forecast)
     if (s.period != null)
       void chain.weather(id, s.period).then((fc) => {
         if (ticket === loads && fc.period === g.period) g.forecast = fc;
@@ -204,7 +187,7 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     aimable();
     g.buildMs = [Math.round(built1 - built0), Math.round(performance.now() - built1)]; // ?camlog's buildMs(): [build, compile]
     track("hole_loaded", { hole: id, world: s.world, state_ms: Math.round(t1 - t0), world_ms: Math.round(built0 - t1), build_ms: g.buildMs[0], compile_ms: g.buildMs[1] });
-    void simHole(chain, id); // (lib/sim: the previews, and the shot set off at once)
+    void simHole(chain, id); // for the previews, and a shot set off at once
     g.rig = null; // a new hole starts from its overview, not from the last one
     cam.prepare();
     resize();
@@ -214,11 +197,8 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
 
   /** What is set aside (the confetti, the player's holing) compiled, lit as the hole is. */
   const warmAside = () => renderer.compile(aside, camera, scene);
-  // Every shader the hole can need, compiled now: the scene as it is, what is
-  // set aside, and the see-through variant of what a canopy fade turns
-  // transparent (fog and the lightning's light never change the programs: see
-  // weather.ts) (the see-through ones are only started: they are ready long
-  // before a fade needs them). Resolves once the ones drawn now are linked.
+  // Every shader the hole can need: the scene, what is set aside, and the see-through variant of
+  // what a canopy fade turns transparent (only started). Resolves once what is drawn now is linked.
   function warm() {
     const fades: THREE.Material[] = [];
     scene.traverse((o) => {
@@ -231,8 +211,7 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
       for (const m of fades) (m.transparent = false), (m.needsUpdate = true);
     }
     warmAside();
-    // (a context without parallel compiling resolves at once: the old way;
-    // and a driver that never says a program is ready is waited 2 s at most)
+    // without parallel compiling this resolves at once; a driver that never says ready is waited 2 s
     let t: ReturnType<typeof setTimeout> | undefined;
     return Promise.race([
       renderer.compileAsync(scene, camera).catch((e: unknown) => console.warn("gnogolf: compileAsync", e)),
@@ -240,18 +219,17 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     ]).finally(() => clearTimeout(t));
   }
 
-  /** The takedown list, read once a visit (none if it cannot be read: the next start tries again). */
+  /** The takedown list, read once a visit; empty if it cannot be read (the next start tries again). */
   const takedown = () => takedownOf(chain).catch(() => NO_TAKEN);
 
-  // a link to a community hole refused (lib/community.ts gateOf: "unchecked", "unheld") lands on the cups, and says which
+  // a link to a refused community hole lands on the cups, and says why
   const refusedLink = (gate: Gate) => start(null).then((to) => (to === null ? gate || null : to));
-  // a link's gate, once (null: not read now: load asks again, and says it did not load)
+  // a link's gate; null when it cannot be read now: load asks again
   const linkGate = (id: string): Promise<Gate | null> => gateOf(chain, id, undefined, self()).catch(() => null);
 
-  /** Starts on the hole a link names, or a cup's first: where it landed ("hole", "cup", "taken" for a hole the site took down, "unchecked" for a community hole the Builder's rules do not pass, "unheld" for one its author has not holed yet, null for a link to nothing). */
+  /** Starts on the hole a link names, or a cup's first. Returns where it landed; null for a link to nothing. */
   async function start(link: string | Link | null): Promise<"hole" | "cup" | "taken" | "unchecked" | "unheld" | null> {
-    // the takedown list (the site's file, the node's chain id) read beside the hole list, never before it:
-    // the community's list fills once it is known, and only a link to a community hole waits for it
+    // the takedown list is read beside the hole list, never before it: only a link to a community hole waits for it
     const taking = takedown().then((t) => {
       if (alive() && g.taken !== t) {
         g.taken = t;
@@ -260,21 +238,20 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
       }
       return t;
     });
-    // a link to a hole the site took down opens the cups, and says so (a course hole is never on the list)
+    // a link to a hole taken down opens the cups, and says so
     if (typeof link === "string" && authorOf(link) && takenDown(await taking, link)) return start(null).then((to) => (to === null ? "taken" : to));
     let list = await chain.holes();
-    // a link to a hole the tab's kept list does not have yet: the chain's own
+    // the tab's kept list does not have the linked hole yet: ask the chain
     if (typeof link === "string" && link && !list.some((h) => h.id === link || h.slot === (oldToSlot(link) || link))) list = await chain.holes(true);
     if (!alive()) return null; // destroyed while the chain answered (a remount in dev)
     setList(g, list);
     if (!g.list.length) throw new Error("no hole is registered on this chain");
     // a string is a hole's id or alias (or an old realm id)
     const asked = linked(g, typeof link === "string" ? { id: link } : link);
-    // an older archived version, past what Holes() lists: the chain may
-    // still have it, so it is asked for; one it has not lands on the cups
+    // an archived version Holes() no longer lists: the chain may still have it; if not, the cups
     if (!asked && typeof link === "string" && link) {
       const gate = await linkGate(link);
-      if (gate) return refusedLink(gate); // (not read now, or a link to nothing: loaded, and it fails)
+      if (gate) return refusedLink(gate); // gate not read, or a link to nothing: the load is tried, and fails
       await load(link, gate === "");
       if (!alive()) return null;
       if (g.s) {
@@ -296,7 +273,7 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     await load(first.id, !!asked && gate === "");
     if (!g.s) throw new Error(g.error || "the first hole could not be loaded");
     requestAnimationFrame(frame);
-    // (a cup and a place in it that is not there: a link to nothing)
+    // a place that is not in the cup: a link to nothing
     return asked ? "hole" : cupLink && typeof link === "object" && link && "n" in link && !link.n ? "cup" : null;
   }
 

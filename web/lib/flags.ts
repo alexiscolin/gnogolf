@@ -1,20 +1,17 @@
-// The bot check's list (the bot check writes it; the site serves it at
-// /flags.json) as the boards read it: only what it should hold, from the chain the
-// game plays on.
+// The bot check's list, served at /flags.json, as the boards read it: only what it should hold, from the chain the game plays on.
 import { isAddress } from "./chain";
 import { PLAYS_LIKE_A_PROGRAM } from "./botproof";
 
-/** What the check says of one player: a score (0..1, hidden from HIDE_AT) and why, in plain words. */
+/** What the check says of one player: a score in 0..1, hidden from HIDE_AT, and why in plain words. */
 export interface Flag { score: number; said: string[]; proof?: boolean }
 export type Flags = Readonly<Record<string, Flag>>;
 export const HIDE_AT = 0.5;
-/** The bot check runs every 12 hours: a list a day and a half old says it stopped (two runs missed). */
+/** The bot check runs every 12 hours: a list a day and a half old missed two runs. */
 export const STALE_HOURS = 36;
-// what a list may hold before it is not read at all (a few hundred hidden players: some 30 kB)
+// past this a list is not read at all; a few hundred hidden players are some 30 kB
 const MAX_BYTES = 1 << 20, MAX_SAID = 3, MAX_WORDS = 120;
 
-/** The list, read: the flags (hidden or not), and whether it is stale (its hours, NaN unknown);
- *  no flags if it is too big, not JSON, or another chain's. */
+/** The list, read: the flags, and its age in hours, NaN if unknown. No flags if it is too big, not JSON, or another chain's. */
 export function readFlags(text: string, chainId: string, now = Date.now()) {
   const none = { flags: {} as Flags, hours: NaN };
   if (text.length > MAX_BYTES) return none;
@@ -36,14 +33,14 @@ export function readFlags(text: string, chainId: string, now = Date.now()) {
   return { flags: out as Flags, hours };
 }
 
-/** Whether a list is too old, or says nothing of its age: its run stopped, or never ran. */
+/** Whether a list is too old or says nothing of its age: its run stopped, or never ran. */
 export const stale = (hours: number) => !(hours <= STALE_HOURS);
 
 export const hidden = (f: Flag | false | undefined): f is Flag => !!f && f.score >= HIDE_AT;
 /** Why a player is hidden, in plain words. */
 export const whyHidden = (f: Flag) => f.said.join("; ") || PLAYS_LIKE_A_PROGRAM;
 
-/** Rows with the hidden ones taken out unless all are shown; the count taken out. */
+/** Rows with the hidden ones taken out unless all are shown, and the count taken out. */
 export function screen<R extends { player: string }>(rows: readonly R[], flags: Flags, all: boolean) {
   const out = all ? rows : rows.filter((r) => !hidden(flags[r.player]));
   return { rows: out, hidden: rows.length - out.length };

@@ -1,11 +1,7 @@
-// The gnome showcase: one gnome on a plinth of his tier's colour, the game's
-// own light, a three-quarter view, his trail behind him as if he had just
-// rolled in. What the collection's thumbnails are drawn with
-// (media/gnomes/render.mjs bundles it for headless Chrome); a page that
-// shows a gnome alone can use it as it is.
+// One gnome on a plinth of his tier's colour, in the game's light: what the collection's thumbnails are drawn with.
 import * as THREE from "three";
 import { makeBall, type Skin } from "./gnome";
-import "./gnome-dress"; // (the collection's wardrobe: the showcase draws nothing else)
+import "./gnome-dress"; // registers the collection's wardrobe
 import { makeTrail } from "./gnome-fx";
 import { makeStudio } from "./studio";
 import { disposeCourse } from "./materials";
@@ -13,12 +9,11 @@ import { BALL_R } from "../terrain";
 import { TIER_LOOK } from "../gnomes/catalogue";
 import type { Tier } from "../gnomes/vocab";
 
-/** A showcase on a canvas of its own, drawn at size px square: show(skin, tier), then shot(…) for a picture; dispose() once done. */
+/** A showcase on its own canvas of size px: show(skin, tier), then shot() for a picture, dispose() once done. */
 export function makeShowcase(size = 512) {
   const studio = makeStudio(size), { scene } = studio;
   const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 50);
-  // three-quarters: from his front, on the side he carries things (+x: the
-  // Pirate's parrot, the Diver's snorkel), a little above, the tallest hat in frame
+  // Three-quarter view from the side he carries things (+x), high enough for the tallest hat.
   const target = new THREE.Vector3(0, 0.8, 0);
   camera.position.copy(target).add(new THREE.Vector3(0.68, 0.36, 0.72).normalize().multiplyScalar(4.9));
   camera.lookAt(target);
@@ -26,7 +21,6 @@ export function makeShowcase(size = 512) {
   scene.add(plinth);
   let gnome: ReturnType<typeof makeBall> | null = null, trail: ReturnType<typeof makeTrail> = null;
 
-  /** The plinth: a disc of the tier's colour; a Rare's ringed once, an Epic's twice, a Legendary's rayed. */
   const dressPlinth = (tier: Tier) => {
     disposeCourse(plinth);
     plinth.clear();
@@ -52,7 +46,6 @@ export function makeShowcase(size = 512) {
 
   return {
     canvas: studio.canvas,
-    /** A gnome on show, in his tier's colours. */
     show(skin: Skin, tier: Tier) {
       for (const o of [gnome, trail && trail.group]) if (o) (scene.remove(o), disposeCourse(o));
       scene.background = new THREE.Color(TIER_LOOK[tier].ground);
@@ -63,18 +56,18 @@ export function makeShowcase(size = 512) {
       scene.add(gnome);
       trail = makeTrail(skin);
       if (trail) {
-        // he rolled in from behind him on the right of the picture, curving: the trail along the ground he rolled over
+        // A curved trail laid behind him, as if he had just rolled in.
         for (let k = 14; k >= 0; k--) trail.push(new THREE.Vector3(0.08 * k, 0.04, -0.05 * k - 0.002 * k * k), (14 - k) * 0.03);
         trail.step(14 * 0.03);
         scene.add(trail.group);
       }
     },
-    /** The gnome at time t (ms: a Legendary's piece moves) turned by turn, drawn and scaled to px square, as a WebP data URL. */
+    /** A WebP data URL of the gnome at time t (ms), turned by turn, at px square. */
     shot(px: number, quality: number, t = 0, turn = 0) {
       if (gnome) (gnome.userData.body.rotation.y = turn), gnome.userData.tick?.(t);
       return studio.snap(camera, px, quality);
     },
-    /** Lets the showcase go: what it drew, its renderer, and its canvas's WebGL context (a page holds about sixteen). */
+    /** Frees what it drew, its renderer and its WebGL context: a page holds about sixteen. */
     dispose() {
       for (const o of [gnome, trail && trail.group, plinth]) if (o) (scene.remove(o), disposeCourse(o));
       studio.dispose();

@@ -1,11 +1,8 @@
-// Small hooks the screens share, and the empty list their memos keep.
-
 import { useEffect, useRef, useState } from "react";
 
-export const NONE: readonly never[] = []; // an empty list that stays the same one: memos keep
+export const NONE: readonly never[] = []; // always the same empty list, so memos hold
 
-/** "Copied ✓" for a moment: copy(text) puts it on the clipboard, copied says
- *  so for ms (its timer goes with the component). */
+/** [copied, copy]: copy(text) writes to the clipboard, copied is true for ms after. */
 export function useCopied(ms = 1800) {
   const [copied, setCopied] = useState(false);
   const t = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -19,7 +16,7 @@ export function useCopied(ms = 1800) {
   return [copied, copy] as const;
 }
 
-/** A value said a moment: set, it is back to none ms after the last set (its timer goes with the component). */
+/** A value that goes back to none ms after its last set. */
 export function useFlash<T>(ms: number, none: T) {
   const [v, setV] = useState<T>(none);
   useEffect(() => {

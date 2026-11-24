@@ -1,8 +1,4 @@
-// A page per hole (/h/garden-3/) and per cup (/h/garden/), built once from the
-// course's slots (data/holes.txt, no chain at build time): link crawlers run no
-// JavaScript, so each needs its own og: tags and card (public/og, made by
-// media/og/og.mjs, which also writes the names and pars in holes.json). The
-// game itself is the home page's: Golf.tsx reads the hole from the path.
+// One static page per hole (/h/garden-3/) and per cup (/h/garden/): link crawlers run no JavaScript.
 import fs from "node:fs";
 import type { Metadata } from "next";
 import Game from "@/app/game";
@@ -11,7 +7,7 @@ import { cupName, SITE } from "@/lib/site";
 import { HARD } from "@/lib/card";
 import { COURSE_CUPS, SLOTS } from "../slots";
 
-// read from web/ (next build's working directory)
+// relative to web/, where next build runs
 let known: Record<string, { name: string; par: number }> = {};
 try { known = JSON.parse(fs.readFileSync("app/h/holes.json", "utf8")) as typeof known; } catch { /* no cards made yet: plain names */ }
 
@@ -20,7 +16,7 @@ export const generateStaticParams = () => [...SLOTS.map((s) => ({ slot: s.replac
 
 type Props = { params: Promise<{ slot: string }> };
 
-/** What a hole's or a cup's page is called and says: unique per page, for search results and link cards. */
+/** A hole's or a cup's title and description, unique per page. */
 function about(slot: string) {
   const [world, n] = slot.split("-");
   const h = n ? known[`${world}/${n}`] : null;
@@ -28,7 +24,7 @@ function about(slot: string) {
   const place = `${cup} ${n}`;
   const name = h?.name || (n ? place : cup);
   const holes = SLOTS.filter((s) => s.startsWith(world + "/"));
-  const hard = world === "mines" ? `, the expert cup: ${HARD}` : ""; // (its card's words)
+  const hard = world === "mines" ? `, the expert cup: ${HARD}` : "";
   const heading = !n
     ? `${cup}: ${holes.length} holes of mini-golf on-chain`
     : h ? `${name}, ${cup} hole ${n}, par ${h.par}` : place;
@@ -57,7 +53,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function HolePage({ params }: Props) {
   const { slot } = await params;
   const { world, n, name, heading, description, holes } = about(slot);
-  // the way back up, as search results show it: Gnogolf › Garden Cup › The Shelf
+  // the breadcrumb search results show: Gnogolf › Garden Cup › The Shelf
   const trail = [
     { name: "Gnogolf", url: `${SITE}/` },
     ...(COURSE_CUPS.includes(world) ? [{ name: cupName(world), url: `${SITE}/h/${world}/` }] : []),
@@ -68,7 +64,7 @@ export default async function HolePage({ params }: Props) {
   const links = n
     ? trail.slice(0, -1).map((t) => ({ href: t.url, label: t.name }))
     : holes.map((s) => ({ href: `/h/${s.replace("/", "-")}/`, label: known[s]?.name || `${cupName(world)} ${s.split("/")[1]}` }));
-  // the game's relative addresses (title/…, flags.json) are the site root's, not this folder's
+  // base: the game's relative URLs (title/…, flags.json) are the site root's, not this folder's
   return (
     <>
       <base href="/" />

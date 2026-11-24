@@ -4,7 +4,7 @@ import Intro, { gnoweb } from "@/app/intro";
 import { cupName, DESCRIPTION as description, SITE, TITLE as title } from "@/lib/site";
 import { COURSE_CUPS } from "@/app/h/slots";
 
-// here, not in the layout: a page without its own (the 404) must not claim the home's
+// here, not in the layout: a page without its own canonical (the 404) must not claim the home's
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default function Page() {

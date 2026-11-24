@@ -1,6 +1,4 @@
-// A line said over a hole: what each hole of the Crystal Mines is about, said
-// once on its first visit (too many clocks to read otherwise), its signature
-// in one line; and how long a line stays up.
+// A line said over a hole: each Crystal Mines hole's signature, said once on its first visit, and how long a line stays up.
 
 import { minesOrder, sight } from "./scene/data";
 
@@ -27,5 +25,5 @@ const MINES_HINTS = [
 /** A mines hole's signature line, by its id or slot ("mines/7/v1"), "" off the mines. */
 export const minesHint = (id: string | null | undefined) => MINES_HINTS[minesOrder({ hole: id || "" }) - 1] || "";
 
-/** How long a line stays up to be read: 6 s at least, 2 s and 60 ms a character past that (95 characters: 7.7 s). */
+/** How long a line stays up to be read: 6 s at least, else 2 s and 60 ms a character. */
 export const readMs = (text: string) => Math.max(6000, 2000 + 60 * text.length);

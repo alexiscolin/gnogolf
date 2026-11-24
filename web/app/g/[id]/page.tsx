@@ -1,7 +1,4 @@
-// A gnome's own page (/g/94/) and an earned kind's (/g/king/), built once from
-// the catalogue (app/g/pages.ts): link crawlers run no JavaScript, so each
-// has its own words and card; the game itself opens the shop on that gnome
-// (Golf.tsx reads the path), as app/h/[slot] does for the holes.
+// One static page per gnome (/g/94/) and per earned kind (/g/king/): link crawlers run no JavaScript.
 import type { Metadata } from "next";
 import Game from "@/app/game";
 import Intro from "@/app/intro";
@@ -9,7 +6,7 @@ import { SITE } from "@/lib/site";
 import { PAGES } from "../pages";
 
 export const dynamicParams = false;
-// (off: one placeholder, a page Next's static export needs and nothing links to)
+// Shop off: Next's static export needs one page, so a placeholder nothing links to.
 export const generateStaticParams = () => (PAGES.length ? PAGES.map((p) => ({ id: p.slug })) : [{ id: "off" }]);
 
 type Props = { params: Promise<{ id: string }> };

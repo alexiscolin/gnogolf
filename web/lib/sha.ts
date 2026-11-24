@@ -1,9 +1,4 @@
-// SHA-256 as lowercase hex, of bytes or of a string's UTF-8: a wasm build's
-// sources, a hole's data (the realm's own Versions "sha"), a verdict's key.
-// The browser's own (crypto.subtle) where the page is a secure context; else
-// (a page on plain http from another machine: the local playground's
-// fallback link) the same digest in script, so the Builder and the community
-// holes work there too.
+// SHA-256 as lowercase hex. The browser's own in a secure context; on plain http from another machine, the same digest in script.
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
 
 export async function sha256(data: Uint8Array<ArrayBuffer> | string): Promise<string> {
@@ -23,7 +18,7 @@ const K = Uint32Array.from([
 ]);
 const H0 = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
 
-/** SHA-256 of bytes, in script (FIPS 180-4): the digest crypto.subtle gives, where it is not. */
+/** SHA-256 of bytes in script, FIPS 180-4: the digest crypto.subtle gives, where it is missing. */
 export function sha256Bytes(m: Uint8Array): Uint8Array {
   const n = Math.ceil((m.length + 9) / 64) * 64, p = new Uint8Array(n);
   p.set(m);
@@ -52,5 +47,5 @@ export function sha256Bytes(m: Uint8Array): Uint8Array {
   return out;
 }
 
-/** Bytes from hex ("00ff"): what a hole's data is, as HoleData gives it. */
+/** Bytes from hex ("00ff"), as HoleData gives a hole's data. */
 export const bytesOf = (hex: string): Uint8Array<ArrayBuffer> => Uint8Array.from(hex.match(/../g) ?? [], (b) => parseInt(b, 16));

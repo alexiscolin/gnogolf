@@ -1,7 +1,5 @@
 "use client";
 
-// The cup's card and its end: the scorecard and the standings (the win card's, the cup's sheet's), the gnomes just
-// unlocked, and the victory screen of a cup complete.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "@/lib/scene/materials";
 import type { Skin } from "@/lib/scene/gnome";
@@ -21,12 +19,11 @@ import { Button, Dialog, Nil, VsPar } from "@/components/ui";
 import { NONE } from "@/components/hooks";
 import type { BoardProps } from "@/components/Leaderboard";
 
-/** A cup's own page (/h/<world>/), what its share links to. A share names no
- *  bare gno.land: X would take that for the link and show gno.land's card. */
+/** A cup's own page (/h/<world>/), what its share links to. */
 function cupLink(cup: string) {
   const q = chainQuery();
   q.set("src", "cup");
-  return `h/${cup}/?${q}`; // (its own page: its link card is the cup's, app/h)
+  return `h/${cup}/?${q}`; // its own page, for the cup's link card
 }
 
 /** The confetti over the victory screen: none with reduced motion. */
@@ -35,19 +32,16 @@ function Cheer() {
   useEffect(() => {
     const box = ref.current;
     if (!motion || !box) return;
-    // a canvas of its own each time: a context once lost is not given back
+    // A fresh canvas on every mount: a released WebGL context cannot be taken again on the same element.
     const el = box.appendChild(document.createElement("canvas"));
     let stop = () => {};
-    try { stop = cheer(el); } catch {} // no WebGL to spare: no confetti, the screen stands
+    try { stop = cheer(el); } catch {} // no WebGL to spare: no confetti
     return () => (stop(), el.remove());
   }, []);
   return motion ? <div ref={ref} className="victory__cheer" aria-hidden="true" /> : null;
 }
 
-/**
- * A cup won: its emblem and colours, the total against par, its card, the
- * gnomes it earned and the ways to tell people, then back to the cups.
- */
+/** A cup won: its total against par, its card, the gnomes it earned and the ways to share it. */
 interface VictoryProps {
   cup: Cup;
   best: boolean;
@@ -61,7 +55,7 @@ interface VictoryProps {
   onReplay: () => void;
   /** the cup after this one ("" after the last) */
   next: string;
-  /** on to it, as this gnome when one is given (just unlocked) */
+  /** on to it, as this gnome when one is given */
   onNext: (gnome?: string) => void;
   onRules: () => void;
 }
@@ -85,7 +79,7 @@ export function Victory({ cup, best, holes, card, saved, fresh, snapshot, onBack
         <Scorecard holes={holes} card={card} saved={saved} current={null} compact onRules={onRules} />
         {fresh.length > 0 && <NewGnome skin={fresh[0]} also={fresh.slice(1)} where={to ? to.name : ""} onPlay={() => (sound("select"), onNext(fresh[0].id))} />}
         <Share text={text} link={cupLink(cup)} snapshot={snapshot} what="cup" />
-        {/* one solid action: the new gnome's (in its card), else the next cup, else back to the cups */}
+        {/* one solid action: the new gnome's, else the next cup, else back to the cups */}
         <div className="banner__row">
           <button className="linkish" onClick={() => (sound("blip"), onReplay())}>Replay the cup</button>
           {fresh.length > 0 || !to ? (
@@ -102,11 +96,7 @@ export function Victory({ cup, best, holes, card, saved, fresh, snapshot, onBack
   );
 }
 
-/**
- * A gnome just unlocked, on the cup's card: turning on its stage as in the
- * picker, what earned it, and the one action: play as it (in the next cup,
- * where: its name). also: the others unlocked with it.
- */
+/** A gnome just unlocked, on the cup's card: what earned it, and the button that plays as it. where: the next cup's name. also: the others unlocked with it. */
 function NewGnome({ skin, also, where, onPlay }: { skin: Skin; also: readonly Skin[]; where: string; onPlay: () => void }) {
   const stage = useGnomeStage(skin);
   const earned = skin.unlock ? UNLOCKS[skin.unlock].need : "";
@@ -124,7 +114,7 @@ function NewGnome({ skin, also, where, onPlay }: { skin: Skin; also: readonly Sk
   );
 }
 
-/** Gnomes just unlocked: said, and each one a tap from the picker, shown there on its stage. */
+/** Gnomes just unlocked, each a tap from the picker. */
 export function Unlocked({ fresh, onMeet }: { fresh: readonly Skin[]; onMeet: (id: string) => void }) {
   if (!fresh.length) return null;
   return (
@@ -140,22 +130,19 @@ export function Unlocked({ fresh, onMeet }: { fresh: readonly Skin[]; onMeet: (i
   );
 }
 
-/** The card: hole, par and your score, ten holes to a row, with the totals. */
-// fresh: the badges the current hole just earned, stamped on its score
+/** The card: hole, par and score, with the totals. fresh: the badges the current hole just earned. */
 function Scorecard({ holes, card, saved, current, compact = false, fresh = NONE, onRules }: { holes: readonly HoleRow[]; card: Card; saved: Card; current: string | null; compact?: boolean; fresh?: readonly string[]; onRules: () => void }) {
-  // compact, with a hole being played (the win card): that hole and four either
-  // side, one row, the whole card a tap away
+  // compact with a hole being played: that hole and four either side, the whole card a tap away
   const at = holes.findIndex((h) => h.id === current), windowed = compact && at >= 0 && holes.length > 9;
   const [all, setAll] = useState(false);
   const from = windowed && !all ? Math.max(0, Math.min(at - 4, holes.length - 9)) : 0;
   const shown = windowed && !all ? holes.slice(from, from + 9) : holes;
-  // two halves of the same width (front nine, back nine), so every column of
-  // the second row sits under one of the first; a short last row is padded
+  // Two rows of the same width, so the second row's columns sit under the first's; a short last row is padded.
   const per = (windowed && !all ? shown.length : Math.ceil(shown.length / 2)) || 1, rows: (readonly HoleRow[])[] = [];
   for (let i = 0; i < shown.length; i += per) rows.push(shown.slice(i, i + per));
   const pad = (row: readonly HoleRow[]) => Array.from({ length: per - row.length }, (_, k) => <td key={"pad" + k} className="pad" />);
   const t = totals(card, holes);
-  // the badges earned on each hole, read once for the card (a badge comes with a score, a save or a fresh one)
+  // the badges earned on each hole
   const earnedOn = useMemo(() => {
     const on: Record<string, string[]> = {};
     for (const [b, h] of Object.entries(badgesAt())) (on[h] ||= []).push(b);
@@ -201,14 +188,13 @@ function Scorecard({ holes, card, saved, current, compact = false, fresh = NONE,
   );
 }
 
-// badges: the cup's card (not compact) shows the badges earned, those fresh pressed on
+// badges: the cup's card also shows the badges earned
 export function Standings({ s, card, saved, chain, me, mode = "pro", compact = false, onRules, fresh = NONE, badges }: BoardProps & { card: Card; saved: Card; compact?: boolean; onRules: () => void; fresh?: readonly string[]; badges?: { onOpen: () => void } }) {
   const [rank, setRank] = useState<{ at?: number; unnamed?: boolean } | null>(null);
   useEffect(() => {
     if (!chain || !me) return;
     let live = true; // no state set once the card is gone
-    // the chain's own rank, among the named players it ranks
-    // (read again after a save: the one it lands may rank the player)
+    // the chain's rank among named players, read again after a save
     chain.rank(mode, me).then((r) => live && setRank(r.rank > 0 ? { at: r.rank } : r.holes > 0 ? { unnamed: true } : null)).catch(() => {});
     return () => void (live = false);
   }, [chain, me, mode, saved]);

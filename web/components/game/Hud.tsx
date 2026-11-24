@@ -1,7 +1,5 @@
 "use client";
 
-// What is laid over the course and its screens: the game's fast-moving fields in a store of their own with the
-// parts that read it, a word said for a moment, the network's banner and the aim's setting.
 import { useEffect, useRef, useSyncExternalStore } from "react";
 import type { Snapshot } from "@/lib/engine";
 import { HOT } from "@/lib/engine/types";
@@ -13,9 +11,7 @@ import Weather from "@/components/Weather";
 import { Button, Segmented, InfoTip, useDialogOpen } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 
-// The game's fast-moving fields — the power bar, the cause of a push, the
-// storm's flashes — are read from a store of their own by the few parts that
-// show them; everything else re-renders only when a slower field changes.
+// The fast-moving fields (power, cause, flash) have a store of their own: only the parts that show them re-render.
 const HOT_KEYS = new Set<string>(HOT);
 type HotFields = Pick<Snapshot, (typeof HOT)[number]>;
 export function makeHot() {
@@ -38,8 +34,7 @@ export const sameCold = <T extends object>(a: T, b: T) => {
   for (const k in b) if (!HOT_KEYS.has(k) && a[k] !== b[k]) return false;
   return true;
 };
-// the pull's power, drawn straight onto the bar as it changes: a React render
-// a pointer move would be the whole of the aim's work in the page
+// The power is drawn straight onto the bar: a React render per pointer move would be the whole cost of aiming.
 const barWidth = (hot: Hot) => `${Math.round((hot.get().power || 0) * 100)}%`;
 export function AimBar({ hot }: { hot: Hot }) {
   const bar = useRef<HTMLSpanElement>(null);
@@ -58,12 +53,10 @@ export function LiveWeather({ hot, ...props }: { hot: Hot; w: Snapshot["weather"
   return <Weather {...props} flash={useHot(hot, "flash") || 0} />;
 }
 
-/** A word over the course for a moment. Taken away by a timer, not by its animation: with reduced motion there is none.
- *  News (center: not about the shot, e.g. a card filled from the chain) waits while a dialog is open, then has its whole time. */
+/** A word over the course for a moment. A timer takes it away, not its animation: reduced motion has none. center: news, which waits while a dialog is open. */
 export function Toast({ text, onDone, ms = 3200, center }: { text: string; onDone: () => void; ms?: number; center?: boolean }) {
   const done = useRef(onDone);
   done.current = onDone;
-  // (a dialog's words are never under the news: it waits while one is open over the page)
   const dialog = useDialogOpen(), held = !!center && dialog;
   useEffect(() => {
     if (held) return;
@@ -74,13 +67,7 @@ export function Toast({ text, onDone, ms = 3200, center }: { text: string; onDon
   return <div className={center ? "toast toast--center" : "toast"} role="status" style={ms !== 3200 ? { animationDuration: `${ms}ms` } : undefined}>{text}</div>;
 }
 
-/**
- * Which chain the page plays on, on every screen but mainnet's: a local node
- * or the testnet, where scores are practice. The other deployment one click
- * away when there is one.
- */
-// onSupport: the tip, on every screen but the title: a button of its own beside the banner
-// (inside it, it read as supporting the chain); none on mainnet, where a tip can't go yet (Tip)
+/** Which chain the page plays on; nothing on mainnet. onSupport: the tip, a button of its own beside the banner. */
 export function NetBanner({ rpc, onSupport, onFeedback }: { rpc: string; onSupport: () => void; onFeedback: () => void }) {
   const net = networkOf(rpc);
   if (net === "mainnet") return null;
@@ -95,7 +82,7 @@ export function NetBanner({ rpc, onSupport, onFeedback }: { rpc: string; onSuppo
           <i>Feedback</i>
         </Button>
       </p>
-      {/* the Players chip's twin, on the left (not on a phone: About has the tip) */}
+      {/* the Players chip's twin, on the left */}
       <Button variant="chip" className="netbanner__support" aria-label="Support the game" onClick={onSupport}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" /></svg>
         <span>Support</span>
@@ -104,13 +91,13 @@ export function NetBanner({ rpc, onSupport, onFeedback }: { rpc: string; onSuppo
   );
 }
 
-/** Assisted or Pro aim, with what it means — and what the chain can't check. */
+/** Assisted or Pro aim, with what each means. */
 export function AimSetting({ aim, onChange, compact = false }: { aim: Mode; onChange: (m: Mode) => void; compact?: boolean }) {
   return (
     <div className={"aimset" + (compact ? " aimset--compact" : "")}>
       <span className="aimset__label">Aim</span>
       <Segmented className={compact ? "seg--s" : ""} label="Aim" value={aim} full={!compact} options={AIMS} onChange={(m) => (sound("blip"), onChange(m))} />
-      {/* both lines in one cell, the other one hidden: the box keeps the longer one's size, nothing moves on a switch */}
+      {/* both lines share one cell, one hidden: the box keeps the longer one's size and nothing moves on a switch */}
       <small className="aimset__help real__fine">
         <span className={aim === "pro" ? "" : "off"} aria-hidden={aim !== "pro"}>
           {compact ? "No aim line: you read the course yourself. Ranked on its own board." : "No aim line · ranked apart"}

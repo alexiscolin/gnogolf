@@ -1,11 +1,5 @@
-// The hub's JSON, as this page reads it: what gno.land/r/gnogolf/golf/v2 prints
-// (state.gno, weather.gno). Every object the realm returns carries "version".
-// lib/chain.ts is the one place these are parsed; the rest of the client takes
-// them as typed.
-//
-// Numbers are the realm's: board units, 3 decimals ("ball", path points), or
-// exact (the "rest" of a shot, its shortest round-trip form). Angles are
-// degrees on the way in, radians inside the physics.
+// The hub's JSON as this page reads it. lib/chain.ts is the one place it is parsed.
+// Numbers are the realm's: board units to 3 decimals, or exact for a shot's "rest". Angles are degrees.
 
 /** A board point [x, y] (the scene's x, z). */
 export type Vec2 = readonly [number, number];
@@ -15,14 +9,14 @@ export type MutVec2 = [number, number];
 /** An aim mode: the realm ranks each apart. */
 export type Mode = "assisted" | "pro";
 
-/** A cup (a world): "garden", "island", "town", "mountain", "mines" on the course. */
+/** A cup's world: "garden", "island", "town", "mountain" or "mines" on the course. */
 export type World = string;
 
 interface Versioned {
   version: number;
 }
 
-/** A timed piece's clock (a tram, a gate, a storm's gusts): on for `on` of every `every` substeps, from `phase`. */
+/** A timed piece's clock: on for `on` of every `every` substeps, from `phase`. */
 export interface Timing {
   every?: number;
   on?: number;
@@ -51,22 +45,22 @@ export interface Zone extends Timing {
   vec: Vec2;
   scale: number;
   round: boolean;
-  /** a polygon zone's outline (3 points or more), and whether the zone is its outside */
+  /** a polygon zone's outline, and whether the zone is its outside */
   poly?: readonly Vec2[];
   outside?: boolean;
-  /** moving air, and air that stops at a ceiling: printed only when true (a hole's zones, not the weather's) */
+  /** moving air, and air that stops at a ceiling: printed only when true */
   air?: boolean;
   capped?: boolean;
   skin: string;
 }
 
-/** A hole's weather in one period (forecastJSON). */
+/** A hole's weather in one period. */
 export interface Forecast {
   period: number;
   kind: string;
   wind: Vec2;
   zones: readonly Zone[];
-  /** Weather() only: the gas a commit on the hole spends before its shots in it (decoding, the forecast) */
+  /** Weather() only: the gas a commit on the hole spends before its shots */
   gas?: number;
 }
 
@@ -101,18 +95,17 @@ export interface HoleState extends Versioned {
   order: number;
   timed: boolean;
   period: number;
-  /** null in the title's baked snapshot (lib/scene/title-holes.json) */
+  /** null in the title's baked snapshot */
   weather: Forecast | null;
   start: Vec2;
   cup: Vec2;
-  /** the radius the chain holes a ball in (the course's 1.2; the Crystal Mines' 1.1 and 1.0) */
+  /** the radius the chain holes a ball in: 1.2 on the course, 1.1 and 1.0 in the Crystal Mines */
   cupR?: number;
   walls: readonly Wall[];
   posts: readonly Post[];
   zones: readonly Zone[];
   wear: Wear;
-  /** what the realm's work model counts on the board before the weather (golf.gno newWork: every
-   *  pulse as if always there, and each shot's share of setting them up); none from a realm before it */
+  /** what the realm's work model counts on the board before the weather; none from an older realm */
   work?: { walls: number; pieces: number; setup: number };
 }
 
@@ -138,7 +131,7 @@ export interface Flight {
   air: string;
   cause: string;
   rest: Vec2;
-  /** the work the realm's physics did for it (Shot.Work), as its work model counts it */
+  /** the work the realm's physics did for it, as its work model counts it */
   work?: number;
 }
 
@@ -154,7 +147,7 @@ export interface SimulateRound extends SimulateFrom {
   period: number;
 }
 
-/** Either stroke answer: SimulateFrom has no count (a stroke is a shot). */
+/** Either stroke answer: SimulateFrom has no count. */
 export type Stroke = SimulateFrom & Partial<Pick<SimulateRound, "strokes" | "period">>;
 
 /** Extras(): what a timed hole lays down at one stroke. */
@@ -162,9 +155,9 @@ export interface Extras extends Versioned {
   walls: readonly Wall[];
   posts: readonly Post[];
   zones: readonly Zone[];
-  /** the client's own: the next strokes' extras, for a world that looks ahead (worlds.ts ahead) */
+  /** the client's own: the next strokes' extras, for a world that looks ahead */
   ahead?: readonly (Extras | null)[];
-  /** the client's own: the stroke they are for, so a world that moves on from the stroke before knows which one that is */
+  /** the client's own: the stroke they are for */
   stroke?: number;
 }
 
@@ -184,25 +177,25 @@ export interface HoleRow {
   slot?: string;
 }
 
-/** Holes(): the holes a menu lists, the 3D client's link and the realm the course moved to ("" if none). */
+/** Holes(): the holes a menu lists, the 3D client's link and the realm the course moved to, "" if none. */
 export interface Holes extends Versioned {
   play: string;
   successor: string;
   holes: readonly HoleRow[];
 }
 
-/** A hole of the day's candidate (DayCandidates): its Holes row, and the block its alias was first published at (0: long before). */
+/** A candidate for the hole of the day: its Holes row, and the block its alias was first published at, 0 for long before. */
 export interface DayRow extends HoleRow {
   born: number;
 }
 
-/** DayCandidates(after, limit): a page of them in alias order, none hidden, and the alias to go on from ("" at the end). */
+/** DayCandidates(after, limit): a page of them in alias order, none hidden. next: the alias to go on from, "" at the end. */
 export interface DayCandidates extends Versioned {
   rows: readonly DayRow[];
   next: string;
 }
 
-/** Versions(alias): a community hole's versions, oldest shown first ("" slot and none for an alias with none). */
+/** Versions(alias): a community hole's versions, oldest first. An alias with none: slot "" and no versions. */
 export interface Versions extends Versioned {
   slot: string;
   versions: readonly { id: string; v: number; height: number; by: string; sha: string; note: string; next: string }[];
@@ -210,12 +203,12 @@ export interface Versions extends Versioned {
 
 export interface StrokesRow {
   player: string;
-  /** their gno.land name, as the boards give it (CourseLeaderboard, HoleLeaderboard); none from the other reads or an older realm */
+  /** their gno.land name, as the boards give it; none from the other reads */
   name?: string;
   strokes: number;
 }
 
-/** A round saved on a hole (chain.ts savedOn): a player's best there in a mode, its strokes and its weather's period. */
+/** A round saved on a hole: a player's best there in a mode, its strokes and its weather's period. */
 export interface Saved {
   id: string;
   mode: Mode;
@@ -224,7 +217,7 @@ export interface Saved {
   period: number;
 }
 
-/** A course standing: its best on each hole counted, summed, and those holes' pars (strokes − par: its score against par, which ranks it after its holes). */
+/** A course standing: the bests counted, their strokes summed, and those holes' pars. */
 export interface StandingRow extends StrokesRow {
   holes: number;
   par: number;
@@ -245,7 +238,7 @@ export interface Standings extends Versioned {
   rows: readonly StandingRow[];
 }
 
-/** Rank(): a player's place in a mode's course ranking (rank 0: not ranked). */
+/** Rank(): a player's place in a mode's course ranking. rank 0: not ranked. */
 export interface Rank extends Versioned {
   mode: Mode;
   player: string;
@@ -268,7 +261,7 @@ export interface CourseLeaderboard extends Versioned {
   next: number;
 }
 
-/** HoleRank(): a player's place on a hole's board (rank 0: not on it). */
+/** HoleRank(): a player's place on a hole's board. rank 0: not on it. */
 export interface HoleRank extends Versioned {
   hole: string;
   mode: Mode;
@@ -278,7 +271,7 @@ export interface HoleRank extends Versioned {
   strokes: number;
 }
 
-/** Ghost(): a player's best on a hole in a mode with its round ("angle,power,tick;…" in its period): what a duel races. */
+/** Ghost(): a player's best on a hole in a mode, with its shots and period: what a duel races. */
 export interface Ghost extends Versioned {
   hole: string;
   mode: Mode;

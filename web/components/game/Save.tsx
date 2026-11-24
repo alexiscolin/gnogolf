@@ -1,7 +1,5 @@
 "use client";
 
-// A round's save as the player sees it: the clock it must be saved by, how it goes, the round kept through a
-// reload on a card of its own, and the sheet that leads onto the boards step by step.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { Snapshot } from "@/lib/engine";
 import { isTouch } from "@/lib/device";
@@ -17,7 +15,7 @@ import { buttonClass } from "@/components/button";
 import { useCopied } from "@/components/hooks";
 import { NameForm, type NameCheck } from "@/components/Leaderboard";
 
-/** The time now on a clock (the chain's), read again every second. */
+/** The clock's time, read again every second. */
 function useNow(clock: () => number) {
   const [now, setNow] = useState(clock);
   useEffect(() => {
@@ -27,13 +25,8 @@ function useNow(clock: () => number) {
   return now;
 }
 
-/** How long the round can still go on-chain ("within 4:12"), then, once its
- *  time is over, that it can't. */
-// by and clock (now, ms) on the chain's clock; ranked: a course hole (a community one ranks nobody)
-// again: what the button to play again says (Rematch in a duel)
-// moot: no better than the player's best there (the chain keeps that one)
-// dare: a duel won's rival, dared back by the saved round (one line, not two)
-// dares: the saved round would make the player's link a dare
+/** How long the round can still be saved on-chain, then that it no longer can. by and clock are on the chain's clock. */
+// ranked: a course hole. moot: no better than the player's best there. dare: the rival a won duel dares back. dares: the save would make the player's link a dare.
 export function SaveClock({ by, clock = Date.now, stale, ranked, moot, dare, dares, again = "Play again" }: { by: number; clock?: () => number; stale?: boolean; ranked: boolean; moot?: boolean; dare?: string; dares?: boolean; again?: string }) {
   const now = useNow(clock);
   const left = by - now;
@@ -53,13 +46,13 @@ export function SaveClock({ by, clock = Date.now, stale, ranked, moot, dare, dar
 // named: a name just taken with it, said in the same line
 export function RecordState({ record, account, s, chain, named = "" }: { record: Rec; account: Account | null; s: Snapshot; chain: Chain | null; named?: string }) {
   if (!record) return null;
-  // the player's page on the hole: their best there (a holed round is not kept)
+  // the player's page on the hole shows their best: a holed round is not kept
   const best = chain && account && (
     <a href={chain.roundURL(s.id || "", account.address)} target="_blank" rel="noopener noreferrer">
       See your best on gno.land ↗
     </a>
   );
-  // (one <p> whatever the state, kept by React from one to the next: a reader hears each as it comes)
+  // one <p> whatever the state, so React keeps it and a screen reader hears each change
   switch (record.at) {
     case "signing":
       return record.of === undefined ? null : <p className="note" role="status">This round is saved in {record.of} transactions: one shot list is more than one transaction can replay here. Adena asks {record.of} times.</p>;
@@ -79,11 +72,7 @@ export function RecordState({ record, account, s, chain, named = "" }: { record:
   );
 }
 
-/**
- * A won round kept through a reload (Adena installed meanwhile), waiting for
- * its save: its own small card, on any screen, until saved, forgotten or too
- * late. by and clock on the chain's clock.
- */
+/** A won round kept through a reload, waiting for its save: a small card on any screen, until saved, forgotten or too late. */
 export function PendingSave({ r, rec, by, clock = Date.now, onSave, onForget }: { r: SaveOf; rec: Rec; by: number | null; clock?: () => number; onSave: () => void; onForget: () => void }) {
   const now = useNow(clock);
   const done = rec?.at === "saved";
@@ -96,7 +85,7 @@ export function PendingSave({ r, rec, by, clock = Date.now, onSave, onForget }: 
     return () => clearTimeout(t);
   }, [done]);
   const left = by == null ? null : by - now;
-  // too late to save: the round goes (and the sheet stops offering it)
+  // too late to save: the round goes
   const over = !done && left != null && left <= 0;
   useEffect(() => void (over && (track("save_expired", { where: "pending", hole: r.id, strokes: r.strokes }), forget.current())), [over]); // eslint-disable-line react-hooks/exhaustive-deps -- as it runs out
   if (over) return null;
@@ -137,16 +126,9 @@ export function GetGnot({ address, href, label = "" }: { address: string; href: 
   );
 }
 
-/**
- * Getting on the boards, once: what saving gives, and each step ticked as it
- * is done (Adena, connected, test GNOT, a name, a round saved). It connects,
- * and from a won hole it saves at once. Nothing here is needed to keep
- * playing free. lack: the GNOT the account lacks for the round on offer
- * (null: unknown); waiting: that round, said while Adena is installed.
- */
-// elsewhere: Adena's network is another node (its balance there is not this one's)
-// onDisconnect: this page forgets the account (Adena keeps it), any screen
-// gnokey: the round on offer saved with gnokey instead (not on a phone: the hole goes to a computer)
+/** The sheet that leads onto the boards, each step ticked as it is done. From a won hole it saves at once. */
+// lack: the GNOT the account lacks for the round on offer, null when unknown. waiting: that round, named while Adena is installed.
+// elsewhere: Adena is on another node. gnokey: the round on offer saved with gnokey instead.
 export function RealPlay({ from, account, wallet, onConnect, onClose, onSave, rpc, chainName, cost, funds, lack, named, waiting, chain, price, onNamed, typed, nameOk, elsewhere = false, onDisconnect, gnokey }: {
   from: WalletFrom;
   elsewhere?: boolean;
@@ -155,7 +137,7 @@ export function RealPlay({ from, account, wallet, onConnect, onClose, onSave, rp
   account: Account | null; wallet: { busy: boolean; error: string | null; note?: string }; onConnect: () => void; onClose: () => void; onSave: (() => void) | null;
   rpc: string | null; chainName: string; cost: string | null; funds: number | null; lack: number | null; named: boolean | null; waiting: string | null;
   chain: Chain | null; price: number; onNamed: (name: string) => void;
-  /** with a round to save by a player without a name: the name typed goes in its signature; nameOk: the save may go */
+  /** the name typed by a player without one goes in the save's signature; nameOk: the save may go */
   typed: { check: NameCheck; set: (stem: string) => void } | null; nameOk: boolean;
 }) {
   // a round of this account's on the chain already, in either mode: the last step done
@@ -171,17 +153,16 @@ export function RealPlay({ from, account, wallet, onConnect, onClose, onSave, rp
   const installed = hasAdena();
   const phone = !installed && isTouch();
   const net = networkOf(rpc || ""), local = net === "local", main = net === "mainnet";
-  // (a balance not read is no step missing, as on the win card: the chain or Adena says a shortfall)
+  // a balance not read is not a step missing: the chain or Adena says a shortfall
   const funded = !!account && (funds == null || (lack != null ? lack === 0 : funds > 0));
-  // one step at a time: each ticked on its own (a name and no GNOT left is
-  // step 3 to do again), and only the first not done shows what to do
-  const done = [installed, !!account, funded, !!named, savedAny && !onSave]; // (a round waiting: its save is the step at hand)
+  // one step at a time: only the first not done shows what to do
+  const done = [installed, !!account, funded, !!named, savedAny && !onSave]; // a round waiting: its save is the step at hand
   const now = done.indexOf(false);
   const step = (i: number) => (done[i] ? "done" : i === now ? "now" : "later");
-  // the step to do, in view (a phone's sheet is taller than the screen)
+  // the step to do is scrolled into view: a phone's sheet is taller than the screen
   const steps = useRef<HTMLOListElement>(null);
-  useEffect(() => void steps.current?.querySelector(".now")?.scrollIntoView({ block: "nearest" }), [now]); // (void: it may return a promise, not a clean-up)
-  // (once its reads are in: a step shown only while they load is no step)
+  useEffect(() => void steps.current?.querySelector(".now")?.scrollIntoView({ block: "nearest" }), [now]); // void: it may return a promise, not a clean-up
+  // tracked once its reads are in: a step shown only while they load is no step
   const settled = savedRead && !(account && named == null);
   useEffect(() => void (settled && track("wallet_step", { step: WALLET_STEPS[now] || "done", from })), [now, from, settled]);
   const [sent, setSent] = useState(false);

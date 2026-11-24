@@ -1,6 +1,5 @@
 "use client";
-// The testnet's feedback sheet, answered as a PostHog API survey. No contact is
-// asked: a reply goes through a GitHub issue (its link counted as any, by host).
+// The testnet's feedback sheet, sent as a PostHog survey. No contact is asked: a reply goes through a GitHub issue.
 import { useState } from "react";
 import { Button, Segmented, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";

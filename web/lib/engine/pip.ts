@@ -1,10 +1,8 @@
-// The cup's pip. The cup off the picture, before the first stroke (Classic and
-// Third person, the camera on the gnome): a small inked pip at the edge of the
-// free screen, pointing to it. It fades once the cup is in view or a shot is played.
+// The cup's pip: when the cup is off the picture before the first stroke, an arrow at the edge of the free screen points to it.
 import * as THREE from "three";
 import type { Live } from "./types";
 
-/** parent: where the pip goes (the canvas's parent); HUD: the part of the screen the HUD covers, in CSS pixels. */
+/** HUD: what the HUD covers, in CSS pixels. */
 export function makeCupPip(E: Live, parent: HTMLElement | null, HUD: { top: number; bottom: number; side: number }) {
   const { g, camera, ground } = E;
   const pip = document.createElement("div");
@@ -14,8 +12,7 @@ export function makeCupPip(E: Live, parent: HTMLElement | null, HUD: { top: numb
   parent?.appendChild(pip);
   const cupNdc = new THREE.Vector3(), cupAt3 = new THREE.Vector3();
   let pipOn = false;
-  /** The cup (cupAt3, on the ground) as the camera shows it: where on the screen (NDC, turned round when behind it),
-   *  the free part's bounds there (inside the HUD's bands), and whether it is off that part. */
+  /** The cup as the camera shows it: its NDC (turned round when behind), the free screen's bounds there, and whether it is off them. */
   function cupOnScreen() {
     const s = g.s!, w = window.innerWidth, h = window.innerHeight;
     cupNdc.copy(cupAt3.set(s.cup[0], ground(s.cup[0], s.cup[1]), s.cup[1])).project(camera);

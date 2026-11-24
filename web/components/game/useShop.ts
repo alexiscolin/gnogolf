@@ -1,7 +1,6 @@
 "use client";
 
-// The gnome shop as the game holds it: whether it is offered here, its sale, what the player holds and wears (and
-// so plays as), and the shop screen's view and its way back.
+// The gnome shop as the game holds it: whether it is offered here, its sale, what the player holds and wears.
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type { Game } from "@/lib/engine";
 import { GNOMES } from "@/lib/scene/gnome";
@@ -30,30 +29,28 @@ export function useShop({ game, screen, setScreen, playing, holedNow, account, g
   /** the game is made: its chain can be read */
   chainUp: boolean;
 }) {
-  // The collection (SHOP): what the player holds and wears for everyone, read once an account is
-  // here; the gnome played is their pick while it is theirs, else the one they wear (wear.ts playing).
-  const [region, setRegion] = useState<boolean | null>(null); // (null: not read yet, or could not be: asked again on the next screen)
-  // the shop's every door (the menu's card, the picker's section, the finish card's line, the cups' link): one gate
+  // The gnome played is the player's pick while it is theirs, else the one they wear.
+  const [region, setRegion] = useState<boolean | null>(null); // null: not read yet, or could not be; asked again on the next screen
+  // one gate for every door to the shop
   const shopOn = shopShown(SHOP, region);
   const [held, setHeld] = useState<{ id: string; tier: string; traits: string; name: string; home: string }[]>([]);
   const [worn, setWorn] = useState<Worn | null>(null);
   const [shopView, setShopView] = useState<ShopView>({});
-  const shopFrom = useRef<Screen>("modes"); // the screen the shop's Back returns to: the menu, unless opened from another
+  const shopFrom = useRef<Screen>("modes"); // the screen the shop's Back returns to
   const gnomeNow = useRef(gnome);
   gnomeNow.current = gnome;
-  useEffect(() => void (SHOP && region === null && shopInRegion().then(setRegion)), [screen]); // eslint-disable-line react-hooks/exhaustive-deps -- (asked while unanswered)
-  // the sale as the menu, the picker, the shop and the finish card show it: read once a visit, where the shop is
-  // offered, from the first screen that shows it on (never the title's: the catalogue and the wardrobe wait for it)
+  useEffect(() => void (SHOP && region === null && shopInRegion().then(setRegion)), [screen]); // eslint-disable-line react-hooks/exhaustive-deps -- asked while unanswered
+  // The sale is read once a visit, from the first screen that shows it. Never the title: the catalogue and the wardrobe wait for it.
   const saleHere = shopOn && (screen === "modes" || screen === "worlds" || screen === "pick" || screen === "shop" || (playing && holedNow));
   const [saleShown, setSaleShown] = useState(false);
   useEffect(() => void (saleHere && setSaleShown(true)), [saleHere]);
   const saleChain = shopOn && (saleHere || saleShown) ? (game.current && game.current.chain) || null : null;
   const { promo, now: promoNow } = useSale(saleChain);
   const shopSkin = useShopSkin(saleChain, promo);
-  const shopBits = useShopPart(!!saleChain); // (the panel's line with its price, once the shop's part is in)
-  // the shop's chunk, fetched as soon as a door to it shows (the menu's panel, the cups' link): opening it then draws at once
+  const shopBits = useShopPart(!!saleChain); // the panel's line with its price, once the shop's part is in
+  // the shop's chunk is fetched as soon as a door to it shows, so opening it draws at once
   useEffect(() => void (shopOn && (screen === "modes" || screen === "worlds" || screen === "pick") && shopPart()?.then((m) => m.prefetchShop(), () => {})), [shopOn, screen]);
-  // whose gnomes are shown: another account's answer, landing late, is dropped; a new account starts from none
+  // whose gnomes are shown: another account's answer landing late is dropped
   const heldOf = useRef("");
   const readWorn = () => {
     const c = game.current && game.current.chain, part = SHOP && c && account ? shopPart() : null;
@@ -65,20 +62,20 @@ export function useShop({ game, screen, setScreen, playing, holedNow, account, g
       if (heldOf.current !== me) return;
       setHeld(mine);
       setWorn(w);
-      if (!skins) return; // (the wardrobe not fetched: their gnomes listed, the gnome played as it is until the next read)
-      // the gnome played: theirs while it is theirs, else the one everyone sees, else the browser's own
+      if (!skins) return; // the wardrobe is not fetched: the gnome played stays until the next read
+      // theirs while it is theirs, else the one everyone sees, else the browser's own
       const want = m.playing({ pick: pickOf(me), held: new Set(skins.map((k) => k.id)), worn: w, saved: savedGnome(), free: (id) => GNOMES.some((g) => g.id === id) && unlockedRef.current(id) });
       if (want !== gnomeNow.current) (setGnome(want), game.current && game.current.setGnome(want));
     }).catch(() => {});
   };
-  useEffect(readWorn, [account, game.current]); // eslint-disable-line react-hooks/exhaustive-deps -- (readWorn: the account's)
-  // a rival's ghost wears the gnome they wear for everyone (gnome.ts rivalSkin), read as they are picked
+  useEffect(readWorn, [account, game.current]); // eslint-disable-line react-hooks/exhaustive-deps -- readWorn changes with the account
+  // a rival's ghost wears the gnome they wear for everyone, read as they are picked
   useEffect(() => {
     const c = game.current && game.current.chain;
     if (SHOP && c && dare) askWorn(c, dare);
   }, [dare, chainUp, game]);
   const openShop = (v: ShopView = {}) => {
-    if (!shopOn) return; // (no door to the shop where it is not offered, nor before the region has answered)
+    if (!shopOn) return; // no shop where it is not offered, nor before the region has answered
     if (screen !== "shop") shopFrom.current = screen === "title" ? "modes" : screen;
     setShopView(v);
     setScreen("shop");

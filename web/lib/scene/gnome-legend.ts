@@ -1,7 +1,5 @@
-// The seven Legendaries' own pieces (lib/gnomes/props.ts, the "legend"
-// entries): a mesh none of the others wears, and a motion of its own. Each
-// moving piece is merged in its own frame (bake local) and left out of the
-// gnome's bake (live): a draw or two each, whatever its parts.
+// The seven Legendaries' own pieces, each with its motion.
+// A moving piece is merged in its own frame and kept out of the gnome's bake: a draw or two each.
 import * as THREE from "three";
 import { C, flat, inked } from "./materials";
 import { bake } from "./bake";
@@ -12,7 +10,6 @@ import type { Skin } from "./gnome";
 
 type Tick = (t: number) => void;
 const Q = Math.PI / 2;
-/** A small triangle of cloth on a pin. */
 const pennant = () => {
   const g = new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0, 0.2, -0.05, 0, 0, -0.1, 0], 3));
   g.computeVertexNormals();
@@ -28,7 +25,7 @@ const moving = (parent: THREE.Object3D, ...parts: THREE.Object3D[]) => {
   ud(grp).live = true;
   return grp;
 };
-/** Small things that move each on their own (smoke, drops, spores): one instanced draw. */
+/** Small things that each move on their own, in one instanced draw. */
 const swarm = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material, n: number) => {
   const m = new THREE.InstancedMesh(geo, mat, n);
   m.frustumCulled = false;
@@ -36,7 +33,7 @@ const swarm = (parent: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Mat
   ud(m).live = true;
   parent.add(m);
   const o = new THREE.Object3D();
-  /** Sets one of them: where, how big (0: gone). */
+  /** Places one; a scale of 0 hides it. */
   return (k: number, x: number, y: number, z: number, s: number) => {
     o.position.set(x, y, z);
     o.scale.setScalar(Math.max(s, 0.0001));
@@ -50,7 +47,7 @@ const PIECES: Record<string, (g: THREE.Group, hat: THREE.Group, skin: Skin) => T
   // Crystal Gnome: shards grown out of his hat, a core in them that glints
   "crystal-cluster": (_, hat, skin) => {
     const m = flat(skin.propColor ?? 0xa184c9);
-    // (none on the hat's front: a headlamp clips on there in the mines)
+    // None on the hat's front: a headlamp clips on there.
     const shards = [[0.24, -0.14, 0.24, -0.5, 0.2, 0.32], [-0.26, -0.12, 0.2, 0.6, 0.25, 0.26], [-0.12, -0.08, -0.3, 0.2, -0.5, 0.22], [0.32, -0.16, -0.08, -0.7, -0.3, 0.2]].map(([x, y, z, rz, rx, h]) => {
       const s = new THREE.Group();
       s.add(inked(new THREE.CylinderGeometry(0.05, 0.06, h, 6), m), at(inked(new THREE.ConeGeometry(0.05, 0.1, 6), m), 0, h / 2 + 0.05, 0));
@@ -59,7 +56,7 @@ const PIECES: Record<string, (g: THREE.Group, hat: THREE.Group, skin: Skin) => T
     });
     hat.add(...shards);
     const core = moving(hat, new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), glowOf(0xffffff)));
-    core.position.set(0.24, 0.02, 0.24); // (among the shards on his right: clear of a lamp)
+    core.position.set(0.24, 0.02, 0.24); // on his right, clear of a headlamp
     return (t) => (core.rotation.y = t / 500, core.scale.setScalar(0.8 + 0.3 * Math.abs(Math.sin(t / 900))));
   },
   // Lava Gnome: a little vent on his hat's tip, smoking
@@ -95,7 +92,7 @@ const PIECES: Record<string, (g: THREE.Group, hat: THREE.Group, skin: Skin) => T
       [-0.1, 0.02, 0.12].forEach((x, k) => drop(k, x, top + 0.12 - ((t / 700 + k / 3) % 1) * 0.3, 0.05, 1));
     };
   },
-  // The Miller: the four sails of the mill on his cap (gnome-kit.ts "mill"), turning
+  // The Miller: the four sails of the mill on his cap, turning.
   "mill-sails": (_, hat) => {
     const wood = flat(C.woodDark), cloth = flat(0xefe4cf, { side: THREE.DoubleSide });
     const parts: THREE.Object3D[] = [inked(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 10).rotateX(Q), wood)];
@@ -147,7 +144,7 @@ const PIECES: Record<string, (g: THREE.Group, hat: THREE.Group, skin: Skin) => T
       hat.add(at(shroom, x, 0.25 - Math.hypot(x, z) * 0.45, z));
     }
     const spore = swarm(hat, new THREE.SphereGeometry(0.025, 6, 4), glowOf(0xf7d977), 5);
-    // the glow the spots are drawn with: the merge's own material (bake clones a tinted one), not glow
+    // The materials the bake gave the spots: clones of the glow, so these are the ones to pulse.
     const drawn = spots.children.flatMap((o) => (o instanceof THREE.Mesh ? [o.material as THREE.MeshToonMaterial] : []));
     return (t) => {
       for (const m of drawn) m.emissiveIntensity = 0.3 + 0.3 * (0.5 + 0.5 * Math.sin(t / 800));
@@ -180,7 +177,7 @@ const PIECES: Record<string, (g: THREE.Group, hat: THREE.Group, skin: Skin) => T
   },
 };
 
-/** A Legendary's piece onto him (Skin.prop, a "legend" entry): returns its motion, or null. */
+/** Adds a Legendary's piece to him. Returns its motion, or null. */
 export function dressLegend(g: THREE.Group, hat: THREE.Group, skin: Skin): Tick | null {
   const piece = skin.prop && PIECES[skin.prop];
   return piece ? piece(g, hat, skin) : null;

@@ -9,24 +9,22 @@ import { ud } from "../scene/data";
 import type { Extras, Post, Wall, Zone } from "../types";
 import type { Live } from "./types";
 
-/** onStroke: a stroke's pieces drawn, their walls and their weather taken in (engine/forecast.ts). */
+/** onStroke: a stroke's pieces are drawn; their walls and weather are to be taken in. */
 export function makeExtras(E: Live, { alive, onStroke }: { alive: () => boolean; onStroke: (ex: Extras) => void }) {
   const { g, chain, publish } = E;
   let extras: THREE.Object3D | null = null, extrasFor = "";
-  // the next stroke's pieces, asked as the stroke lands (a duel's ghost plays
-  // meanwhile), shown once it has: by the stroke they are for
+  // the next stroke's pieces, asked as the stroke lands and shown later: keyed by the stroke they are for
   const extrasKey = () => `${g.id}#${g.round}#${g.shots.length}`;
   let extrasAhead: { key: string; read: Promise<Extras> } | null = null;
   const askExtras = () => {
     const read = chain.extras(g.id!, g.shots.length);
-    read.catch(() => {}); // (said where it is awaited)
+    read.catch(() => {}); // said where it is awaited
     extrasAhead = { key: extrasKey(), read };
-    // and the strokes a world shows ahead (worlds.ts ahead), read now: they are ready when the pieces are drawn
+    // and the strokes a world shows ahead, read now to be ready when the pieces are drawn
     for (let k = 1; k <= ((g.s && worldOf(g.s).ahead) || 0); k++) chain.extras(g.id!, g.shots.length + k).catch(() => {});
   };
-  // the pulses' pieces seen so far on this hole, each once: what the work
-  // model counts for them (newWork: every pulse, as if always there) when
-  // the realm does not say it (boardWork)
+  // the pulses' pieces seen so far on this hole, each once: what the work model counts
+  // for them when the realm does not say it
   let pulse = { seen: new Set<string>(), walls: 0, posts: 0, pieces: 0 };
   function sawPulse(ex: Extras) {
     const add = (list: readonly (Wall | Post | Zone)[], kind?: "walls" | "posts") => {
@@ -47,11 +45,8 @@ export function makeExtras(E: Live, { alive, onStroke }: { alive: () => boolean;
     extrasFor = key;
     const read = extrasAhead && extrasAhead.key === key ? extrasAhead.read : chain.extras(g.id!, g.shots.length);
     extrasAhead = null;
-    // a world that shows what comes (worlds.ts ahead): the next strokes' too,
-    // each a nice-to-have (none, if it fails), never waited on: those read
-    // already (the last stroke's look-ahead, askExtras, the hole's load) come
-    // with this stroke's pieces; any still on its way, the pieces are drawn
-    // again with it once it is in
+    // a world that shows what comes: the next strokes' pieces too, never waited on.
+    // Those already read come with this stroke's; a later one draws the pieces again.
     const n = worldOf(g.s).ahead || 0, stroke = g.shots.length;
     const next = Promise.all(Array.from({ length: n }, (_, k) => chain.extras(g.id!, stroke + 1 + k).then(plainSkins, () => null)));
     let ex: Extras;
@@ -60,11 +55,10 @@ export function makeExtras(E: Live, { alive, onStroke }: { alive: () => boolean;
       if (n) {
         const ahead = await Promise.race([next, new Promise<null>((r) => setTimeout(() => r(null), 0))]);
         if (ahead) ex = { ...ex, ahead };
-        else void next.then((ahead) => ahead.some(Boolean) && drawExtras(key, { ...ex, ahead }), () => {}); // (then with it)
+        else void next.then((ahead) => ahead.some(Boolean) && drawExtras(key, { ...ex, ahead }), () => {}); // drawn again with it
       }
     } catch {
-      // asked again in a moment: the stroke being aimed is played with its
-      // pieces (a shot on its way asks for the next one when it lands)
+      // asked again in a moment: the stroke being aimed is played with its pieces
       if (extrasFor === key) (extrasFor = ""), setTimeout(() => alive() && !g.flying && void showExtras(), 2000);
       return;
     }
@@ -74,14 +68,13 @@ export function makeExtras(E: Live, { alive, onStroke }: { alive: () => boolean;
   function drawExtras(key: string, ex: Extras) {
     if (extrasFor !== key || !alive() || !g.course) return;
     sawPulse(ex);
-    // this stroke's weather: the hole's, and whatever the stroke brings
     onStroke(ex);
     void publish();
     const old = extras;
     extras = buildExtras(g.course, ex);
     // an aim begun while the pieces loaded: theirs show their outlines too
     if (g.aiming) ud(extras).ghosts?.(true);
-    // (a world's own that moves on from the last stroke's itself: at once)
+    // a world's own pieces move on from the last stroke's by themselves: swapped at once
     if (ud(extras).steady) {
       g.course.add(extras);
       growing = growing.filter((a) => a.o !== old);

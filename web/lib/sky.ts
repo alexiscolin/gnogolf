@@ -1,12 +1,9 @@
-// A record's weather from its period, as the realm draws it (course.ForecastFor):
-// 64-bit FNV-1a of "<hole id>#<period>", mod 100, read in the world's climate
-// (the mines have none of their own: the garden's). Only the kind: the wind and
-// the puddles, which a board does not show, are what costs the chain's reads.
-// The climates are the realm's (gno.land/p/gnogolf/course/course.gno climates),
-// which scripts/selfcheck.ts holds this table to.
+// A record's weather from its period, as the realm draws it: 64-bit FNV-1a of "<hole id>#<period>", mod 100, read in the world's climate.
+// Only the kind: the wind and the puddles are what costs the chain's reads.
 import type { SkyKind } from "./card";
 import { own } from "./own";
 
+/** The realm's climates, course.gno's: scripts/selfcheck.ts holds this table to them. The mines have none: the garden's. */
 export const CLIMATES: Readonly<Record<string, readonly (readonly [number, SkyKind])[]>> = {
   garden: [[55, ""], [20, "wind"], [15, "rain"], [10, "fog"]],
   island: [[50, ""], [25, "wind"], [15, "rain"], [10, "storm"]],
@@ -22,7 +19,7 @@ export function fnv1a(s: string) {
   return h;
 }
 
-/** The kind of a hole's weather in a period (id: the hole's version, "garden/2/v1"). */
+/** The kind of a hole's weather in a period. id: the hole's version, "garden/2/v1". */
 export function skyOf(id: string, world: string, period: number): SkyKind {
   let roll = Number(fnv1a(`${id}#${period}`) % 100n);
   for (const [percent, kind] of own(CLIMATES, world) ?? CLIMATES.garden) {

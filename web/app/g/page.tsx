@@ -1,6 +1,4 @@
-// The gnomes' gallery (/g/): its words and card for link crawlers; the game
-// opens on the shop (Golf.tsx reads the path). Off (NEXT_PUBLIC_GNOMES
-// unset), the game's home, out of search results.
+// The gnomes' gallery (/g/). Shop off, it is the game's home, kept out of search results.
 import type { Metadata } from "next";
 import Game from "@/app/game";
 import Intro from "@/app/intro";
@@ -15,7 +13,7 @@ export const metadata: Metadata = SHOP
   : { robots: { index: false }, alternates: { canonical: "/" } };
 
 export default function Gallery() {
-  // off, the home's words and no data: nothing of the shop in the page
+  // shop off: the home's words and no JSON-LD
   const intro = SHOP ? { title, text: description, ld: { "@type": "CollectionPage", name: title, url: `${SITE}/g/`, description } } : { title: TITLE, text: DESCRIPTION };
   return (
     <>
