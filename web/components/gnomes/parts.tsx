@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Chip, Segmented } from "@/components/ui";
 import { buttonClass } from "@/components/button";
-import { useCopied } from "@/components/common";
+import { useCopied } from "@/components/hooks";
 import { retryIn } from "@/lib/retry";
 import { siteURL } from "@/lib/site";
 import { shareOrCopy, STROKE } from "@/components/Share";

@@ -4,7 +4,7 @@
 // board's first three (but the place just above yours), the flagged left out by
 // the caller (flags.ts screen); drawn again each day (today), so a board's
 // champion is not its face.
-import type { SkyKind } from "./card";
+import { standingVs, type SkyKind } from "./card";
 
 /** What a card says of its player, and why it is there. */
 export type Tag = "reach" | "next" | "start" | "ace" | "sky" | "fresh" | "rising" | "sharp" | "day" | "more";
@@ -66,7 +66,7 @@ export function holePicks<R extends { player: string; strokes: number; at: numbe
  *  course's; mine: your row (null: not on it); above: the row just above yours, if read. */
 export function coursePicks<R extends { player: string; holes?: number; strokes: number; par?: number; at: number }>(rows: readonly R[], holes: number, me: string | null | undefined, mine: { holes?: number } | null, above: R | null, day = today(), n = 3) {
   const others = rows.filter((r) => r.player !== me);
-  const holesOf = (r: { holes?: number }) => r.holes || 0, perHole = (r: R) => (r.strokes - (r.par || 0)) / holesOf(r);
+  const holesOf = (r: { holes?: number }) => r.holes || 0, perHole = (r: R) => standingVs(r) / holesOf(r);
   // rising: a third of the course or less, at par or better on it
   const rising = others.filter((r) => holesOf(r) > 0 && holesOf(r) <= Math.max(1, Math.floor(holes / 3)) && perHole(r) <= 0);
   // the sharpest: a fair share of the course played (a third of it, nine holes at least), the best against par a hole

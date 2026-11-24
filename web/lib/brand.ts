@@ -10,6 +10,15 @@ const INK_SOFT = "#4f7a6c", HAT = "#e0524b";
 /** The site's font stack, for text drawn on a canvas (the cards, the clip, the mines' signs). */
 export const FONT = "Fredoka, ui-rounded, system-ui, sans-serif";
 
+/** The gnome's head as the logo draws it (a 200 box; app/icon.svg keeps its
+ *  own copy): its face, beard, hat and brim. */
+export const GNOME = {
+  face: { x: 40, y: 100, width: 120, height: 44, rx: 6 },
+  beard: "M 40 116 Q 34 190 100 214 Q 166 190 160 116 Q 140 146 100 142 Q 60 146 40 116 Z",
+  hat: "M 28 95 Q 40 91 48.7 76 L 96.5 7 Q 100 -1.5 103.5 7 L 151.3 76 Q 160 91 172 95 Z",
+  brim: { x: 26, y: 90, width: 148, height: 20, rx: 10 },
+} as const;
+
 /** What the card says of the hole, as its link card does: its cup, number and
  *  par over its name, and the score; term, the clip's word for it (Birdie!). */
 export interface Caption {

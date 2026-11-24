@@ -3,7 +3,8 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { gnokeyPlan, gnokeyPaste, gnokeyLate, chainSplit, GNOKEY_ADDR_KEY, PRICE } from "@/lib/adena";
 import { Button } from "@/components/ui";
-import { messageOf, useCopied } from "@/components/common";
+import { messageOf } from "@/lib/words";
+import { useCopied } from "@/components/hooks";
 import { errorKind, isAddress, type Chain } from "@/lib/chain";
 
 // "Use gnokey instead": the calls Adena would sign, as one paste for a

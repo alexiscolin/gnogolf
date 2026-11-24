@@ -11,7 +11,7 @@
 // ("chain"), not left to fail somewhere in the scene.
 
 import { hostOf, isLoopback } from "./network";
-import { trackError } from "./analytics";
+import { trackError, type NameRefusal } from "./analytics";
 import type {
   Bests, CourseLeaderboard, Extras, Ghost, HoleLeaderboard, HoleRank, HoleRow, Holes, HoleState, Mode, Rank, Round, SimulateFrom,
   DayCandidates, Saved, SimulateRound, Standings, StandingRow, StrokesRow, Vec2, Versions, Weather,
@@ -167,6 +167,28 @@ export const checks = {
 const isName = (n: string) => /^[a-z0-9._-]{1,64}$/i.test(n);
 /** What a name a registrar takes is made of (its own rules come after, ValidateNymFormat): what nameProblem asks first, and a gnokey paste takes. */
 export const nameShape = (n: string) => /^[a-z0-9_-]{1,64}$/.test(n);
+/** What a gno.land name may not start with (the registrar's reserved words). */
+const RESERVED = /^(gno|gl|g1|atom|atone|photon|cosmos)/;
+/** A name to start from: the gnome's (letters only, 5 to 13, "golfer" if too
+ *  short) and 3 digits, as the registrar wants them. rnd: 0..1. */
+export const suggestName = (gnome: string, rnd = Math.random()) => {
+  const l = gnome.toLowerCase().replace(/[^a-z]/g, "").slice(0, 13);
+  return (l.length >= 5 && !RESERVED.test(l) ? l : "golfer") + String(100 + Math.floor(rnd * 900));
+};
+
+/** The registrar's rules for what follows "nym-", in the order they are said: what breaks one, its words, its refusal's name. */
+const NAME_RULES: readonly (readonly [(stem: string) => boolean, string, NameRefusal])[] = [
+  [(n) => !/^[a-z]+\d{0,3}$/.test(n), "lowercase letters, then digits", "chars"],
+  [(n) => RESERVED.test(n), "it cannot start with gno, gl, g1, atom, atone, photon or cosmos", "reserved"],
+  [(n) => !/^[a-z]{5,13}(\d|$)/.test(n), "5 to 13 letters", "length"],
+  [(n) => !/^[a-z]{5,13}\d{3}$/.test(n), "and 3 digits to end", "digits"],
+];
+const broken = (stem: string) => NAME_RULES.find(([bad]) => bad(stem));
+/** The registrar's rule for what follows "nym-", said while typing ("" once it holds). */
+export const nameHint = (stem: string) => (!stem ? "5 to 13 letters, then 3 digits" : broken(stem)?.[1] ?? "");
+/** Why a name typed is refused, in a word: the rule it breaks, else the chain's answer (why, nameProblem's: "" none, null unread). */
+export const nameRefusal = (stem: string, why?: string | null): NameRefusal | null =>
+  !stem ? null : broken(stem)?.[2] ?? (!why ? null : /too close/i.test(why) ? "lookalike" : /taken\.$/.test(why) ? "taken" : /registrar/.test(why) ? "no_registrar" : "invalid");
 // what a refused stroke says, as the engine always said it
 const NO_PATH = "The chain answered without a path for that shot.";
 

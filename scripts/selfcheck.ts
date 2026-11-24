@@ -160,11 +160,11 @@ check("golf's own figures the gas model reads", () => {
 });
 check("the course ranking's order", () => {
   // most holes, then the score against par (strokes - par): what Standings,
-  // Players and a standing row give, and components/common.ts byStanding sorts by
+  // Players and a standing row give, and lib/card.ts byStanding sorts by
   assert.ok(has(golf, 'return pad(99999-r.holes, 5) + "/" + pad(vsParBias+r.strokes-r.par, 7) + "/" + pad(int(r.height), 12) + "/" + r.player'), "rankKey: the course ranking's order changed");
   assert.ok(has(realm("state.gno"), '`,"holes":` + strconv.Itoa(r.holes) + `,"strokes":` + strconv.Itoa(r.strokes) + `,"par":` + strconv.Itoa(r.par)'), "standingFields: a standing's numbers changed");
-  const common = fs.readFileSync(new URL("../web/components/common.ts", import.meta.url), "utf8");
-  assert.ok(has(common, "(z.holes || 0) - (a.holes || 0) || standingVs(a) - standingVs(z)") && has(common, "r.strokes - (r.par || 0)"), "byStanding no longer sorts as rankKey");
+  const card = fs.readFileSync(new URL("../web/lib/card.ts", import.meta.url), "utf8");
+  assert.ok(has(card, "(z.holes || 0) - (a.holes || 0) || standingVs(a) - standingVs(z)") && has(card, "r.strokes - (r.par || 0)"), "byStanding no longer sorts as rankKey");
 });
 check("weather.gno period", () => {
   assert.equal(RULES.periodMs, constOf(weather, "PeriodSeconds") * 1000, "PeriodSeconds");

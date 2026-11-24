@@ -12,7 +12,7 @@ import { PRICE, type SendError } from "@/lib/adena";
 import { sendGnome, gnomeCall, GNOME_TX } from "@/lib/gnomes/tx";
 import type { Chain } from "@/lib/chain";
 import { GNOMES_REALM } from "@/lib/chain";
-import { messageOf } from "@/components/common";
+import { messageOf } from "@/lib/words";
 import { seen, tokenSkin } from "@/lib/gnomes/wear";
 import { shareWords, type Worn } from "@/lib/gnomes/shop";
 import { thumb } from "./parts";

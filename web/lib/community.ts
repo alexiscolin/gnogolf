@@ -310,6 +310,11 @@ export function sortHoles(rows: readonly HoleRow[], by: SortBy, levels: Readonly
   const key = (h: HoleRow) => (by === "played" ? h.plays : by === "hard" ? (levels.get(h.id) ?? -1) : 0);
   return rows.map((h, i) => ({ h, i })).sort((x, y) => key(y.h) - key(x.h) || x.i - y.i).map(({ h }) => h);
 }
+/** The community's holes, those their author has holed first (holed: the chain's answer per hole, as read), each group in its own order. */
+export const authorFirst = <H extends { id: string }>(list: readonly H[], holed: ReadonlyMap<string, boolean>) =>
+  [...list.filter((h) => holed.get(h.id) === true), ...list.filter((h) => holed.get(h.id) !== true)];
+/** A community hole's mark: whether its author has holed it, nothing until the chain has said. */
+export const authorMark = (holed: boolean | undefined) => (holed === undefined ? "" : holed ? "Holed by its author" : "Not yet holed by its author");
 
 /** Where a hole's level on the meter (lib/builder/difficulty.ts, worked out in this browser) is kept: this, which chain's realm (its id, genesis, realm), its version's id. */
 export const HARD_KEY = "gnogolf.hardness";

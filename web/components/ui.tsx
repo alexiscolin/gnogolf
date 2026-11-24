@@ -5,8 +5,7 @@
 // Their look is in globals.css under "shared controls".
 
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ComponentProps, type ChangeEventHandler, type HTMLAttributes, type ReactNode } from "react";
-import { vsPar } from "@/lib/card";
-import { vsParWords } from "@/components/common";
+import { vsPar, vsParWords } from "@/lib/card";
 import { buttonClass, type ButtonLook } from "@/components/button";
 
 /** A button (its variants and sizes: button.ts); keycap: its key, in a cap after the words (never taller than the button). */

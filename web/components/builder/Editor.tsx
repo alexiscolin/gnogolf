@@ -10,7 +10,7 @@
 // stays open below it (the same zoom, selection and history after).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
-import { useFlash } from "@/components/common";
+import { useFlash } from "@/components/hooks";
 import { census } from "@/lib/builder/drawn";
 import { canPlace, toWorld, copyPiece, dropEnd, fixOf, gate, movePiece, placeNear, placePiece, removePiece, roomFor, whereOf, clampMove } from "@/lib/builder/edit";
 import { brokenLine, CHECKING, gauges, meterFace, offAtLimit, pieceGauges, playWhenAsked, sameShape, testGate } from "@/lib/builder/editor";

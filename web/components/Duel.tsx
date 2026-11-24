@@ -6,7 +6,7 @@
 import type { ReactNode } from "react";
 import { skyWord, type Duel } from "@/lib/duel";
 import type { Mode } from "@/lib/types";
-import { AIM_NAMES } from "@/components/common";
+import { AIM_NAMES } from "@/lib/words";
 
 /** The weather the ghost was played in and today's, when both are known ("" is clear). */
 export type Sky = { theirs: string; mine: string } | null;

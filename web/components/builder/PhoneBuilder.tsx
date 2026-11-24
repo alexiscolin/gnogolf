@@ -10,7 +10,7 @@ import "@/app/build/phone.css";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton, FrontHead } from "@/components/About";
-import { useCopied } from "@/components/common";
+import { useCopied } from "@/components/hooks";
 import { worldName } from "@/lib/builder/rules";
 import { Button } from "@/components/ui";
 import { buttonClass } from "@/components/button";

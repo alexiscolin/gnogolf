@@ -1,7 +1,8 @@
 // A published hole shared from the Builder, as the game shares one: the
 // game's own link, and a card of the 3D preview with the hole's name, its
 // byline and the author's score to beat under it.
-import { holeLink, strokesWord } from "@/components/common";
+import { holeLink } from "@/lib/links";
+import { strokesWord } from "@/lib/words";
 import { FONT, GREEN, INK, PAPER } from "@/lib/brand";
 import { MAX_TITLE } from "@/lib/builder/draft";
 import { holeByline } from "@/lib/builder/holes";

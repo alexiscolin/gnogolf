@@ -11,7 +11,8 @@
 // replayed under the author's id in each weather. Its HUD is the game's own.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button, Dialog } from "@/components/ui";
-import { messageOf, useFlash } from "@/components/common";
+import { messageOf } from "@/lib/words";
+import { useFlash } from "@/components/hooks";
 import { CamButton } from "@/components/CamButton";
 import Weather, { SkyIcon } from "@/components/Weather";
 import { connect, hasAdena } from "@/lib/adena";

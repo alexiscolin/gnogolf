@@ -12,8 +12,8 @@ import { isTouch } from "@/lib/device";
 import { networkOf } from "@/lib/network";
 import { Button, Segmented } from "@/components/ui";
 import { GnokeyTx } from "@/components/Gnokey";
-import { messageOf, shortAddr } from "@/components/common";
-import { wait, type Chain } from "@/lib/chain";
+import { messageOf } from "@/lib/words";
+import { wait, shortAddr, type Chain } from "@/lib/chain";
 
 const AMOUNTS = TIPS.map(String);
 // the owner as read once per chain: read ahead (Golf, at the game's build), so the tip is whole as its sheet opens

@@ -4,7 +4,7 @@
 import type { HoleRow } from "./types";
 import type { ChainBest } from "./chain";
 import { skyOf } from "./sky";
-import { counted } from "./words";
+import { counted, holesWord } from "./words";
 
 /** A hole as the card reads it: a row of Holes(), or as much of one as is known. */
 type CardHole = Pick<HoleRow, "id"> & Partial<Pick<HoleRow, "slot" | "par" | "world">>;
@@ -14,6 +14,8 @@ export type Card = Record<string, number>;
 // Par is the hole's own, from the chain (Holes()/HoleState() "par"); a hole that
 // does not say (or is not known yet) is a par 3.
 export const parOf = (h: Partial<Pick<HoleRow, "par">> | null | undefined) => (h && h.par) || 3;
+/** The par of the hole being played. */
+export const parHere = (s: { id: string | null; holes: readonly HoleRow[]; allHoles?: readonly HoleRow[] }) => parOf(s.holes.find((h) => h.id === s.id) || (s.allHoles || []).find((h) => h.id === s.id));
 
 const KEY = "gnogolf.card";
 const VKEY = "gnogolf.card.v"; // 2: keyed by slot (see migrate)
@@ -236,6 +238,51 @@ export const guessCup = (link: string): Cup => CUPS.find((c) => link.includes(c)
 
 /** A score against par as the game prints it: E, +3, −2 (a real minus sign). */
 export const vsPar = (n: number) => (n === 0 ? "E" : n > 0 ? `+${n}` : `−${-n}`);
+/** A score against par in words: "level par", else vsPar's +3, −2. */
+export const vsParWords = (n: number) => (n === 0 ? "level par" : vsPar(n));
+/** A row's score against par: a course standing's strokes less its holes' pars; a hole's row (no par) its strokes. */
+export const standingVs = (r: { strokes: number; par?: number }) => r.strokes - (r.par || 0);
+/** The course ranking's rule, as its boards caption it. */
+export const RANKED_BY = "most holes, then best score against par";
+/** The course ranking's order (golf.gno rankKey): most holes, then the best score against par; a hole's rows, fewest strokes. */
+export const byStanding = (a: { holes?: number; strokes: number; par?: number }, z: { holes?: number; strokes: number; par?: number }) =>
+  (z.holes || 0) - (a.holes || 0) || standingVs(a) - standingVs(z);
+/** What the next stroke n is worth on a par, called out big before it (solo): for an ace, albatross,
+ *  eagle, birdie, par, bogey; past that, how far over par the round already is. */
+export const strokeFor = (n: number, par: number) =>
+  n === 1 ? "For an ace!" : n <= par - 3 ? "For albatross!" : n === par - 2 ? "For eagle!" : n === par - 1 ? "For birdie!" : n === par ? "For par!" : n === par + 1 ? "For bogey" : `${n - 1 - par} over par`;
+
+/** A score in golf's own words, from the strokes against par. */
+export function golfTerm(strokes: number, par: number) {
+  if (strokes === 1) return "Hole in one!";
+  const d = strokes - par;
+  return d <= -3 ? "Albatross!" : d === -2 ? "Eagle!" : d === -1 ? "Birdie!" : d === 0 ? "Par" : d === 1 ? "Bogey" : d === 2 ? "Double bogey" : d === 3 ? "Triple bogey" : `${d} over par`;
+}
+
+/** The number a hole shows: its place in its cup's course, as the chain
+ *  orders it (not the number in its old realm's name: hole19 is the 17th of
+ *  the garden); "–" for a hole in no cup (community, archived), never "1". */
+export function holeNumber(holes: readonly Pick<HoleRow, "id">[], id: string | null) {
+  const i = holes.findIndex((h) => h.id === id);
+  return i >= 0 ? String(i + 1) : "–";
+}
+
+/** The course in numbers, from the chain's holes per cup (a snapshot's
+ *  worlds): the cups that have holes and their holes; read from
+ *  the chain, so the Crystal Mines count once published, not before. */
+export function courseCount(counts: Readonly<Record<string, number>>) {
+  const cups = CUPS.filter((c) => (counts[c] || 0) > 0);
+  return { cups: cups.length, holes: cups.reduce((n, c) => n + counts[c], 0) };
+}
+/** The cup after this one that has holes ("" after the last). */
+export const nextCup = (cup: string, counts: Readonly<Record<string, number>>) =>
+  CUPS.slice(CUPS.indexOf(cup as Cup) + 1).find((c) => (counts[c] || 0) > 0) || "";
+/** The hole to play next: the first after this one not yet played, else the first not played at all. */
+// only: the holes that may come next (a duel's: where their ghost is), played ones too when none is left unplayed, never this one
+export const nextHole = <H extends Pick<HoleRow, "id" | "slot">>(s: { holes: readonly H[]; id: string | null }, card: Card, only?: (h: H) => boolean) => {
+  const at = s.holes.findIndex((h) => h.id === s.id), open = (h: H) => (!only || only(h)) && !scoreOf(card, h);
+  return s.holes.find((h, i) => i > at && open(h)) || s.holes.find(open) || (only && (s.holes.find((h, i) => i > at && only(h)) || s.holes.find((h) => h.id !== s.id && only(h))));
+};
 
 /** A cup's totals: totals(), and whether it is finished at par or under (clean) or begun (open). */
 export type CupTotal = ReturnType<typeof totals> & { clean: boolean; open: boolean };
@@ -283,7 +330,7 @@ export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** What a restore from the chain brought back, in one sentence: its holes,
  *  its badges, the gnomes they unlocked by name. */
 export function backFromChain({ holes, badges, gnomes }: { holes: number; badges: number; gnomes: readonly string[] }) {
-  const what = [holes && counted("hole")(holes), badges && counted("badge")(badges), ...gnomes.map((g) => `${theName(g)} gnome`)].filter(Boolean);
+  const what = [holes && holesWord(holes), badges && counted("badge")(badges), ...gnomes.map((g) => `${theName(g)} gnome`)].filter(Boolean);
   return `Back from the chain: ${what.join(", ").replace(/, ([^,]*)$/, " and $1")}.`;
 }
 

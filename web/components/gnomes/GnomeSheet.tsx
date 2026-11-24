@@ -14,7 +14,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import { GnokeyTx } from "@/components/Gnokey";
-import { messageOf } from "@/components/common";
+import { messageOf } from "@/lib/words";
 import { ADENA_URL, GNOT_URL } from "@/lib/network";
 import { reducedMotion } from "@/lib/device";
 import { hasAdena, onOurNode, resultOf, PRICE, type SendError } from "@/lib/adena";
