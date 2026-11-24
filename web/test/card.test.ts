@@ -222,13 +222,6 @@ test("cupTotals: buckets holes by cup, a hole in no cup counts in none", () => {
   assert.equal(t.aces, 0); // the pond's ace does not count toward any cup
 });
 
-test("cupTotals: slam is true only once every cup the chain has is clean", () => {
-  const card = { "garden/1": 3, "garden/2": 3, "island/1": 3, "island/2": 3 };
-  assert.equal(cupTotals(card, allHoles).slam, true);
-  const worse = { "garden/1": 3, "garden/2": 3, "island/1": 3, "island/2": 5 };
-  assert.equal(cupTotals(worse, allHoles).slam, false);
-});
-
 test("cupTotals: a single-cup chain can never slam", () => {
   const oneCup = allHoles.filter((h) => h.world === "garden");
   const card = { "garden/1": 3, "garden/2": 3 };
@@ -249,9 +242,7 @@ test("UNLOCKS: each ok() reads the matching field off cupTotals", () => {
   assert.equal(UNLOCKS.diver.ok(t), true); // island clean
   assert.equal(UNLOCKS.baker.ok(t), false); // town never played
   assert.equal(UNLOCKS.mayor.ok(t), false);
-  // king mirrors slam: this chain only has garden+island holes, and both are
-  // clean, so it is a grand slam even though town/mountain were never played
-  assert.equal(UNLOCKS.king.ok(t), true);
+  assert.equal(UNLOCKS.king.ok(t), false); // no slam: the chain has no town or mountain hole
 });
 
 test("UNLOCKS.king: false once a cup the chain actually has is left unclean", () => {
@@ -309,6 +300,15 @@ test("cupTotals: the mines are a cup of their own, left out of the slam", () => 
   assert.equal(UNLOCKS.king.ok(t), true);
   assert.equal(cupTotals({ ...fourAtPar, "mountain/2": 4, "mines/1": 6, "mines/2": 6 }, fiveCups).slam, false, "the mines at par make up for no classic cup");
   assert.equal(cupTotals({ "mines/1": 1, "mines/2": 1 }, fiveCups).aces, 2, "their aces count toward the Golden Gnome");
+});
+
+// the realm's rule (earned.gno prove): a classic cup with no slot is not at par
+test("cupTotals: no slam while a classic cup has no hole", () => {
+  const noMountain = fiveCups.filter((h) => h.world !== "mountain");
+  const t = cupTotals({ "garden/1": 3, "garden/2": 3, "island/1": 3, "island/2": 3, "town/1": 3, "town/2": 3, "mines/1": 6, "mines/2": 6 }, noMountain);
+  assert.equal(t.mines.clean, true);
+  assert.equal(t.slam, false);
+  assert.equal(UNLOCKS.king.ok(t), false);
 });
 
 test("UNLOCKS.miner: finishing the Crystal Mines, at any score", () => {

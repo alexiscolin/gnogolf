@@ -79,6 +79,14 @@ func best(f *fakeRows, id, mode, player string, strokes int) {
 // copied marks that best as a copy (golf/v2 copiesOf): kept, never ranked.
 func copied(f *fakeRows, id, mode, player string) { f.set("copies", id+" "+mode+" "+player, "1") }
 
+// played puts a fake store in place where who has a record in mode (golf/v2's
+// totals row). The next setUp takes it away.
+func played(mode string, who address) {
+	f := newFake()
+	golfRows = f
+	f.set("totals", mode+" "+who.String(), "1")
+}
+
 // cupHoles publishes n holes of a world, par 3 each; returns their version ids.
 func cupHoles(f *fakeRows, world string, n int) []string {
 	var ids []string
@@ -206,6 +214,19 @@ func TestKingIsVikingOnTheFourClassicCups(cur realm, t *testing.T) {
 	best(f, "mountain/18/v1", "assisted", a, 4)
 	ok, _, _ = prove("king", a)
 	uassert.False(t, ok)
+}
+
+// A classic cup with no slot is not at par: web/lib/card.ts cupTotals agrees.
+func TestKingWaitsForEachClassicCup(cur realm, t *testing.T) {
+	a := alice.String()
+	f := withRows(t, cur)
+	for _, w := range []string{"garden", "island", "town"} {
+		for _, id := range cupHoles(f, w, 18) {
+			best(f, id, "assisted", a, 3)
+		}
+	}
+	ok, _, _ := prove("king", a)
+	uassert.False(t, ok, "no Mountain slot")
 }
 
 func TestWhatDoesNotCount(cur realm, t *testing.T) {

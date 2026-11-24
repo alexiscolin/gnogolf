@@ -7,7 +7,6 @@ import (
 	"gno.land/p/nt/testutils/v0"
 	"gno.land/p/nt/uassert/v0"
 	"gno.land/p/nt/urequire/v0"
-	"gno.land/r/gnogolf/store"
 )
 
 // noSale is a published collection with the mint open and no sale.
@@ -57,11 +56,7 @@ func TestASaleIsCheckedWhole(cur realm, t *testing.T) {
 func TestThePlayerWindowIsForPlayers(cur realm, t *testing.T) {
 	noSale(t, cur)
 	urequire.NoError(t, openSale(genesisName, now(), 48))
-	testing.SetRealm(testing.NewCodeRealm(rules))
-	store.Set(cross(cur), "totals", "pro "+alice.String(), "1")
-	// a code realm set takes the -send envelope with it: name this realm
-	// its payee again, as on chain, where it lands on the realm called
-	testing.SetRealm(testing.NewCodeRealm("gno.land/r/gnogolf/gnomes"))
+	played("pro", alice)
 
 	testing.SetRealm(asUser(bob, ugnot(tiers[0].price)))
 	urequire.AbortsContains(t, cur, "players only", func() { Buy(cross(cur), itoa(nthOfTier(0, 0))) })
@@ -81,13 +76,13 @@ func TestThePlayerWindowIsForPlayers(cur realm, t *testing.T) {
 	Buy(cross(cur), itoa(nthOfTier(0, int(playerCap[0])+1)))
 }
 
-// store is not reset between tests: each address here is this test's own.
-func TestARecordInEitherModeCounts(cur realm, t *testing.T) {
+func TestARecordInEitherModeCounts(t *testing.T) {
 	assisted, pro, none := testutils.TestAddress("assisted"), testutils.TestAddress("pro"), testutils.TestAddress("none")
+	f := newFake()
+	golfRows = f
 	uassert.False(t, hasRecord(assisted))
-	testing.SetRealm(testing.NewCodeRealm(rules))
-	store.Set(cross(cur), "totals", "assisted "+assisted.String(), "1")
-	store.Set(cross(cur), "totals", "pro "+pro.String(), "1")
+	f.set("totals", "assisted "+assisted.String(), "1")
+	f.set("totals", "pro "+pro.String(), "1")
 	uassert.True(t, hasRecord(assisted))
 	uassert.True(t, hasRecord(pro))
 	uassert.False(t, hasRecord(none))
@@ -182,9 +177,7 @@ func TestAWindowSurvivesASaleCancelledBeforeIt(cur realm, t *testing.T) {
 	winter(t)
 	urequire.NoError(t, openSale("winter-2027", now()+24*3600, 0))
 	urequire.NoError(t, openSale(genesisName, now(), 48))
-	testing.SetRealm(testing.NewCodeRealm(rules))
-	store.Set(cross(cur), "totals", "pro "+alice.String(), "1")
-	testing.SetRealm(testing.NewCodeRealm("gno.land/r/gnogolf/gnomes"))
+	played("pro", alice)
 	for i := 0; i < int(playerCap[0]); i++ {
 		testing.SetRealm(asUser(alice, ugnot(tiers[0].price)))
 		Buy(cross(cur), itoa(nthOfTier(0, i)))
@@ -204,9 +197,7 @@ func TestEachSaleHasItsOwnWindow(cur realm, t *testing.T) {
 	winter(t)
 	urequire.NoError(t, openSale(genesisName, now(), 48))
 	urequire.NoError(t, openSale("winter-2027", now(), 48))
-	testing.SetRealm(testing.NewCodeRealm(rules))
-	store.Set(cross(cur), "totals", "pro "+bob.String(), "1")
-	testing.SetRealm(testing.NewCodeRealm("gno.land/r/gnogolf/gnomes"))
+	played("pro", bob)
 	testing.SetRealm(asUser(bob, ugnot(3*tiers[0].price)))
 	Buy(cross(cur), idsOf(0, 3))
 	testing.SetRealm(asUser(bob, ugnot(3*tiers[0].price)))

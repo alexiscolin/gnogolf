@@ -105,7 +105,8 @@ func TestALegendaryIsBoughtOneAWallet(cur realm, t *testing.T) {
 }
 
 // OriginSend is only the caller's money on a direct call: a realm or a run
-// script in between could keep what it attached.
+// script in between could keep what it attached. A test here cannot build a
+// run script: scripts/e2e-gnomes.sh holds that case.
 func TestBuyMustBeADirectUserCall(cur realm, t *testing.T) {
 	fresh(t, cur)
 	price := priceOf(common())
