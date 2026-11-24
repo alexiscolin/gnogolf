@@ -263,9 +263,8 @@ export function cupTotals(card: Card, allHoles: readonly CardHole[]) {
     return { ...t, clean: t.all && t.strokes <= t.par, open: t.done > 0 || t.all };
   };
   const out = Object.fromEntries(CUPS.map((c) => [c, cup(c)])) as Record<Cup, CupTotal>;
-  // The grand slam: every classic cup the chain has, at par or under. Not the mines: the King would move behind the expert cup.
-  const cups = CLASSIC.filter((c) => allHoles.some((h) => cupOf(h) === c));
-  return { ...out, slam: cups.length > 1 && cups.every((c) => out[c].clean), aces: CUPS.reduce((n, c) => n + out[c].aces, 0) };
+  // The grand slam: each of the four classic cups at par or under, as the realm mints the King. Not the mines: the King would move behind the expert cup.
+  return { ...out, slam: CLASSIC.every((c) => out[c].clean), aces: CUPS.reduce((n, c) => n + out[c].aces, 0) };
 }
 
 /** A gnome to earn: the cup whose card earns it, what it takes, and whether cupTotals() has it. */

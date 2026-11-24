@@ -7,7 +7,6 @@ import (
 	"gno.land/p/nt/testutils/v0"
 	"gno.land/p/nt/uassert/v0"
 	"gno.land/p/nt/urequire/v0"
-	"gno.land/r/gnogolf/store"
 )
 
 // CanBuy must answer as Buy would, with Buy's reason.
@@ -39,10 +38,7 @@ func idsOf(i, n int) string {
 // Each refusal Buy has but the payment's, and CanBuy giving it first: its
 // code, and Buy's own sentence, which Buy then panics with to the letter.
 func TestCanBuyAndBuyNeverDisagree(cur realm, t *testing.T) {
-	player := testutils.TestAddress("canbuy player") // store is not reset between tests
-	testing.SetRealm(testing.NewCodeRealm(rules))
-	store.Set(cross(cur), "totals", "pro "+player.String(), "1")
-	testing.SetRealm(testing.NewCodeRealm("gno.land/r/gnogolf/gnomes"))
+	player := testutils.TestAddress("canbuy player")
 
 	for _, c := range []struct {
 		code, said string
@@ -71,6 +67,7 @@ func TestCanBuyAndBuyNeverDisagree(cur realm, t *testing.T) {
 	} {
 		testing.SetRealm(testing.NewCodeRealm("gno.land/r/gnogolf/gnomes")) // the last case's buyer gone
 		fresh(t, cur)
+		played("pro", player)
 		if c.setUp != nil {
 			c.setUp()
 		}
@@ -114,11 +111,9 @@ func TestCanBuySaysWhatToSend(cur realm, t *testing.T) {
 // "left" is the lifetime caps less what was bought; "window" the first id's
 // sale's player window, its caps less what was bought in it, until it ends.
 func TestCanBuyShowsTheCapsLeft(cur realm, t *testing.T) {
-	player := testutils.TestAddress("canbuy window") // store is not reset between tests
-	testing.SetRealm(testing.NewCodeRealm(rules))
-	store.Set(cross(cur), "totals", "assisted "+player.String(), "1")
-	testing.SetRealm(testing.NewCodeRealm("gno.land/r/gnogolf/gnomes"))
+	player := testutils.TestAddress("canbuy window")
 	fresh(t, cur)
+	played("assisted", player)
 	windowOf(now(), 48)
 	until := itoa(sales[0].playersUntil)
 	ids := idsOf(0, 2)

@@ -253,6 +253,22 @@ urigas() {
 	[ -n "$base" ] && [ -n "$one" ] || { echo "failed"; return; }
 	echo $((one - base))
 }
+# norun <step> <panic substring> <key> <call>: a run script (maketx run)
+# making that call on gnomes, SEND attached, refused with that panic. A unit
+# test cannot build one. By gnokey: a player signs it.
+norun() {
+	local s=$1 e=$2 c="$3: run { gnomes.$4 }${SEND:+ send $SEND} [gnokey]" try
+	printf 'package main\n\nimport gnomes "%s"\n\nfunc main(cur realm) {\n\tgnomes.%s\n}\n' "$GN" "$4" >"$WORK/run.gno"
+	for try in 1 2 3; do # (as gnotx: a sequence read before the last tx's block)
+		TXOUT=$(echo "$PASS" | "$GNOKEY" maketx run -home "$KH" ${SEND:+-send "$SEND"} -gas-fee 10000000ugnot -gas-wanted 400000000 \
+			-remote "$RPC_ADDR" -chainid "$CHAINID" -broadcast -insecure-password-stdin "$3" "$WORK/run.gno" 2>&1)
+		printf %s "$TXOUT" | grep -q 'unauthorized error' || break
+		sleep 2
+	done
+	if printf %s "$TXOUT" | grep -q '^OK!'; then row "$s" "$c" "refused: $e" "went through" 1
+	elif printf %s "$TXOUT" | grep -q "$e"; then row "$s" "$c" "refused: $e" "refused: $(why)" 0
+	else row "$s" "$c" "refused: $e" "refused otherwise: $(why)" 1; fi
+}
 # within <step> <call> <bound> <got>: a number at most bound
 within() { if [ "$4" -eq "$4" ] 2>/dev/null && [ "$4" -le "$3" ]; then row "$1" "$2" "≤ $3" "$4" 0; else row "$1" "$2" "≤ $3" "${4:-none}" 1; fi; }
 # URIMAX: the most a TokenURI may take on a chain: the dearest portrait's
@@ -482,6 +498,7 @@ no "buy: nothing sent" "wrong payment" p1 "$GN" Buy 5
 SEND=36000000ugnot no "buy: not an id" "not a gnome id" p1 "$GN" Buy 05
 SEND=216000000ugnot no "buy: at most 5 ids" "name 1 to 5 gnomes" p1 "$GN" Buy 1,2,3,4,5,6
 SEND=72000000ugnot no "buy: an id twice" "is named twice" p1 "$GN" Buy 5,5
+SEND=36000000ugnot norun "buy: not through a run script" "call this directly" p1 'Buy(cross(cur), "5")'
 t_before=$(bal "$OWNER")
 SEND=36000000ugnot ok "buy: p1 buys Common 5 at its price" "sold" p1 "$GN" Buy 5
 is "buy: treasury up by the price" "balance(treasury) after - before" "36000000" "$(($(bal "$OWNER") - t_before))"
@@ -564,6 +581,7 @@ t_before=$(bal "$OWNER")
 SEND=72000000ugnot ok "treasury: a buy while only offered" "sold" p0 "$GN" Buy "$rare"
 is "treasury: still paid to the old one" "balance(test1) after - before" "72000000" "$(($(bal "$OWNER") - t_before))"
 no "treasury: only the offered takes it" "no treasury is offered to you" p0 "$GN" AcceptTreasury
+norun "treasury: not through a run script" "no treasury is offered to you" treas 'AcceptTreasury(cross(cur))'
 ok "treasury: treas accepts" "taken" treas "$GN" AcceptTreasury
 is "treasury: moved" "Treasury(), PendingTreasury()" "$TREAS " "$(qg 'Treasury()') $(qg 'PendingTreasury()')"
 is "treasury: royalty follows" "RoyaltyInfo(\"5\", 1000000)" "$TREAS 50000" "$(qraw 'RoyaltyInfo("5",1000000)' | sed 's/^data: //' | head -2 | tr -d '()"' | awk '{print $1}' | paste -sd' ' -)"
@@ -639,6 +657,7 @@ is "earned: EarnedOpen(), MintOpen()" "EarnedOpen() MintOpen()" "false true" "$(
 is "earned: Collection().earnedOpen" "Collection().earnedOpen" "False" "$(qg 'Collection()' | jf 'd["earnedOpen"]')"
 no "earned: none while it is off" "earned gnomes are paused" p1 "$GN" MintEarned wizard
 ok "earned: the switch on" "open" test1 "$GN" SetEarnedOpen true
+norun "earned: not through a run script" "call this directly" p1 'MintEarned(cross(cur), "wizard")'
 ok "earned: p1 finished the Garden Cup (wizard)" "minted 1000001" p1 "$GN" MintEarned wizard
 is "earned: OwnerOf(1000001)" "OwnerOf(\"1000001\")" "$P1" "$(qg 'OwnerOf("1000001")')"
 no "earned: once" "already minted: wizard" p1 "$GN" MintEarned wizard

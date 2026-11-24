@@ -103,7 +103,7 @@ const (
 // worlds are golf/v2's cups in its order: a slot key's first digit.
 var worlds = []string{"garden", "island", "town", "mountain", "mines"}
 
-// reader is what the proof reads of store; the tests put their own rows here.
+// reader is what this realm reads of store; the tests put their own rows here.
 type reader interface {
 	Page(name, start, end string, limit int) string
 	Get(name, key string) (string, bool)
