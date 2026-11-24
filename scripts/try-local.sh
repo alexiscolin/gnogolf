@@ -150,7 +150,7 @@ fi
 RPC_PORT=${RPC_PORT:-26667} GNOWEB_PORT=${GNOWEB_PORT:-8868}
 CHAINID=${CHAINID:-gnogolf-local}
 NS=${NS:-nym-trylocal000}
-[ -x "$GNOKEY" ] && [ -x "$toolchain/gnodev" ] || die "no onyx toolchain in $toolchain (the README, \"Run it\"), or set GNO_TOOLCHAIN"
+[ -x "$GNOKEY" ] && [ -x "$toolchain/gnodev" ] || die "no onyx toolchain in $toolchain (docs/development.md, \"The toolchain\"), or set GNO_TOOLCHAIN"
 [ -d "$root/web/node_modules" ] || die "the client's packages are not installed: (cd web && npm ci)"
 for p in "$APP_PORT" "$RPC_PORT" "$GNOWEB_PORT"; do
 	! taken "$p" || die "port $p is taken (another gnodev or dev server?): stop it, or set APP_PORT, RPC_PORT, GNOWEB_PORT"

@@ -58,7 +58,7 @@ elif [ -x "$GNO" ]; then
 	# the holes' par plans: the solver's, kept out of the public repo
 	[ -f "$root/private/botcheck/hole-bests.json" ] || skipped="$skipped (the wasm parity: random shots only, no par plans)"
 else
-	echo "check.sh: no onyx gno at $GNO. Build the toolchain there (the README, \"Run it\"), or set GNO_TOOLCHAIN (or GNO) to one; SKIP_GNO=1 checks the client alone." >&2
+	echo "check.sh: no onyx gno at $GNO. Build the toolchain there (docs/development.md, \"The toolchain\"), or set GNO_TOOLCHAIN (or GNO) to one; SKIP_GNO=1 checks the client alone." >&2
 	exit 1
 fi
 
