@@ -21,7 +21,7 @@
 //
 // WIDTH and HEIGHT set the window (1280x800); NOSUBTLE=1 takes crypto.subtle
 // away, as a page on plain http from another machine is. At the first run it checks
-// that the three hints and the three steps' words are each in the window, on
+// that the four hints and the three steps' words are each in the window, on
 // top (nothing drawn over them), and readable (4.5:1 on their ground at
 // least), and that the hints are gone once a piece is dragged.
 //
@@ -46,6 +46,7 @@ const cdp = (await import("../media/lib/cdp.mjs")) as {
   APP: string;
 };
 const { launch, sleep, APP } = cdp;
+const { holingRound } = (await import("../media/lib/holing.mjs")) as { holingRound: (strokes: number) => string };
 interface Wallet { pump: () => Promise<void> }
 const SEED = process.env.SEED || "", KEY = process.env.KEY || "p1";
 const stand = SEED
@@ -92,7 +93,7 @@ try {
     const ground = (el) => { for (let e = el; e; e = e.parentElement) { const bg = getComputedStyle(e).backgroundColor; if (!/rgba\\(.*, 0\\)$/.test(bg) && bg !== "transparent") return bg; } return "rgb(255, 255, 255)"; };
     const parts = [...document.querySelectorAll(".bhint"), ...[...document.querySelectorAll(".stepper .step button")].map((b) => b.querySelector("span") || b)];
     const bad = [];
-    if (parts.length < 6) bad.push("only " + parts.length + " parts (3 hints, 3 steps)");
+    if (parts.length < 7) bad.push("only " + parts.length + " parts (4 hints, 3 steps)");
     for (const el of parts) {
       const r = el.getBoundingClientRect(), name = (el.textContent || "").trim().slice(0, 30), cs = getComputedStyle(el);
       if (!r.width || !r.height || cs.display === "none" || cs.visibility !== "visible" || +cs.opacity < 0.9) { bad.push(name + ": not shown"); continue; }
@@ -176,28 +177,7 @@ async function holeOne(): Promise<string> {
     await until(`!!window.__g && !!document.querySelector(".tmode__chip--now:not(.tmode__chip--done)") && document.querySelector(".tmode__score strong")?.textContent === "0" && !document.querySelector(".tmode__won")`, "a weather to play", 90_000);
     const kind = await c.js<string>(`document.querySelector(".tmode__chip--now .weather__say").textContent`);
     await sleep(1500);
-    const round = await c.js<[number, number][] | null>(`(async () => {
-      const g = window.__g, id = g.current(), p = await g.chain.period(), s = await g.chain.state(id);
-      const pin = s.cup, shots = [];
-      let rest = s.start;
-      const of = (a, pw) => a.toFixed(4) + "," + pw.toFixed(4);
-      for (let k = 0; k < 6; k++) {
-        let best = null;
-        const toward = Math.atan2(pin[1] - rest[1], pin[0] - rest[0]) * 180 / Math.PI;
-        for (let da = -40; da <= 40; da += 2) for (let pw = 0.5; pw <= 10; pw += 0.25) {
-          const a = Math.round((toward + da) * 100) / 100;
-          let r;
-          try { r = k === 0 ? await g.chain.simulateRound(id, [of(a, pw)], p) : await g.chain.simulateFrom(id, rest, of(a, pw), k, p); } catch { continue; }
-          if (r.holed) return [...shots, [a, pw]];
-          const d = Math.hypot(r.rest[0] - pin[0], r.rest[1] - pin[1]);
-          if (!best || d < best.d) best = { a, pw, rest: r.rest, d };
-        }
-        if (!best) return null;
-        shots.push([best.a, best.pw]);
-        rest = best.rest;
-      }
-      return null;
-    })()`);
+    const round = await c.js<[number, number][] | null>(holingRound(6));
     if (!round) throw new Error(`no round found in ${kind}`);
     said(`${kind}: a round of ${round.length} found`);
     for (const [k, [a, pw]] of round.entries()) {
@@ -211,7 +191,6 @@ async function holeOne(): Promise<string> {
 
 /** Publish pressed on the summary: the form and its checks, the budget, and (SEED) published for real. */
 async function publishAndCheck() {
-  try {
   // Publish: the form, the name shown
   await click(onCard(/^Publish →$/), "Publish →");
   await until(`!!document.querySelector(".pub")`, "the Publish form");
@@ -247,10 +226,4 @@ async function publishAndCheck() {
   console.log("builderwalk: ok");
   c.kill();
   process.exit(0);
-  } catch (e) {
-  console.error(`builderwalk: ${e instanceof Error ? e.message : String(e)}`, JSON.stringify(count), JSON.stringify(c.errors).slice(0, 800));
-  console.error("state", JSON.stringify(await c.ev(`({ pub: document.querySelector(".pub")?.textContent.replace(/\\s+/g, " ").slice(-400), chips: [...document.querySelectorAll(".tmode__chip")].map((x) => x.className + " " + x.textContent), score: document.querySelector(".tmode__score")?.textContent, won: document.querySelector(".tmode__won")?.textContent, notes: [...document.querySelectorAll(".tmode__notes p")].map((x) => x.textContent), step: document.querySelector("[aria-current=step]")?.textContent })`)));
-  c.kill();
-  process.exit(1);
-  }
 }

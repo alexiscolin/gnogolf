@@ -168,6 +168,7 @@ WORK=${WORK:-$(mktemp -d "$cache/run.XXXXXX")}
 # Ctrl+C (or any end): the Serve entries, the site, then the chain, each with what it started
 DEV_PID="" APP_PID="" SERVED=""
 stop() {
+	local rc=$?
 	trap - INT TERM EXIT
 	log ""
 	log "try-local: stopping"
@@ -176,9 +177,10 @@ stop() {
 	wait 2>/dev/null
 	rm -f "$last" "$WORK/app.pid" "$WORK/dev.pid"
 	log "try-local: stopped (its files stay in $WORK)"
-	exit 0
+	exit "$rc"
 }
-trap stop INT TERM EXIT
+trap stop EXIT
+trap 'exit 130' INT TERM
 echo "$WORK" >"$last"
 
 # ------------------------------------------------------------------ the chain
@@ -191,7 +193,7 @@ MNEMONIC_p1=$MNEMONIC_p1 MNEMONIC_p0=$MNEMONIC_p0 \
 	SEED=1 SEED_WORLDS="garden island town mountain mines" SEED_PUBLISHING=1 SEED_TREASURY=1 NS=$NS CHAINID=$CHAINID WORK=$WORK \
 	RPC_ADDR=127.0.0.1:$RPC_PORT WEB_ADDR=127.0.0.1:$GNOWEB_PORT \
 	bash "$root/scripts/e2e-gnomes.sh" >"$WORK/seed.out" 2>"$WORK/seed.log" ||
-	{ DEV_PID=$(sed -n 's/^DEV_PID=//p' "$WORK/seed.env" 2>/dev/null); tail -5 "$WORK/seed.log" >&2; die "the seed failed (its steps: $WORK/e2e.md)"; }
+	{ tail -5 "$WORK/seed.log" >&2; die "the seed failed (its steps: $WORK/e2e.md)"; }
 # shellcheck disable=SC1091
 . "$WORK/seed.env"
 echo "$DEV_PID" >"$WORK/dev.pid"

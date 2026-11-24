@@ -22,7 +22,7 @@ const TYPES = {
   ".woff2": "font/woff2", ".wasm": "application/wasm", ".webmanifest": "application/manifest+json", ".xml": "application/xml",
 };
 /** The node this may stream to: http on this machine, a port. */
-export const LOCAL_RPC = /^http:\/\/127\.0\.0\.1:\d{1,5}$/;
+const LOCAL_RPC = /^http:\/\/127\.0\.0\.1:\d{1,5}$/;
 
 /**
  * The server, not yet listening: root the static build, rpc the node.
@@ -84,7 +84,7 @@ export function playgroundServer({ root, rpc }) {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.main) {
   const [root, port, rpc] = process.argv.slice(2);
   if (!root || !/^\d{1,5}$/.test(port || "") || !rpc) throw new Error("usage: playground-server.mjs <out dir> <port> <rpc>");
   playgroundServer({ root, rpc }).listen(Number(port), "127.0.0.1", () => console.log(`playground: ${root} on http://127.0.0.1:${port}, /rpc to ${rpc}`));

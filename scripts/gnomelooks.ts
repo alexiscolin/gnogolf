@@ -3,7 +3,7 @@
 // catalogue and the nine earned kinds, a record of what makeBall builds from
 // its traits (web/test/looks.ts). The unit tests hold every gnome to it
 // (web/test/looks.test.ts). --write takes the records again, but never
-// changes one of a released series nor of an earned kind: a released look
+// changes nor drops one of a released series or of an earned kind: a released look
 // is changed by a new trait format, never in place (docs/gnomes/design.md,
 // "Permanence"). A record format that sees more (RECORD) is taken on only
 // where the gnome still draws as the file's own format recorded him.
@@ -43,11 +43,19 @@ for (const { key, traits, name, released } of goldenKeys(catalogue)) {
   }
 }
 const added = Object.keys(now).filter((k) => !(k in golden)).length;
+const lost = Object.keys(golden).filter((k) => !(k in now));
+for (const key of lost) {
+  // (a lost id's series: the last to start at or before it)
+  if (key.startsWith("earned:") || catalogue.series.findLast((s) => s.first <= Number(key))?.released) {
+    refused++;
+    console.log(`FAIL ${key}: a released look left the catalogue. Put it back; a released look is never taken out.`);
+  } else console.log(`lost ${key}`);
+}
 if (!write) {
-  console.log(`${changed} changed, ${added} new, of ${Object.keys(now).length}${was !== RECORD ? `; the file is in record format ${was}, not ${RECORD}: --write` : ""}`);
-  process.exit(changed || added || was !== RECORD ? 1 : 0);
+  console.log(`${changed} changed, ${added} new, ${lost.length} lost, of ${Object.keys(now).length}${was !== RECORD ? `; the file is in record format ${was}, not ${RECORD}: --write` : ""}`);
+  process.exit(changed || added || lost.length || was !== RECORD ? 1 : 0);
 }
 if (refused) process.exit(1);
 // one look a line
 fs.writeFileSync(FILE, `{\n "record": ${RECORD},\n "looks": {\n` + Object.entries(now).map(([k, v]) => `  ${JSON.stringify(k)}: ${JSON.stringify(v)}`).join(",\n") + "\n }\n}\n");
-console.log(`wrote data/gnomes/looks.golden.json: ${Object.keys(now).length} looks in record format ${RECORD}, ${changed} changed, ${added} new`);
+console.log(`wrote data/gnomes/looks.golden.json: ${Object.keys(now).length} looks in record format ${RECORD}, ${changed} changed, ${added} new, ${lost.length} lost`);

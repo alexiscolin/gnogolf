@@ -14,6 +14,7 @@ media/*
 !media/builder/
 # promo renders and the music file are rebuilt by media/promo/render.mjs
 media/promo/*.mp4
+media/promo/*-cover.jpg
 media/builder/gnogolf-builder*
 media/promo/shots-builder.json
 media/promo/music/
@@ -33,7 +34,6 @@ scripts/wasm/r/gnogolf/golf/golf_builder.go
 
 # local tool settings
 .netlify/
-media/promo/*-cover.jpg
 
 # internal notes, decisions by hand and the bot check cron: their own repo (a private repo)
 private/

@@ -643,8 +643,6 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   console.log("fixes: ok");
   c.kill();
 }
-// every palette entry dropped on the straight starter's lane, at a laptop's size and a retina one's: the selection's outline and a hover's
-// a few css px whatever the zoom (never a stroke in the board's units: a fat capsule over the cup), no overlay drawn empty
 // the open hole changed, then deleted, in another tab: this tab's edits not written over it, said, and its choice kept
 {
   const c = await editor(1280, 800);
@@ -790,6 +788,8 @@ for (const [w, h] of [[1280, 800], [900, 800]] as const) {
   c.kill();
 }
 
+// every palette entry dropped on the straight starter's lane, at a laptop's size and a retina one's: the selection's outline and a hover's
+// a few css px whatever the zoom (never a stroke in the board's units: a fat capsule over the cup), no overlay drawn empty
 for (const [w, h, dpr] of [[1440, 900, 1], [1800, 1170, 2]] as const) {
   const c = await launch({ width: w, height: h });
   await c.send("Emulation.setDeviceMetricsOverride", { width: w, height: h, deviceScaleFactor: dpr, mobile: false });

@@ -35,10 +35,16 @@ export function slotOf(name) {
 // Every Chrome this process started dies with it: at a normal exit, on
 // Ctrl-C or a kill, on an uncaught error, and after CDP_MAX_MS (default an
 // hour) should a run hang. A Chrome left running keeps a game page playing.
-const live = new Set();
+/** @type {Map<number, string>} each Chrome's pid -> the profile launch made for it ("" for the caller's) */
+const live = new Map();
 // Chrome runs in its own process group (detached), so a kill takes its helpers too
-const stop = (pid) => { try { process.kill(-pid, "SIGKILL"); } catch { try { process.kill(pid, "SIGKILL"); } catch {} } };
-const killAll = () => { for (const pid of live) stop(pid); live.clear(); };
+const stop = (pid) => {
+  try { process.kill(-pid, "SIGKILL"); } catch { try { process.kill(pid, "SIGKILL"); } catch {} }
+  const made = live.get(pid);
+  if (made) try { fs.rmSync(made, { recursive: true, force: true, maxRetries: 3 }); } catch {}
+  live.delete(pid);
+};
+const killAll = () => { for (const pid of live.keys()) stop(pid); };
 process.on("exit", killAll);
 for (const sig of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(sig, () => (killAll(), process.exit(130)));
 process.on("uncaughtException", (e) => (console.error(e), killAll(), process.exit(1)));
@@ -49,17 +55,18 @@ setTimeout(() => (console.error("cdp: run over CDP_MAX_MS, Chrome killed"), kill
  * A headless Chrome on about:blank, the page's viewport set: { send(method,
  * params), ev(expr) (its value, undefined if it threw), js(expr) (throws), on(method, fn) (an event's params, one listener each),
  * errors (the page's exceptions and console errors), kill() }.
- * dir: its profile (a fresh one by default); args: more Chrome flags.
+ * dir: its profile (a fresh one by default, removed with it); args: more Chrome flags.
  * @param {{ width?: number, height?: number, mobile?: boolean, touch?: boolean, dir?: string, args?: string[] }} [opts]
  */
 export async function launch({ width = 1100, height = 700, mobile = false, touch = false, dir = "", args = [] } = {}) {
-  dir ||= fs.mkdtempSync(path.join(os.tmpdir(), "gnogolf-cdp-"));
+  const made = dir ? "" : fs.mkdtempSync(path.join(os.tmpdir(), "gnogolf-cdp-"));
+  dir ||= made;
   fs.mkdirSync(dir, { recursive: true });
   try { fs.unlinkSync(path.join(dir, "DevToolsActivePort")); } catch {}
   const p = spawn("nice", ["-n", "20", CHROME, "--headless=new", `--user-data-dir=${dir}`, "--remote-debugging-port=0", "--use-angle=metal", "--no-first-run", "--mute-audio", ...args, ...(process.env.CHROME_ARGS || "").split(/ +(?=--)/).filter(Boolean), "about:blank"], { stdio: "ignore", detached: true });
   const pid = /** @type {number} */ (p.pid);
-  live.add(pid);
-  const kill = () => { stop(pid); live.delete(pid); };
+  live.set(pid, made);
+  const kill = () => stop(pid);
   let port;
   for (let i = 0; i < 100 && !port; i++) {
     await sleep(200);

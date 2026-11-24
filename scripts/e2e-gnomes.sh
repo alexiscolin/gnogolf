@@ -264,6 +264,7 @@ urigas() {
 	[ -n "$(qg "OwnerOf(\"$1\")")" ] || { echo "unminted"; return; }
 	base=$(grun "o, _ := gnomes.OwnerOf(\"$1\"); println(o)")
 	one=$(grun "u, _ := gnomes.TokenURI(\"$1\"); println(len(u))")
+	[ -n "$base" ] && [ -n "$one" ] || { echo "failed"; return; }
 	echo $((one - base))
 }
 # within <step> <call> <bound> <got>: a number at most bound
@@ -645,9 +646,6 @@ within "portrait: TokenURI gas, a Common (#5)" "MsgRun TokenURI(\"5\") - MsgRun 
 within "portrait: TokenURI gas, a Rare (#73)" "MsgRun TokenURI(\"73\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 73)"
 within "portrait: TokenURI gas, an Epic (#94)" "MsgRun TokenURI(\"94\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 94)"
 within "portrait: TokenURI gas, a Legendary (#104)" "MsgRun TokenURI(\"104\") - MsgRun OwnerOf" "$URIMAX" "$(urigas 104)"
-c=14 r=3 e=1 l=2
-case $HTIER in common) c=15 ;; rare) r=4 ;; epic) e=2 ;; esac
-sold=$((c + r + e + l))
 
 # ---------------------------------------------------------- earned gnomes
 SEND=1ugnot no "earned: free" "an earned gnome is free" p1 "$GN" MintEarned wizard

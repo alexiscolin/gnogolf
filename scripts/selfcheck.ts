@@ -17,6 +17,7 @@ const { SKIES, UNLOCKS } = await import("../web/lib/card.ts");
 const { GNOMES } = await import("../web/lib/scene/gnome.ts");
 const { CLIMATES } = await import("../web/lib/sky.ts");
 const { KICKS, MAX_BOUNCE, MAX_MOVE, MAX_PAR, MIN_RAMP, MIN_SHOT_WORK, WEATHER } = await import("../web/lib/builder/rules.ts");
+const { encode, PLAIN } = await import("../web/lib/gnomes/codec.ts");
 
 let failed = 0;
 function check(name: string, f: () => void) {
@@ -196,11 +197,9 @@ interface SeriesFile {
     sale: { prices: Sale; lifetimeCaps: Sale; playerWindowCaps: Sale; playerWindowHours: number };
   }[];
 }
-const seriesFile = new URL("../data/gnomes/series.json", import.meta.url);
 check("gnomes config.gno: data/gnomes/series.json", () => {
-  if (!fs.existsSync(seriesFile)) return console.log("     (skipped: no data/gnomes/series.json in this checkout yet)");
   const config = gnomes("config.gno"), earned = gnomes("earned.gno");
-  const series = JSON.parse(fs.readFileSync(seriesFile, "utf8")) as SeriesFile;
+  const series = JSON.parse(fs.readFileSync(new URL("../data/gnomes/series.json", import.meta.url), "utf8")) as SeriesFile;
   const genesis = series.series.find((s) => s.id === "genesis");
   assert.ok(genesis, "no genesis in series.json");
   const TIERS = ["common", "rare", "epic", "legendary"] as const;
@@ -214,23 +213,17 @@ check("gnomes config.gno: data/gnomes/series.json", () => {
   assert.ok(sale.playerWindowHours <= constOf(config, "maxHours"), "maxHours");
   assert.equal(series.earned.first, constOf(earned, "firstEarned"), "earned.first: firstEarned");
 });
-// the designer's codec, once it is in this checkout
-const codecFile = new URL("../web/lib/gnomes/codec.ts", import.meta.url);
-/** What these checks use of the codec. */
-interface Codec { encode(t: object): string; PLAIN: object }
-const codec = fs.existsSync(codecFile) ? ((await import("../web/lib/gnomes/codec.ts")) as Codec) : null;
 check("gnomes earned.gno: UNLOCKS and GNOMES", () => {
   const earned = gnomes("earned.gno");
   const kinds = Object.keys(UNLOCKS);
   assert.deepEqual(stringsOf(earned, "earnedKinds"), kinds, "earnedKinds: UNLOCKS' order");
   assert.deepEqual(stringsOf(earned, "earnedNeeds"), kinds.map((k) => (UNLOCKS as Record<string, { need: string }>)[k].need), "earnedNeeds: UNLOCKS' need");
   assert.deepEqual(stringsOf(earned, "earnedNames"), kinds.map((k) => GNOMES.find((g) => g.unlock === k)?.name), "earnedNames: GNOMES' names");
-  if (!codec) return console.log("     (skipped the traits: no web/lib/gnomes/codec.ts in this checkout yet)");
   const m = /return "(010000)" \+ [^+]+\+ [^+]+\+ "([0-9a-f]+)"/.exec(earned);
   assert.ok(m, "earnedTraits not found");
   kinds.forEach((_, i) => {
     const k = (i + 1).toString(16).padStart(2, "0");
-    assert.equal(m[1] + k + m[2], codec.encode({ ...codec.PLAIN, accessories: [], tier: "earned", kind: i + 1 }), `earnedTraits(${i + 1}): codec.ts`);
+    assert.equal(m[1] + k + m[2], encode({ ...PLAIN, accessories: [], tier: "earned", kind: i + 1 }), `earnedTraits(${i + 1}): codec.ts`);
   });
 });
 // the hole builder's palette (web/lib/builder/rules.ts): the skins that are

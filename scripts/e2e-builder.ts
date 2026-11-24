@@ -15,31 +15,32 @@
 
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";
-import type { Draft, Piece, V } from "../web/lib/builder/draft.ts";
+import type { Draft, V } from "../web/lib/builder/draft.ts";
 import type { HoleRow } from "../web/lib/types.ts";
 
 const env = (k: string) => process.env[k] ?? (() => { throw new Error(`e2e-builder: ${k} is not set`); })();
 const RPC = env("RPC"), REALM = env("NEXT_PUBLIC_REALM"), GNOKEY = env("GNOKEY"), KEYHOME = env("KEYHOME"), PASS = env("PASS"), OUT = env("OUT");
 const KEYS: Record<string, string> = { a1: env("A1"), a2: env("A2"), pl: env("PL") };
 
-const { host } = await import("../web/test/builder-fixture.ts");
+const { host, lane, rail } = await import("../web/test/builder-fixture.ts");
 await import("../web/test/scene-harness.ts");
 const { census } = await import("../web/lib/builder/drawn.ts");
 const { loadPalette } = await import("../web/lib/builder/palette.ts");
 const { placePiece } = await import("../web/lib/builder/edit.ts");
 const { frame, writeDraft } = await import("../web/lib/builder/gg1.ts");
-const { emptyDraft, MAX_PIECES } = await import("../web/lib/builder/draft.ts");
+const { MAX_PIECES } = await import("../web/lib/builder/draft.ts");
 const { validate } = await import("../web/lib/builder/pipeline.ts");
 const { FIELD } = await import("../web/lib/builder/rules.ts");
 const { STARTERS } = await import("../web/lib/builder/starters.ts");
 const { canonicalHex, proofKey, provedAt, replay, shaOf, suggestPar } = await import("../web/lib/builder/proof.ts");
-const { plan, holeId, holeRow } = await import("../web/lib/builder/testmode.ts");
+const { plan, holeId, holeRow, versionOf } = await import("../web/lib/builder/testmode.ts");
 const { dayRows } = await import("../web/lib/community.ts");
 const { makeLocalChain } = await import("../web/lib/builder/localchain.ts");
 const { bill, finalHex, gasFor, gnokeyPublish, holeHolds, publishBytes, publishSteps } = await import("../web/lib/builder/publish.ts");
 const { fromPublished } = await import("../web/lib/builder/importing.ts");
+const { holing } = await import("../web/lib/builder/difficulty.ts");
 const { listHoles } = await import("../web/lib/builder/holes.ts");
-const { makeChain, shotOf } = await import("../web/lib/chain.ts");
+const { makeChain } = await import("../web/lib/chain.ts");
 const { boardWork, chainSplit, feeFor, gnokeyPlan } = await import("../web/lib/adena.ts");
 const { sameSources } = await import("../web/lib/sim/sources.ts");
 
@@ -98,13 +99,9 @@ function run(command: string, key: string): Sent {
 const event = (s: Sent, type: string) => Object.fromEntries((s.events.find((e) => e.type === type)?.attrs ?? []).map((a) => [a.key, a.value]));
 
 // ------------------------------------------------------------------ drafts
-const rail = (id: string, a: V, b: V): Piece => ({ id, entry: "*/rail/", geometry: { t: "rail", a, b }, params: {}, clock: { k: "fixed" } });
 const ring = (pts: V[]) => pts.map((p, i) => rail(`r${i + 1}`, p, pts[(i + 1) % pts.length]));
-/** A plain lane: four rails, the tee and the cup at its ends. */
-const lane = (world: string, w: number, h: number, pieces: Piece[] = []): Draft =>
-  frame({ ...emptyDraft(world), title: "Plain lane", tee: [3, h / 2], pin: [w - 3, h / 2], pieces: [...ring([[0, 0], [w, 0], [w, h], [0, h]]), ...pieces] });
 
-/** A post of the world's palette, as scripts/starters.ts picks one: its own, else a skinned post of every world. */
+/** A post of the world's palette: its own, else a skinned post of every world. */
 const postOf = (palette: Awaited<ReturnType<typeof loadPalette>>, world: string) =>
   [...palette.filter((e) => e.kind === "post" && e.world === world), ...palette.filter((e) => e.kind === "post" && e.world === "*" && e.skin)][0];
 
@@ -112,32 +109,6 @@ const postOf = (palette: Awaited<ReturnType<typeof loadPalette>>, world: string)
 async function errorsOf(d: Draft): Promise<string[]> {
   const palette = await loadPalette(d.world);
   return validate(d, { host, palette, census, slug: d.slug || "draft" }).issues.filter((i) => i.severity === "error").map((i) => `${i.rule} ${i.text}`);
-}
-
-/** A holing round by search (scripts/starters.ts holing): each stroke the best of a fan of shots toward the cup, 8 strokes at most. */
-function holing(id: string, d: Draft, period: number): string[] | null {
-  const shots: string[] = [];
-  let rest: V = d.tee;
-  host.setperiod(period);
-  for (let k = 0; k < 8; k++) {
-    let best: { s: string; rest: V; d: number } | null = null;
-    const toward = (Math.atan2(d.pin[1] - rest[1], d.pin[0] - rest[0]) * 180) / Math.PI;
-    for (let da = -40; da <= 40; da += 2) {
-      for (let pw = 0.5; pw <= 10; pw += 0.25) {
-        const s = shotOf(Math.round((toward + da) * 100) / 100, pw);
-        const out = k === 0 ? host.round(id, s, period) : host.from(id, rest[0], rest[1], s, k, period);
-        if (out.startsWith("panic: ")) continue;
-        const r = JSON.parse(out) as { holed: boolean; rest: V };
-        if (r.holed) return [...shots, s];
-        const dd = Math.hypot(r.rest[0] - d.pin[0], r.rest[1] - d.pin[1]);
-        if (!best || dd < best.d) best = { s, rest: r.rest, d: dd };
-      }
-    }
-    if (!best) return null;
-    shots.push(best.s);
-    rest = best.rest;
-  }
-  return null;
 }
 
 // --------------------------------------------- the Publish step's readings
@@ -180,7 +151,7 @@ async function publish(label: string, d0: Draft, signer: string): Promise<{ id: 
   host.load(id, hex0);
   const proofs = [];
   for (const { kind, period } of plan(host, id, d0.world, now)) {
-    const shots = holing(id, d0, period);
+    const shots = await holing(host, id, d0.tee, d0.pin, period);
     const p = shots && (await replay(makeLocalChain(host, holeRow(id, d0), hex0, period), { key: key0!, id, kind, period, shots }));
     const ok = !!p && typeof p !== "string";
     row(`${label}: test mode, ${kind || "clear"}`, `holing round at period ${period}, replayed as a save is cut`, "holed", ok ? `holed in ${shots.length}: ${shots.join(" ")}` : (p ?? "no round found"), ok);
@@ -195,12 +166,12 @@ async function publish(label: string, d0: Draft, signer: string): Promise<{ id: 
   const checked = host.check(d.slug, hex, note);
   const key = await proofKey(d, host);
   const proved = key ? provedAt(d.proofs, d.world, key, id) : null;
-  const hole = hex && key && proved ? await holeHolds({ ...d, title: name }, hex, key, proved, { host, palette: await loadPalette(d.world), census }) : "The rounds that proved it no longer play out the same on its final data: test it again.";
+  const hole = hex && key && proved ? await holeHolds({ ...d, title: name }, hex, key, proved, { host, palette: await loadPalette(d.world), census }) : "The rounds that proved it no longer play out the same on its final data: play it again.";
   const sha = await shaOf(hex);
   const step = publishSteps({ publishing: r0.publishing, rules: r0.rules, writer: r0.writer, taken: r0.taken, versions: r0.versions, hole, name: checked.ok ? "" : checked.why }, { author, slug: d.slug, proved: proved ?? "", sha, realm: chain.realm });
   is(`${label}: the Publish step`, "publishSteps(readings)", "ready", step.at + (step.why ? `: ${step.why}` : ""));
   if (step.at !== "ready" || !checked.ok) return null;
-  const v = Number(id.slice(id.lastIndexOf("/v") + 2)) || 1;
+  const v = versionOf(id) || 1;
   const sizes = { bytes: checked.cost.bytes, name, note, v, newAuthor: true };
   const b = bill({ ...sizes, gasPrice: r0.gas, bytePrice: r0.byte });
   const gas = gasFor(sizes), deposit = Math.round(b.deposit * 1e6);
@@ -252,7 +223,7 @@ async function publish(label: string, d0: Draft, signer: string): Promise<{ id: 
 /** A round in the weather of the moment, found locally, asked of the chain, then saved by the player with the game's gnokey save. */
 async function play(label: string, id: string, d: Draft) {
   const period = await chain.period();
-  const shots = holing(id, d, period);
+  const shots = await holing(host, id, d.tee, d.pin, period);
   if (!shots) return row(`${label}: played now`, `a holing round at period ${period}`, "found", "none", false);
   const sim = await chain.simulateRound(id, shots, period);
   is(`${label}: SimulateRoundAt`, `SimulateRoundAt(id, ${shots.join(";")}, ${period})`, `holed in ${shots.length}`, sim.holed ? `holed in ${sim.strokes}` : `not holed (${sim.strokes})`);
@@ -286,7 +257,7 @@ async function play(label: string, id: string, d: Draft) {
 
 // ------------------------------------------------------------ the scenario
 // 1. a plain lane: the chain's first community hole, its author's first
-const plain = { ...lane("garden", 30, 12), slug: "plain-lane", title: "Plain lane" };
+const plain = { ...lane("garden", [], 30, 12), slug: "plain-lane", title: "Plain lane" };
 const v1 = await publish("plain lane", plain, "a1");
 
 // 2. a starter of each classic world, as the Builder offers them
@@ -299,7 +270,7 @@ for (const world of Object.keys(FIELD)) {
 //    until the Builder takes no more (MAX_PIECES, or a check refuses five in a row)
 {
   const palette = await loadPalette("garden"), post = postOf(palette, "garden");
-  let d: Draft = { ...lane("garden", 90, 40), slug: "heavy", title: "Heavy" };
+  let d: Draft = { ...lane("garden", [], 90, 40), slug: "heavy", title: "Heavy" };
   let refusedInRow = 0, tried = 0;
   outer: for (let y = 3; y <= 37; y += 3) {
     if (Math.abs(y - 20) < 6) continue; // the middle stays clear: the ball's way
@@ -328,7 +299,7 @@ for (const world of Object.keys(FIELD)) {
 {
   const title = "Le jardin des gnomes 🌷 庭のノーム ⛳ Ωμέγα";
   const note = "Un trou pour les patients : visez le coin, laissez rouler. 🌧️ Bei Regen langsamer. 雨の日は遅い。 Καλή τύχη! Удачи — ¡suerte! 🍄🍄🍄 ok";
-  const d = { ...lane("island", 34, 14), slug: "jardin-unicode", title: [...title].slice(0, 40).join(""), note: [...note].slice(0, 140).join("") };
+  const d = { ...lane("island", [], 34, 14), slug: "jardin-unicode", title: [...title].slice(0, 40).join(""), note: [...note].slice(0, 140).join("") };
   is("named hole: within the Builder's limits", "[...title].length, [...note].length", "≤40 ≤140", `${[...d.title].length <= 40 ? "≤40" : [...d.title].length} ${[...d.note].length <= 140 ? "≤140" : [...d.note].length}`);
   const r = await publish("named hole", d, "a2");
   if (r) {
@@ -364,11 +335,11 @@ if (v1) {
 // play); the Builder will not open them; the lists, today, still show them.
 {
   const palette = await loadPalette("garden"), post = postOf(palette, "garden");
-  const base = lane("garden", 30, 12);
+  const base = lane("garden", [], 30, 12);
   const hostile: [string, Draft][] = [
     ["cup in a wall", { ...base, slug: "cup-in-wall", title: "Cup in a wall", pieces: [...base.pieces, placePiece(post, "p1", base.pin)] }],
     // (a box of rails round the cup, clear of it and of the lane's own rails: nothing touches; the ball cannot get in)
-    ["unreachable cup", { ...lane("garden", 44, 20, ring([[34, 5], [43, 5], [43, 15], [34, 15]]).map((p, i) => ({ ...p, id: `w${i}` }))), slug: "walled-cup", title: "Walled cup" }],
+    ["unreachable cup", { ...lane("garden", ring([[34, 5], [43, 5], [43, 15], [34, 15]]).map((p, i) => ({ ...p, id: `w${i}` })), 44, 20), slug: "walled-cup", title: "Walled cup" }],
     ["overlapping pieces", { ...base, slug: "overlap", title: "Overlap", pieces: [...base.pieces, placePiece(post, "p1", [12, 4]), placePiece(post, "p2", [12.5, 4])] }],
   ];
   const r = await readings(`${KEYS.a2}/x`);

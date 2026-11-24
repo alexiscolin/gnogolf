@@ -18,7 +18,7 @@ import assert from "node:assert/strict";
 // the client's modules as the unit tests load them (".ts" tried, "@/" read)
 import "../web/test/setup.mjs";
 
-const { makeChain } = await import("../web/lib/chain.ts");
+const { makeChain, shortAddr } = await import("../web/lib/chain.ts");
 /** media/lib/cdp.mjs, as this script uses it: one headless Chrome over the DevTools protocol */
 interface Browser {
   send: (method: string, params?: object) => Promise<unknown>;
@@ -121,6 +121,14 @@ async function until<T>(expr: string, tries = 80, ms = 250): Promise<T> {
   }
   return v;
 }
+/** from the title to the cups screen: Play opens the modes first, Solo leads to the cups */
+async function toCups() {
+  await b.send("Page.navigate", { url: `${APP}/` });
+  assert.ok(await until<boolean>(`!!document.querySelector('.btn--start')`, 100), "no title screen");
+  await b.ev(`document.querySelector('.btn--start').click()`);
+  assert.ok(await until<boolean>(`!!document.querySelector('.mode--solo')`, 50), "no modes screen");
+  await b.ev(`document.querySelector('.mode--solo').click()`);
+}
 try {
   await step("a hole played and holed in the browser", async () => {
     await b.send("Page.navigate", { url: `${APP}/?play&camlog&hole=${hole.replace(/\/v\d+$/, "")}` });
@@ -145,12 +153,7 @@ try {
     assert.match(await b.ev<string>(`(document.querySelector('.saveclock')||{}).textContent||""`), /Save within/, "the save clock");
   });
   await step("the leaderboard from the cups screen", async () => {
-    await b.send("Page.navigate", { url: `${APP}/` });
-    assert.ok(await until<boolean>(`!!document.querySelector('.btn--start')`, 100), "no title screen");
-    await b.ev(`document.querySelector('.btn--start').click()`);
-    // Play opens the modes first: Solo leads to the cups
-    assert.ok(await until<boolean>(`!!document.querySelector('.mode--solo')`, 50), "no modes screen");
-    await b.ev(`document.querySelector('.mode--solo').click()`);
+    await toCups();
     assert.ok(await until<boolean>(`!!document.querySelector('.podium__open')`, 50), "no records to beat on the cups screen");
     // a course standing reads as its holes and its score against par
     const vs = /(E|[+−]\d+)$/;
@@ -181,24 +184,20 @@ try {
     await b.send("Page.addScriptToEvaluateOnNewDocument", {
       source: `{ const f = window.fetch; window.fetch = (u, o) => String(u).endsWith("flags.json") ? Promise.resolve(new Response(${JSON.stringify(flags)})) : f(u, o); }`,
     });
-    await b.send("Page.navigate", { url: `${APP}/` });
-    assert.ok(await until<boolean>(`!!document.querySelector('.btn--start')`, 100), "no title screen");
-    await b.ev(`document.querySelector('.btn--start').click()`);
-    // Play opens the modes first: Solo leads to the cups
-    assert.ok(await until<boolean>(`!!document.querySelector('.mode--solo')`, 50), "no modes screen");
-    await b.ev(`document.querySelector('.mode--solo').click()`);
+    await toCups();
     assert.ok(await until<boolean>(`document.querySelectorAll('.podium__row li:not([aria-hidden])').length > 0`, 50), "no top players");
     const podium = await b.ev<string>(`document.querySelector('.podium__row').textContent`);
-    const name = (await chain.namesOf([player]))[0].name;
-    assert.ok(!name || !podium.includes(name), `the flagged ${name} is on the podium`);
+    // as the boards say them (Leaderboard.tsx useWho): their name, else their short address
+    const name = (await chain.namesOf([player]))[0].name || shortAddr(player);
+    assert.ok(!podium.includes(name), `the flagged ${name} is on the podium`);
     await b.ev(`document.querySelector('.podium__open').click()`);
     assert.ok(await until<boolean>(`[...document.querySelectorAll('.lb--full .linkish')].some((x) => /flagged/.test(x.textContent))`, 40), "no \"Show all (… flagged)\" toggle");
     const shown = await b.ev<string>(`document.querySelector('.lb--full').textContent`);
-    assert.ok(!name || !shown.includes(name), `the flagged ${name} is listed`);
+    assert.ok(!shown.includes(name), `the flagged ${name} is listed`);
     // Show all lists them, each saying why
     await b.ev(`[...document.querySelectorAll('.lb--full .linkish')].find((x) => /flagged/.test(x.textContent)).click()`);
     assert.ok(await until<boolean>(`[...document.querySelectorAll('.lb--full .flag-why')].some((x) => /smoke test/.test(x.textContent))`, 40), "Show all does not say why");
-    return `${name || player} hidden`;
+    return `${name} hidden`;
   });
   assert.equal(b.errors.length, 0, `console errors: ${JSON.stringify(b.errors).slice(0, 300)}`);
 } finally {

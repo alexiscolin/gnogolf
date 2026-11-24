@@ -37,8 +37,6 @@ export function project(/** @type {V3} */ p) {
 export const toUnits = (/** @type {V3} */ p) => { const [x, y] = project(p); return [x / SS, y / SS]; };
 /** How many SVG units a world length is, at a depth. */
 export const unitsAt = (/** @type {number} */ len, /** @type {number} */ z) => (len * FOCAL * N) / 2 / z / SS;
-/** The depth of the body's centre (where the depth keys are measured from). */
-export const VIEW_DEPTH = 4.9;
 
 // the game's day light (camera.ts makeScene): a sky over a green ground, a sun from above right
 const lin = (/** @type {number} */ c) => { const v = c / 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
@@ -54,7 +52,7 @@ function light(/** @type {V3} */ n, /** @type {number[]} */ levels) {
 }
 const TOON = [104, 178, 255];
 /** The light on a lit top (a surface facing up, in the brightest band): what a colour's own fill is drawn under. */
-export const LIT = light([0, 1, 0], TOON).rgb;
+const LIT = light([0, 1, 0], TOON).rgb;
 /** Each channel's factor from a colour to its lit fill, in sRGB (≈ the linear factor ^ 1/2.2). */
 export const LIT_SRGB = LIT.map((c) => (c / Math.PI) ** (1 / 2.2));
 
@@ -261,10 +259,10 @@ export function simplify(/** @type {number[][]} */ ring, /** @type {number} */ t
 export const areaOf = (/** @type {number[][]} */ r) => r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + (p[0] * q[1] - q[0] * p[1]); }, 0) / 2;
 
 /** Rings (raster pixels) as SVG path data in units, relative moves, whole numbers. */
-export function pathOf(/** @type {number[][][]} */ rings, /** @type {[number, number]} */ shift = [0, 0]) {
+export function pathOf(/** @type {number[][][]} */ rings) {
   let d = "";
   for (const r of rings) {
-    const pts = r.map(([x, y]) => [Math.round(x / SS + shift[0]), Math.round(y / SS + shift[1])]);
+    const pts = r.map(([x, y]) => [Math.round(x / SS), Math.round(y / SS)]);
     const kept = pts.filter((p, i) => i === 0 || p[0] !== pts[i - 1][0] || p[1] !== pts[i - 1][1]);
     if (kept.length < 3) continue;
     d += `M${kept[0][0]} ${kept[0][1]}l`;

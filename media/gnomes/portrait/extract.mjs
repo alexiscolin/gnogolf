@@ -19,7 +19,6 @@ export const DESIGNS = path.resolve(process.env.DESIGNS || new URL("../../../", 
 const ENTRY = `import * as THREE from "three";
 import { makeBall, GNOMES } from "./lib/scene/gnome";
 import "./lib/scene/gnome-dress";
-import { hatTop } from "./lib/scene/gnome-kit";
 import { makeTrail } from "./lib/scene/gnome-fx";
 import { makeShowcase } from "./lib/scene/gnome-showcase";
 import { PROP_DESIGNS } from "./lib/gnomes/props";
@@ -50,13 +49,11 @@ const levels = (t) => (t && t.image && t.image.data ? Array.from(t.image.data) :
 window.texture = (id) => textures.get(id);
 window.gnomes = GNOMES;
 window.props = Object.fromEntries(Object.entries(PROP_DESIGNS).map(([k, v]) => [k, "legend" in v ? "legend" : v.at]));
-window.hatTop = (skin) => hatTop(skin);
 window.vocab = { DARK: VOCAB.COLOURS.map(([, v]) => darkBody(v)), ...Object.fromEntries(Object.entries(VOCAB).filter(([, v]) => Array.isArray(v))), TIER_LOOK };
 // the earned nine as every field of their look (their stripes a pattern), by kind
 // the gnome some traits draw, every other field plain (lib/gnomes/skin.ts: the client's own reading)
 window.skinOf = (t) => skinOf({ ...PLAIN, accessories: [], ...t }, { id: "portrait", name: "", line: "" });
 window.earned = EARNED_KINDS.map((k) => encode(lookOf(GNOMES.find((g) => g.unlock === k))));
-window.ballR = BALL_R;
 // what the showcase draws of him: the gnome standing on the ground, or his trail behind him as he rolled in
 const shown = (skin, trail) => {
   seed = 7;
@@ -103,14 +100,12 @@ window.meshes = (skin, trail = false) => {
       index: g.index ? Array.from(g.index.array) : null,
       type: m.type,
       color: m.color ? m.color.getHex() : 0xffffff,
-      side: m.side,
       opacity: m.transparent ? m.opacity : 1,
       additive: m.blending === THREE.AdditiveBlending,
       map: pixels(m.map),
-      emissive: m.emissive ? m.emissive.getHex() : 0,
       emissiveMap: !!m.emissiveMap,
       bands: levels(m.gradientMap),
-      ink: hull ? { color: hull.material.color.getHex(), w: Number(String(hull.material.userData.hook || "").replace(/^hull/, "")) || 0.028 } : null,
+      ink: !!hull,
     });
   });
   return out;
@@ -145,6 +140,6 @@ export async function gnomePage() {
 
 /**
  * @typedef {{ at: number[][], position: number[], normal: number[] | null, uv: number[] | null, index: number[] | null,
- *   type: string, color: number, side: number, opacity: number, additive: boolean, map: string | null, emissive: number, emissiveMap: boolean,
- *   bands: number[] | null, ink: { color: number, w: number } | null }} Mesh
+ *   type: string, color: number, opacity: number, additive: boolean, map: string | null, emissiveMap: boolean,
+ *   bands: number[] | null, ink: boolean }} Mesh
  */

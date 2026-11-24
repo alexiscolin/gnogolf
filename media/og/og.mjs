@@ -35,7 +35,6 @@ const esc = (/** @type {string} */ s) => s.replace(/[&<>"]/g, (c) => `&#${c.char
 await chainUp();
 const b = await launch({ width: W, height: H });
 const { send, ev, js } = b;
-await send("Page.enable");
 await send("Page.addScriptToEvaluateOnNewDocument", { source: `localStorage.setItem("gnogolf.gnome","classic");sessionStorage.setItem("gnogolf.cam.session","third");` });
 const png = async (/** @type {object} */ o = {}) => "data:image/png;base64," + (await send("Page.captureScreenshot", { format: "png", ...o })).data;
 

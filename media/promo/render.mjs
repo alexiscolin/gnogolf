@@ -1,49 +1,26 @@
 // @ts-check
-// Renders the Gnogolf trailer: node media/promo/render.mjs [--stills] [--only=name] [--clean] [--cups] [--cut=v7]
+// Renders the Gnogolf trailer: node media/promo/render.mjs [--cut=name] [--only=a,b] [--stills] [--frames | --encode] [--clean] [--cups]
 //
-// Only the current cut's shots are kept (shots.json, shots-v11.json and its teaser); the older
-// cuts below are in the history. A duel's reads (paths.json "reads") are not kept: a duel cut
-// reads them again from the local chain, the champion seeded.
-// --cut=v4: another cut of it, shots-v4.json, rendered to gnogolf-promo-v4.mp4 (and -720p).
-// --cut=v5: v4 with a ghost duel before an end card without Adena (its rival's screen, the
-// turns called, the ghost holing, the win, the game's own pieces shown: a shot's ui).
-// --cut=v6: the duel as gameplay only, before the Builder's "coming soon": one race against the
-// champion's ghost (another skin, see-through) filmed in slices, the two on the tee, a stroke each
-// cut on the beat, both rolling in, the ghost holing then the player, again slowed; no game UI.
-// --cut=v7: v6's duel on 20 beats, without the slowed replay, the player holing on the music's
-// drop; the Builder's card on 14 beats, each title held 2 s or more.
-// --cut=v8, the current one: v7, the hole-in-one's slow motion eased in and held at 0.6 (it
-// stood still on the lip at 0.35), and the music's rewind moved off the duel's first cut (mid-bar,
-// a bar after it the chords 0.86 alike) to the duel-finish cut, a downbeat: the song's own last
-// bar, break and drop then play into the player's holing (the bar after it 0.94 alike, per-beat
-// chroma). One command, with the dev client on the local chain (web/.env.local; read only, nothing is sent):
-//   (cd web && npx next dev -p 3316) & APP=http://localhost:3316 node media/promo/render.mjs --cut=v8
-// -> media/promo/gnogolf-promo-v8.mp4 and -v8-720p.mp4. The duel races the seeded champion's
-// ghost (media/check/seed; CHAMPION=<its address>), its reads kept in paths.json ("reads") like the shots' paths.
-// --cut=v8-teaser: v8 before the launch, its end card announcing it ("COMING VERY SOON", on
-// gno.land) and the Builder's "NEXT:" (its "COMING SOON:" would say it twice in a row).
-// --cut=v9 (and v9-teaser): v8's duel a turn each, as the game plays it: never the two rolling
-// at once (v8 had the player's last putt set off while the ghost's last stroke still rolled). The
-// two on the tee, the player's stroke (the ghost waiting there), the ghost's (the player at rest),
-// a cut, the ghost holing on a beat (the player waiting in front), a cut, the player's last putt
-// dropping on the drop; a duel's shot stops the render should a frame show both moving.
-// --cut=v10 (and v10-teaser): v9 opening on its poster. A shot with "cover": true (the first, at
-// beat 0) is the video's first frame, the thumbnail X and most players show: the logo on its burst
-// and a tagline already landed on frame 0 (web/lib/promo.ts), then a bar of beat pulses and
-// sparkles, the logo zooming out on a whoosh into the fast shots; its frame 0 also kept as
-// gnogolf-promo-<cut>-cover.jpg (1920x1080), for a platform that takes a thumbnail of its own.
-// --cut=v11 (and v11-teaser): v10's cover calmer. Its titles breathe (a title's "soft": a pulse's
-// scale, eased in and out over two beats) instead of kicking on every beat: the logo once from
-// frame 0 and once on beat 2, the taglines on beat 2 only, its sway in depth 4 degrees (tilt3d);
-// the music swells in over the first shot's "fadeIn" seconds (equal power; v11: a bar, whole on the next
-// downbeat, before the whoosh out), not at full level on frame 0.
+// A cut is a shot list, shots-<cut>.json (shots.json without --cut: the first cut), rendered to
+// gnogolf-promo-<cut>.mp4 and -720p.mp4 from frames and sounds in a work folder of its own
+// (gnogolf-promo-<cut> in the system's temp):
+// --cut=v11: the trailer, opening on its poster (a shot with "cover": true, the video's first frame,
+// also kept as gnogolf-promo-v11-cover.jpg) and racing the seeded champion's ghost (CHAMPION=<its
+// address>), the duel's reads kept in paths.json ("reads") like the shots' paths;
+// --cut=v11-teaser: v11 before the launch, its poster saying "COMING VERY SOON";
+// --cut=builder --frames: the Builder video's 3D shots (shots-builder.json), cut by media/builder/promo.mjs.
+// --only=a,b: those shots again; --stills: a few frames of each as PNGs in stills-check/ (EVERY=n: one
+// every n frames); --frames: the frames and the shots' sounds only; --encode: those already captured,
+// encoded again. One command, with the dev client on the local chain (web/.env.local; read only, nothing is sent):
+//   (cd web && npx next dev -p 3316) & APP=http://localhost:3316 CHAMPION=<address> node media/promo/render.mjs --cut=v11
+// -> media/promo/gnogolf-promo-v11.mp4 and -v11-720p.mp4.
 //
 // --clean: the title screen's background instead (web/public/title/bg.*): a
 // short cut of the calmer shots, no titles, flashes, shakes or sound, encoded
 // small for the web (AV1 and VP9 webm, H.264 mp4; no poster: the page fades the film in over the sky's colour).
 //
 // One headless Chrome (its own profile, killed by PID at the end) opens the
-// running dev client (http://localhost:3300) in promo mode (web/lib/promo.js)
+// running dev client (http://localhost:3300) in promo mode (web/lib/promo.ts)
 // once per shot, steps it one frame at a time and screenshots each frame; the
 // shot's own game sounds come back as a WAV. ffmpeg then lays the frames on
 // the music's beat grid and mixes the sounds under it. The chain's paths are
@@ -59,14 +36,14 @@ import { title } from "./titles.mjs";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
-const WORK = path.join(os.tmpdir(), "gnogolf-promo");
 const STILLS = process.argv.includes("--stills");
 const ONLY = (process.argv.find((a) => a.startsWith("--only=")) || "").slice(7);
 const FPS = 30;
 const CLEAN = process.argv.includes("--clean");
 const CUPS = process.argv.includes("--cups");
 const CUT = (process.argv.find((a) => a.startsWith("--cut=")) || "").slice(6).replace(/[^\w-]/g, "");
-const SUFFIX = CUT ? `-${CUT}` : ""; // the cut's shots and its video: shots-v4.json, gnogolf-promo-v4.mp4
+const SUFFIX = CUT ? `-${CUT}` : ""; // the cut's shots, work folder and video: shots-v11.json, gnogolf-promo-v11, gnogolf-promo-v11.mp4
+const WORK = path.join(os.tmpdir(), `gnogolf-promo${SUFFIX}`);
 // the clean cut's shots, in order: flyovers and rolls, ending on the garden's slow, bright orbit
 const CLEAN_SHOTS = ["snow", "sandcastles", "market", "cold", "mill", "frozen", "jump", "plazaP", "marketW", "tube", "logo"];
 
@@ -77,12 +54,9 @@ const BEAT = 60 / 175; // s
 const MUSIC = path.join(HERE, "music", "dizzy_racing.flac"), MUSIC_END = 134.53;
 const F = (beat) => Math.round(beat * BEAT * FPS); // a beat's frame
 
-// ------------------------------------------------------------- the titles
-
-
 // --------------------------------------------------------------- the shots
 //
-// beats: where the shot sits on the music. cam: see aim() in web/lib/promo.js.
+// beats: where the shot sits on the music. cam: see aim() in web/lib/promo.ts.
 // fire: shots played (deg, power, at s of shot time; negative = before the cut).
 // pre: seconds run before the first captured frame.
 
@@ -133,11 +107,11 @@ for (let k = 0, b0 = 0, m = MUSIC_AT; k <= REWINDS.length; k++) {
 
 async function chrome() {
   const [w, h] = CLEAN ? [1280, 720] : [1920, 1080];
-  const { send, js, kill } = await launch({ width: w, height: h, dir: path.join(WORK, "profile"), args: [`--window-size=${w},${h}`, "--hide-scrollbars", "--mute-audio"] });
+  const { send, js, kill } = await launch({ width: w, height: h, dir: path.join(WORK, "profile"), args: [`--window-size=${w},${h}`, "--hide-scrollbars"] });
   // a headless page never has the focus, and the game plays no sound without it (feel.ts present())
   await send("Emulation.setFocusEmulationEnabled", { enabled: true });
-  // the HMR socket never opens: another edit to the app cannot remount the game mid-shot
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `try{localStorage.setItem("gnogolf.earned",${JSON.stringify(JSON.stringify(ALL_GNOMES))})}catch(e){}` });
+  // the HMR socket never opens: another edit to the app cannot remount the game mid-shot
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `{const W=window.WebSocket;window.WebSocket=function(u,p){return /hmr/.test(String(u))?{readyState:0,send(){},close(){},addEventListener(){},removeEventListener(){}}:new W(u,p)};Object.assign(window.WebSocket,{CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3});}` });
   return { send, js, kill };
 }
@@ -146,6 +120,9 @@ async function chrome() {
 
 const pathsFile = path.join(HERE, "paths.json");
 const paths = fs.existsSync(pathsFile) ? JSON.parse(fs.readFileSync(pathsFile, "utf8")) : {};
+// when each shot's ball sank, in its seconds (media/builder/promo.mjs lands its titles on it)
+const sinksFile = path.join(WORK, "sinks.json");
+const sinks = fs.existsSync(sinksFile) ? JSON.parse(fs.readFileSync(sinksFile, "utf8")) : {};
 
 async function shoot(c, s, i, out) {
   const q = new URLSearchParams({ cup: s.cup, hole: s.hole, gnome: s.gnome || "classic" });
@@ -171,16 +148,17 @@ async function shoot(c, s, i, out) {
   await sleep(1200); // the world's pieces settle in
   // ace: the shot's first stroke a one-stroker found now, in the weather the chain plays (a community hole's is the
   // chain's, not the shot's): every way within 45 degrees of the tee's line to the cup and every power, the longest ride
-  // that holes (the most to watch), kept in paths.json with the others
+  // that holes (the most to watch), kept in paths.json with the others, it and its path under the shot's name (a hole
+  // filmed twice: the chain's weather may have turned in between)
   if (s.ace && s.fire?.[0]) {
-    const k = `${s.hole}|ace`;
+    const k = `${s.hole}|ace|${s.name}`;
     paths[k] ??= await c.js(`(async () => {
-      const g = __promo, best = { len: 0, shot: null };
+      const g = __promo, { cup, start } = g.info(), toward = Math.atan2(cup[1] - start[1], cup[0] - start[0]) * 180 / Math.PI, best = { len: 0, shot: null };
       for (let d = -45; d <= 45; d += 1) for (let p = 1; p <= 10; p += 0.25) {
-        const r = await g.simulate([[d, p, null]]);
+        const r = await g.simulate([[toward + d, p, null]]);
         if (!r || !r.holed) continue;
         const len = r.path.reduce((n, q, i) => (i ? n + Math.hypot(q[0] - r.path[i - 1][0], q[1] - r.path[i - 1][1]) : 0), 0);
-        if (len > best.len) (best.len = len), (best.shot = [d, p]);
+        if (len > best.len) (best.len = len), (best.shot = [toward + d, p]);
       }
       return best.shot;
     })()`);
@@ -189,7 +167,7 @@ async function shoot(c, s, i, out) {
     [s.fire[0].deg, s.fire[0].power] = paths[k];
   }
   // the chain's answers, fetched once and kept
-  const key = (f) => `${s.cup}${s.hole}|${f.deg},${f.power}${f.tick != null ? "@" + f.tick : ""}`;
+  const key = (f) => `${s.cup}${s.hole}|${s.ace ? s.name + "|" : ""}${f.deg},${f.power}${f.tick != null ? "@" + f.tick : ""}`;
   const cache = {};
   for (const f of (s.fire || []).slice(0, 1)) { // (a later stroke is played from the ball's rest: a duel's reads keep it)
     if (!paths[key(f)]) {
@@ -237,7 +215,12 @@ async function shoot(c, s, i, out) {
     if (process.env.MOVES && s.by && prev && st.ghost) console.log(`  ${s.name} ${f}: player ${moved(st, prev) ? "moves" : "-"}, ghost ${prev.ghost && moved(st.ghost, prev.ghost) ? "moves" : "-"}`);
     prev = st;
     if (st.ghost && !s.ghostIn && (st.ghost.scale < 0.75 || !st.ghost.visible)) (s.ghostIn = true), console.log(`  ${s.name}: the ghost sinks at ${(f / FPS).toFixed(3)} s`);
-    if ((s.dropAt != null || s.eventAt != null || s.by) && !s.sunk && (st.scale < (s.eventAt != null ? 0.97 : 0.75) || !st.visible || (s.eventAt != null && st.y < -0.6))) (s.sunk = true), console.log(`  ${s.name}: the ball sinks at ${(f / FPS).toFixed(3)} s (target ${s.dropAt ?? s.eventAt ?? "-"})`);
+    if ((s.dropAt != null || s.eventAt != null || s.by) && !s.sunk && (st.scale < (s.eventAt != null ? 0.97 : 0.75) || !st.visible || (s.eventAt != null && st.y < -0.6))) {
+      s.sunk = true;
+      sinks[s.name] = +(f / FPS).toFixed(3);
+      fs.writeFileSync(sinksFile, JSON.stringify(sinks));
+      console.log(`  ${s.name}: the ball sinks at ${(f / FPS).toFixed(3)} s (target ${s.dropAt ?? s.eventAt ?? "-"})`);
+    }
     if (want && !want.has(f)) continue;
     const { data } = await c.send("Page.captureScreenshot", { format: STILLS ? "png" : "jpeg", quality: STILLS ? undefined : s.cover && !f ? 100 : 94 });
     fs.writeFileSync(STILLS ? path.join(out, `${String(i).padStart(2, "0")}-${s.name}-${f}.png`) : path.join(out, `${String(s.f0 + f).padStart(5, "0")}.jpg`), Buffer.from(data, "base64"));

@@ -22,6 +22,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { launch, sleep, APP } from "../lib/cdp.mjs";
+import { holingRound } from "../lib/holing.mjs";
 import { title } from "../promo/titles.mjs";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
@@ -96,7 +97,7 @@ async function record() {
   const press = async () => (await mouse("mousePressed", at, true), await sleep(90), await mouse("mouseReleased", at));
   const centre = (/** @type {string} */ sel) => c.js(`(() => { const r = (${sel}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
   const cell = (/** @type {number} */ x, /** @type {number} */ y) => c.js(`(() => { const m = document.querySelector(".board__plane").getScreenCTM(); return [m.a * ${x} + m.c * ${y} + m.e, m.b * ${x} + m.d * ${y} + m.f]; })()`);
-  const button = (/** @type {RegExp} */ re, within = "document") => `[...${within}.querySelectorAll("button")].find((b) => ${re}.test(b.textContent.trim()))`;
+  const button = (/** @type {RegExp} */ re) => `[...document.querySelectorAll("button")].find((b) => ${re}.test(b.textContent.trim()))`;
   const pieces = () => c.js(`document.querySelectorAll("[data-piece]").length`);
   const drag = async (/** @type {number[]} */ from, /** @type {number[]} */ to, ms = 700) => {
     await glide(from, 380);
@@ -211,7 +212,7 @@ async function record() {
       await until(`!!window.__g && !!document.querySelector(".tmode__chip--now:not(.tmode__chip--done)") && document.querySelector(".tmode__score strong")?.textContent === "0" && !document.querySelector(".tmode__won")`, "a weather to play", 90_000);
       const done = await c.js(`document.querySelectorAll(".tmode__chip--done").length`);
       await sleep(1500); // (the round set up: its weather's period read, as builderwalk waits)
-      const round = await c.js(FIND);
+      const round = await c.js(holingRound(8));
       if (!round) throw new Error(`no round found in weather ${w}`);
       mark(`w${w}`);
       for (const [k, [a, pw]] of round.entries()) {
@@ -249,30 +250,6 @@ async function record() {
   }
   console.log(`take: ${frames.length} frames over ${(frames.at(-1)[0] - frames[0][0]).toFixed(1)} s`);
 }
-
-// a round of the weather now played holed: each shot the one ending nearest the cup, within 40 degrees of it (scripts/builderwalk.ts holeOne)
-const FIND = `(async () => {
-  const g = window.__g, id = g.current(), p = await g.chain.period(), s = await g.chain.state(id);
-  const pin = s.cup, shots = [];
-  let rest = s.start;
-  const of = (a, pw) => a.toFixed(4) + "," + pw.toFixed(4);
-  for (let k = 0; k < 8; k++) {
-    let best = null;
-    const toward = Math.atan2(pin[1] - rest[1], pin[0] - rest[0]) * 180 / Math.PI;
-    for (let da = -40; da <= 40; da += 2) for (let pw = 0.5; pw <= 10; pw += 0.25) {
-      const a = Math.round((toward + da) * 100) / 100;
-      let r;
-      try { r = k === 0 ? await g.chain.simulateRound(id, [of(a, pw)], p) : await g.chain.simulateFrom(id, rest, of(a, pw), k, p); } catch { continue; }
-      if (r.holed) return [...shots, [a, pw]];
-      const d = Math.hypot(r.rest[0] - pin[0], r.rest[1] - pin[1]);
-      if (!best || d < best.d) best = { a, pw, rest: r.rest, d };
-    }
-    if (!best) return null;
-    shots.push([best.a, best.pw]);
-    rest = best.rest;
-  }
-  return null;
-})()`;
 
 // ------------------------------------------------------------------ the cut
 
@@ -337,7 +314,7 @@ const CUT = [
 const HIT = 87.5, LEN = 91.5, MUSIC_AT = +(MUSIC_END - HIT * BEAT).toFixed(3);
 const F = (/** @type {number} */ beat) => Math.round(beat * BEAT * FPS);
 const RENDER = path.join(HERE, "..", "promo", "render.mjs"), SHOTS = path.join(HERE, "..", "promo", "shots-builder.json");
-const FILMED = path.join(os.tmpdir(), "gnogolf-promo"); // (render.mjs's WORK: its frames and the shots' sounds)
+const FILMED = path.join(os.tmpdir(), "gnogolf-promo-builder"); // (render.mjs's WORK for this cut: its frames, the shots' sounds and sinks)
 
 /** The 3D shots for render.mjs (shots-builder.json): each at its stretch's beats, its hole's id, its first stroke a one-stroker found then. */
 const shotsOf = () => CUT.filter((s) => s.shot).map((s) => ({ ...s.shot, hole: `${AUTHOR}/${s.shot.hole}/v1`, beats: s.beats, fire: s.shot.ace ? [{ deg: 0, power: 5, at: 0 }] : undefined }));
@@ -497,15 +474,11 @@ function shoot() {
   const pathsFile = path.join(HERE, "..", "promo", "paths.json"), paths = JSON.parse(fs.readFileSync(pathsFile, "utf8"));
   for (const s of shotsOf()) if (named(s.name)) for (const k of Object.keys(paths)) if (k.includes(s.hole)) delete paths[k];
   fs.writeFileSync(pathsFile, JSON.stringify(paths));
-  const log = execFileSync(process.execPath, [RENDER, "--cut=builder", "--frames", ...(only ? [`--only=${only.join(",")}`] : [])], { env: { ...process.env, APP }, encoding: "utf8" });
-  process.stdout.write(log);
-  const file = path.join(WORK, "sinks.json"), sinks = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")) : {};
-  for (const [, name, t] of log.matchAll(/^ {2}([\w-]+): the ball sinks at ([\d.]+) s/gm)) sinks[name] = Number(t);
-  fs.writeFileSync(file, JSON.stringify(sinks));
+  execFileSync(process.execPath, [RENDER, "--cut=builder", "--frames", ...(only ? [`--only=${only.join(",")}`] : [])], { env: { ...process.env, APP }, stdio: "inherit" });
 }
 
 async function edit() {
-  const sinks = fs.existsSync(path.join(WORK, "sinks.json")) ? JSON.parse(fs.readFileSync(path.join(WORK, "sinks.json"), "utf8")) : {};
+  const sinks = fs.existsSync(path.join(FILMED, "sinks.json")) ? JSON.parse(fs.readFileSync(path.join(FILMED, "sinks.json"), "utf8")) : {};
   const { frames, marks } = JSON.parse(fs.readFileSync(path.join(WORK, "take.json"), "utf8")), cut = cutOf(marks, sinks);
   await overlay(cut);
   base(cut, frames, marks);
