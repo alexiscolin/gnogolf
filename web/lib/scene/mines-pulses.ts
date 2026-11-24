@@ -62,8 +62,6 @@ const last = new WeakMap<Hole, Extras>();
 /** What moves, each frame; with less motion asked for, shown once as it ends (a minute on: every move here is over). */
 const play = (f: Tick) => (motion ? animate(f) : f(performance.now() / 1000 + 60));
 
-// ------------------------------------------------------------ dashed outlines of what comes
-
 /** Outlines, dashed round each as its own line would be, all one line (one draw). */
 function dashed(loops: readonly (readonly Vec2[])[], t: Terrain) {
   const xyz: number[] = [], dist: number[] = [];
@@ -85,8 +83,6 @@ const corners = (b: PBar): Vec2[] => {
   return [[b.c[0] - b.ux * hl - nx * ht, b.c[1] - b.uz * hl - nz * ht], [b.c[0] + b.ux * hl - nx * ht, b.c[1] + b.uz * hl - nz * ht], [b.c[0] + b.ux * hl + nx * ht, b.c[1] + b.uz * hl + nz * ht], [b.c[0] - b.ux * hl + nx * ht, b.c[1] - b.uz * hl + nz * ht]];
 };
 
-// ------------------------------------------------------------ the vault doors
-//
 // A round vault door in its frame of stone and steel across the corridor:
 // shut, it stands in its frame (the bar); open, it has rolled aside along
 // its track into a recess beside the corridor. On the frame's lintel a dial
@@ -233,8 +229,6 @@ function vaultDoor(b: PBar, t: Terrain, s: Hole, shut: boolean, was: boolean | n
   return g;
 }
 
-// ------------------------------------------------------------ the turntable
-
 /** The cart turntable: a timber platter on its iron ring, the deflector (the bar) across it, turned to the stroke's track; a signal arm at its side pointing at the next. */
 function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | undefined, next: PBar | undefined, t: Terrain, s: Hole, t0: number) {
   const g = new THREE.Group();
@@ -342,8 +336,6 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   }
   return g;
 }
-
-// ------------------------------------------------------------ the rockfall and the dynamite
 
 /** The roof over a bar: a crag of cracked rock hanging from the vault, its underside CRAG over the floor; fallen, a pale scar in it where the rock came away. */
 const CRAG = 8.7;
@@ -567,8 +559,6 @@ function blown(b: PBar, t: Terrain, s: Hole, fresh: boolean, t0: number) {
   return g;
 }
 
-// ------------------------------------------------------------ slabs that crumble
-
 /** Where a slab has fallen: the lane broken open over the dark, jagged lips of rock and splintered planks round it, darkness going down. */
 function brokenHole(z: Zone, t: Terrain, s: Hole, fresh: boolean, t0: number) {
   const g = new THREE.Group(), pts = outline(z, s), rand = seeded("hole" + zkey(z));
@@ -689,8 +679,6 @@ function planks(z: Zone, t: Terrain, s: Hole, gone: boolean, fresh: boolean, t0:
   return g;
 }
 
-// ------------------------------------------------------------ the lava tide
-
 /** The tide over the low stones: lava risen over them, rising in if it was not there, sinking away if it goes. */
 function tide(z: Zone, t: Terrain, s: Hole, rising: number, t0: number) {
   const g = new THREE.Group(), pts = z.poly && z.poly.length > 2 ? z.poly.map(([x, y]): [number, number] => [x, y]) : outline(z, s);
@@ -799,8 +787,6 @@ function gauge(at: Vec2, t: Terrain, now: number, next: number, was: number, t0:
   return g;
 }
 
-// ------------------------------------------------------------ bats
-
 /** A flock of bats round each roost of the stroke, flying in from where they roosted last stroke, swirling low where the chain has its post (the ball bounces off the swarm); a few stirring high over the next roost. */
 function bats(now: readonly Post[], was: readonly Post[] | null, next: readonly Post[], t: Terrain, t0: number) {
   const out = new THREE.Group(), g = new THREE.Group();
@@ -861,8 +847,6 @@ export function batPost(p: Post, t: Terrain) {
   return bats([p], null, [], t, -99);
 }
 
-// ------------------------------------------------------------ the lift's landings
-
 /** A lamp by each landing: green where the cage stands this stroke (get in), red where the shaft is open (you fall);
  *  the arrow under it says where the cage goes next: up to this landing, or away from it. */
 function landingLamps(landings: readonly Zone[], now: Extras, next: Extras | null, t: Terrain, s: Hole) {
@@ -904,8 +888,6 @@ function openShaft(z: Zone, t: Terrain, s: Hole) {
   }
   return g;
 }
-
-// ------------------------------------------------------------ the stroke
 
 const MINE = new Set(["vault door", "turntable", "rockfall", "dynamite", "crumble", "lava tide", "bat", "shaft"]);
 

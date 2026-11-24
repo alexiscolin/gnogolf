@@ -469,13 +469,13 @@ export function meterLine(e: Estimate): { text: string; piece?: string } {
   return { text: e.level == null ? "Not measured: the test will tell." : `${LEVELS[e.level]} to play${e.par ? `: ${parWords(e)}` : ""}.` };
 }
 
-/** The meter's chip in full, for its tooltip and a screen reader: the level, the par it suggests until the test's rounds do, what it took. */
+/** The meter's words in full, for its tooltip and a screen reader: the level, the par it suggests until the test's rounds do, what it took. */
 export function meterTitle(e: Estimate): string {
   const par = e.par ? ` ${cap(parWords(e))}, until your test rounds set it.` : "";
   return `Difficulty, the meter's guess: ${e.level == null ? "not measured" : LEVELS[e.level]}.${par} (${e.shots.toLocaleString("en")} shots in ${e.ms} ms${e.cut ? ", cut short" : ""}.)`;
 }
 
-/** What the editor shows of an estimate (made in the meter's worker: the editor's own chunk carries none of the meter): the level and its word, the dock's line, the chip's words in full, the par. */
+/** What the editor shows of an estimate (made in the meter's worker: the editor's own chunk carries none of the meter): the level and its word, the dock's line, the meter's words in full, the par. */
 export interface Shown extends Pick<Estimate, "level" | "par" | "path" | "heat"> {
   word: string;
   line: { text: string; piece?: string };

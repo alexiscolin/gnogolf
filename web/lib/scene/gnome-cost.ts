@@ -1,4 +1,4 @@
-// What a gnome costs to draw (docs/gnomes/design.md, "Budget"): triangles,
+// What a gnome costs to draw: triangles,
 // ink hulls and instanced copies included, and draws, once makeBall has baked
 // him; how high and how far he reaches. The budget's test and the generator
 // (which keeps no gnome over it) both count with this.

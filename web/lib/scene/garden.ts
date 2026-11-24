@@ -7,8 +7,6 @@ import { lantern, fireflies, tree, bush, stone, flower, bigFlower, gnomelet, bro
 
 
 
-// ---------------------------------------------------------------- the set
-//
 // A garden around the green: trees, bushes, stones, a signpost, hills and a
 // couple of clouds. It is decoration and nothing else — no obstacle lives out
 // here, and the seed is the hole's own name, so each course keeps its garden
@@ -58,8 +56,6 @@ function edging(s: Hole, box: THREE.Box3) {
   return g;
 }
 
-// ------------------------------------------------------------ backdrops
-//
 // Three landscapes for the back of the island. Which one a hole gets is a hash
 // of its id: stable for a course, and different from its neighbours often
 // enough that eighteen holes do not look like one.

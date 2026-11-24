@@ -30,8 +30,6 @@ import type { Extras, Post, Vec2, Zone } from "../types";
 import type { Bar } from "./worlds";
 import { own } from "../own";
 
-// ---------------------------------------------------------------- walls
-//
 // A lone skinned wall (or a bar of them) as the mines draw it: rock, a crystal
 // facet, an iron grate, a rope-and-plank edge, a rail guard. Each stands with
 // its face on the wall's line, on the side the ball plays on (the body pushed
@@ -361,8 +359,6 @@ function longSides(bar: Bar) {
   return l(w0) >= l(w1) ? [w0, w2] : [w1, w3];
 }
 
-// ---------------------------------------------------------------- posts
-
 /** A stalagmite filling the post's circle: dripstone rising in rings to a wet point, strata, a flowstone foot. */
 function stalagmite(r: number, rand: Rand) {
   const g = new THREE.Group();
@@ -645,8 +641,6 @@ function post(p: Post, t: Terrain, s: Hole) {
   }
 }
 
-// ---------------------------------------------------------------- the singing crystals
-//
 // A crystal bumper rings when the ball strikes it: a note of a pentatonic
 // scale (its own, by its place along the lane, so a chicane plays a tune), a
 // flash of light out of it, and the whole hole's crystals a little brighter
@@ -709,8 +703,6 @@ export function ring(s: Hole, x: number, z: number, k: number) {
   if (k > 0) sound("chime", best.note);
   return true;
 }
-
-// ---------------------------------------------------------------- dispatch
 
 export function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terrain, s: Hole): THREE.Object3D | null | undefined {
   const o = kind === "post" ? post(item as Post, t, s) : kind === "wall" ? wall(item as Bar, t, s) : zones.zone(item as Zone, t, s);

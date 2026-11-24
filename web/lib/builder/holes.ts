@@ -1,4 +1,4 @@
-// The community's holes as the Builder lists them (the GUI spec's B5 and B6):
+// The community's holes as the Builder lists them:
 // an author's own, and everyone else's, each at its latest version, never a
 // course hole, never one the site took down (takedown.ts).
 import { GNOKEY_ADDR_KEY } from "../adena";

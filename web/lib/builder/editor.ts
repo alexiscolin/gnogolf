@@ -1,5 +1,5 @@
-// What the editor's dock and palette say, from the checks (the GUI spec's
-// B2): a round an edit broke, the gauges against the Builder's limits, GG1's and the
+// What the editor's dock and palette say, from the checks: a round an edit
+// broke, the gauges against the Builder's limits, GG1's and the
 // realm's (size, work), the entries a limit switches off and why.
 import { counts, work, WORK_WARN, type Issue } from "./checks";
 import { plainOf } from "./explain";
@@ -101,7 +101,7 @@ const ORDER = ["Pieces", "Moving", "Room", "Size", "Walls", "Posts", "Zones", "P
 const ROOM = "Room for shots";
 
 /**
- * The dock's gauges (the GUI spec's B3): a gauge only once it nears its
+ * The dock's gauges: a gauge only once it nears its
  * limit (amber from 80%, red at it), nothing while the hole is far from them
  * all (the palette greys what would not fit: offAtLimit); a sentence for
  * each limit reached. The room's bar is the room left, as its words say.
@@ -192,7 +192,7 @@ export function meterFace(clean: boolean, est: { of: Draft; e: Shown | null } | 
   if (!clean) return { level: null, word: "–", title: "Difficulty: measured once the hole has no error", busy: false };
   if (!est || est.of !== kept) return { level: null, word: "–", title: "Difficulty: measuring…", busy: true };
   if (!est.e) return { level: null, word: "–", title: "Difficulty: not measured: the meter's shots found no way to hole it, or it could not run here. Try it yourself; it never stops you publishing.", busy: false };
-  // (a hole past easy: its strongest reason after it, the dock no longer saying it)
+  // (a hole past easy: its strongest reason after it)
   return { level: est.e.level, word: est.e.word, title: est.e.level && est.e.line.text ? `${est.e.title} ${est.e.line.text}` : est.e.title, busy: false };
 }
 

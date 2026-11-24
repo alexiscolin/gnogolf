@@ -127,8 +127,6 @@ function snowField(s: Hole) {
   return out;
 }
 
-// ---------------------------------------------------------------- the land
-
 /** The snow shelf, its cliff at the front, the valley far below, the peaks. */
 function base(s: Hole, box: THREE.Box3) {
   const g = new THREE.Group();
@@ -408,8 +406,6 @@ function edging(s: Hole) {
 function berms(s: Hole) {
   return { group: new THREE.Group(), height: snowField(s).h };
 }
-
-// ---------------------------------------------------------------- props
 
 /** A pine weighed down with snow: three tiers, snow on each. */
 function pine(rand: Rand, scale = 1) {
@@ -1108,8 +1104,6 @@ function archSpots(s: Hole) {
   return out;
 }
 
-// ------------------------------------------------------------------- decor
-
 function decor(s: Hole, bank: Height = () => 0) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
@@ -1492,8 +1486,6 @@ function warning(w: Slide, ground: Height, start: number) {
   return g;
 }
 
-// --------------------------------------------------------- on-lane pieces
-//
 // What the mountain holes put on the lane, in the mountain's look, each on
 // its physics footprint: a post's circle, a bar's box, a zone's shape.
 // course.ts and zones.ts ask piece(kind, item, t, s) for every post, wall and
@@ -1832,8 +1824,6 @@ function cliff(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ the lane lift
-//
 // mountain8: the chain has three timed bars across the lane, 4.5 apart, each
 // up 4 ticks in 12, in turn up the lane (0-4, 4-8, 8-12): one of them is
 // always up. The look is one chairlift along the lane's centre line, one way,
@@ -2203,8 +2193,6 @@ function snowCannon(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------- the ice rink
-//
 // mountain13: gnomes on skates (posts that come and go stroke by stroke: the
 // pulse's pieces), the goalie padded out, and a goal net round the cup.
 
@@ -2266,8 +2254,6 @@ function goalNet(len: number, thick: number) {
   return g;
 }
 
-// ------------------------------------------------------------- the col
-//
 // mountain12: at the saddle, a cairn each side of the pass and prayer flags
 // strung over it, off the lane.
 function colCrest(z: Zone, t: Terrain) {
@@ -2303,8 +2289,6 @@ function colCrest(z: Zone, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------- the seracs
-//
 // mountain15: a serac leans over the traverse above each timed hazard, and
 // its ice comes down on the lane in the hazard's window of substeps — driven
 // by the timed pieces' clock (state.timed), so the blocks fall on screen when

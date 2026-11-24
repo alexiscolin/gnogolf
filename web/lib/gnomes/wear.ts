@@ -1,4 +1,4 @@
-// What a player wears. Wearing is free (ADR-007): everyone sees the gnome
+// What a player wears. Wearing is free: everyone sees the gnome
 // the realm says a player wears (Worn: the one put on with Equip while held,
 // else their best), read once a visit for the player and a board's page or a
 // rival at a time for the others (WornMany); the ball's ghost, the boards'

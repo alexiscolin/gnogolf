@@ -37,7 +37,7 @@ export function shuffled<T>(xs: readonly T[], rand: Rand) {
   return a;
 }
 
-/** What a hole's own scenery is seeded by: a course hole's name and id, as it always was (an older realm's, saying
+/** What a hole's own scenery is seeded by: a course hole's name and id (an older realm's, saying
  *  nothing of official, one: engine.ts's reading); a built hole's id alone (renamed, in the Builder or at Publish, it
  *  keeps its look). */
 export const lookSeed = (s: Pick<Hole, "name" | "hole" | "official">) => (s.official !== false ? s.name : "") + s.hole;

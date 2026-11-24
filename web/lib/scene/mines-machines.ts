@@ -27,8 +27,6 @@ import type { Timing, Vec2 } from "../types";
 import type { Bar } from "./worlds";
 import { own } from "../own";
 
-// ------------------------------------------------------------ the rigs
-//
 // A machine is its bars, gathered as they are built (one hole build, or one
 // stroke's extras: the terrain and the zones list say which), drawn at the
 // first clock tick, when all of them are known.
@@ -239,8 +237,6 @@ function strikeSystem() {
   };
 }
 
-// ------------------------------------------------------------ the stamp battery
-//
 // Stamps in a row down the belt, each an iron stem through the guides of a
 // timber frame, a cam on the turning camshaft lifting it by its tappet and
 // letting it drop: it rises slowly through the ticks it is away, falls in
@@ -375,8 +371,6 @@ function strut(p: THREE.Vector3, q: THREE.Vector3, w: number, h: number, color: 
   return b;
 }
 
-// ------------------------------------------------------------ the water wheel
-//
 // The great wheel over the plank: an overshot wheel on its axle between two
 // timber trestles, its buckets clearing the plank, its long paddles sweeping
 // it — one of them down across the plank through each bar's window, the wheel
@@ -516,8 +510,6 @@ function waterWheel(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   };
 }
 
-// ------------------------------------------------------------ the belt from the wheel to the stamps
-//
 // The water wheel drives the stamps' camshaft: a pulley on the end of each
 // shaft nearest the other, a leather belt between them (a quarter-turn belt
 // where the shafts cross), taut, its two runs from the pulleys' tops and
@@ -551,8 +543,6 @@ function belted(t: Terrain, g: THREE.Group, p: THREE.Vector3[], attach: (k: numb
   g.add(tinted(mergeGeometries(runs), 0x3a2a22));
 }
 
-// ------------------------------------------------------------ the giant pickaxe
-//
 // One pickaxe, as big as a tree, hung by its haft from a beam in the vault,
 // swinging as a pendulum across the approach: its head is where the chain
 // has a bar at every tick (keyframes), eased as a pendulum eases, a clank
@@ -647,8 +637,6 @@ function pickaxe(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   };
 }
 
-// ------------------------------------------------------------ the drill head
-//
 // The tunnel-boring machine's cutterhead, standing across the bored drift
 // and rocking on its hub: an open wheel of spokes and cutter discs high over
 // the lane (the ball passes under it), and one long toothed cutter arm that
@@ -766,8 +754,6 @@ function drillHead(bars: readonly Bar[], g: THREE.Group, t: Terrain, hub?: Bar) 
   };
 }
 
-// ------------------------------------------------------------ the steam pump engine
-//
 // Each piston: a riveted steam cylinder off the lane, its rod driving the
 // head (the bar) across the lane through its window and drawing it back, a
 // puff of steam out of the cylinder's cock each stroke; each cylinder fed by
@@ -853,8 +839,6 @@ function pistons(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
     puffs.step(now);
   };
 }
-
-// ------------------------------------------------------------ gates and doors
 
 /** The lift's cage doors: a lattice of flat iron dropping from a lintel between two posts through its window, rising after it; one lattice drawn as many (instanced, stretched to each door). */
 function cageDoors(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
@@ -1027,7 +1011,7 @@ function stalactites(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
     const v = k / 8;
     pts.push(new THREE.Vector2(k === 8 ? 0.01 : Math.max(0.04, R * (1 - v) ** 0.9 * (1 + 0.08 * Math.sin(v * 17))), -v * H));
   }
-  // (its profile from the tip up: a lathe turned from bottom to top faces out; the other way round it was drawn inside out)
+  // (its profile from the tip up: a lathe turned from bottom to top faces out; the other way round it is drawn inside out)
   const geo = knobbly(new THREE.LatheGeometry(pts.reverse(), 7), rand, 0.06, 2.6, true);
   paint(geo, (x, y, z, c) => strata(-y, x, z, H, c).lerp(new THREE.Color(0xc9bfd8), Math.max(0, -y / H - 0.5)));
   const spike = facets(geo, relief());
@@ -1270,8 +1254,6 @@ function rollingBoulder(bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hol
     fx.step(now);
   };
 }
-
-// ------------------------------------------------------------ dispatch
 
 /** Each machine by its bars' skin, drawn once from all of them (machine). */
 const MACHINES: Record<string, (bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hole) => (tick: number, now: number) => void> = {

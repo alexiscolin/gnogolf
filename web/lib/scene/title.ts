@@ -74,8 +74,6 @@ function orbit(camera: THREE.PerspectiveCamera, b: Board, a: number, { r, h }: {
   camera.lookAt(cx, lift, cz);
 }
 
-// ------------------------------------------------------------- the gnomes
-
 function golfBall() {
   const g = new THREE.Group();
   // dimples, drawn once on a small canvas
@@ -208,8 +206,6 @@ function frameCast(camera: THREE.PerspectiveCamera, c: ReturnType<typeof makeCas
   const a = camera.aspect; // (setViewOffset takes its aspect from these sizes)
   camera.setViewOffset(a, 1, (-x0 * a) / 2, y0 / 2, a, 1);
 }
-
-// ------------------------------------------------------------- the stage
 
 
 export async function holeOf(world: string, given?: Hole) {

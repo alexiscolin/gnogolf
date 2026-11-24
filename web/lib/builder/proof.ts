@@ -1,4 +1,4 @@
-// L3, the proof (the design's "Test mode and par"): the hole, holed in one
+// L3, the proof: the hole, holed in one
 // period of each weather that moves the ball, replayed the way a save is
 // cut, by the realm's own code on the local chain. What it proves is keyed
 // by the hole's canonical data with no name and no par: renaming the hole

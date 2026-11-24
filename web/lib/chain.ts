@@ -3,7 +3,6 @@
 // Reads only, all free: no wallet, no transaction, no block to wait for. The
 // chain resolves every shot — nothing here computes anything about a ball
 // (the aim's previews run the realm's own code in the page: lib/sim.ts).
-// See CLIENT.md for the contract.
 //
 // This is the one place the chain's JSON is parsed (lib/sim.ts parses the
 // wasm's, the same JSON): each read is checked
@@ -60,7 +59,7 @@ export const gamePath = (realm: string) => realm.replace(/\/v[0-9]+$/, "").repla
 export const pkgsPath = (realm: string) => gamePath(realm).replace(/^\/r\//, "/p/");
 /** The gnoweb path of the realm that keeps the records, beside the rules: …/gnogolf/store. */
 export const storePath = (realm: string) => gamePath(realm) + "store";
-/** The gnomes' realm beside the rules (ADR-007): gno.land/r/…/gnogolf/gnomes. */
+/** The gnomes' realm beside the rules: gno.land/r/…/gnogolf/gnomes. */
 export const GNOMES_REALM = gamePath(REALM) + "gnomes";
 const HOLES_TTL = 10 * 60e3; // a hole registered meanwhile shows within ten minutes, or in a new tab
 
@@ -113,7 +112,6 @@ function refusal(log: string | undefined) {
   return m ? m[1].replace(/\s+$/, "") : null;
 }
 
-// ------------------------------------------------------------ the checks
 // Small and structural: what the page reads without looking twice. Anything
 // deeper (a skin's name, a zone's numbers) the scene already treats as data.
 

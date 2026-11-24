@@ -1,5 +1,5 @@
-// The chain's refusals in plain words (the builder's design, "Error
-// messages"): each L2 refusal is shown so, with the realm's own sentence
+// The chain's refusals in plain words:
+// each L2 refusal is shown so, with the realm's own sentence
 // under it, for an author to search. An unknown sentence is shown as it is.
 import { LIMITS } from "./gg1";
 import { own } from "../own";
@@ -51,7 +51,7 @@ export function two(name: string): string {
 }
 
 /**
- * A check's sentence in the player's words (the GUI spec's B1): what is
+ * A check's sentence in the player's words: what is
  * wrong, named by its pieces, and what to do, without the place in numbers
  * (Show me frames it) or the rule's code (a tooltip, for us). A sentence of
  * no known shape is kept, its numbers dropped.

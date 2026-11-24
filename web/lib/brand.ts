@@ -1,4 +1,4 @@
-// The game's name on what leaves the page (ADR-003): the shared picture and
+// The game's name on what leaves the page: the shared picture and
 // the shot clip carry the badge, the name and the site's address on a card at
 // the bottom, and the clip ends on a card of its own that asks for a go. Drawn
 // on a 2D canvas in the page's own colours and font (Fredoka, once loaded).

@@ -27,8 +27,8 @@ const save = (card: Card) => {
 /** A hole's cup: its world, the garden when it says nothing. */
 export const cupOf = (h: Partial<Pick<HoleRow, "world">>) => h.world || "garden";
 
-// The course was once 74 realms, one a hole; it is now data in slots
-// ("garden/17"), each version its own id ("garden/17/v2"). From
+// The course is data in slots ("garden/17"), each version its own id
+// ("garden/17/v2"); 74 of its holes were a realm each. From
 // data/holes.txt: the garden's old realm under each slot;
 // every other cup's slot "<world>/<n>" was the realm "<world><n>".
 const OLD_GARDEN: Record<string, string> = {
@@ -212,7 +212,7 @@ export function totals(card: Card, holes: readonly CardHole[]) {
 }
 
 // The cups a player can win, in order. A hole's cup is its world. The
-// Crystal Mines, the expert cup, come after the four (ADR-005).
+// Crystal Mines, the expert cup, come after the four.
 export const CUPS = ["garden", "island", "town", "mountain", "mines"] as const;
 export type Cup = (typeof CUPS)[number];
 /** The four classic cups: the grand slam's and the King's (not the mines). */
@@ -247,7 +247,7 @@ export function cupTotals(card: Card, allHoles: readonly CardHole[]) {
   };
   const out = Object.fromEntries(CUPS.map((c) => [c, cup(c)])) as Record<Cup, CupTotal>;
   // the grand slam: every classic cup the chain has, finished at par or under
-  // (never the mines: the King would move behind the expert cup, ADR-005 §7)
+  // (never the mines: the King would move behind the expert cup)
   const cups = CLASSIC.filter((c) => allHoles.some((h) => cupOf(h) === c));
   return { ...out, slam: cups.length > 1 && cups.every((c) => out[c].clean), aces: CUPS.reduce((n, c) => n + out[c].aces, 0) };
 }
@@ -330,7 +330,7 @@ export type SkyKind = (typeof SKIES)[number];
 export const BADGES: readonly Badge[] = [
   { id: "first", name: "Number one", need: "Take first place on a hole's board", family: "chain" },
   { id: "perfect", name: "Perfect cup", need: "A whole cup, every hole under par", family: "skill", ok: (f) => CUPS.some((c) => f.cups[c].all && f.cups[c].under === f.cups[c].done) },
-  // (the expert cup's: its gnome goes with finishing it, this with par, ADR-005 §7)
+  // (the expert cup's: its gnome goes with finishing it, this with par)
   { id: "lode", name: "Mother Lode", need: "The Crystal Mines at par or under", family: "skill", cup: "mines", ok: (f) => f.cups.mines.clean },
   { id: "ace", name: "Hole in one", need: "Hole a ball in one stroke", family: "skill", ok: (f) => f.strokes === 1 },
   // (another player's ghost at par or under, in the same aim mode: the cheap wins don't count)
@@ -344,7 +344,7 @@ export const BADGES: readonly Badge[] = [
   { id: "fog", name: "Fog walker", need: "Par or better in the fog", family: "weather", ok: (f) => f.kind === "fog" && f.strokes <= f.par },
   { id: "chain", name: "On the chain", need: "Save a round on-chain", family: "chain" },
   { id: "snail", name: "Never give up", need: "Finish a hole in 15 strokes or more", family: "fun", ok: (f) => f.strokes >= 15 },
-  // (as Ghost buster: another player's ghost, the same aim mode; a mixed race earns nothing, ADR-004)
+  // (as Ghost buster: another player's ghost, the same aim mode; a mixed race earns nothing)
   { id: "sport", name: "Good sport", need: "Finish a duel you lost to another player", family: "fun", ok: (f) => !!f.duel && f.duel.result === "loss" && !f.duel.self && !f.duel.mixed },
 ];
 /** The badges a finish earns that are not earned yet, rarest first. */

@@ -1,6 +1,6 @@
 // The hole builder's palette: what an author can place, world by world,
-// each piece drawn by the game's own code and bound to the physics it plays
-// (ADR-006). It is generated, not typed: an entry exists where a drawing meets
+// each piece drawn by the game's own code and bound to the physics it plays.
+// It is generated, not typed: an entry exists where a drawing meets
 // a binding. The drawings are the scene's own declarations (the shared
 // tables POSTS, BARS, MOUTHS, course.ts's and zones.ts's DRAWN, and each
 // world module's skins); the bindings are bindings.ts BINDINGS. A drawing that
@@ -124,7 +124,7 @@ function paletteOf(world: string, own: Skins = {}, sea = false): PaletteEntry[] 
   return out;
 }
 
-/** The pieces a first hole needs, first in the palette and named plainly (the GUI spec's B3); the world's others under "More pieces" (a Bank among them: the green walls itself, Board's Paint, so a wall by hand is an inner bank). */
+/** The pieces a first hole needs, first in the palette and named plainly; the world's others under "More pieces" (a Bank among them: the green walls itself, Board's Paint, so a wall by hand is an inner bank). */
 export const COMMON = [["Bumper", "*/post/bumper"], ["Sand", "*/surface/sand"], ["Water", "*/hazard/water"], ["Slope", "*/slope/"]] as const;
 
 /** A palette's common pieces, in that order, each named plainly (those it has). */

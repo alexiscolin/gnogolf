@@ -1,4 +1,4 @@
-// The shot clip (ADR-003), the part a browser is not needed for: the format
+// The shot clip, the part a browser is not needed for: the format
 // it is recorded in, the stretch of the holing stroke it shows, the sky
 // behind it and its file's name. The recording is engine/clip.ts.
 

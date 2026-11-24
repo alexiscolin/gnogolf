@@ -20,8 +20,6 @@ import { MINES, crystalCluster, crystalMat, shard, HUES, planks, cartMouth } fro
 import { crustBy, FALLING } from "./mines-lava";
 import { boulder, knobbly, paint, strata, facets, inked, gem, form, type Form, INK_THIN, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, RUST } from "./mines-toon";
 
-// ------------------------------------------------------------ rock
-
 /** A crystal outcrop: a cluster of crystals growing out of a rock, about
  *  `size` tall; its glow's height (top) for the caller's light. */
 export function outcrop(rand: Rand, size: number, hue: number = HUES[Math.floor(rand() * HUES.length)]) {
@@ -86,8 +84,6 @@ export function pillar(rand: Rand, h: number, r: number, fade = 0) {
 }
 
 const VAULT = new THREE.Color(MINES.vault);
-
-// ------------------------------------------------------------ timber and iron
 
 let boards = 0; // (the boards built so far in a hole: each its own tone, the same from one build of it to the next)
 /** A hole's build begins: its boards counted from the first again. */
@@ -323,8 +319,6 @@ export function headframe(h: number) {
   return g;
 }
 
-// ------------------------------------------------------------ life
-
 /** A miner: a gnome in a hard hat with its lamp. */
 function minerBody(rand: Rand) {
   const g = gnomelet(rand);
@@ -500,8 +494,6 @@ export function bats(rand: Rand, cx: number, cy: number, cz: number, R: number, 
 }
 
 
-// ------------------------------------------------------------ set pieces
-//
 // Each hole's own "wow" far back and its small surprises (mines.ts picks
 // them by the hole's biome): each foot at 0, facing +z (the board), live
 // parts marked and animated on the scene's clock.
@@ -975,8 +967,6 @@ function carriers(rand: Rand, a: THREE.Vector3, b: THREE.Vector3) {
   return team;
 }
 
-// ------------------------------------------------------------ the decor pass: bigger things
-//
 // The cave filled as the other worlds are (a Town's houses, a Garden's
 // trees): things the size of a shack, a lamp post, a stack of crates, a
 // giant crystal, round the lane in rows. Cheap per triangle: boxes painted in
@@ -1321,8 +1311,6 @@ function camp(rand: Rand) {
 }
 const FLAME_OUT = share(new THREE.MeshBasicMaterial({ color: 0xff8a2a })), FLAME_IN = share(new THREE.MeshBasicMaterial({ color: 0xffe08a }));
 
-// ------------------------------------------------------------ sites
-//
 // The cave dressed in places, not confetti (the owner): a few composed sites
 // a hole, each a focus with its things gathered round it, at the other
 // worlds' scale. Each builder's foot at 0, facing +z (the lane), about r

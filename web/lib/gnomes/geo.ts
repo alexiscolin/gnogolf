@@ -1,5 +1,5 @@
-// The shop's region gate, at zero server cost (ADR-007, "Where the shop
-// opens"). The free game plays everywhere; the gnome shop is not offered in
+// The shop's region gate, at zero server cost.
+// The free game plays everywhere; the gnome shop is not offered in
 // the countries below. Netlify answers /geo.json from the visitor's country
 // (netlify.toml: a 200 rewrite to /geo-blocked.json for them, and their
 // /g/* pages to /unavailable/; to /geo-open.json for everyone else), the

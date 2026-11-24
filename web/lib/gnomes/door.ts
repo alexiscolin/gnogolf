@@ -5,7 +5,7 @@
 // without the flag carries this file and the region gate alone
 // (test/bundle.test.ts).
 
-/** The shop is on (NEXT_PUBLIC_GNOMES=1); off, the game is exactly as before it. */
+/** The shop is on (NEXT_PUBLIC_GNOMES=1); off, the game is exactly as without it. */
 export const SHOP = process.env.NEXT_PUBLIC_GNOMES === "1";
 
 /** The shop's title (ShopFrame.tsx SHOP_HEAD's), the door's frame's too when the shop's part could not come. */

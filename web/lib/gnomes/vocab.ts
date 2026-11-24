@@ -1,5 +1,5 @@
 // The gnome collection's words: every trait a token can carry, each table in
-// the order its code is written (docs/gnomes/design.md, "Trait encoding").
+// the order its code is written.
 // Append only: a code, once a token carries it, means the same thing for
 // good. A new hat, effect or colour is a new last entry here and its mesh in
 // scene/ (the binding: its name); nothing else changes, and a client that
@@ -9,8 +9,7 @@
 export type Colour = readonly [name: string, hex: number];
 
 // The first 27 are every colour GNOMES draws with today, so an earned gnome
-// writes exactly as it is drawn; the rest are the collection's own
-// (design.md, "The signature palette").
+// writes exactly as it is drawn; the rest are the collection's own.
 export const COLOURS: readonly Colour[] = [
   ["cap", 0xe0524b], ["cream", 0xfdf6e9], ["sun", 0xffd98a], ["white", 0xffffff], ["ink", 0x144134],
   ["periwinkle", 0x5b6fb5], ["snow", 0xf1eee6], ["pine", 0x2f8f6f], ["ginger", 0xd9793a], ["mustard", 0xf2b94a],
@@ -36,7 +35,7 @@ export const COLOURS: readonly Colour[] = [
 export const TIERS = ["earned", "common", "rare", "epic", "legendary"] as const;
 /** Where a gnome comes from: the five cups and the course's two set pieces. 0: none (the earned). */
 export const HOMES = ["", "garden", "island", "town", "mountain", "mines", "volcano", "storm"] as const;
-/** What a gnome does: one look of hats, beards and things that belong together (design.md, "Archetypes"). */
+/** What a gnome does: one look of hats, beards and things that belong together. */
 export const ARCHETYPES = ["", "gardener", "fisher", "sailor", "deckhand", "baker", "painter", "skier", "alpinist",
   "miner", "prospector", "explorer", "smith", "stormwatch", "apprentice"] as const;
 /** The hats: GNOMES' six first (cone, tall and helmet are not Skin.shape: see codec), then the collection's. */
@@ -83,7 +82,7 @@ export type Material = (typeof MATERIALS)[number];
 export type Trail = Exclude<(typeof TRAILS)[number], "">;
 export type Holing = (typeof HOLINGS)[number];
 
-/** The earned gnomes' pieces: no gnome of the sale wears one (design.md, "Never a copy"). */
+/** The earned gnomes' pieces: no gnome of the sale wears one. */
 export const EARNED_ONLY: readonly Accessory[] = ["stars", "horns", "parrot", "mask", "sash", "crown", "cape", "lamp"];
 
 const byName = new Map(COLOURS);

@@ -2,7 +2,7 @@
 // from data/gnomes/): its series, their worlds, and every token's name, line,
 // traits and look. What a screen needs to show, sort and filter gnomes is
 // here, with no 3D: the gallery, the token page, the mint and the locker
-// read it (docs/gnomes/design.md, "For the screens").
+// read it.
 import { colourName, type Archetype, type Home, type Tier } from "./vocab";
 import { decode, type Traits } from "./codec";
 import { cap, worldName } from "../card";

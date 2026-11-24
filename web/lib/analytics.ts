@@ -6,8 +6,7 @@
 // before waits for it. Never who: no identify(), no replay, no heatmaps, the
 // clicks' text and attributes masked, and every event scrubbed of addresses
 // and share texts before it goes (clean). A visitor who objects (optOut, the
-// About sheet) is not measured again in this browser. docs/analytics.md lists
-// the events.
+// About sheet) is not measured again in this browser.
 import type { CaptureResult, PostHog } from "posthog-js";
 import { camlog } from "./testhooks";
 import { isTouch, reducedMotion } from "./device";
@@ -209,8 +208,6 @@ export function failure(err: unknown) {
   return kind || (/out of gas/i.test(m) ? "gas" : /insufficient/i.test(m) ? "funds" : /locked/i.test(m) ? "locked" : /already open/i.test(m) ? "busy" : /cancelled|rejected/i.test(m) ? "cancelled" : /not installed/i.test(m) ? "no_adena" : /network|chain id|RPC/i.test(m) ? "network" : "other");
 }
 
-// ----------------------------------------------------------------- scrubbing
-
 const G1 = /g1[0-9a-z]{38}/g; // a gno.land address (chain.ts ADDR), anywhere in a string
 // what a URL keeps of its query: where in the game, never who (by=, friend=:
 // an address; a held gnome's id, gnome=t<id>: its owner) nor a share's text
@@ -242,8 +239,6 @@ const deep = (v: unknown, free = false): unknown =>
   typeof v === "string" ? scrub(v, free) : Array.isArray(v) ? v.map((x) => deep(x, free)) : v && typeof v === "object" && !(v instanceof Date) ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, deep(x, free || k.startsWith("$survey_response") || k === "$survey_questions")])) : v;
 /** An event scrubbed, every string in it (before_send): its properties, the person's first ones. */
 export const clean = (e: CaptureResult | null): CaptureResult | null => e && ({ ...e, properties: deep(e.properties), $set: deep(e.$set), $set_once: deep(e.$set_once) } as CaptureResult);
-
-// ------------------------------------------------------------------- loading
 
 /** The init options (tested: what is on, what is off). */
 export const OPTIONS = {

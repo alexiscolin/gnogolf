@@ -301,8 +301,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       done: !!g.done, // no more shots (holed, even before the banner)
     });
 
-  // ------------------------------------------------------------- rendering
-
   let alive = true;
   // Graphics: "high" is the game as designed; "low" draws fewer pixels (a
   // pixel ratio of 1, 0.8 on a phone), leaves the ink off distant decor and
@@ -573,8 +571,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     }
     if (show !== pipOn) pip.classList.toggle("cuppip--on", (pipOn = show));
   }
-
-  // --------------------------------------------------------------- loading
 
   // Loads are ticketed: only the latest one may land, and the round changes
   // before the wait, so any shot still in the air is already somebody else's.
@@ -966,8 +962,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     ball.userData.body.rotation.set(0, Math.PI / 2 - g.facing, 0);
   }
 
-  // ---------------------------------------------------------------- aiming
-
   const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const ray = new THREE.Raycaster();
   const hit = new THREE.Vector3(), ndc = new THREE.Vector2();
@@ -1002,7 +996,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   window.addEventListener("pointermove", cam.hover);
   const rp = makeReplay(E);
   E.landing = rp.landing;
-  // a duel's ghost (ADR-004): another player's best, a stroke after each of the player's
+  // a duel's ghost: another player's best, a stroke after each of the player's
   const rival = makeRival(E, { showClock, restTimed, told: () => void publish(), warm: () => void warm(), gnome: () => gnomeId, cheer });
   E.rivalAt = rival.at;
   const aimer = makeAimer(E);
@@ -1047,8 +1041,8 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     const px = Math.hypot(ev.clientX - press.x, ev.clientY - press.y);
     if (px < 6) {
       // back at the start: no pull at all — letting go here shoots nothing.
-      // (This used to return before touching the shot, so a pull brought back
-      // kept the power it had: the elastic would not come back.)
+      // (The shot is cleared too: a pull brought back would keep the power it
+      // had, and the elastic would not come back.)
       if (shot.power > 0) {
         shot.power = 0;
         g.power = 0;
@@ -1212,8 +1206,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   const onHide = () => document.hidden && onCancel();
   document.addEventListener("visibilitychange", onHide);
 
-  // ------------------------------------------------------------- the shot
-
   // one creak per tenth of power the elastic gains or gives back
   let notch = 0;
   const creak = () => {
@@ -1308,8 +1300,8 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     if (res.holed) {
       g.done = true; // no more shots, even before the banner shows
       const holed = () => {
-        // the stroke count as the round has it (SimulateFrom sends none: res.strokes was undefined,
-        // and the card saved nothing)
+        // the stroke count as the round has it (SimulateFrom sends none: res.strokes is undefined,
+        // and the card would save nothing)
         onHoled({ id, strokes: g.strokes, shots: g.shots });
         // the hole "Next hole" goes to (the win card's: the next in this cup)
         const cup = perList().holes, i = cup.findIndex((h) => h.id === id);
@@ -1399,8 +1391,6 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     righting = { from: body.quaternion.clone(), to, t: 0 };
   }
 
-
-  // ----------------------------------------------------------------- boot
 
   /** The hole as the scene dresses it. Its decor (the theme, the time of
    *  day, every seeded layout) is keyed by the hole's name for the scene: a
@@ -1627,7 +1617,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       drawCard(x, W, H, caption);
       return new Promise<Blob | null>((r) => c.toBlob(r, "image/png"));
     },
-    /** The holing stroke played again and recorded, for sharing (ADR-003):
+    /** The holing stroke played again and recorded, for sharing:
      *  an MP4, or null (no hole won this round, cancelled). Its module is
      *  fetched when first asked: a build without clips never loads it. */
     clip(run: ClipRun, caption: Caption) {
@@ -1636,7 +1626,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       const hide = () => [ball, rival.ball(), aim, band, confetti && confetti.group];
       return Promise.all([import("./engine/clip"), loadBadge()]).then(([m]) => m.recordClip({ E, stroke, gnome: gnomeId, showClock, hide, card: (x, w, h) => drawCard(x, w, h, caption, 0.6), term: caption.term, challenge: caption.challenge || `${caption.title} · ${caption.score}` }, run));
     },
-    /** Races a ghost on this hole, from the tee (ADR-004); null drops the duel. */
+    /** Races a ghost on this hole, from the tee; null drops the duel. */
     race(ghost: Ghost | null) {
       rival.race(ghost);
     },

@@ -92,12 +92,10 @@ export function makeStudio(size: number) {
   };
 }
 
-// ------------------------------------------------------------ time of day
-//
 // A hole is played at one moment of the day, and keeps it: day, evening or
 // night. The light changes here, and the fog's colour (a pale mist by day, a
 // rosy haze at dusk, a blue murk at night); the sky behind the canvas is the page's.
-// Under ground (the Crystal Mines, ADR-005 §6) the light is the scene's own:
+// Under ground (the Crystal Mines) the light is the scene's own:
 // "cave" a blue-slate hemisphere and a soft warm key from above, as if from
 // the lantern strings; "gallery" the dark (holes 2 and 15, and "Lights out"),
 // where only the crystals, the lava and the headlamp light the way. Their

@@ -25,8 +25,6 @@ import type { Hole, Height } from "./data";
 import type { Extras, Vec2, Wall, Zone } from "../types";
 import { own } from "../own";
 
-// ------------------------------------------------------------ the signs
-
 type Look = "warn" | "time" | "go";
 interface Spec { words: string; look: Look; icon: (x: CanvasRenderingContext2D, c: Paint) => void }
 interface Paint { fg: string; acc: string; bg: string }
@@ -494,8 +492,6 @@ const SIGNS: Record<string, Spec> = {
   } },
 };
 
-// ------------------------------------------------------------ the faces
-
 /** One cell of the face atlas, 2:1: every sign's face in one texture (one draw). */
 const CELL_W = 256, CELL_H = 128, COLS = 4;
 const ORDER = Object.keys(SIGNS);
@@ -617,8 +613,6 @@ function faceGeo(name: string, w: number, h: number, z: number, back = false) {
   if (back) g.rotateY(Math.PI);
   return g.translate(0, 0, back ? -z : z);
 }
-
-// ------------------------------------------------------------ the builds
 
 const PW = 4.2, PH = 2.2, FW = 3.92, FH = 1.96; // the plate, its face
 const CHAIN_UP = 11; // the chains of a hung sign, up into the vault's dark
@@ -753,8 +747,6 @@ function bracketed(name: string, rand: Rand, lamp: () => THREE.Object3D, foot: n
   g.add(post, armMesh, p, new THREE.Mesh(merged(iron), relief()), l);
   return { g, lampAt: new THREE.Vector3(cx, ARM_Y + 0.35, 0.2) };
 }
-
-// ------------------------------------------------------------ where they go
 
 /** What the world's decor lends the signs: the floor and its room (mines.ts decor). */
 export interface Ground {

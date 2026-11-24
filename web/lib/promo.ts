@@ -143,8 +143,6 @@ export const promo = {
 
 if (on) install();
 
-// --------------------------------------------------------------- the clock
-
 function install() {
   const P = performance, realNow = P.now.bind(P), nRaf = window.requestAnimationFrame.bind(window);
   const nSet = window.setTimeout.bind(window), nClear = window.clearTimeout.bind(window);
@@ -510,8 +508,6 @@ function install() {
 const SPARKS = [[8, 30], [90, 20], [18, 82], [84, 74], [50, 2], [64, 92]];
 const STAR = `<svg viewBox="-11 -11 22 22" width="110" height="110"><path d="M0-10Q1.8-1.8 10 0Q1.8 1.8 0 10Q-1.8 1.8-10 0Q-1.8-1.8 0-10Z" fill="#fffaf0" stroke="#144134" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
 
-// -------------------------------------------------------------- the morph
-
 /** The gnome on the tee swapped for the next on each step of the morph (the last kept), each hopping in with a spin
  *  and a squash as he lands (where the swap set him down: placeBall's), turned with an orbit around him: his face kept
  *  to the camera as at its start. */
@@ -526,8 +522,6 @@ function morph(m: NonNullable<Shot["morph"]>, c?: Cam) {
   const sq = 0.22 * Math.sin(Math.PI * land);
   b.scale.set(1 + sq, 1 - sq, 1 + sq);
 }
-
-// -------------------------------------------------------------- the camera
 
 const V = () => new THREE.Vector3();
 const pos = V(), look = V(), dir = new THREE.Vector3(1, 0, 0), prevBall = V(), tmp = V(), anchor = V(), anchorV = V();

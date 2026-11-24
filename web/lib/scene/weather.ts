@@ -73,7 +73,7 @@ const BITS_OF: Record<string, readonly number[]> = {
 // fog "Lights out": no banks of mist, the lanterns out (the world's) and the
 // light gone to the dark gallery's (camera.ts TIMES), the dark closing in
 // (the scene's fog in the vault's colour, near). A cave is never clear of
-// its own dark far off: a soft far fog always. Every other world as before.
+// its own dark far off: a soft far fog always. Every other world is untouched.
 const CAVE = {
   rain: 0.3, // of the drops
   drop: [9, 5] as const, // fall speed: from, and up to this much more
@@ -274,8 +274,8 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
   // fog banks drifting low over the course: soft blobs on planes turned to the camera
   const bankMat = new THREE.MeshBasicMaterial({ map: blob(), color: 0xeef2ef, transparent: true, opacity: 0.55, depthWrite: false });
   // a bank fades out as the camera comes into it (Third person runs through
-  // the low ones): one blended plane over the whole screen was the storm's
-  // and the fog's worst overdraw, and it hid the course. Gone within NEAR_BANK.
+  // the low ones): one blended plane over the whole screen is the storm's
+  // and the fog's worst overdraw, and it hides the course. Gone within NEAR_BANK.
   // (the storm's clouds fade the same way, by their height over the lens)
   const faded = (mat: THREE.MeshBasicMaterial, n: number) => {
     const geo = new THREE.PlaneGeometry(1, 1), a = new THREE.InstancedBufferAttribute(new Float32Array(n).fill(1), 1);
@@ -317,7 +317,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
   };
   // the wind near the lens (Third person stands in it): a gust or a blown bit
   // closer than NEAR_WIND is not drawn, and comes back in by FAR_WIND; in the
-  // lens's face it was a white smear across the screen
+  // lens's face it is a white smear across the screen
   const NEAR_WIND = 3, FAR_WIND = 8;
   const NEAR_RAIN = 2, RAIN_LEN = 0.024; // (0.6 long at 25 from the lens, the Classic view)
   const nearFade = (d: number) => (d >= FAR_WIND ? 1 : d <= NEAR_WIND ? 0 : ((d - NEAR_WIND) / (FAR_WIND - NEAR_WIND)) ** 2);
@@ -585,7 +585,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
         // slanted by the wind, and as long on screen from every camera: a
         // streak's length is its distance to the lens (RAIN_LEN of it), one
         // closer than NEAR_RAIN not drawn (Third person stands in the rain:
-        // a drop at the lens was a line across the whole screen)
+        // a drop at the lens is a line across the whole screen)
         const sx = wx * 18, sz = wz * 18, c = cam ? cam.position : null;
         for (let i = 0; i < rainN; i++) {
           const d = drops[i];

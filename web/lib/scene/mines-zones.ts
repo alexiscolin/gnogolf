@@ -32,8 +32,6 @@ import type { MutVec2, Vec2, Zone } from "../types";
 import type { FallIn } from "./worlds";
 import { own } from "../own";
 
-// ------------------------------------------------------------ outlines and sheets
-
 /** A zone's outline as drawn: organic (rounded, a hair of wobble), its points on the board. */
 export function outline(z: Zone, s: Hole): MutVec2[] {
   // (a surface's plain rectangle is a patch, rounded as a round zone is: the
@@ -174,8 +172,6 @@ function spotsIn(pts: readonly Vec2[], n: number, m: number, rand: Rand, keep?: 
   return out;
 }
 
-// ------------------------------------------------------------ the sunk hazards
-//
 // The lane is cut open over them (worlds.ts open: its cells left out, rock
 // down to their level); here, what is inside: a bank or a lining from the
 // lane's edge down to it, its rim over the cut cells' steps, and the stuff
@@ -585,8 +581,6 @@ function oreBin(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ surfaces
-//
 // Laid on the lane over their outline, a hair over it (the shared polygon
 // offset keeps them from shimmering), each with its own 3D stuff on top.
 // the worlds' toon over the patch's own colours, crisp (its edge inked, not faded into the lane)
@@ -912,8 +906,6 @@ function causeway(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ the lava falls
-//
 // A curtain of lava pouring from a spout in the vault across the gallery,
 // on the tick clock: when its window opens the head of the flow falls from
 // the spout to the floor, it pours through the window, then its tail falls
@@ -1046,8 +1038,6 @@ function lavaFall(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ hills
-//
 // The terrain raises a hill's ground itself (terrain.ts): here what it is
 // made of, laid on that ground.
 
@@ -1251,8 +1241,6 @@ function ropeBridge(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ the air
-
 /** Where along a zone its air comes from: the edge against its push, split into outlets (grates or nozzles) a couple of units apart. */
 function outlets(z: Zone, t: Terrain) {
   const A = axes(z), W = A.b1 - A.b0, n = z.round && W < 5 ? 1 : Math.max(1, Math.round(W / 2.6));
@@ -1381,8 +1369,6 @@ function magnet(z: Zone, t: Terrain, s: Hole, rand: Rand) {
   return g;
 }
 
-// ------------------------------------------------------------ the Heart
-
 /** The Heart itself: one huge cluster of crystals splayed up and out every way from its bed of rock and druse, rose at its heart and cyan at its points, standing at (x, z) (its foot at y0), glowing. */
 export function heartCrystal(x: number, z: number, y0: number, R: number) {
   const g = new THREE.Group(), rand = seeded("heart" + x + z);
@@ -1449,8 +1435,6 @@ function streams(rand: Rand, L: number, T: number, n: number, r: number) {
   return crustBy(geo, () => FALLING);
 }
 
-// ------------------------------------------------------------ dispatch
-
 export function zone(z: Zone, t: Terrain, s: Hole): THREE.Object3D | undefined {
   const rand = seeded("mz" + s.hole + z.min.join() + z.max.join() + z.skin);
   switch (z.skin) {
@@ -1479,8 +1463,6 @@ export function zone(z: Zone, t: Terrain, s: Hole): THREE.Object3D | undefined {
   }
 }
 
-// ------------------------------------------------------------ falling in
-//
 // The ball into each hazard of the mines, in its own way (worlds.ts fallIn:
 // the replay has brought it down to where it meets the hazard, then steps
 // this for its 1.4 s while the ball sinks and comes back): into lava a hiss,

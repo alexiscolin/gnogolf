@@ -99,8 +99,6 @@ export function makeCamera(E: Live) {
     return r;
   }
 
-  // ------------------------------------------------------------ the camera
-  //
   // One controller. A MODE says where the camera wants to be — classic (the
   // rig on the gnome), far (the whole hole, high and wide), third person (low
   // behind the gnome) — for the STATE the game is in: at rest, aiming, the
@@ -407,7 +405,7 @@ export function makeCamera(E: Live) {
   /** Third person's target, per state: 7 behind, 3 up, looking along the aim, the ball's run, or at the cup. */
   function thirdTarget(dt: number, state: CamState) {
     // holed: framed on the cup, up and back a little — the ball sinking into
-    // it is not followed down (that was a close-up of the hat)
+    // it is not followed down (that would be a close-up of the hat)
     // off the lane in a replay (off the rooftops into the street, into the
     // sea): followed across at the height it left at, never down among the houses
     const P = E.ball.position, t = g.course && g.course.userData.terrain;

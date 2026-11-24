@@ -63,7 +63,7 @@ export function bake<T extends THREE.Object3D>(root: T, { board = null, local = 
     return false;
   };
   // materials that draw the same are one bucket, not one per material object:
-  // flat(color, opts) makes a fresh material each call, and each was a draw
+  // flat(color, opts) makes a fresh material each call, and each would be a draw
   // call of its own. (Only meshes that never change are here: nothing mutates
   // a baked material afterwards, and none has been rendered yet.)
   // Plain colours go further: a flat-coloured untextured material's colour is

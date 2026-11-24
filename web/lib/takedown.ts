@@ -1,5 +1,5 @@
-// The takedown list (the site serves it at /takedown.json; who edits it and
-// when: docs/leaderboards.md): community holes the site no longer shows,
+// The takedown list (the site serves it at /takedown.json): community
+// holes the site no longer shows,
 // listed or linked, whatever the chain still keeps. Read as flags.ts reads
 // its list: only what it should hold, from the chain the game plays on.
 import { isAddress, isSlug } from "./chain";

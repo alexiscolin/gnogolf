@@ -16,7 +16,7 @@ export interface Hole extends HoleState {
 
 /** A mines hole's place in its cup (1..18), 0 off the mines (a hole dressed as the mines with ?world=). */
 export const minesOrder = (s: Pick<Hole, "hole">) => Number(/^mines\/(\d+)/.exec(s.hole || "")?.[1]) || 0;
-/** The mines' dark galleries (ADR-005 §6): lit only by the headlamp, the glowworms and the crystals, in any weather. */
+/** The mines' dark galleries: lit only by the headlamp, the glowworms and the crystals, in any weather. */
 export const darkGallery = (s: Pick<Hole, "hole">) => [2, 15].includes(minesOrder(s));
 /** How far the aim dots see (0: all the way): 7 units in fog; in a dark gallery
  *  of the mines, the headlamp's 7 in any weather and 4 in fog. (The HUD and

@@ -1,4 +1,4 @@
-// Play's set-up (the hole-builder design's "Test mode and par"): the hole's
+// Play's set-up: the hole's
 // id as it will be published (its weather hangs on it), a period for each
 // weather to beat, the row the engine finds the hole by, and the chain the
 // engine plays it on: the local chain's answers (builder.wasm, one clock)

@@ -1,4 +1,4 @@
-// The gnomes' signatures (r/gnogolf/gnomes, ADR-007), built on the wallet
+// The gnomes' signatures (r/gnogolf/gnomes), built on the wallet
 // layer's own (lib/adena.ts: send, gnokeyCall, gnokeyOn): one call each, the
 // realm's own function, Buy(ids) or Equip(id), and the same call as a gnokey
 // line. Loaded with the shop: the game's first load carries none of it.

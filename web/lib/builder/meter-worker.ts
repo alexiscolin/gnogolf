@@ -40,7 +40,7 @@ self.onmessage = async ({ data: m }: MessageEvent<Ask>) => {
       replays ??= loadModule().then(makeBuilderHost);
       carried = await carry(await replays, m.draft, m.hex, m.key, m.author);
     } catch {
-      replays = null; // (none carried: the edit dropped them, as before)
+      replays = null; // (none carried: the edit dropped them)
     }
     return postMessage({ job: "carry", n: m.n, carried } satisfies Reply);
   }

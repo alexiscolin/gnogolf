@@ -109,8 +109,6 @@ const hull = hullOf(0.055);
 export const THIN_HULL = 0.028;
 const hullThin = hullOf(THIN_HULL);
 
-// ---------------------------------------------------------------- motion
-//
 // The garden moves a little: foliage sways, water ripples, smoke rises. All of
 // it is decoration, and all of it stops for a player who asked the system for
 // less motion.
@@ -231,8 +229,6 @@ const inked = (geometry: THREE.BufferGeometry, material: THREE.Material) => draw
 // 2 segments: round enough under an ink outline, a third of the triangles of 3
 const rbox = (w: number, h: number, d: number, r = 0.12) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2, h / 2, d / 2) * 0.98);
 
-// ---------------------------------------------------------------- relief
-//
 // Borders (kerbs, rails, their posts, a bank's face, a quay) get some volume
 // and a light texture, the same way in every world: their colour darkens down
 // to the foot (baked into vertex colours by shade()), the top catches a
@@ -313,8 +309,6 @@ export function shade(geo: THREE.BufferGeometry, color: THREE.ColorRepresentatio
 export const carved = (geo: THREE.BufferGeometry, color: THREE.ColorRepresentation, side: THREE.Side = THREE.FrontSide, k?: (y01: number, i: number) => number) =>
   drawn(shade(geo, color, k), relief(side));
 
-// ---------------------------------------------------------------- water
-//
 // One look for every body of water on a lane (a pond, a moat, a rock pool, a
 // lagoon, a canal): its colour per vertex, from waterTone — pale in the
 // shallows, deep in the middle, a line of foam where it laps the bank — and,

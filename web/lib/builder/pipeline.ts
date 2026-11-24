@@ -1,5 +1,5 @@
-// A draft through every check the builder makes, cheapest first (the
-// design's validation pipeline): L0, each piece within its palette entry;
+// A draft through every check the builder makes, cheapest first:
+// L0, each piece within its palette entry;
 // the hole's extent before it is fitted (E1, E1b); fit, the chain's own
 // (a refusal: L2); the editor's checks on the hole as fit gives it, each
 // issue named by the draft piece it is about (E2 to E8, E10, E13 to E15);

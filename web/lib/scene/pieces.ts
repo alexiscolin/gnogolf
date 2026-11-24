@@ -50,7 +50,6 @@ function stripes(a: number, b: number, n: number, vertical = true) {
   return t;
 }
 
-// ------------------------------------------------------------------ posts
 // Each takes (p, y): p.c the centre, p.r the radius; y the ground there.
 
 function palm(p: PostLike, y: number) {
@@ -405,7 +404,6 @@ export const POSTS: Record<string, PostFn> = {
   "gnome statue": gnomeStatue,
 };
 
-// ------------------------------------------------------------------- bars
 // Each takes (centre [x, z], length, thickness, angle, height fn) and fills
 // the bar's rectangle exactly.
 
@@ -540,7 +538,6 @@ function wheelbarrow(c: Vec2, L: number, th: number, ang: number, height: Height
 
 export const BARS: Record<string, BarFn> = { driftwood: driftBar, plank, tram, "clock hand": clockHand, stall, awning, wheelbarrow };
 
-// ------------------------------------------------------------ tunnel ends
 // (x, y, z) the centre of the mouth on the ground, R its radius, dir the way
 // its opening faces (a unit THREE.Vector3 in the ground plane).
 
@@ -623,8 +620,6 @@ export function mouthAt(skin: string, x: number, y: number, z: number, R: number
   m.rotation.y = Math.atan2(dir.x, dir.z); // its front (+z) faces dir
   return m;
 }
-
-// ------------------------------------------------------------- rooftops
 
 const ROOF_Y = -2; // the houses' eaves round the lane: their ridges come up to just under it
 export const STREET_Y = -4.6; // the streets down between the houses, where a ball off the roofs lands

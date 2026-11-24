@@ -1,4 +1,4 @@
-// The Crystal Mines' shared kit (ADR-005 §6): the palette every mines module
+// The Crystal Mines' shared kit: the palette every mines module
 // draws with, and what a hole of the mines is (its place, whether its
 // gallery is dark). Dark around a lit lane: the darkness lives in the vault
 // and the walls, never on the carpet. And the looks the world and its pieces
@@ -26,8 +26,6 @@ export const MINES = {
 // a mines hole's place and its dark galleries: in data.ts, so the game's own
 // chunk (the HUD, the aim dots) reads them without the mines' kit
 export { minesOrder, darkGallery } from "./data";
-
-// ------------------------------------------------------------ crystals
 
 let crystalM: THREE.MeshToonMaterial | null = null;
 /** Every crystal of the hole a little brighter for a while: the singing crystals struck (mines-pieces.ts ring). */
@@ -154,8 +152,6 @@ export function chamferField(D: Float32Array, nx: number, nz: number, step: numb
   return D;
 }
 
-// ------------------------------------------------------------ planks
-
 /** Where a deck lies: which points its boards may cover, its top there, the
  *  box to fill, and the way its boards run (their long axis, radians from +x). */
 export interface DeckSpan {
@@ -255,8 +251,6 @@ export function planks(spans: readonly DeckSpan[], rand: Rand, { width = 0.46, g
   return new THREE.Mesh(geo, relief());
 }
 const NAIL = new THREE.Color(0x2a2733), JOIST = 1.4;
-
-// ------------------------------------------------------------ lanterns
 
 /** A lantern: an iron frame round a lit glass, a little roof and a ring to
  *  hang it by; its foot at 0 (hung: from its ring). Every lantern of the

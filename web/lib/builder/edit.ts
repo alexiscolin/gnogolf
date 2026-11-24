@@ -1,6 +1,6 @@
 // The editor's edits, pure: a palette entry placed as a Draft piece, on the
 // grid, its settings within the entry's ranges; and the prevention the
-// board keeps (the design's "Prevention, not warning"): where a piece may go
+// board keeps: where a piece may go
 // (canPlace, the ghost's colour and sentence), where a drag stops
 // (clampMove), the one-click fix of an issue (fixOf). Each asks the whole
 // pipeline (pipeline.ts validate), so the board refuses exactly what the

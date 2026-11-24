@@ -1,4 +1,4 @@
-// The collection as status (ADR-011): no gift, no draw, nothing to win. What
+// The collection as status: no gift, no draw, nothing to win. What
 // a player holds shows as an album (each world, each tier, each archetype's
 // set, from the catalogue's own data, a silhouette for each one missing) and
 // as a collector rank beside their name wherever they appear (the boards, a
@@ -20,7 +20,6 @@ import { askWorn, wornKnown } from "./wear";
 import { shopShown } from "./geo";
 import type { Served } from "./served";
 
-// ------------------------------------------------------------ the one config
 /** What a gnome counts towards a rank, by tier (an earned one too: proof of play), and the ranks in order: each
  *  from its points, the top one with a Legendary held as well. Change a number here and every surface follows. */
 export const COLLECTOR = {
@@ -56,7 +55,6 @@ export function nextRank(h: Holding): { rank: Rank; points: number } | null {
   return rank ? { rank, points: Math.max(0, rank.points - pointsOf(h)) } : null;
 }
 
-// ------------------------------------------------------------ the words (the only ones the surfaces show)
 /** A rank as a badge says it: "Collector gold". */
 export const rankWords = (r: Rank) => `Collector ${r.label.toLowerCase()}`;
 /** What a badge says on hover and to a screen reader: the rank and what it stands for. */
@@ -80,7 +78,6 @@ export const ALBUM_WORDS = {
   missing: "Not in the album yet",
 };
 
-// ------------------------------------------------------------ the album
 /** One slot of a row: a gnome of the catalogue (id) or an earned kind (unlock), and whether it is held. */
 export interface Slot { key: string; id?: number; unlock?: string; tier: string; name: string; mine: boolean }
 /** One row of the album: a world, a tier or a set, its slots in id order, how many held. */
@@ -143,14 +140,12 @@ export function seriesLine(g: Pick<Gnome, "id" | "tier" | "home">, gnomes: reado
   return `#${g.id} · ${kin <= 1 ? `the only ${tierName(g.tier)}` : `one of ${kin} ${tier ? tier[1] : g.tier}`} of ${worldName(g.home)} · 1 of ${gnomes.length}`;
 }
 
-// ------------------------------------------------------------ where it shows (ADR-011)
 /** The album: where the shop is offered (the build's flag and a region that answered yes), as the shop itself. */
 export const albumShown = (flag: boolean, region: boolean | null) => shopShown(flag, region);
 /** The ranks: wherever the shop is built, every region alike, as the gnome a player wears (a fact of the chain,
  *  never a door to the shop: a badge is not a link). */
 export const ranksShown = (flag: boolean) => flag;
 
-// ------------------------------------------------------------ the reader
 export interface Reads {
   /** whether a player holds any gnome (they wear one), null when not known: their page is read then */
   holds: (player: string) => Promise<boolean | null>;

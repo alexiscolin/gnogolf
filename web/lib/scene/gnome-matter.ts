@@ -1,6 +1,6 @@
 // What a gnome is made of (Skin.material: an Epic's, a Legendary's), in the
 // game's own drawing: still flat bands of light under an ink line, but each
-// material its own bands and marks (docs/gnomes/design.md, "Materials").
+// material its own bands and marks.
 // Polished things (metal, glaze, porcelain, crystal, frost) get a fourth,
 // bright band and a glint (crystal its facets instead); wood its grain,
 // stone its speckle, wool its stitches, gingerbread its icing; neon trades

@@ -1,4 +1,4 @@
-// The palette as the author reads it (the GUI spec's B3): its entries put
+// The palette as the author reads it: its entries put
 // together by what they do, one tile each, with what it does in two or three
 // words and its looks to choose from (a pond: a lagoon, a tidepool, a
 // fountain or a canal; each look still its own entry, as the chain stores
@@ -38,7 +38,7 @@ function byWhatTheyDo(entries: readonly PaletteEntry[], from = ""): Tile[] {
 
 /**
  * A palette as tiles: the world's own first (commonOf's, each its common
- * entry as its first look, named as the GUI spec names it, then the rest by
+ * entry as its first look, named plainly, then the rest by
  * group), and the pieces it borrows (palette.ts HOME) apart, by what they do,
  * under "From other worlds".
  */

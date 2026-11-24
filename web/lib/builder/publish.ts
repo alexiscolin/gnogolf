@@ -1,4 +1,4 @@
-// Publishing a hole (the hole-builder design's "The publish flow"): what a
+// Publishing a hole: what a
 // PublishMine stores and costs, from the realm's own figures (the
 // z_builder_publish filetests in gno.land/r/gnogolf/golf/v2: each publishes a
 // warm-up hole, then the one measured; their Storage and Gas less the

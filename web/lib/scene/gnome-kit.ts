@@ -1,4 +1,4 @@
-// The collection's wardrobe (docs/gnomes/design.md): its hats, the small
+// The collection's wardrobe: its hats, the small
 // things its gnomes wear, a Rare's piece and patterned body. Built as the
 // gnome is, flat colours under a thin ink line, and only for a Skin that asks:
 // GNOMES' fourteen never reach here.

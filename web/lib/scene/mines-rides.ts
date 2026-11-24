@@ -21,8 +21,6 @@ import { md, ud, type Hole, type Ride, type TubePath } from "./data";
 import type { Bar, Track } from "./worlds";
 import { own } from "../own";
 
-// ------------------------------------------------------------ the kit
-//
 // What every ride is built of: rock, timber and riveted iron, in the mines'
 // palette, toon and inked like every world's pieces (mines-toon.ts's kit).
 
@@ -204,8 +202,6 @@ function mouthAt(s: Hole, t: Terrain, x: number, z: number, a: number, D: number
   return { piece, D: best.d, n: best.n, on: best.on };
 }
 
-// ------------------------------------------------------------ carts
-
 /**
  * An ore cart, L long (along x) and W wide, on its wheels at 0: a riveted
  * iron tub flaring to a rusty rim, on a timber chassis, four flanged wheels
@@ -319,8 +315,6 @@ function cartOn(bar: Bar, t: Terrain) {
 }
 const gauge = (th: number) => Math.min(0.55, th * 0.3);
 
-// ------------------------------------------------------------ the track
-
 /**
  * A cart track (a line of `cart` bars): iron rails on timber sleepers across
  * the lane, and an adit at each end, timbered and set in the rock, dark
@@ -368,8 +362,6 @@ function cartTrack(l: Track, s: Hole, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------ rides
-//
 // A tunnel of the mines is a set piece, its mouth and its exit drawn as one,
 // and the ball rides it (replay.ts through): its curve and its Ride (data.ts)
 // go in the course's tubes, keyed by the zone.
@@ -475,8 +467,6 @@ const easer = (rate: number) => {
     return (x += (to - x) * (1 - Math.exp(-rate * dt)));
   };
 };
-
-// ------------------------------------------------------------ geysers
 
 const SINTER = 0xdcc79c, SINTER_RUST = 0xc9824a, STEAM = share(flat(0xeef3f8, { transparent: true, opacity: 0.9, depthWrite: false, emissive: 0x9fb6c8, emissiveIntensity: 0.35 }));
 const SPOUT = share(new THREE.MeshToonMaterial({ color: 0xc8f2ff, emissive: 0x5fc8e8, emissiveIntensity: 0.45, transparent: true, opacity: 0.82, depthWrite: false }));
@@ -602,8 +592,6 @@ function geyser(z: Zone, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------ the pithead
-
 const SHAFT_D = 14; // how deep the cage goes down, out of sight
 // how far down the cage drops out of the landing quick (its roof under it), and in what share of a substep either side
 // of its window: the chain has the landing lane then, the leaves shut over it
@@ -627,7 +615,7 @@ function hoist(p: number, E: number, ON: number, deep: number, run = 2.3) {
 }
 
 /**
- * The cage (ADR §8, hole 1), local: its floor at 0, the way in facing −x, an
+ * The cage (hole 1), local: its floor at 0, the way in facing −x, an
  * iron cage 2.1 square and 2.3 tall: corner posts, a riveted floor and roof,
  * barred sides and back, the bridle's chains up to the rope's shackle, a lamp
  * inside. Merged (bakeLocal).
@@ -753,7 +741,7 @@ function headframe(site: THREE.Group, H: number, S: number, R: number, rand: Ran
  * station at the pit bottom (the tunnel's exit): a portal with a cage at rest
  * in it.
  */
-// the shaft's lining, seen from inside (one for every build: a material made per visit and shared was never freed)
+// the shaft's lining, seen from inside (one for every build: a material made per visit and shared is never freed)
 const SHAFT_LINING = share(flat(0x33241a, { side: THREE.BackSide }));
 function pithead(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), { cx, cz, hx, hz } = boxOf(z), y = t.height(cx, cz), rand = seeded("pithead" + z.min.join());
@@ -862,8 +850,6 @@ function pithead(z: Zone, t: Terrain, s: Hole) {
   return g;
 }
 
-// ------------------------------------------------------------ adits, chutes, manways
-
 /** An adit (hole 13, 14): a timbered mouth in the rock at the zone, another where it comes out, and the dark between. */
 function aditPair(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), { cx, cz } = boxOf(z), y = t.height(cx, cz), rand = seeded("adit" + z.min.join());
@@ -890,7 +876,7 @@ function aditPair(z: Zone, t: Terrain, s: Hole) {
  */
 function trough(L: number, fall: number, W = 1.3, rand: Rand = wood) {
   const g = new THREE.Group(), sl = Math.atan2(fall, L), run = Math.hypot(L, fall);
-  // its bed boards along it (the kit's planks: each its own tone, bevel and nails), their tops where the old slab's was
+  // its bed boards along it (the kit's planks: each its own tone, bevel and nails)
   const bed = planks([{ inside: (x, z) => Math.abs(x) <= run / 2 && Math.abs(z) <= W / 2, top: () => 0.06, box: [-run / 2, -W / 2, run / 2, W / 2], angle: 0 }], rand, { tone: TIMBER_LIGHT });
   bed.position.set(L / 2, -fall / 2, 0);
   bed.rotation.z = -sl;
@@ -1003,8 +989,8 @@ function chute(z: Zone, t: Terrain, s: Hole) {
     const h = Math.min(hx, hz) * 0.72, deep = 2.6, throat = 0.55;
     for (let i = 0; i < 4; i++) {
       const wall = new THREE.Group(), slope = Math.atan2(h - throat, deep), len = Math.hypot(h - throat, deep);
-      // each wall the kit's boards, laid across it (a deck on its side: its top the wall's inner face, where the old
-      // slab's was), as wide as the funnel at their height (and a hair more: the corners close)
+      // each wall the kit's boards, laid across it (a deck on its side: its top the wall's inner face),
+      // as wide as the funnel at their height (and a hair more: the corners close)
       const half = (v: number) => throat + (h - throat) * (v / len + 0.5) + 0.08;
       const boards = planks([{ inside: (x, v) => Math.abs(v) <= len / 2 && Math.abs(x) <= half(v), top: () => 0.06, box: [-h - 0.1, -len / 2, h + 0.1, len / 2], angle: 0 }], wood, { tone: i % 2 ? TIMBER : TIMBER_DARK });
       boards.rotation.x = -Math.PI / 2;
@@ -1086,8 +1072,6 @@ function manway(z: Zone, t: Terrain, s: Hole) {
   rides(z, curve, withLid(ex, ride));
   return g;
 }
-
-// ------------------------------------------------------------ the cart ride
 
 /** A hexagonal timber post from a to b, r thick (a trestle's leg: cheaper than a rounded beam). */
 const post = (a: THREE.Vector3, b: THREE.Vector3, r: number, color: number = TIMBER_DARK) => between(solid(new THREE.CylinderGeometry(r, r * 1.1, a.distanceTo(b), 6).rotateX(Math.PI / 2), color, INK_THIN), a, b);
@@ -1271,7 +1255,7 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
     }
   }
   // this cart's berth: the cart on its lift (the incline's slabs are its floor: no frame of its own laid on them)
-  const paint = CART_PAINT[far.includes(z) ? 0 : 1]; // red down the coaster, blue to the siding (ADR §8)
+  const paint = CART_PAINT[far.includes(z) ? 0 : 1]; // red down the coaster, blue to the siding
   const make = () => {
     // (no bigger than its zone: what the chain has there is what is drawn, the ball passes beside it)
     const along = Math.abs((z.max[0] - z.min[0]) * u.x) + Math.abs((z.max[1] - z.min[1]) * u.z), across = Math.abs((z.max[0] - z.min[0]) * u.z) + Math.abs((z.max[1] - z.min[1]) * u.x);
@@ -1387,8 +1371,6 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
   });
   return g;
 }
-
-// ------------------------------------------------------------ the cable car
 
 /**
  * The cable car over the great shaft (hole 17): a timed tunnel where the car
@@ -1571,8 +1553,6 @@ function cableCar(z: Zone, t: Terrain, s: Hole) {
   });
   return g;
 }
-
-// ------------------------------------------------------------ the corkscrew
 
 /**
  * A U-trough swept along a curve (the corkscrew's ore chute): planks on
@@ -1776,8 +1756,6 @@ function corkscrew(z: Zone, t: Terrain, _s: Hole) {
   });
   return g;
 }
-
-// ------------------------------------------------------------ the lift
 
 /**
  * The lift (hole 8): a pulse tunnel, at one landing or another with the
@@ -2049,8 +2027,6 @@ function liftCage(L: number, D: number, CH: number, FL = L, FD = D) {
   }
   return cage;
 }
-
-// ------------------------------------------------------------ dispatch
 
 const ZONES: Record<string, (z: Zone, t: Terrain, s: Hole) => THREE.Object3D> = { geyser, cage: pithead, adit: aditPair, "ore chute": chute, hopper: chute, ladder: manway, "cart ride": cartRide, "cable car": cableCar, corkscrew, lift: liftPiece };
 

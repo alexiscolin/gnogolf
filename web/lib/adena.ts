@@ -480,7 +480,7 @@ export async function sendTip({ from, to, gnot, price, chainId, rpc }: { from: s
 // each) and seats each best the player kept unnamed: 70.2M with 3 bests on an
 // onyx gnodev, and about 4M a best more (golf/v2 filetests: the seat written
 // through store), so a whole course unnamed in both modes, 180 bests, takes
-// about 780M: 850M covers any player; Register was 28M to 29.5M there
+// about 780M: 850M covers any player; Register takes 28M to 29.5M there
 const CLAIM_GAS = 850_000_000, REGISTER_GAS = 60_000_000;
 /** What a name taken with a save adds to its gas: Register and Claim's. */
 export const NAME_GAS = REGISTER_GAS + CLAIM_GAS;

@@ -50,8 +50,6 @@ const P = {
 /** How high the sea is: a step below the sand, so the beach slopes into it. */
 export const SEA = GRASS - 0.9;
 
-// ---------------------------------------------------------------- the land
-//
 // The island is a rounded rectangle a little larger than the diorama's box,
 // with a wobbly shore. inland(x, z) is how far a point is inside the shore
 // (negative: in the sea), in world units — dunes, the beach and the foam all
@@ -307,8 +305,6 @@ function berms(s: Hole) {
   g.add(new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 6 })));
   return { group: g, height };
 }
-
-// ----------------------------------------------------------------- props
 
 // A coconut palm, built as merged geometry so a beach of them stays cheap:
 // a trunk of tapering segments along a curve that bends more towards the top
@@ -854,8 +850,6 @@ function ship() {
   return g;
 }
 
-// ------------------------------------------------------- over the lane
-//
 // The dream of the island: tall palms whose trunks curve in from the sides and
 // hang their crowns high over the lane, giant hibiscus on the dunes, kites,
 // gulls gliding low. They cross the play camera's view on purpose — but a
@@ -1015,8 +1009,6 @@ function kite(rand: Rand, color: number, stake: THREE.Vector3) {
 /** A whole object that moves as one, merged into a mesh per material by the
  *  shared bake (in its own frame), and marked live so the hole's own bake leaves it be. */
 const mergedMover = <T extends THREE.Object3D>(group: T) => ((ud(bakeLocal(group)).live = true), group);
-
-// ------------------------------------------------------------ beach life
 
 const STRIPES = [[C.cap, 0xffffff], [P.towel, 0xffffff], [0xf5b83d, C.cap], [0x5b6fb5, 0xf5b83d], [0x3fbf8f, 0xffffff], [0xf29ac0, 0xffffff]];
 
@@ -1277,8 +1269,6 @@ function footprints(from: THREE.Vector3, to: THREE.Vector3, y: Height) {
   }
   return g;
 }
-
-// ---------------------------------------------------------------- decor
 
 function decor(s: Hole, bank: Height = () => 0): THREE.Group {
   const g = new THREE.Group();
@@ -1554,8 +1544,6 @@ export const rough: Rough = { lo: P.wet, hi: P.sand, plant: (rand, s) => (green(
 
 export { base, edging, berms, decor };
 
-// -------------------------------------------------------- on-lane pieces
-//
 // The island's own look for what the chain puts on the lane. course.ts /
 // zones.ts call piece(kind, item, t, s) for each wall, post and zone, with
 // the chain's JSON for it (a wall comes as its whole bar); this returns an

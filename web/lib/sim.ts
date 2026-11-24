@@ -12,7 +12,7 @@
 // built from, read back from the chain (vm/qfile) through stage.sh's prefix,
 // hashed and compared (once a browser and chain: a package on a chain never changes).
 // No worker, no WebAssembly, a load or a check that fails:
-// the chain's previews, as before.
+// the chain's previews.
 
 import { track, trackError } from "./analytics";
 import type { Chain, Which } from "./chain";

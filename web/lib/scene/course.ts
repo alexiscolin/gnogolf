@@ -1006,8 +1006,6 @@ function chordAlong(x: number, z: number, ox: number, oz: number, segs: readonly
  * each a live piece of its own, there only on the substeps the chain has it.
  * Each registers { at(step), walls } in state.timed for the engine's clock.
  */
-// ------------------------------------------------------------ trams
-//
 // A tram is a timed bar across the lane: the chain has it standing through
 // its window. It is drawn as a tram driving along its rails, the bar's own
 // axis: out of a tunnel mouth off one side of the lane, slowing as it comes,
@@ -2015,7 +2013,7 @@ function wearLayer(wear: Wear, W: number, H: number, height: Height, tint: THREE
     const geo = new THREE.PlaneGeometry(x1 - x0, z1 - z0, Math.max(1, Math.ceil((x1 - x0) * step)), Math.max(1, Math.ceil((z1 - z0) * step))); // as fine as the ground's cells (a world's wearStep)
     geo.rotateX(-Math.PI / 2);
     geo.translate((x0 + x1) / 2, 0.02, (z0 + z1) / 2);
-    // the texture spans the whole board, as before
+    // the texture spans the whole board
     const p = geo.attributes.position, uv = geo.attributes.uv;
     for (let k = 0; k < p.count; k++) uv.setXY(k, p.getX(k) / W, 1 - p.getZ(k) / H);
     drape(geo, height);

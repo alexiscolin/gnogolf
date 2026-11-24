@@ -14,7 +14,7 @@ import { MINES, crystalMat, planks } from "./mines-kit";
 import { mod } from "../terrain";
 import type { Rand } from "./common";
 
-/** The mines' ink: a warm near-black, as ADR §6 has it. */
+/** The mines' ink: a warm near-black. */
 export const INK = hullOf(0.055, MINES.ink);
 export const INK_THIN = hullOf(0.03, MINES.ink);
 
@@ -142,8 +142,6 @@ export function boulder(rand: Rand, sx: number, sy: number, sz: number, detail =
   return facets(geo, relief());
 }
 
-// ---------------------------------------------------------------- crystals
-//
 // The crystals are the world's (mines-kit.ts crystalMat, shard, crystalCluster:
 // one material for every crystal of a hole, its hue in its vertex colours);
 // gem() gives any geometry that material in a hue.
@@ -310,8 +308,6 @@ export function once<T extends { dispose(): void }>(key: string, make: () => T):
 /** The dark down a drift, a slot, a pocket: the mines' void black, unlit (one material for all of them). */
 export const darkMouth = () => once("dark mouth", () => new THREE.MeshBasicMaterial({ color: MINES.void }));
 
-// ---------------------------------------------------------------- one system a hole
-//
 // Things many pieces of a hole have (bubbles in every lava, drips in every
 // pool, steam off every spring) are one live system for the whole hole, not
 // one each: the first piece that asks holds it (its root), the others only
@@ -327,8 +323,6 @@ export function shared<S extends { root: THREE.Object3D }>(build: object, key: s
   return { sys, first: true };
 }
 
-// ---------------------------------------------------------------- out of the camera's way
-//
 // Nothing of the mines may hide the ball (or the cup, on screen) from the player: a piece that can
 // stand between the camera and a ball at rest fades out of that line (the
 // town's canopies' way: materials.ts fadeable), one fade a hole (shared),
@@ -381,8 +375,6 @@ export function sightFade(build: object, piece: THREE.Object3D, at: THREE.Vector
   return { root: first ? sys.root : null, bucket };
 }
 
-// ---------------------------------------------------------------- timber decks
-//
 // A timber deck of the mines (the rope bridge's): planks laid across two
 // stringer beams with a hair of gap between them, each a little longer or
 // shorter, grained, two nail heads at each end; a threshold beam across each

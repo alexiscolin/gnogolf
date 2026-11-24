@@ -1,4 +1,4 @@
-// The bot check's list (the bot check writes it, docs/leaderboards.md; the site serves it at
+// The bot check's list (the bot check writes it; the site serves it at
 // /flags.json) as the boards read it: only what it should hold, from the chain the
 // game plays on.
 import { isAddress } from "./chain";

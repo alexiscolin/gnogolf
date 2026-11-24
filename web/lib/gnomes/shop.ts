@@ -1,5 +1,5 @@
-// The gnomes' shop as the screens read it (the GUI spec, A): the realm's
-// answers (r/gnogolf/gnomes, ADR-007, ADR-013) checked into these shapes, one query
+// The gnomes' shop as the screens read it: the realm's
+// answers (r/gnogolf/gnomes) checked into these shapes, one query
 // each, and what a screen decides from them, pure, so the tests hold every
 // state: the sale's phase, why a gnome can't be bought in plain words, the
 // bill before a signature, the gallery's shelf. The
@@ -16,7 +16,6 @@ export { SHOP } from "./door";
 
 type PerTier = Record<SaleTier, number>;
 
-// ------------------------------------------------------------ the shapes (read.gno, equip.gno)
 export interface TierRow { name: string; price: number; cap: number; playerCap: number; sold: number }
 /** A series' sale: its start, its players' window's end (its start: none), its prices per tier (ugnot), as opened. */
 export interface SaleRow { start: number; playersUntil: number; prices: number[] }
@@ -132,7 +131,6 @@ export function soldSet(hex: string) {
   return (id: number) => ok && id >= 1 && (parseInt(hex.substr(((id - 1) >> 3) * 2, 2) || "0", 16) & (1 << ((id - 1) & 7))) !== 0;
 }
 
-// ------------------------------------------------------------ numbers and dates
 /** ugnot as GNOT, exact, thousands apart: 333330000 → "333.33". */
 export function gnot(ugnot: number) {
   const n = Math.max(0, Math.round(ugnot)), whole = Math.floor(n / 1e6), frac = String(n % 1e6).padStart(6, "0").replace(/0+$/, "");
@@ -164,7 +162,6 @@ const closedOut = (c: Collection, id: number) => !!c.series[0]?.closed && id >= 
 /** The sale a gnome is in, his series' (none: not opened yet). */
 const saleOf = (c: Collection, id: number) => c.series.find((s) => id >= s.first && id <= s.last)?.sale;
 
-// ------------------------------------------------------------ the sale's life (A9)
 type Some = Pick<Listed, "id" | "tier">;
 /** A series' sale as the screens say it: its series (the realm's name) and its name for people ("Genesis"), its
  *  row, its ids, its size and what found a player. */
@@ -196,7 +193,6 @@ export function nowRow(c: Collection, sold: (id: number) => boolean, entries: re
   return { at: now < sale.row.playersUntil ? "players" : "open", sale };
 }
 
-// ------------------------------------------------------------ the shop's sale card (a little fairway, tee to flag)
 /** A tier of the sale: what found a player of what it holds, its price (ugnot, 0: none said), all in words. */
 export interface TierShare { tier: SaleTier; found: number; total: number; price: number; label: string }
 /** The shop's sale card: the series' name ("Genesis") and its count ("4 of 720 found a player": big "4", rest the words), the same said
@@ -243,7 +239,6 @@ function legendsWords(all: number, waiting: number, id: number) {
   return { id, name, words: `${name} ${waiting ? (waiting === 1 ? "waits at the flag" : "wait at the flag") : "found a player"}` };
 }
 
-// ------------------------------------------------------------ the collection on the game's screens
 /** What the menu's Gnomes card, the picker's Collection section and the finish card say of the sale: the
  *  sale to see (on sale, players first, paused, or opening), its series' name, its size and what found a player,
  *  its lowest price, its Legendary and three faces (an Epic, a Rare, a Common); null when there is none
@@ -283,7 +278,6 @@ export function promoWords(p: Promo, now: number) {
   };
 }
 
-// ------------------------------------------------------------ why not (A2), every CanBuy code in words
 /** What the buy panel says instead of buying: its button's words (off) and one note; play: the note links to a hole. */
 export interface WhyNot { button: string; note: string; play?: true }
 export function whyNot(r: CanBuy, c: Collection, g: Pick<Listed, "id" | "tier" | "home">, now: number): WhyNot | null {
@@ -316,12 +310,10 @@ export function saleWhyNot(c: Collection, g: Pick<Listed, "id" | "tier" | "home"
   return reason ? whyNot({ ok: false, reason } as CanBuy, c, g, now) : null;
 }
 
-// ------------------------------------------------------------ a buy sent, not confirmed
 /** Where a buy the wallet gave no hash for stands, by the gnome read again: the buyer's ("mine": it landed), another's
  *  ("taken"), or null, still unsold: nothing landed (yet). */
 export const landing = (row: GnomeRow | null, me: string) => (!row || !row.owner ? null : row.owner === me ? "mine" : "taken");
 
-// ------------------------------------------------------------ the bill (shared pieces)
 /** A bill's figure as it is said, in ugnot: its parts' sum up to the hundredth of a GNOT, never under what the wallet
  *  may be asked. The one rounding rule: the review's Total, the order's button and a sheet's chain costs all say it. */
 export const totalOf = (...ugnot: number[]) => upToHundredth(ugnot.reduce((a, b) => a + b, 0));
@@ -335,7 +327,6 @@ export function bill({ price, bytes, storagePrice, gas, gasPrice, balance }: { p
 }
 export type Bill = ReturnType<typeof bill>;
 
-// ------------------------------------------------------------ the shelf (A1)
 /** A page of the gallery's grid. */
 export const PAGE = 48;
 type View = "mine" | "all";
@@ -377,13 +368,11 @@ export function cardFact(e: Listed, s: Seen) {
   return sale ? `Opens ${utcDate(sale.start, s.now, true)}` : "Not on sale yet";
 }
 
-// ------------------------------------------------------------ a team (A6)
 const RANK: Record<string, number> = { legendary: 0, epic: 1, rare: 2, common: 3, earned: 4 };
 /** A wallet's gnomes as the shelf lays them out: Legendary first, then Epic, Rare, Common, earned, then by number. */
 export const teamOrder = <R extends { id: string; tier: string }>(rows: readonly R[]) =>
   [...rows].sort((a, b) => (RANK[a.tier] ?? 5) - (RANK[b.tier] ?? 5) || Number(a.id) - Number(b.id));
 
-// ------------------------------------------------------------ the share moments' words (A8)
 /** What each moment says: short, about the game, never value. */
 export const shareWords = {
   bought: (name: string, id: number | string) => `I just adopted ${name}, gnome #${id} of Gnogolf. ${name} rolls for me now`,

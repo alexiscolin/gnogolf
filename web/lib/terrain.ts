@@ -41,7 +41,6 @@ export function plainSkins<T extends { walls: readonly Wall[]; posts: readonly P
   return { ...h, walls: plain(h.walls), posts: plain(h.posts), zones: plain(h.zones) };
 }
 
-// ------------------------------------------------------ shared geometry
 // The small sums every part of the client needs, in one place.
 
 /** a mod n, never negative (JavaScript's % keeps the sign of a). */

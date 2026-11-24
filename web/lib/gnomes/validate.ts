@@ -1,4 +1,4 @@
-// The collection's rules, checked (docs/gnomes/design.md): what a tier may
+// The collection's rules, checked: what a tier may
 // wear, no two gnomes alike, none a copy of GNOMES', readable on every
 // ground and as a ghost, the counts as the series says. Pure: the catalogue
 // in, a report out (scripts/gnomes.ts prints it; the tests hold it to none).

@@ -1,4 +1,4 @@
-// Ghost duels (ADR-004): a normal round raced against another player's best,
+// Ghost duels: a normal round raced against another player's best,
 // replayed stroke by stroke on a see-through gnome. This is the pure part:
 // which best a duel races, how fast a ghost's stroke plays, and how a result
 // reads. The result is the client's arithmetic (V1 records no duel), from two

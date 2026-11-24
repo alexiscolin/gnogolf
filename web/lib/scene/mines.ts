@@ -1,4 +1,4 @@
-// The "mines" world: the Crystal Mines (ADR-005), same functions as
+// The "mines" world: the Crystal Mines, same functions as
 // garden.ts (see worlds.ts for the contract). The board is a lit pocket deep
 // in a cave: a carpet laid down by the gnomes along a gallery of blue-slate
 // rock, timber and iron all round, crystals growing out of the rock and
@@ -36,8 +36,6 @@ import { signs, pulseSigns } from "./mines-signs";
 import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
-// ------------------------------------------------------------ the cave
-//
 // Round the board: a floor of blue slate, a ridge of rock along the lane's
 // edges (the gallery it runs in), rubble rising to the cave's wall; the wall
 // and the vault as one shell over it all (a superellipse round the board,
@@ -261,8 +259,6 @@ function planSites(s: Hole, f: { dist: Height; back: Height; drop: Height; rim: 
   return out;
 }
 
-// ------------------------------------------------------------ the terraces
-//
 // A lane in parts joined only by geysers (the Geysers' terraces): each part
 // a step higher than the one its geyser throws from, so the climb reads as a
 // climb and not as walls on one floor. Cosmetic: the ball is drawn on it
@@ -326,8 +322,6 @@ function lifted(s: Hole): Terrain | null {
   lifts.set(s, out);
   return out;
 }
-
-// ------------------------------------------------------------ the land
 
 /** A lit point: the pools of light and the glows are its (see Pool, Glow). */
 function light(cv: Cave, x: number, y: number, z: number, c: number, { r = 4, k = 0.7, lamp = false, glow = 1.6 } = {}) {
@@ -821,8 +815,6 @@ function berms(s: Hole) {
   return { group: new THREE.Group(), height: caveOf(s).floor };
 }
 
-// ------------------------------------------------------------ the edge
-
 /**
  * Round the lane: over the void, a border along its edge — kerb stones set
  * flush with the lane, or on a gantry the timber fascia of its deck — the
@@ -1106,8 +1098,6 @@ function faceItem(kind: number, rand: Rand) {
 
 
 
-// ------------------------------------------------------------ props
-
 /**
  * Water coming through the vault in the rain: thin streams pouring off the
  * wall's overhang onto the floor, white water running down them, a ring
@@ -1244,8 +1234,7 @@ function swingingLamps(cv: Cave, hung: readonly THREE.Vector3[], rand: Rand) {
   }
   return g;
 }
-// the swing, about each vertex's hook: as the instanced set's was (a little
-// always, more and downwind in the draught)
+// the swing, about each vertex's hook: a little always, more and downwind in the draught
 const SWING = /* glsl */ `
   vec3 swRel = transformed - aHook;
   float swPh = aHook.x * 0.37 + aHook.z * 0.21, swK = 0.012 + min(0.09, length(uWind) * 0.8);
@@ -1293,8 +1282,6 @@ const LAMP_INK = (() => {
 const CHAIN = 9;
 const CHAIN_MAT = share(new THREE.MeshBasicMaterial({ vertexColors: true }));
 
-// ------------------------------------------------------------ decor
-
 function decor(s: Hole, bank: Height = caveOf(s).floor) {
   const cv = caveOf(s), g = new THREE.Group();
   g.name = "mines:decor";
@@ -1304,7 +1291,7 @@ function decor(s: Hole, bank: Height = caveOf(s).floor) {
   const ok = (x: number, z: number, r: number, clear = 0.9) => free(x, z, r) && cv.drop(x, z) > r + 0.3 && cv.dist(x, z) > r + clear && cv.rim(x, z) < 0.96;
   // (on ground level enough to stand on, nothing standing out over the floor
   // falling away on the rim's talus: a prop turned down there (its room kept
-  // all the same, the rest laid out as it was), a set piece on its posts
+  // all the same, so the rest lies as with it), a set piece on its posts
   // footed at the lowest of the ground under it, dug into the rest)
   const footing = (x: number, z: number, r: number) => Math.min(bank(x, z), ...[0, 1, 2, 3, 4, 5].map((k) => bank(x + Math.cos(k * 1.05) * r, z + Math.sin(k * 1.05) * r)));
   const place = <T extends THREE.Object3D>(m: T, x: number, z: number, r: number, rot = 0, clear = 0.9) => {
@@ -1614,8 +1601,6 @@ const BIOME_HUE: Record<Biome, number> = {
   shaft: MINES.cyan, collapse: MINES.rose, boiler: MINES.cyan, lavafalls: 0xffb35a, frozen: 0x9fe8ff, vault: MINES.rose, lode: MINES.amethyst,
 };
 
-// ------------------------------------------------------------ the pit
-//
 // Under the void (and past the front ledge) the drop has a floor a few units
 // down, VOID_FLOOR: a still lake, scree with a rail gallery, a bed of glowing
 // crystals or a seam of lava, by turns along the cup. The ball that falls in
@@ -2289,8 +2274,6 @@ function cupLamp(s: Hole) {
 }
 const CUP_GLOW = share(new THREE.MeshBasicMaterial({ color: 0x6b4a1c, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -8 }));
 
-// ------------------------------------------------------------ the light
-
 /**
  * After the merge: every lit mesh's colours take the pools of light round it
  * (a lantern's warm, a crystal's cool, the lava's), and fall off into the
@@ -2380,8 +2363,6 @@ function baked(course: THREE.Object3D) {
   };
   cv.lamps(!darkGallery(s));
 }
-
-// ------------------------------------------------------------ the board
 
 /** The board's rough: the floor's own (drawn by base), nothing over it. */
 const rough = { lo: MINES.slate, hi: MINES.slate, mound: 0, plant: () => null };

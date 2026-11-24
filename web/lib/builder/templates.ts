@@ -59,7 +59,7 @@ function startLine(name: string, d: Draft): string {
 /** Where the browser keeps that the first run's hints were seen. */
 export const HINTS_KEY = "gnogolf.builder.hinted";
 
-/** A new player's first hole (the GUI spec's B1): the Garden's dogleg, opened at once; none once hinted or once they have drafts. */
+/** A new player's first hole: the Garden's dogleg, opened at once; none once hinted or once they have drafts. */
 export function firstRun(drafts: readonly Draft[], hinted: boolean): Draft | null {
   return drafts.length || hinted ? null : startsIn("garden").find((s) => s.name === "dogleg")?.draft ?? null;
 }

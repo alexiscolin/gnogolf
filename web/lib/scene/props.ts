@@ -447,7 +447,7 @@ export function smokeBatch(marks: readonly THREE.Object3D[]): { mesh: THREE.Inst
       for (let i = 0; i < PUFFS; i++) {
         const j = c * PUFFS + i;
         if (!on) { mesh.setMatrixAt(j, hide); continue; }
-        // as before: in the chimney's own frame, then where the chimney is
+        // in the chimney's own frame, then where the chimney is
         const k = ((t * 0.45 + i / PUFFS) % 1), sc = 0.6 + k * 2.2;
         local.makeScale(sc, sc, sc).setPosition(at.x + Math.sin(k * 5 + i) * 0.25 + k * 0.6, at.y + k * 2.6, at.z);
         mesh.setMatrixAt(j, world.multiplyMatrices(g.matrixWorld, local));

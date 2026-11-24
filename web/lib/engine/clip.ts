@@ -1,4 +1,4 @@
-// The shot clip (ADR-003): once the hole is won, its holing stroke played
+// The shot clip: once the hole is won, its holing stroke played
 // again and recorded, 1280×720, for the player to post.
 //
 // The replay is the game's own (engine/replay.ts: the chain's path walked the

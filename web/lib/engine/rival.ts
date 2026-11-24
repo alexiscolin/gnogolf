@@ -1,4 +1,4 @@
-// The rival of a ghost duel (ADR-004): another player's best, replayed stroke
+// The rival of a ghost duel: another player's best, replayed stroke
 // by stroke on a see-through gnome of its own, after each of the player's.
 //
 // Nothing about the player's round changes: the ghost is drawn only, the two

@@ -188,8 +188,6 @@ function berms() {
   return { group: new THREE.Group(), height: () => 0 };
 }
 
-// ------------------------------------------------------------ the buildings
-
 // the town's bush: three low-poly puffs (the garden's is round and heavy,
 // and the town has hundreds of them in its beds and pots)
 // and its flower: a stem and a round head, a fraction of the garden's
@@ -222,8 +220,8 @@ function tbush(rand: Rand) {
 // a plain box, for the small and the many (benches, stalls, planks)
 const box3 = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
 /** A drum standing on something: its wall (outlined) and its top, no bottom
- *  (what it stands on hides it, and it was a quarter of the triangles; the top
- *  is not outlined — seen from above, the wall's outline rings it as before). */
+ *  (what it stands on hides it, and it is a quarter of the triangles; the top
+ *  is not outlined — seen from above, the wall's outline rings it). */
 function drum(rTop: number, rFoot: number, h: number, n: number, material: THREE.Material) {
   const g = drawn(new THREE.CylinderGeometry(rTop, rFoot, h, n, 1, true), material);
   const top = new THREE.Mesh(new THREE.CircleGeometry(rTop, n, -Math.PI / 2).rotateX(-Math.PI / 2), material); // (thetaStart: on the wall's corners)
@@ -777,7 +775,7 @@ const HAZE = 0xf1d6c6;
 function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   const g = new THREE.Group();
   // all of it one mesh, the colours in the vertices: hundreds of far houses
-  // for one draw call (a material per shade was a draw call per shade)
+  // for one draw call (a material per shade is a draw call per shade)
   // Only what a camera can see is built: every camera is over the board, so
   // a far house is only ever seen from the square's side — its walls and cap
   // are the two thirds turned that way (+z, turned round for the right-hand
@@ -832,8 +830,6 @@ function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   g.add(haze);
   return g;
 }
-
-// ------------------------------------------------------------------- decor
 
 function decor(s: Hole) {
   const g = new THREE.Group();
@@ -952,7 +948,7 @@ function decor(s: Hole) {
   g.add(bunting(new THREE.Vector3(X0 + 2, GRASS, -4.6), new THREE.Vector3(X1 - 2, GRASS, -4.6)));
   g.add(bridge(H * 0.5));
   // every still glow (windows, doors, lamps, stalls) as one set of points:
-  // a sprite each was a draw call each
+  // a sprite each is a draw call each
   g.updateMatrixWorld(true);
   const moving = (o: THREE.Object3D) => { for (let p = o.parent; p; p = p.parent) if (ud(p).live) return true; return false; };
   const glows: THREE.Object3D[] = [];
@@ -986,13 +982,11 @@ function decor(s: Hole) {
 const rough = {
   lo: 0x6f9f7e, hi: 0x86b58f, // a park lawn inside the walls: the green heart of the square
   // mostly pots and flowers; a bush now and then (a bush is three spheres,
-  // and a park of them was a third of the town's triangles)
+  // and a park of them is a third of the town's triangles)
   plant: (rand: Rand) => { const k = rand(); return k < 0.4 ? pot(rand) : k < 0.85 ? tflower(rand) : tbush(rand); },
 };
 
 
-// --------------------------------------------------------- on-lane pieces
-//
 // What the town's holes put on the lane, drawn in town's look. Each matches
 // its physics footprint: a post's circle, a bar's box, a zone's rectangle or
 // ellipse. course.ts asks piece(kind, item, t, s) for every post, wall and
@@ -1127,8 +1121,6 @@ function awningAcross(len: number, thick: number) {
   return g;
 }
 
-// --------------------------------------------------------- the Grand Plaza
-//
 // town18's own pieces: a brick floor with its patches (herringbone, a marble
 // rosette) and the tram rails set in it, a bandstand, a clock obelisk, round
 // market stalls and pigeons. Each stands on its physics footprint: a post's
@@ -1443,8 +1435,6 @@ const PLAZA_POSTS: Record<string, (r: number, rand: Rand, night: boolean) => THR
   pigeon: (r, rand) => pigeons(r, rand),
 };
 
-// ------------------------------------------------------------- the skate park
-//
 // town6: concrete ramps (the ground itself rises: terrain.ts), a funbox, a
 // ledge down the middle and a grind rail. The park's floor is concrete, not a
 // lawn (green below).
@@ -1500,8 +1490,6 @@ function funboxEdge(z: Zone, t: Terrain) {
   return g;
 }
 
-// ------------------------------------------------------------- the rooftops
-//
 // town15: planks laid from roof to roof over the street, and a cat asleep on one.
 
 /** A plank bridge over the street: boards across the way, two stringers under them. */
@@ -1736,8 +1724,6 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
   return undefined;
 }
 
-// ------------------------------------------------------------- the swing bridge
-//
 // town10: a canal across the lane, and a bridge that is down on one stroke
 // and up on the next (the chain's pulse zones: a "bridge" surface or a
 // "canal" hazard over the same strip, per stroke, not per tick). Drawn as a

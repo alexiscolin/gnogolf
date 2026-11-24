@@ -1,5 +1,5 @@
-// /build's two decisions, before anything of the editor loads (the GUI
-// spec's B0): whether the Builder is out at all (NEXT_PUBLIC_BUILDER), and
+// /build's two decisions, before anything of the editor loads: whether
+// the Builder is out at all (NEXT_PUBLIC_BUILDER), and
 // whether this is a computer (the editor) or a phone, a touch screen or a
 // window under 900 px (one screen: the Builder is for a computer, and holes
 // to play; neither the editor nor builder.wasm is downloaded).

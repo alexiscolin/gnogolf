@@ -31,8 +31,7 @@ export interface Skin {
   lamp?: boolean;
   /** the brim's colour, when not the hat's (a helmet's: dark wood) */
   brim?: number;
-  // The collection's traits (lib/gnomes, docs/gnomes/design.md): none of
-  // GNOMES wears them, and a gnome without them is drawn as he always was.
+  // The collection's traits (lib/gnomes): none of GNOMES wears them.
   goggles?: boolean; earring?: boolean; neckerchief?: boolean; leaf?: boolean; soot?: boolean; freckles?: boolean; moon?: boolean;
   /** the small things' colour (a neckerchief, goggles' strap, an earring) */
   accent?: number;
@@ -542,7 +541,7 @@ export function rivalSkin(player: string, mine: string) {
   return others[h % others.length];
 }
 
-/** A see-through gnome (a duel's ghost, ADR-004), in its skin (a plain cream
+/** A see-through gnome (a duel's ghost), in its skin (a plain cream
  *  one by default): its own materials, no shadow; fade(o) sets how
  *  see-through, each part hiding what is behind it. */
 export function makeGhost(o: number, skin: Skin = GHOST) {

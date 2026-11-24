@@ -16,8 +16,8 @@ export const FRAME_REF = { w: 782, h: 714 };
 const ROOM = 6;
 
 /**
- * F: the box lo..hi (in the view's plane) framed in a board of size: fitted,
- * as it always was, on a board no bigger than FRAME_REF; on a bigger one the
+ * F: the box lo..hi (in the view's plane) framed in a board of size: fitted
+ * on a board no bigger than FRAME_REF; on a bigger one the
  * room past what FRAME_REF would give shows the world round it, up to ROOM
  * a side, the hole never drawn smaller than FRAME_REF draws it (nor larger
  * than it filling the board); framed above what covers the board's foot
