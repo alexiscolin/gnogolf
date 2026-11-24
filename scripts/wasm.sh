@@ -49,9 +49,9 @@
 # and what it prints is fixed by its spec (shortest, or correctly rounded).
 # The proof is the parity test, scripts/wasmparity.ts, which --check runs.
 #
-# TinyGo, not Go's own wasm port: 70 KB gzipped against 700 (Go's runtime
-# alone is 570). -scheduler none and the wasip1 target: no JS glue but three
-# imports (fd_write, proc_exit, random_get), and no goroutine machinery.
+# TinyGo, not Go's own wasm port: 84 KB gzipped against 700 (Go's runtime
+# alone is 570). -scheduler none and the wasip1 target: no JS glue but two
+# imports (fd_write, random_get), and no goroutine machinery.
 #
 # Reproducible: TinyGo and its Go are pinned (TINYGO_VERSION, GOTOOLCHAIN),
 # no debug information. --check rebuilds into a scratch folder, fails if the
@@ -72,7 +72,8 @@ if ! "$TINYGO" version 2>/dev/null | grep -q "^tinygo version $TINYGO_VERSION ";
 	echo "wasm.sh: TinyGo $TINYGO_VERSION is needed (brew install tinygo-org/tools/tinygo, or set TINYGO); found: $("$TINYGO" version 2>&1 || true)" >&2
 	exit 1
 fi
-gnoroot=$(GNOHOME=$toolchain/gnohome "$GNO" env GNOROOT | sed 's/^GNOROOT="\(.*\)"$/\1/')
+gnoroot=$(GNOHOME=$toolchain/gnohome "$GNO" env GNOROOT)
+gnoroot=$(echo "$gnoroot" | sed 's/^GNOROOT="\(.*\)"$/\1/')
 
 rm -rf "$here/p" "$here/gnovm"
 gnomath() { sed -e 's#^import "math"$#import "gno.land/gnovm/math"#' -e 's#^\(	*\)"math"$#\1"gno.land/gnovm/math"#'; }
@@ -136,7 +137,10 @@ sources sources_builder.go builder "$builder"
 
 (cd "$here" && GOOS=wasip1 GOARCH=wasm go vet ./... && GOOS=wasip1 GOARCH=wasm go vet -tags builder ./...)
 out=$root/web/lib/sim
-[ "${1:-}" = "--check" ] && out=$(mktemp -d)
+if [ "${1:-}" = "--check" ]; then
+	out=$(mktemp -d)
+	trap 'rm -rf "$out"' EXIT
+fi
 # golf.wasm, the aim preview every player loads; builder.wasm, the same and
 # the hole builder's calls (-tags builder: main_builder.go, local_builder.go)
 build() { # build <name> <tag> <the realm's files>
@@ -159,6 +163,5 @@ if [ "${1:-}" = "--check" ]; then
 			exit 1
 		fi
 	done
-	rm -rf "$out"
 	cd "$root/web" && node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../scripts/wasmparity.ts
 fi

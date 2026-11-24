@@ -10,9 +10,9 @@
 //   (from web/: npm run smoke; RPC and APP override the local defaults)
 //
 // The realm is the client's, NEXT_PUBLIC_REALM (unset, the repo tree's
-// gno.land/r/gnogolf/golf). Against a staged deploy (scripts/stage.sh), set it
+// gno.land/r/gnogolf/golf/v2). Against a staged deploy (scripts/stage.sh), set it
 // here and in the dev server at APP alike:
-//   NEXT_PUBLIC_REALM=gno.land/r/<ns>/gnogolf/golf RPC=http://127.0.0.1:<port> APP=http://localhost:<port> npm run smoke
+//   NEXT_PUBLIC_REALM=gno.land/r/<ns>/gnogolf/golf/v2 RPC=http://127.0.0.1:<port> APP=http://localhost:<port> npm run smoke
 
 import assert from "node:assert/strict";
 // the client's modules as the unit tests load them (".ts" tried, "@/" read)
@@ -76,8 +76,7 @@ await step("SimulateRound / At / In, SimulateCommit, SimulateFrom", async () => 
   await chain.simulateCommit(hole, [2, 8], 0, shots, period);
   await chain.simulateFrom(hole, at.rest, "0,1", 1, period); // the next stroke, from where the first stopped
 });
-await step("Leaderboard, CourseLeaderboard (paged), Rank", async () => {
-  const top = await chain.leaderboard("pro");
+await step("CourseLeaderboard (paged), Rank", async () => {
   const page = await chain.courseLeaderboard(0, 5, "pro");
   assert.ok(page.rows.length <= 5);
   // in the ranking's order: most holes, then the best score against par
@@ -86,7 +85,7 @@ await step("Leaderboard, CourseLeaderboard (paged), Rank", async () => {
     if (up) assert.ok(up.holes > r.holes || (up.holes === r.holes && up.strokes - up.par <= r.strokes - r.par), `row ${i + 1} ranks before row ${i}`);
   }
   if (page.players > 5) assert.equal((await chain.courseLeaderboard(page.next, 5, "pro")).offset, page.next);
-  player = (top.rows[0] || page.rows[0] || { player: "" }).player;
+  player = (page.rows[0] || { player: "" }).player;
   if (player) assert.ok((await chain.rank("pro", player)).rank >= 1, "the top player ranks");
   return `${page.players} ranked`;
 });

@@ -44,10 +44,10 @@ func main() {
 	fset := token.NewFileSet()
 	names, _ := filepath.Glob(filepath.Join(dir, "*.gno"))
 	sort.Strings(names)
-	byName := map[string][]*decl{}     // a top-level name: its declaration (a func, a type, a const or var block)
-	methods := map[string][]*decl{}    // a type: its methods
-	method := map[string]*decl{}       // "T.m": one method
-	top := map[any]bool{}              // every top-level spec and func: what a resolved identifier may point at
+	byName := map[string][]*decl{}  // a top-level name: its declaration (a func, a type, a const or var block)
+	methods := map[string][]*decl{} // a type: its methods
+	method := map[string]*decl{}    // "T.m": one method
+	top := map[any]bool{}           // every top-level spec and func: what a resolved identifier may point at
 	var pkg string
 	for _, n := range names {
 		if strings.HasSuffix(n, "_test.gno") || strings.HasSuffix(n, "_filetest.gno") {

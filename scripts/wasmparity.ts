@@ -14,13 +14,12 @@
 //
 // The holes: the course's (data/holes.txt, their plans in
 // the solver's bests, private/botcheck/hole-bests.json, kept out of the public repo:
-// without them, random shots only), and the mines' 18 from the mines worktree
-// (MINES, default: gnogolf-mines beside the repo) when the course lacks them.
+// without them, random shots only).
 //
 //   cd web && node --experimental-strip-types --import ./test/setup.mjs ../scripts/wasmparity.ts
 //   (scripts/wasm.sh --check runs it; check.sh runs that)
 
-import { execFileSync, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
@@ -44,21 +43,14 @@ function mutate(x: string, m: string) {
 }
 
 interface Hole { slot: string; hex: string; plans: string[] }
-function holes(dir: string, only?: RegExp): Hole[] {
-  // (the mines worktree, an older branch, has them at scripts/)
-  const file = ["private/botcheck/hole-bests.json", "scripts/hole-bests.json"].map((f) => path.join(dir, f)).find((f) => fs.existsSync(f));
-  if (!file) console.log(`wasmparity: no solver bests in ${dir}: random shots only, no par plans`);
-  const bests = (file ? JSON.parse(fs.readFileSync(file, "utf8")) : {}) as Record<string, { plan?: string[]; raw?: string[] }>;
+function holes(dir: string): Hole[] {
+  const file = path.join(dir, "private/botcheck/hole-bests.json"), found = fs.existsSync(file);
+  if (!found) console.log(`wasmparity: no solver bests in ${dir}: random shots only, no par plans`);
+  const bests = (found ? JSON.parse(fs.readFileSync(file, "utf8")) : {}) as Record<string, { plan?: string[]; raw?: string[] }>;
   return fs.readFileSync(path.join(dir, "data/holes.txt"), "utf8").trim().split("\n").map((l) => l.split(" "))
-    .filter(([slot]) => !only || only.test(slot))
     .map(([slot, , , hex]) => ({ slot, hex, plans: [bests[slot]?.plan, bests[slot]?.raw].filter((p): p is string[] => !!p?.length).map((p) => p.join(";")) }));
 }
 const all = holes(root);
-const main = path.dirname(execFileSync("git", ["-C", root, "rev-parse", "--path-format=absolute", "--git-common-dir"], { encoding: "utf8" }).trim());
-const mines = process.env.MINES || path.join(main, "../gnogolf-mines");
-const ownMines = all.some((h) => h.slot.startsWith("mines/")); // (the course has them already: each slot once)
-if (!ownMines && fs.existsSync(path.join(mines, "data/holes.txt"))) all.push(...holes(mines, /^mines\//));
-else if (!ownMines) console.log(`wasmparity: no mines worktree at ${mines}: the course's holes only`);
 if (process.env.ONLY) all.splice(0, all.length, ...all.filter((h) => new RegExp(process.env.ONLY!).test(h.slot))); // ONLY=mines/1: those holes alone
 const hexOf = new Map(all.map((h) => [h.slot, h.hex]));
 

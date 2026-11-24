@@ -245,7 +245,6 @@ check("the physics the builder's palette is bound by", () => {
   for (const w of WEATHER) assert.ok(course.includes(`"${w}"`), `course: no weather skin "${w}"`);
   const data = fs.readFileSync(new URL("../gno.land/p/gnogolf/course/data.gno", import.meta.url), "utf8");
   assert.ok(has(data, `if h.Strokes > ${MAX_PAR} {`), "course.Decode: the most par changed");
-  const golf = fs.readFileSync(new URL("../gno.land/r/gnogolf/golf/golf.gno", import.meta.url), "utf8");
   assert.ok(has(golf, "const minShotWork = 4 * physics.MaxWork / 5") && MIN_SHOT_WORK === (4 * RULES.maxWork) / 5, "golf's minShotWork changed");
 });
 

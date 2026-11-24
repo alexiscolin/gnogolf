@@ -16,7 +16,7 @@ import path from "node:path";
 export const CHROME = process.env.CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 export const APP = process.env.APP || "http://localhost:3300";
 export const RPC = process.env.RPC || "http://127.0.0.1:26657";
-export const REALM = process.env.REALM || process.env.NEXT_PUBLIC_REALM || "gno.land/r/gnogolf/golf";
+export const REALM = process.env.REALM || process.env.NEXT_PUBLIC_REALM || "gno.land/r/gnogolf/golf/v2";
 export const sleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
 // The course's holes are data in slots now ("garden/17"): a hole the scripts
