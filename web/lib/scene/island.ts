@@ -4,7 +4,7 @@
 // mushrooms, and turquoise water to the horizon.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { C, ink, flat, drawn, grows, sway, swayLine, setFoot, rbox, lanternGlow, glowTex, share, hullOf, ownFade, fadeLoop, windNow, geoOf, gridGeo, onTop } from "./materials";
+import { C, ink, flat, drawn, grows, sway, swayLine, setFoot, rbox, lanternGlow, glowTex, share, once, hullOf, ownFade, fadeLoop, windNow, geoOf, gridGeo, onTop } from "./materials";
 import { inZone, inSea, mod, segDist, smoothstep, terrain } from "../terrain";
 import { bakeLocal, look, weatherLooks } from "./bake";
 import { gnomelet, brolly } from "./props";
@@ -24,20 +24,10 @@ type Dressed = Zone & { islandDressed?: boolean };
 /** The island's outline (shape()). */
 type Shape = ReturnType<typeof shape>;
 
-const topMats = new Map<number, THREE.MeshToonMaterial>();
-const flatTop = (color: number) => {
-  let m = topMats.get(color);
-  if (!m) topMats.set(color, (m = share(onTop(flat(color, {})))));
-  return m;
-};
+const flatTop = (color: number) => once("island:top " + color, () => onTop(flat(color, {})));
 
 // two-sided materials, one per colour like flat()'s, so the bake can merge them
-const dsides = new Map<number, THREE.MeshToonMaterial>();
-const dside = (color: number) => {
-  let m = dsides.get(color);
-  if (!m) dsides.set(color, (m = share(flat(color, { side: THREE.DoubleSide }))));
-  return m;
-};
+const dside = (color: number) => once("island:two-sided " + color, () => flat(color, { side: THREE.DoubleSide }));
 
 // the palette of a beach, inked like the rest
 const P = {
@@ -1271,7 +1261,9 @@ function footprints(from: THREE.Vector3, to: THREE.Vector3, y: Height) {
   return g;
 }
 
-function decor(s: Hole, bank: Height = () => 0): THREE.Group {
+/** A hole's decor as it is laid: its group, its two seeds, the sand's bounds, and what puts a thing on the sand.
+ *  Every part of decor() takes it, and draws from its seeds: the order decor() calls them in is the hole's look. */
+function startDecor(s: Hole, bank: Height) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
   const rand = seeded(lookSeed(s) + "isle");
@@ -1307,11 +1299,13 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       }
   };
   const X0 = sh.cx - sh.a, X1 = sh.cx + sh.a, Z0 = sh.cz - sh.b;
-  const perches: THREE.Vector3[] = []; // where a gull may stand: the huts' finials, a lighthouse rock, the pier
+  return { g, W, H, rand, wrand, sh, time, bank, free, reserve, onBoard, dry, byWall, put, scatter, X0, X1, Z0 };
+}
+type Decor = ReturnType<typeof startDecor>;
 
-  // the lighthouse's spot (it is built further down), kept clear of the canopy
-  const LH = [W + ISLAND.x - 2.6, Math.min(H * 0.4, 5)];
-  // the canopy: palms rooted just off the lane's long sides, curving in over it
+/** The canopy: palms rooted just off the lane's long sides, curving in over it. Returns their crowns, to fade.
+ *  LH: the lighthouse's spot, which a crown keeps clear of. */
+function canopy({ g, W, rand, bank, free, reserve, dry, byWall }: Decor, LH: readonly number[]) {
   const fading: FadeItem[] = [], crowns: { x: number; z: number }[] = [];
   // two or three per hole, from behind (the camera's far side)
   const arches = 2 + (rand() < 0.5 ? 1 : 0);
@@ -1342,8 +1336,12 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     p.updateMatrixWorld(true);
     fading.push({ at: crown.getWorldPosition(new THREE.Vector3()), r: 2.5, mats });
   }
-  // behind the board, the gnomes' beach village: straw mushroom huts in a row,
-  // the tiki bar among them, all facing the lane
+  return fading;
+}
+
+/** Behind the board, the gnomes' beach village: straw mushroom huts in a row, the tiki bar among them, all facing
+ *  the lane. A hut's finial is a perch. */
+function village({ W, rand, wrand, free, dry, put }: Decor, perches: THREE.Vector3[]) {
   const huts = 2 + Math.floor(rand() * 2);
   for (let k = 0; k < huts; k++) {
     const x = W * (0.25 + (0.5 * k) / Math.max(1, huts - 1)) + (rand() - 0.5) * 3, z = -5 - rand() * 2;
@@ -1353,69 +1351,73 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       perches.push(ud(hut).perch!.clone().add(hut.position));
     }
   }
-  {
-    const x = W * 0.5 + (rand() - 0.5) * 4, z = -3.4;
-    if (dry(x, z, 2.2) && free(x, z, 2.4)) {
-      put(tikiBar(), x, z, 2.4, (rand() - 0.5) * 0.3).add(shelter(wrand, [[-0.6, -0.1], [0.6, -0.1]])); // behind the counter
-      for (const dx of [-2.9, 2.9]) if (free(x + dx, z, 0.5)) put(coconutPile(), x + dx, z, 0.5);
-    }
+  const x = W * 0.5 + (rand() - 0.5) * 4, z = -3.4;
+  if (dry(x, z, 2.2) && free(x, z, 2.4)) {
+    put(tikiBar(), x, z, 2.4, (rand() - 0.5) * 0.3).add(shelter(wrand, [[-0.6, -0.1], [0.6, -0.1]])); // behind the counter
+    for (const dx of [-2.9, 2.9]) if (free(x + dx, z, 0.5)) put(coconutPile(), x + dx, z, 0.5);
   }
-  // the lighthouse on its rocks, off the back-right corner, half in the sea
-  {
-    // on the right-hand shore, back a little: tall, it must stay in the frame
-    // past the board's right end, a little behind it: the overview frames the
-    // island's box, and a tower there stays inside it whatever the board's shape
-    const [x, z] = LH;
-    // the beam lies along +x at rotation 0; rotation.y = θ turns it to
-    // (cos θ, -sin θ): this θ points it away from the island, out to sea
-    const lh = lighthouse(time !== "day", Math.atan2(-(z - sh.cz), x - sh.cx));
-    lh.position.set(x, SEA, z);
-    g.add(lh);
-    if (time !== "day") {
-      const glow = new THREE.Sprite(lanternGlow());
-      glow.scale.set(6, 6, 1);
-      glow.position.set(x, SEA + ud(lh).lamp!.y, z);
-      g.add(glow);
-    }
-    reserve(x, z, 3.2);
-    perches.push(ud(lh).perch!.clone().add(lh.position));
+}
+
+/** The lighthouse on its rocks, off the back-right corner, half in the sea; one of its rocks is a perch. */
+function lighthouseOnRocks({ g, sh, time, reserve }: Decor, LH: readonly number[], perches: THREE.Vector3[]) {
+  // on the right-hand shore, back a little: tall, it must stay in the frame
+  // past the board's right end, a little behind it: the overview frames the
+  // island's box, and a tower there stays inside it whatever the board's shape
+  const [x, z] = LH;
+  // the beam lies along +x at rotation 0; rotation.y = θ turns it to
+  // (cos θ, -sin θ): this θ points it away from the island, out to sea
+  const lh = lighthouse(time !== "day", Math.atan2(-(z - sh.cz), x - sh.cx));
+  lh.position.set(x, SEA, z);
+  g.add(lh);
+  if (time !== "day") {
+    const glow = new THREE.Sprite(lanternGlow());
+    glow.scale.set(6, 6, 1);
+    glow.position.set(x, SEA + ud(lh).lamp!.y, z);
+    g.add(glow);
   }
-  // a pier off the back-left shore, a boat tied to it
-  {
-    const th = -Math.PI * 0.72;
-    const [x0, z0] = sh.shore(th, -1.2), [x1, z1] = sh.shore(th, 5);
-    const len = Math.round(Math.hypot(x1 - x0, z1 - z0) / 0.42);
-    const p = pier(len);
-    p.position.set(x0, GRASS - 0.25, z0);
-    p.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
-    g.add(p);
-    const b = mergedMover(boat());
-    const bx = x1 + Math.cos(th + Math.PI / 2) * 1.5, bz = z1 + Math.sin(th + Math.PI / 2) * 1.5;
-    b.position.set(bx, SEA + 0.1, bz);
-    b.rotation.y = p.rotation.y;
-    g.add(b);
-    animate((t) => {
-      b.rotation.z = Math.sin(t * 1.2) * 0.06;
-      b.position.y = SEA + 0.1 + Math.sin(t * 1.5) * 0.05;
-    });
-    perches.push(new THREE.Vector3(x1, GRASS - 0.2, z1), new THREE.Vector3((x0 + x1) / 2, GRASS - 0.2, (z0 + z1) / 2));
-    for (let k = 0; k <= 6; k++) reserve(x0 + ((x1 - x0) * k) / 6, z0 + ((z1 - z0) * k) / 6, 1);
+  reserve(x, z, 3.2);
+  perches.push(ud(lh).perch!.clone().add(lh.position));
+}
+
+/** A pier off the back-left shore, a boat tied to it; two perches along it. */
+function pierAndBoat({ g, sh, reserve }: Decor, perches: THREE.Vector3[]) {
+  const th = -Math.PI * 0.72;
+  const [x0, z0] = sh.shore(th, -1.2), [x1, z1] = sh.shore(th, 5);
+  const len = Math.round(Math.hypot(x1 - x0, z1 - z0) / 0.42);
+  const p = pier(len);
+  p.position.set(x0, GRASS - 0.25, z0);
+  p.rotation.y = -Math.atan2(z1 - z0, x1 - x0);
+  g.add(p);
+  const b = mergedMover(boat());
+  const bx = x1 + Math.cos(th + Math.PI / 2) * 1.5, bz = z1 + Math.sin(th + Math.PI / 2) * 1.5;
+  b.position.set(bx, SEA + 0.1, bz);
+  b.rotation.y = p.rotation.y;
+  g.add(b);
+  animate((t) => {
+    b.rotation.z = Math.sin(t * 1.2) * 0.06;
+    b.position.y = SEA + 0.1 + Math.sin(t * 1.5) * 0.05;
+  });
+  perches.push(new THREE.Vector3(x1, GRASS - 0.2, z1), new THREE.Vector3((x0 + x1) / 2, GRASS - 0.2, (z0 + z1) / 2));
+  for (let k = 0; k <= 6; k++) reserve(x0 + ((x1 - x0) * k) / 6, z0 + ((z1 - z0) * k) / 6, 1);
+}
+
+/** A hammock between two palms, on the right. */
+function hammock({ g, W, H, rand, free, dry, put }: Decor) {
+  const x = W + 4.4, z = H * 0.3;
+  if (dry(x, z, 2) && free(x, z, 2.4) && free(x, z + 4.6, 2.4)) {
+    const a = put(palm(rand, 4.2), x, z, 2.2, 0), b = put(palm(rand, 4.4), x, z + 4.6, 2.2, 0);
+    const pa = a.position.clone().setY(a.position.y + 1.4), pb = b.position.clone().setY(b.position.y + 1.4);
+    const mid = pa.clone().lerp(pb, 0.5).setY(pa.y - 0.6);
+    // it sways as the trunks it is tied to do (same shader, same foot), or it slips off them
+    const net = grows(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(pa, mid, pb), 12, 0.16, 6, false), P.towel);
+    ud(net).foot = (a.position.y + b.position.y) / 2;
+    ud(net).flex = 0.6; // as its palms
+    g.add(net);
   }
-  // a hammock between two palms, on the right
-  {
-    const x = W + 4.4, z = H * 0.3;
-    if (dry(x, z, 2) && free(x, z, 2.4) && free(x, z + 4.6, 2.4)) {
-      const a = put(palm(rand, 4.2), x, z, 2.2, 0), b = put(palm(rand, 4.4), x, z + 4.6, 2.2, 0);
-      const pa = a.position.clone().setY(a.position.y + 1.4), pb = b.position.clone().setY(b.position.y + 1.4);
-      const mid = pa.clone().lerp(pb, 0.5).setY(pa.y - 0.6);
-      // it sways as the trunks it is tied to do (same shader, same foot), or it slips off them
-      const net = grows(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(pa, mid, pb), 12, 0.16, 6, false), P.towel);
-      ud(net).foot = (a.position.y + b.position.y) / 2;
-      ud(net).flex = 0.6; // as its palms
-      g.add(net);
-    }
-  }
-  // palms: many, tall, behind and to the right; a few low leaning ones left
+}
+
+/** Palms: many, tall, behind and to the right; a few low leaning ones left. */
+function palmGroves({ W, H, rand, sh, free, onBoard, put, scatter, X0, X1, Z0 }: Decor) {
   // (a palm's crown is two wide each way: that is its footprint)
   // lots of them: the back row, the right side, the far left, and along the shore
   scatter(16, X0 + 1, X1 - 1, Z0 + 1, -2.2, 2.4, () => palm(rand), 0, 2.8);
@@ -1425,7 +1427,10 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     const [x, z] = sh.shore(-Math.PI + (k / 14) * Math.PI, -2.6); // the back half of the shore
     if (!onBoard(x, z, 2.8) && free(x, z, 2.2)) put(palm(rand, 3.5 + rand() * 2), x, z, 2.2, 0);
   }
-  // the beach itself: umbrellas and a sandcastle to the sides, low things in front
+}
+
+/** The beach itself: umbrellas and a sandcastle to the sides, low things in front. */
+function beachKit({ g, W, H, rand, sh, bank, scatter, X0, X1, Z0 }: Decor) {
   // the beach's life: every hole draws its own mix from this, seeded by its id,
   // so walking the eighteen is not one beach eighteen times
   const KIT = [
@@ -1438,7 +1443,10 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     () => { const th = rand() * Math.PI; g.add(seaweedLine(sh, rand, th, bank)); },
   ];
   for (const lay of shuffled(KIT, rand).slice(0, 3 + Math.floor(rand() * 3))) lay();
-  // and on every beach: umbrellas with towels and sunbathers, the odd picnic
+}
+
+/** On every beach: umbrellas with towels and sunbathers, the odd picnic; and the gnome who runs along the shore in the rain. */
+function beachGoers({ g, W, H, rand, wrand, sh, time, bank, scatter, X0, X1 }: Decor) {
   // at night the first umbrella's place is a campfire's, gnomes round it (the
   // same draw of rand, so the rest of the beach stays put)
   let fire = false;
@@ -1455,17 +1463,27 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
   spot(1, X0 + 1, -1.8, -1, H + 2);
   spot(2, X0 + 1, X1 - 1, H + 1.6, sh.cz + sh.b - 2.4);
   g.add(runner(wrand, sh, bank));
-  // footprints from in front of the board down to the water
+}
+
+/** Footprints from in front of the board down to the water, on most beaches. */
+function footprintsToWater({ g, W, H, rand, sh, bank }: Decor) {
   if (rand() < 0.7) {
     const fx = W * (0.2 + rand() * 0.6), [tx, tz] = sh.shore(Math.PI / 2 + (rand() - 0.5) * 0.8, -1.4);
     const fz = H + 1.6;
     g.add(footprints(new THREE.Vector3(fx, 0, fz), new THREE.Vector3(tx, 0, tz), (x, z) => GRASS + bank(x, z)));
   }
+}
+
+/** What grows and lies on the dunes: hibiscus, rocks, dune grass. */
+function dunePlants({ W, H, rand, scatter, X0, X1, Z0 }: Decor) {
   scatter(2, X0, X1, Z0, -1.4, 0.7, () => hibiscus(rand));
   scatter(1, W + 1.4, X1, 0, H, 0.6, () => hibiscus(rand));
   scatter(10, X0, X1, Z0, H + 4, 0.8, () => rock(rand));
   scatter(26, X0, X1, Z0, H + 4, 0.3, () => duneGrass(rand));
-  // crabs on the sand, in front and to the sides
+}
+
+/** Crabs on the sand, in front and to the sides. */
+function crabs({ g, H, rand, bank, free, reserve, onBoard, dry, X0, X1 }: Decor) {
   for (let i = 0; i < 5; i++)
     for (let k = 0; k < 10; k++) {
       const x = X0 + rand() * (X1 - X0), z = rand() < 0.5 ? H + 1 + rand() * 2.5 : rand() * H;
@@ -1474,7 +1492,10 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       reserve(x, z, 1.6);
       break;
     }
-  // tiki torches along the back at dusk and after
+}
+
+/** Tiki torches along the back at dusk and after. */
+function torches({ g, W, time, bank, free, reserve }: Decor) {
   if (time !== "day")
     for (let x = 3; x < W - 1; x += 9) {
       const z = -2.3;
@@ -1493,13 +1514,17 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
       g.add(torch);
       reserve(x, z, 0.4);
     }
+}
 
-  // giant hibiscus on the dunes behind and beside
+/** Giant hibiscus on the dunes behind and beside. */
+function giantFlowers({ W, H, rand, scatter, X0, X1, Z0 }: Decor) {
   scatter(3, X0 + 2, X1 - 2, Z0 + 1, -2.5, 1.6, () => giantHibiscus(rand), undefined, 2);
   scatter(2, W + 1.8, X1 - 1, 0, H, 1.6, () => giantHibiscus(rand), undefined, 2);
-  // kites up over the beach
-  // (on the string to a stake in the sand behind; a kite with no dry sand for
-  // its stake is not flown, and none flies in rain or storm)
+}
+
+/** Kites up over the beach, each on its string to a stake in the sand behind; a kite with no dry sand for its stake
+ *  is not flown. Returns them: none flies in rain or storm. */
+function kitesUp({ g, W, rand, bank, free, reserve, onBoard, dry }: Decor) {
   const kites: THREE.Group[] = [];
   for (let i = 0; i < 2; i++) {
     const at = new THREE.Vector3(W * (0.25 + i * 0.5), 9 + rand() * 2, -4 - rand() * 3);
@@ -1511,10 +1536,11 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     g.add(kt);
     kites.push(kt);
   }
-  // the fade: a crown near the line from the eye to the ball goes see-through
-  ud(g).fade = fadeLoop(fading);
+  return kites;
+}
 
-  // out at sea: a far island or two, a ship on the horizon, gulls overhead
+/** Out at sea: a far island or two, a ship on the horizon, gulls overhead and on the perches. */
+function outAtSea({ g, rand, sh }: Decor, perches: readonly THREE.Vector3[]) {
   const isles: [number, number, number][] = [[-55, -80, 9], [70, -95, 12], [-90, 30, 7]];
   for (const [dx, dz, r] of isles.slice(0, 2 + Math.floor(rand() * 2))) {
     const f = farIsle(rand, r);
@@ -1529,6 +1555,31 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
     sp.rotation.z = Math.sin(t * 0.9) * 0.03;
   });
   g.add(gulls(rand, sh.cx, sh.cz, 4 + Math.floor(rand() * 3), perches));
+}
+
+/** The island round the board, part by part: each draws from the hole's seeds, so their order is the hole's look. */
+function decor(s: Hole, bank: Height = () => 0): THREE.Group {
+  const d = startDecor(s, bank), { g } = d;
+  const perches: THREE.Vector3[] = []; // where a gull may stand: the huts' finials, a lighthouse rock, the pier
+  // the lighthouse's spot (it is built further down), kept clear of the canopy
+  const LH = [d.W + ISLAND.x - 2.6, Math.min(d.H * 0.4, 5)];
+  const fading = canopy(d, LH);
+  village(d, perches);
+  lighthouseOnRocks(d, LH, perches);
+  pierAndBoat(d, perches);
+  hammock(d);
+  palmGroves(d);
+  beachKit(d);
+  beachGoers(d);
+  footprintsToWater(d);
+  dunePlants(d);
+  crabs(d);
+  torches(d);
+  giantFlowers(d);
+  const kites = kitesUp(d);
+  // the fade: a crown near the line from the eye to the ball goes see-through
+  ud(g).fade = fadeLoop(fading);
+  outAtSea(d, perches);
   if (green(s) === "planks") g.add(lagoonUnder(s));
   flushLeafLines(g);
   // the beach in the weather: in rain or storm no one sunbathes, in wind the parasols lean

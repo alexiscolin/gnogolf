@@ -4,7 +4,7 @@
 // and the walls, never on the carpet. And the looks the world and its pieces
 // share: the crystals' glowing material and a crystal cluster.
 import * as THREE from "three";
-import { flat, drawn, share, uTime, relief, hullOf } from "./materials";
+import { flat, drawn, share, uTime, relief, hullOf, once } from "./materials";
 import { prism } from "./crystal";
 import { md } from "./data";
 import type { Rand } from "./common";
@@ -27,7 +27,6 @@ export const MINES = {
 // chunk (the HUD, the aim dots) reads them without the mines' kit
 export { minesOrder, darkGallery } from "./data";
 
-let crystalM: THREE.MeshToonMaterial | null = null;
 /** Every crystal of the hole a little brighter for a while: the singing crystals struck (mines-pieces.ts ring). */
 export const lit = { value: 0 };
 /**
@@ -38,8 +37,7 @@ export const lit = { value: 0 };
  * in the dark it is what lights the way. One material for every crystal of
  * a hole: one draw.
  */
-export function crystalMat() {
-  if (crystalM) return crystalM;
+export const crystalMat = () => once("mines:crystal", () => {
   const m = flat(0xffffff, { vertexColors: true });
   m.fog = false;
   m.onBeforeCompile = (sh) => {
@@ -58,8 +56,8 @@ export function crystalMat() {
   };
   m.customProgramCacheKey = () => "minesCrystal";
   md(m).hook = "minesCrystal";
-  return (crystalM = share(m));
-}
+  return m;
+});
 
 /** The crystals' hues: cyan most, amethyst, rose now and then. */
 export const HUES = [MINES.cyan, MINES.cyan, MINES.amethyst, MINES.cyan, MINES.rose] as const;

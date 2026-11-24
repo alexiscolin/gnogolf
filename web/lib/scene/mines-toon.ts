@@ -6,7 +6,7 @@
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { drawn, relief, hullOf, share, ownFade, setFade, sightDist, flat } from "./materials";
+import { drawn, relief, hullOf, once, ownFade, setFade, sightDist, flat } from "./materials";
 import { bakeLocal } from "./bake";
 import { ud } from "./data";
 import { md } from "./data";
@@ -204,7 +204,7 @@ export function splay(rand: Rand, size: number, R: number, hues: readonly number
 // halo of the hole, their colours (times their strength: it adds) in their
 // vertices: merged by the bake into one draw; the Low tier keeps them (they
 // are on the board)
-export const haloMat = () => once("halo", () => {
+export const haloMat = () => once("mines:halo", () => {
   const m = new THREE.MeshBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = "varying float vHalo;\n" + sh.vertexShader.replace(
@@ -244,7 +244,7 @@ export function halo(r: number, color: number, strength = 0.34) {
 // the timber and the iron
 /** The mines' one gold: its two tones, and its one material (vertex coloured, a low glow of its own: treasure catches the lamplight in the dark). */
 export const GOLD = 0xe8b54a, GOLD_DARK = 0xb8862a;
-export const goldMat = () => once("gold", () => flat(0xffffff, { vertexColors: true, emissive: 0x3a2508, emissiveIntensity: 0.6 }));
+export const goldMat = () => once("mines:gold", () => flat(0xffffff, { vertexColors: true, emissive: 0x3a2508, emissiveIntensity: 0.6 }));
 // (the kit's palette: one iron, one rust, one brass, one timber-dark for the whole of the mines)
 export const TIMBER = MINES.timber, TIMBER_DARK = MINES.timberDark, TIMBER_LIGHT = 0xb57d47, IRON = MINES.iron, IRON_DARK = 0x3a3d48, RUST = MINES.rust, BRASS = MINES.brass;
 /** A box with its edges chamfered (one segment of rounding: 108 triangles, a third of the shared rbox's): the mines' timbers and plates are many. */
@@ -294,19 +294,8 @@ export function plate(w: number, h: number, d: number, color: number = IRON) {
   return boxed(geo, w, h, d);
 }
 
-/**
- * A material (or any disposable) made once for the whole game, by its key: kept
- * (materials.ts share: never disposed with a course), so a piece built on every
- * hole reuses it rather than leaving a new one behind each build.
- */
-const ONCE = new Map<string, unknown>();
-export function once<T extends { dispose(): void }>(key: string, make: () => T): T {
-  let x = ONCE.get(key) as T | undefined;
-  if (!x) ONCE.set(key, (x = share(make())));
-  return x;
-}
 /** The dark down a drift, a slot, a pocket: the mines' void black, unlit (one material for all of them). */
-export const darkMouth = () => once("dark mouth", () => new THREE.MeshBasicMaterial({ color: MINES.void }));
+export const darkMouth = () => once("mines:dark mouth", () => new THREE.MeshBasicMaterial({ color: MINES.void }));
 
 // Things many pieces of a hole have (bubbles in every lava, drips in every
 // pool, steam off every spring) are one live system for the whole hole, not

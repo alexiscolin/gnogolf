@@ -5,7 +5,7 @@
 // weather is, for the HUD. Lightning is the page's: a flash over everything.
 import * as THREE from "three";
 import { mod } from "../terrain";
-import { motion, share } from "./materials";
+import { motion, once } from "./materials";
 import { setLighting } from "./studio";
 import type { LitScene } from "./data";
 import type { Forecast, MutVec2, Zone } from "../types";
@@ -83,9 +83,7 @@ const CAVE = {
 };
 
 // a soft round blob, for fog banks
-let blobTex: THREE.CanvasTexture | null = null;
-function blob() {
-  if (blobTex) return blobTex;
+const blob = () => once("weather:blob", () => {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const x = c.getContext("2d")!;
@@ -95,14 +93,12 @@ function blob() {
   g.addColorStop(1, "rgba(255,255,255,0)");
   x.fillStyle = g;
   x.fillRect(0, 0, 128, 128);
-  return (blobTex = share(new THREE.CanvasTexture(c)));
-}
+  return new THREE.CanvasTexture(c);
+});
 
 // a storm cloud, drawn like the rest of the game: a flat puffy shape, slate
 // shaded to a dark belly, a pale rim on its top and an inked outline
-let cloudTex: THREE.CanvasTexture | null = null;
-function stormCloud() {
-  if (cloudTex) return cloudTex;
+const stormCloud = () => once("weather:storm cloud", () => {
   const c = document.createElement("canvas");
   c.width = 256;
   c.height = 128;
@@ -124,10 +120,10 @@ function stormCloud() {
   g.addColorStop(1, "#353e50");
   x.fillStyle = g;
   shape(0, 6), x.fill();
-  cloudTex = share(new THREE.CanvasTexture(c));
-  cloudTex.colorSpace = THREE.SRGBColorSpace;
-  return cloudTex;
-}
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+});
 
 // A stand-in for one piece of a batch: the transform and look the tick code
 // sets, written into the batch's instances once a frame (flush). A handful of

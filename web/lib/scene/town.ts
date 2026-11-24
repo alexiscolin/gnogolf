@@ -7,7 +7,7 @@
 // behind and to the right, as in the garden, so the lane is never hidden.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"; // the skyline
-import { C, T, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
+import { C, T, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, once, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
 import { bakeLocal, look, weatherLooks } from "./bake";
 import { animate } from "./state";
 import { timeOf } from "./studio";
@@ -43,9 +43,7 @@ const MAST_Z = -2.1; // the lantern strings' masts: between the tram's rails and
 const stringXs = (W: number) => { const xs: number[] = []; for (let x = W * 0.16; x < W - 1; x += Math.max(8, W / 4)) xs.push(x); return xs; };
 
 // cobbles: a canvas of rounded stones, repeated over the square
-let cobbleTex: THREE.CanvasTexture | null = null;
-function cobbles() {
-  if (cobbleTex) return cobbleTex;
+const cobbles = () => once("town:cobbles", () => {
   const c = document.createElement("canvas");
   c.width = c.height = 128;
   const x = c.getContext("2d")!, rand = seeded("cobbles");
@@ -64,8 +62,8 @@ function cobbles() {
     }
   const t = texOf(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return (cobbleTex = share(t));
-}
+  return t;
+});
 
 /** The square: cobbles to the horizon, a curbed plinth under the board, the canal. */
 function base(s: Hole, box: THREE.Box3) {
@@ -831,7 +829,9 @@ function skyline(rand: Rand, X0: number, X1: number, Z0: number) {
   return g;
 }
 
-function decor(s: Hole) {
+/** A hole's decor as it is laid: its group, its seed, the town's bounds, the hour, and what stands a thing on the
+ *  street. Every part of decor() takes it and draws from its seed: the order decor() calls them in is the hole's look. */
+function startDecor(s: Hole) {
   const g = new THREE.Group();
   const W = s.board.w, H = s.board.h;
   const rand = seeded("town" + lookSeed(s));
@@ -852,8 +852,13 @@ function decor(s: Hole) {
     reserve(x, z, r);
     return m;
   };
+  return { g, W, H, rand, X0, X1, Z0, time, night, reserve, place };
+}
+type Decor = ReturnType<typeof startDecor>;
 
-  // the tram line along the back street, before anything is put on it
+/** The tram line along the back street, before anything is put on it; then the street's lamps and trees, before the
+ *  stalls take the room. */
+function backStreet({ g, W, rand, X0, X1, night, reserve, place }: Decor) {
   const TZ = -3.3;
   // (it starts past the canal: rails do not run over water)
   const TX0 = CANAL.x1 + 1.2;
@@ -864,9 +869,11 @@ function decor(s: Hole) {
   for (let x = X0 + 2; x < X1 - 1; x += 6.5) place(lamp(night), x, TZ - 1.5, 0.35);
   // and a tree between every two lamps, before the stalls take the room
   for (let x = X0 + 5.2; x < X1 - 2; x += 6.5) place(streetTree(rand), x, TZ - 1.6, 0.8);
+}
 
-  // the back row: market stalls first (the houses find room round them),
-  // the clock tower right of centre, then the houses
+/** The back row: market stalls first (the houses find room round them), the clock tower right of centre, then the
+ *  houses. */
+function backRow({ rand, X0, X1, time, night, place }: Decor) {
   for (let x = X0 + 4; x < X1 - 3; x += 7 + rand() * 4) place(stall(rand, time === "night"), x, -5.6, 1.1, (rand() - 0.5) * 0.3);
   const tower = place(clockTower(night), X0 + (X1 - X0) * 0.68, -7.2, 2);
   if (!tower) place(clockTower(night), X1 - 3, -7.2, 2);
@@ -875,20 +882,26 @@ function decor(s: Hole) {
     const sc = 0.45 + rand() * 0.55, h = townHouse(rand, night); // small and big side by side
     place(h.g, x, -7.2 + rand() * 0.6, h.r * sc * 0.88, (rand() - 0.5) * 0.5)?.scale.setScalar(sc);
   }
+}
 
-  // gnomes selling on the street: in front of the back row, and down the right
+/** Gnomes selling on the street: in front of the back row, and down the right. */
+function streetSellers({ W, H, rand, X0, X1, time, night, place }: Decor) {
   for (let x = X0 + 6; x < X1 - 4; x += 9 + rand() * 4) place(gnomeStand(rand, night, time === "night"), x, -4.6, 0.9, (rand() - 0.5) * 0.4);
   place(gnomeStand(rand, night, time === "night"), W + 2.6, H + 1.6, 0.9, -0.6);
+}
 
-  // the right: the bakery, the fountain, a couple of houses
+/** The right: the bakery, the fountain, a couple of houses. */
+function rightSide({ W, H, rand, X1, night, place }: Decor) {
   place(bakery(night), X1 - 2.6, H * 0.25, 2.2, -Math.PI / 2);
   place(fountain(), W + 3.8, H * 0.62 + 0.4, 1.8);
   for (let z = H - 0.5; z > -2; z -= 3.2) {
     const sc = 0.6 + rand() * 0.3, h = townHouse(rand, night);
     place(h.g, X1 - 1.5, z, h.r * sc * 0.88, -Math.PI / 2 + (rand() - 0.5) * 0.4)?.scale.setScalar(sc);
   }
+}
 
-  // the left and the front: only low things — benches, pots, lamps, gnomes
+/** The left and the front: only low things — benches, pots, lamps, gnomes. */
+function streetLife({ W, H, rand, X0, X1, time, night, place }: Decor) {
   for (let z = 1; z < H; z += 4.5) place(bench(), -3.2, z, 0.9, Math.PI / 2);
   for (let x = 2; x < W - 1; x += 7) place(bench(), x, H + 2.6, 0.9, Math.PI);
   for (let i = 0; i < Math.round(W / 5); i++) {
@@ -908,17 +921,18 @@ function decor(s: Hole) {
     if (time !== "night" || i < 2) place(gn, x, z, 0.3, turn); // after dark, only a couple out strolling
   }
   place(mailbox(), -2.4, H + 1.4, 0.35, 0.4);
+}
 
-  // greenery: trees along the back street and down the right, pocket lawns
-  // along the front; the square stays a square, but a green one
+/** Greenery: trees down the right, pocket lawns along the front; the square stays a square, but a green one. */
+function greenery({ W, H, rand, place }: Decor) {
   for (let z = 3; z < H; z += 5) place(streetTree(rand), W + 3, z, 0.9);
   for (let x = 3; x < W - 3; x += 9 + rand() * 3) place(parkBed(1.5, 0.75, rand), x, H + 3.5, 1.6);
+}
 
-  // the square closes in round the lane: a front row of low, squat houses
-  // (backs to the camera, below its line to the green) and a row down the
-  // left before the canal — so what shows round the park is town, not paving
-  // (the front is seen from above: flower beds and low hedges read there,
-  // a house would show only its cap, like a disc on the cobbles)
+/** The square closes in round the lane: a front row of low, squat houses (backs to the camera, below its line to the
+ *  green) and a row down the left before the canal — so what shows round the park is town, not paving. The front is
+ *  seen from above: flower beds and low hedges read there, a house would show only its cap, like a disc on the cobbles. */
+function squareSurround({ H, rand, X0, X1, time, night, place }: Decor) {
   // a little park along the front: a few big rounded beds, low
   for (let x = X0 + 1; x < X1 + 1; x += 7 + rand() * 3) {
     const rx = 2 + rand() * 1.3, rz = 1 + rand() * 0.5;
@@ -943,12 +957,10 @@ function decor(s: Hole) {
     const sc = 0.5 + rand() * 0.15, h = townHouse(rand, night, rand() < 0.5 ? 0 : 2);
     place(h.g, -6.2, z, h.r * sc * 0.88, Math.PI / 2 + (rand() - 0.5) * 0.4)?.scale.setScalar(sc);
   }
+}
 
-  // bunting across the back street, and the bridge over the canal
-  g.add(bunting(new THREE.Vector3(X0 + 2, GRASS, -4.6), new THREE.Vector3(X1 - 2, GRASS, -4.6)));
-  g.add(bridge(H * 0.5));
-  // every still glow (windows, doors, lamps, stalls) as one set of points:
-  // a sprite each is a draw call each
+/** Every still glow of g (windows, doors, lamps, stalls) as one set of points: a sprite each is a draw call each. */
+function glowsAsPoints(g: THREE.Group) {
   g.updateMatrixWorld(true);
   const moving = (o: THREE.Object3D) => { for (let p = o.parent; p; p = p.parent) if (ud(p).live) return true; return false; };
   const glows: THREE.Object3D[] = [];
@@ -961,6 +973,22 @@ function decor(s: Hole) {
     const m = lanternGlow();
     g.add(new THREE.Points(geo, new THREE.PointsMaterial({ map: m.map, color: m.color, size: 2.6, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })));
   }
+}
+
+/** The town round the board, part by part: each draws from the hole's seed, so their order is the hole's look. */
+function decor(s: Hole) {
+  const d = startDecor(s), { g, W, H, rand, X0, X1, Z0, night, reserve } = d;
+  backStreet(d);
+  backRow(d);
+  streetSellers(d);
+  rightSide(d);
+  streetLife(d);
+  greenery(d);
+  squareSurround(d);
+  // bunting across the back street, and the bridge over the canal
+  g.add(bunting(new THREE.Vector3(X0 + 2, GRASS, -4.6), new THREE.Vector3(X1 - 2, GRASS, -4.6)));
+  g.add(bridge(H * 0.5));
+  glowsAsPoints(g);
   // town10's canal and its lifting bridge: always there, raised or lowered by each stroke's pieces (extras)
   if (String(s.hole).endsWith("town10")) g.add(swingRig(s));
   // round the rooftops the town stands at street level, the strings over the lane where they were
@@ -1127,19 +1155,15 @@ function awningAcross(len: number, thick: number) {
 // circle, a zone's polygon, rectangle or ellipse.
 
 // a paving: one tile of it drawn on a canvas, repeated over the ground
-const pavings = new Map<string, THREE.CanvasTexture>();
-function paving(key: string, px: number, draw: (x: CanvasRenderingContext2D, rand: Rand, n: number) => void) {
-  if (!pavings.has(key)) {
-    const c = document.createElement("canvas");
-    c.width = c.height = px;
-    draw(c.getContext("2d")!, seeded(key), px);
-    const tex = texOf(c);
-    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-    tex.anisotropy = 4;
-    pavings.set(key, share(tex));
-  }
-  return pavings.get(key)!;
-}
+const paving = (key: string, px: number, draw: (x: CanvasRenderingContext2D, rand: Rand, n: number) => void) => once("town:paving " + key, () => {
+  const c = document.createElement("canvas");
+  c.width = c.height = px;
+  draw(c.getContext("2d")!, seeded(key), px);
+  const tex = texOf(c);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 4;
+  return tex;
+});
 const rgb = (r: number, g: number, b: number) => `rgb(${r | 0},${g | 0},${b | 0})`;
 // red bricks in a running bond, 4 by 8 to a tile: a brick is a ball across
 const brickTex = () => paving("brick", 128, (x, rand, n) => {

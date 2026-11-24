@@ -1,7 +1,7 @@
 // An Epic's prop, built from its data (lib/gnomes/props.ts): each part a
 // simple shape in a flat colour under the gnome's thin ink line, or lit.
 import * as THREE from "three";
-import { C, flat, inked, share } from "./materials";
+import { C, flat, inked, once } from "./materials";
 import { colour } from "../gnomes/vocab";
 import { PROP_DESIGNS, type Part } from "../gnomes/props";
 import type { Skin } from "./gnome";
@@ -31,9 +31,8 @@ function tone(c: string | undefined, skin: Skin) {
   }
 }
 
-// lit parts: no shading, as the headlamp's lens (one material per colour, kept: share)
-const lit = new Map<number, THREE.MeshBasicMaterial>();
-export const glowOf = (v: number) => lit.get(v) ?? (lit.set(v, share(new THREE.MeshBasicMaterial({ color: v }))), lit.get(v)!);
+// lit parts: no shading, as the headlamp's lens (one material per colour, kept)
+export const glowOf = (v: number) => once("gnome-props:lit " + v, () => new THREE.MeshBasicMaterial({ color: v }));
 
 /**
  * The skin's prop, built: { body, hat, top } groups of parts to place (in the

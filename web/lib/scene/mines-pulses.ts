@@ -28,14 +28,14 @@
 // drawn as a dashed outline, as the timed pieces are while aiming.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { flat, relief, motion } from "./materials";
+import { flat, relief, motion, once } from "./materials";
 import { animate, state } from "./state";
 import { seeded } from "./common";
 import { ud, type Hole, type Tick } from "./data";
 import { bakeLocal } from "./bake";
 
 import { lavaMaterial, crustBy } from "./mines-lava";
-import { once, darkMouth, INK_THIN, inked, paint, fill, boulder, halo, glow, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, plate, rivets, vnoise, solid, tinted, gem, knobbly } from "./mines-toon";
+import { darkMouth, INK_THIN, inked, paint, fill, boulder, halo, glow, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, plate, rivets, vnoise, solid, tinted, gem, knobbly } from "./mines-toon";
 import { outline, sheet, overVoid, zone } from "./mines-zones";
 import { mod, boxOf, inZone, inPoly, smoothstep } from "../terrain";
 import { sound } from "../feel";
@@ -76,7 +76,7 @@ function dashed(loops: readonly (readonly Vec2[])[], t: Terrain) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(xyz, 3));
   geo.setAttribute("lineDistance", new THREE.Float32BufferAttribute(dist, 1));
-  return new THREE.LineSegments(geo, once("dashed outline", () => new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.25, transparent: true, opacity: 0.4, depthWrite: false })));
+  return new THREE.LineSegments(geo, once("mines:dashed outline", () => new THREE.LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.25, transparent: true, opacity: 0.4, depthWrite: false })));
 }
 const corners = (b: PBar): Vec2[] => {
   const nx = -b.uz, nz = b.ux, hl = b.L / 2, ht = b.T / 2;
@@ -259,7 +259,7 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   // (never out over the void past the lane: as wide as the room round the platter allows)
   const gapOut = Math.min(R + 0.3, fit - 0.05);
   if (gapOut > R + 0.17) {
-    const gap = new THREE.Mesh(new THREE.RingGeometry(R + 0.14, gapOut, 40).rotateX(-Math.PI / 2), once("pit gap", () => new THREE.MeshBasicMaterial({ color: 0x120c18 })));
+    const gap = new THREE.Mesh(new THREE.RingGeometry(R + 0.14, gapOut, 40).rotateX(-Math.PI / 2), once("mines:pit gap", () => new THREE.MeshBasicMaterial({ color: 0x120c18 })));
     gap.position.set(cx, y0 + 0.02, cz);
     g.add(gap);
   }
@@ -415,7 +415,7 @@ function cracking(b: PBar, t: Terrain) {
       (x = nx), (z = nz), (a += (rand() - 0.5) * 1.2);
     }
   }
-  g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), once("crag cracks", () => new THREE.LineBasicMaterial({ color: 0x1a1320 }))));
+  g.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), once("mines:crag cracks", () => new THREE.LineBasicMaterial({ color: 0x1a1320 }))));
   // dust streaming down in thin veils, pebbles dropping
   const n = 10, peb = new THREE.InstancedMesh(new THREE.DodecahedronGeometry(0.06, 0), flat(0x8a7f98), n);
   peb.frustumCulled = false;
@@ -528,7 +528,7 @@ function blown(b: PBar, t: Terrain, s: Hole, fresh: boolean, t0: number) {
     g.add(r);
     bits.push({ m: r, to });
   }
-  const scorch = new THREE.Mesh(new THREE.CircleGeometry(b.L * 0.7, 20).rotateX(-Math.PI / 2), once("scorch", () => new THREE.MeshBasicMaterial({ color: 0x1a1016, transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 })));
+  const scorch = new THREE.Mesh(new THREE.CircleGeometry(b.L * 0.7, 20).rotateX(-Math.PI / 2), once("mines:scorch", () => new THREE.MeshBasicMaterial({ color: 0x1a1016, transparent: true, opacity: 0.35, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 })));
   scorch.position.set(b.c[0], y0 + 0.04, b.c[1]);
   g.add(scorch);
   if (fresh) {
@@ -566,7 +566,7 @@ function brokenHole(z: Zone, t: Terrain, s: Hole, fresh: boolean, t0: number) {
   // the dark down there, seen through the break: black in the middle, the rock's lip showing at its edge
   // (a stroke's hole is not cut in the lane: its dark lies over it, a hair up)
   const geo = sheet(pts, 0.35, (x, zz) => t.height(x, zz) + 0.045, (_x, _z, d, c) => c.copy(lip).lerp(deep, smoothstep(d / 0.6)), (x, zz) => !overVoid(s, x, zz));
-  g.add(new THREE.Mesh(geo, once("broken hole", () => new THREE.MeshBasicMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }))));
+  g.add(new THREE.Mesh(geo, once("mines:broken hole", () => new THREE.MeshBasicMaterial({ vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }))));
   // the broken edge: chunks of rock round the rim, leaning in
   const chunks: THREE.BufferGeometry[] = [];
   for (let k = 0; k < pts.length; k += 3) {
@@ -617,7 +617,7 @@ function cracked(z: Zone, t: Terrain, s: Hole) {
       (x = nx), (zz = nz), (a += (rand() - 0.5) * 0.7);
     }
   }
-  const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), once("slab cracks", () => new THREE.LineBasicMaterial({ color: 0x120c18 })));
+  const line = new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines), once("mines:slab cracks", () => new THREE.LineBasicMaterial({ color: 0x120c18 })));
   g.add(line);
   // a ring round its edge where it is parting from the lane, and pebbles falling through it
   g.add(dashed([pts], t));
@@ -815,9 +815,9 @@ function bats(now: readonly Post[], was: readonly Post[] | null, next: readonly 
     return new THREE.ExtrudeGeometry(sh, { depth: 0.02, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, 0.02, 0.05);
   };
   const geo = mergeGeometries([body, ...ears].map((q) => q.toNonIndexed()).concat([wing(-1).toNonIndexed(), wing(1).toNonIndexed()]).map((q) => (q.deleteAttribute("uv"), q)));
-  const mat = once("bat", () => flat(0x5a4a74, { emissive: 0x2a1a3a, emissiveIntensity: 0.4 }));
+  const mat = once("mines:bat", () => flat(0x5a4a74, { emissive: 0x2a1a3a, emissiveIntensity: 0.4 }));
   const flock = new THREE.InstancedMesh(geo, mat, n);
-  const eyes = new THREE.InstancedMesh(mergeGeometries([0.05, -0.05].map((x) => new THREE.SphereGeometry(0.035, 6, 4).translate(x, 0.05, 0.16))), once("bat eyes", () => new THREE.MeshBasicMaterial({ color: 0xffd060, fog: false })), n);
+  const eyes = new THREE.InstancedMesh(mergeGeometries([0.05, -0.05].map((x) => new THREE.SphereGeometry(0.035, 6, 4).translate(x, 0.05, 0.16))), once("mines:bat eyes", () => new THREE.MeshBasicMaterial({ color: 0xffd060, fog: false })), n);
   for (const m of [flock, eyes]) (m.frustumCulled = false), g.add(m);
   const rand = seeded("bats" + now.map((p) => p.c.join()).join());
   const list = [

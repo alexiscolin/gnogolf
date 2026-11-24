@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { terrain, mod, CELL, cupRadius, BALL_R, airy, there, inPoly, inZone, closest, nearestOnPoly, segDist, smoothstep, POOL, POOLS, DISH, inSea, emptyZone } from "../terrain";
-import { C, bankRows, ink, flat, motion, drawn, drape, rbox, ringLine, texOf, setWind, share, plantFeet, quality, geoOf, gridGeo, onTop, carved, grainSides, wetSides } from "./materials";
+import { C, bankRows, ink, flat, motion, drawn, drape, rbox, ringLine, texOf, setWind, once, plantFeet, quality, geoOf, gridGeo, onTop, carved, grainSides, wetSides } from "./materials";
 import { bake } from "./bake";
 import { state, report } from "./state";
 import type { Census, PieceRef } from "./census";
@@ -857,9 +857,7 @@ function kerbChains(W: readonly WallLike[]) {
 
 
 /** End grain: rings on a sawn face, for logs and stumps. */
-let ringsTex: THREE.CanvasTexture | null = null;
-function endGrain() {
-  if (ringsTex) return ringsTex;
+const endGrain = () => once("course:end grain", () => {
   const c = document.createElement("canvas");
   c.width = c.height = 64;
   const x = c.getContext("2d")!;
@@ -867,10 +865,9 @@ function endGrain() {
   x.strokeStyle = "#b07a45"; x.lineWidth = 2;
   for (let r = 6; r < 32; r += 6) { x.beginPath(); x.arc(32, 32, r, 0, Math.PI * 2); x.stroke(); }
   x.fillStyle = "#8a5a32"; x.beginPath(); x.arc(32, 32, 3, 0, Math.PI * 2); x.fill();
-  return (ringsTex = share(texOf(c)));
-}
-let sawnMat: THREE.MeshToonMaterial | null = null;
-const sawn = () => (sawnMat ||= share(flat(0xffffff, { map: endGrain() })));
+  return texOf(c);
+});
+const sawn = () => once("course:sawn", () => flat(0xffffff, { map: endGrain() }));
 
 /**
  * A sawn log or stump, one material per part so it bakes: the bark round

@@ -7,7 +7,7 @@
 // the ink line for a lit one, lava glows through its cracks. Colours stay
 // the skin's: a material is how the light takes them.
 import * as THREE from "three";
-import { flat, hullOf, share, texOf } from "./materials";
+import { flat, hullOf, share, texOf, once } from "./materials";
 import { seeded } from "./common";
 import { md } from "./data";
 import type { Material } from "../gnomes/vocab";
@@ -102,25 +102,23 @@ const MARKS: Partial<Record<Material, (x: CanvasRenderingContext2D, r: () => num
 };
 
 const METAL_LIFT = new THREE.Color(0x141414);
-const made = new Map<string, THREE.Material>();
 /** A material's surface in a colour, its detail in another (made once per kind and pair, kept). */
 function surface(kind: Material, base: number, detail: number): THREE.Material {
   const key = `${kind}:${base}:${detail}`;
-  let m = made.get(key);
-  if (m) return m;
-  const marks = MARKS[kind], map = marks ? share(painted(key, (x, r) => marks(x, r, css(base), css(detail)))) : null;
-  const opts: THREE.MeshToonMaterialParameters = {};
-  if (POLISHED.has(kind) || kind === "stone") opts.gradientMap = POLISHED.has(kind) ? SHINE : MATTE; // (else flat()'s own bands)
-  if (map) opts.map = map;
-  if (kind === "lava") Object.assign(opts, { emissive: detail, emissiveMap: map, emissiveIntensity: 0.8 });
-  // a metal's faint lift of its own light, the same for every part: the bake merges a gnome's
-  // metal parts into one draw (their colours in its vertices), and that draw has one emissive
-  if (kind === "metal") opts.emissive = METAL_LIFT;
-  if (kind === "crystal") Object.assign(opts, { transparent: true, opacity: 0.86, emissive: new THREE.Color(detail).multiplyScalar(0.25) });
-  m = share(flat(map ? 0xffffff : base, opts));
-  if (kind === "crystal") md(m).base = 0.86; // see-through as ice is: a ghost fades it from there
-  made.set(key, m);
-  return m;
+  return once("gnome-matter:" + key, () => {
+    const marks = MARKS[kind], map = marks ? share(painted(key, (x, r) => marks(x, r, css(base), css(detail)))) : null;
+    const opts: THREE.MeshToonMaterialParameters = {};
+    if (POLISHED.has(kind) || kind === "stone") opts.gradientMap = POLISHED.has(kind) ? SHINE : MATTE; // (else flat()'s own bands)
+    if (map) opts.map = map;
+    if (kind === "lava") Object.assign(opts, { emissive: detail, emissiveMap: map, emissiveIntensity: 0.8 });
+    // a metal's faint lift of its own light, the same for every part: the bake merges a gnome's
+    // metal parts into one draw (their colours in its vertices), and that draw has one emissive
+    if (kind === "metal") opts.emissive = METAL_LIFT;
+    if (kind === "crystal") Object.assign(opts, { transparent: true, opacity: 0.86, emissive: new THREE.Color(detail).multiplyScalar(0.25) });
+    const m = flat(map ? 0xffffff : base, opts);
+    if (kind === "crystal") md(m).base = 0.86; // see-through as ice is: a ghost fades it from there
+    return m;
+  });
 }
 
 const GLINT = share(new THREE.MeshBasicMaterial({ color: 0xffffff }));
