@@ -47,7 +47,7 @@ export interface GameState {
   facing: number;
   power: number;
   aiming: boolean;
-  /** third person's aim turning on past its zone (engine.ts steer): -1 left, 1 right, 0 not */
+  /** third person's aim turning on past its zone (engine/input.ts steer): -1 left, 1 right, 0 not */
   spin?: number;
   holed: boolean;
   /** no more shots this round (holed, even before the banner) */
@@ -94,6 +94,19 @@ export interface Shot {
   angle: number;
   power: number;
   deg?: number;
+}
+
+/** The pull held: what the canvas and the keys set (engine/input.ts), and a shot or a new round ends (engine/shot.ts). */
+export interface Pull {
+  dragging: boolean;
+  /** where it began on screen; behind the gnome, the heading it is measured from and where the pointer is now */
+  press: { x: number; y: number; yaw?: number; lx?: number; ly?: number } | null;
+  /** it has had a power: let go without a shot, it is an aim dropped */
+  pulled: boolean;
+  /** the aims dropped since the last shot */
+  cancels: number;
+  /** since when the stroke could be aimed (performance.now()) */
+  aimFrom: number;
 }
 
 /** The gnome's small moods: a hop of joy, a head shake. */

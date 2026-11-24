@@ -21,7 +21,7 @@ import type { Live } from "./types";
 
 const MAX_POWER = RULES.maxPower;
 
-// Third person's aim (engine.ts steer, every frame of a pull), two ways at
+// Third person's aim (engine/input.ts steer, every frame of a pull), two ways at
 // once, a slingshot's way round (the hand right turns the aim left). Within
 // the zone of the press (a share of the width, and wider than a full pull on
 // a narrow screen), left or right, the offset dx is the aim itself (FINE at
