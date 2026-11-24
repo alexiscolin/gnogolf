@@ -10,7 +10,7 @@ import "gno.land/p/nt/grc721/v0"
 // the call reverts with the cleanup.
 func Burn(cur realm, tid string) {
 	caller := cur.Previous().Address()
-	if o, err := Token.OwnerOf(grc721.TokenID(tid)); err != nil || o != caller {
+	if o, err := token.OwnerOf(grc721.TokenID(tid)); err != nil || o != caller {
 		panic(errNotYours)
 	}
 	id := parseID(tid)

@@ -80,7 +80,7 @@ func Gnome(tid string) string {
 			price = sales[si].prices[g.tier]
 		}
 	}
-	owner, err := Token.OwnerOf(grc721.TokenID(tid))
+	owner, err := token.OwnerOf(grc721.TokenID(tid))
 	return `{"version":1,"id":"` + tid + `","series":"` + g.series + `","name":` + jsonq.Quote(g.name) +
 		`,"tier":"` + tierName(g.tier) + `","traits":` + jsonq.Quote(g.traits) + `,"owner":` + jsonq.Quote(owner.String()) +
 		`,"price":` + itoa(price) + `,"sold":` + strconv.FormatBool(err == nil || isSold(g.id)) +
@@ -115,7 +115,7 @@ func GnomesOf(owner address, offset int64) string {
 	if offset < 0 {
 		offset = 0
 	}
-	total, _ := Token.BalanceOf(owner)
+	total, _ := token.BalanceOf(owner)
 	ids, more := heldPage(owner, offset, pageSize)
 	next := int64(-1)
 	if more {

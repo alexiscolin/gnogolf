@@ -39,8 +39,12 @@ func TestTheHubPutsRecordsToBeatFirst(cur realm, t *testing.T) {
 	section = section[:strings.Index(section, "\n## ")+1]
 	uassert.True(t, strings.Contains(section, "Today's pick") || strings.Contains(section, "Fast start") || strings.Contains(section, "Best average"), section)
 	uassert.True(t, strings.Contains(section, "race their ghosts"), "each a way to race them")
-	top := jfield(Leaderboard("assisted"), "player")
-	uassert.False(t, strings.Contains(section, top), "never the ranking's first")
+	first := strings.Split(CourseLeaderboard("assisted", 0, 3), `"player":"`)[1:]
+	uassert.Equal(t, 3, len(first))
+	for _, r := range first {
+		p := r[:strings.Index(r, `"`)]
+		uassert.False(t, strings.Contains(section, p), "never the ranking's first three: "+p)
+	}
 	uassert.True(t, strings.Contains(hub, "## Fair play"))
 	uassert.True(t, strings.Contains(hub, "steps of 0.01"))
 	uassert.True(t, strings.Contains(hub, "("+dataHub+")"), "a link to where the records are kept")

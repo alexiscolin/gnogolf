@@ -1,7 +1,10 @@
 package course
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"math"
+	"strconv"
 	"testing"
 
 	"gno.land/p/gnogolf/physics"
@@ -148,10 +151,14 @@ func TestWeatherIsLaidUnderTheCourse(t *testing.T) {
 	if head.Rest().X >= calm.Rest().X || snow.Rest().X >= calm.Rest().X || rain.Rest().X <= calm.Rest().X {
 		t.Fatalf("head wind and snow shorten a shot, rain lengthens it: calm %v, wind %v, snow %v, rain %v", calm.Rest(), head.Rest(), snow.Rest(), rain.Rest())
 	}
-	// the forecast is a function of (hole, period), and rain leaves puddles on the lane only
-	a, b := ForecastFor("x", "island", h, 42), ForecastFor("x", "island", h, 42)
-	if a.Kind != b.Kind || len(a.Zones) != len(b.Zones) {
-		t.Fatal("the same period is the same weather")
+	// the forecast is the world's climate, drawn anew each period, and rain
+	// leaves puddles on the lane only
+	seen := map[string]bool{}
+	for p := int64(0); p < 100; p++ {
+		seen[ForecastFor("x", "island", h, p).Kind] = true
+	}
+	if len(seen) != 4 || !seen[Clear] || !seen[Wind] || !seen[Rain] || !seen[Storm] {
+		t.Fatalf("an island's periods should see clear, wind, rain and storm, and nothing else: %v", seen)
 	}
 	_, wet := WeatherFor(Rain, h, 7)
 	puddles := 0
@@ -170,6 +177,25 @@ func TestWeatherIsLaidUnderTheCourse(t *testing.T) {
 	wind, _ := WeatherFor(Wind, h, 9)
 	if wind.Len() < WindMin-1e-9 || wind.Len() > WindMax+1e-9 {
 		t.Fatalf("wind %v out of %v..%v", wind.Len(), WindMin, WindMax)
+	}
+}
+
+// Each kind of weather is play: its wind and its zones on a lane, bit for bit
+// as GG1 writes them (fingerprint.Of plays only the rain and the wind).
+func TestEachWeatherIsPinned(t *testing.T) {
+	h := &Simple{
+		W: 40, H: 10, Tee: physics.V(2, 5), Pin: physics.V(38, 5), Substeps: 20, CupRadius: 1,
+		Course: &physics.Field{Walls: build.Box(physics.V(0, 0), physics.V(40, 10)), Friction: 0.9, Radius: 0.5},
+	}
+	for kind, want := range map[string]string{
+		Wind: "cee4c15fb0ef846f", Rain: "9e38c0564bf7a1c8", Fog: "8b11e2aac4310774", Storm: "8bb0b15d1f866b9d", Snow: "45ea6e0340ef4047",
+	} {
+		v, zs := WeatherFor(kind, h, 13)
+		b := strconv.AppendUint([]byte(Encode(&Simple{Course: &physics.Field{Zones: zs}})), math.Float64bits(v.X), 16)
+		s := sha256.Sum256(strconv.AppendUint(append(b, ' '), math.Float64bits(v.Y), 16))
+		if got := hex.EncodeToString(s[:8]); got != want {
+			t.Errorf("%s draws %s, want %s", kind, got, want)
+		}
 	}
 }
 

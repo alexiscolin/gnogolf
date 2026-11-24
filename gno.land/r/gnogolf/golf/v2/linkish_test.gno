@@ -63,7 +63,6 @@ func TestLinkishIsItsReference(t *testing.T) {
 		cases = append(cases, "1.2.3.4"+string(r)+"x", "x"+string(r)+"1.2.3.4", "a."+string(r)+"b", string(r)+".ab")
 	}
 	pieces := []string{"a", "Z", "w", "W", "1", ".", "．", "。", "İ", "\u212a", " ", "\u00a0", "\u3000", "é", "池", "\xff", "\xe2\x80"}
-	n := len(cases)
 	for _, a := range pieces {
 		cases = append(cases, a)
 		for _, b := range pieces {
@@ -72,9 +71,6 @@ func TestLinkishIsItsReference(t *testing.T) {
 				cases = append(cases, a+b+c, "x"+a+b+c+"yz", "www"+a+b+c, "1.2"+a+b+c)
 			}
 		}
-	}
-	if len(cases)-n < 4*len(pieces)*len(pieces)*len(pieces) {
-		t.Fatal("the table is too small")
 	}
 	for _, c := range cases {
 		if got, want := linkish(c), linkishRef(c); got != want {

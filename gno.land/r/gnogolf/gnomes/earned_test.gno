@@ -94,7 +94,7 @@ func cupHoles(f *fakeRows, world string, n int) []string {
 func withRows(t *testing.T, rlm realm) *fakeRows {
 	fresh(t, rlm)
 	f := newFake()
-	rows = f
+	golfRows = f
 	return f
 }
 
@@ -446,6 +446,7 @@ func TestEarnedGnomesHaveTheirOwnSwitch(cur realm, t *testing.T) {
 	uassert.True(t, MintOpen(), "the sale's switch is its own")
 	uassert.True(t, strings.Contains(Collection(), `"open":true,"earnedOpen":false,`), Collection())
 	has(t, Render(""), "Earned gnomes are paused.")
+	uassert.True(t, strings.Contains(Proof("wizard", alice), `"reason":"paused"`), Proof("wizard", alice))
 	testing.SetRealm(asUser(alice, nil))
 	urequire.AbortsContains(t, cur, "gnomes: earned gnomes are paused: none is minted until the owner resumes them",
 		func() { MintEarned(cross(cur), "wizard") })

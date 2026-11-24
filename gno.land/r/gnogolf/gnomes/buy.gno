@@ -103,7 +103,7 @@ func check(buyer address, ids string, t int64) (o order, code, why string) {
 		}
 		if t < s.playersUntil {
 			if !player && !hasRecord(buyer) {
-				return o, "players-only", "gnomes: players only until " + itoa(s.playersUntil) + ": finish a hole first"
+				return o, "players-only", "gnomes: players only until " + dateOf(s.playersUntil) + ": finish a hole first"
 			}
 			player = true
 			k := windowKey(s.series, buyer)
@@ -133,7 +133,7 @@ func check(buyer address, ids string, t int64) (o order, code, why string) {
 func readIDs(ids string) ([]int64, string) {
 	parts := strings.Split(ids, ",")
 	if ids == "" || len(parts) > maxBatch {
-		return nil, "gnomes: name 1 to 5 gnomes, as ids separated by commas"
+		return nil, "gnomes: name 1 to " + itoa(maxBatch) + " gnomes, as ids separated by commas"
 	}
 	list := make([]int64, 0, len(parts))
 	for _, p := range parts {

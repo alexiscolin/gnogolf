@@ -40,22 +40,13 @@ const (
 )
 
 const (
-	genesisName = "genesis" // the first series, ids 1 to genesisTotal()
+	genesisName = "genesis" // the first series, ids 1 to 720
 	payDenom    = "ugnot"   // the only coin gnomes are sold for
 	maxBatch    = 5         // ids one Buy takes
 	royaltyBps  = 500       // 5% of a resale, to the treasury (advisory, EIP-2981)
 	tokenName   = "Gnogolf Gnomes"
 	tokenSymbol = "GNOME"
 )
-
-// genesisTotal is the size of the genesis: its tiers added up.
-func genesisTotal() int64 {
-	n := int64(0)
-	for _, s := range genesisSupply {
-		n += s
-	}
-	return n
-}
 
 // tierAt returns the index of tier name in tiers, or -1.
 func tierAt(name string) int {

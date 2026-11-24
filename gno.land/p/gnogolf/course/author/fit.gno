@@ -60,9 +60,6 @@ func Fit(h *course.Simple, margin float64) *course.Simple {
 	}
 	grow(h.Tee, 0)
 	grow(h.Pin, 0)
-	if math.IsInf(lo.X, 1) {
-		return h
-	}
 
 	d := physics.Vec2{X: margin - lo.X, Y: margin - lo.Y}
 	newW := int(math.Ceil(hi.X - lo.X + 2*margin))

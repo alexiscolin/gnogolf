@@ -35,3 +35,85 @@ func main(cur realm) {
 
 // Output:
 // g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al/stored/v1
+
+// Events:
+// [
+//   {
+//     "type": "HolePublished",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al/stored/v1"
+//       },
+//       {
+//         "key": "slot",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al/stored"
+//       },
+//       {
+//         "key": "sha",
+//         "value": "c3f41cdb8a6b3f04f870dc9c17df158e8c65ae370c7839ea83795eb340dc7bd1"
+//       },
+//       {
+//         "key": "by",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al"
+//       },
+//       {
+//         "key": "official",
+//         "value": "false"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   },
+//   {
+//     "type": "Shot",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al/stored/v1"
+//       },
+//       {
+//         "key": "player",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al"
+//       },
+//       {
+//         "key": "strokes",
+//         "value": "1"
+//       },
+//       {
+//         "key": "mode",
+//         "value": "pro"
+//       },
+//       {
+//         "key": "shot",
+//         "value": "180.0000,1.0000,0"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   },
+//   {
+//     "type": "Shot",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al/stored/v1"
+//       },
+//       {
+//         "key": "player",
+//         "value": "g1tt6pk6p4qmd33w0wz9mehzlv3m0vc3nwj9c9al"
+//       },
+//       {
+//         "key": "strokes",
+//         "value": "2"
+//       },
+//       {
+//         "key": "mode",
+//         "value": "pro"
+//       },
+//       {
+//         "key": "shot",
+//         "value": "90.0000,1.0000,0"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   }
+// ]

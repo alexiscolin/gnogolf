@@ -16,7 +16,7 @@ import (
 // thumbnail shows him (three-quarters, on his tier's plinth), from the
 // traced art of art.gno.
 func TokenURI(tid string) (string, error) {
-	if _, err := Token.OwnerOf(grc721.TokenID(tid)); err != nil {
+	if _, err := token.OwnerOf(grc721.TokenID(tid)); err != nil {
 		return "", errors.New(errNoGnome)
 	}
 	g, ok := tokenAt(parseID(tid))

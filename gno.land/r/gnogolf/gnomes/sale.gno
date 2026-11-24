@@ -69,7 +69,7 @@ func openSale(name string, start, playerHours int64) error {
 		return err
 	}
 	if playerHours < 0 || playerHours > maxHours {
-		return errors.New("gnomes: a player window is 0 to 168 hours")
+		return errors.New("gnomes: a player window is 0 to " + itoa(maxHours) + " hours")
 	}
 	if saleOf(name) >= 0 {
 		return errors.New("gnomes: series " + name + " is on sale already")
@@ -81,7 +81,7 @@ func openSale(name string, start, playerHours int64) error {
 
 // CancelSale withdraws series name's sale before it starts: the owner's way
 // back from a wrong start or window. The series is on no sale again, free
-// to open anew. A sale under way, or one with a gnome sold, is never
+// to open anew. A sale under way, the only one a gnome is sold in, is never
 // withdrawn: a buyer may have counted on it. Owner only.
 func CancelSale(cur realm, name string) {
 	assertOwner(0, cur)
@@ -97,8 +97,8 @@ func cancelSale(name string) (sale, error) {
 	if i < 0 {
 		return sale{}, errors.New("gnomes: series " + name + " is on no sale")
 	}
-	s, c := sales[i], catalogue[seriesNamed(name)]
-	if now() >= s.start || soldIn(c.first, c.last) > 0 {
+	s := sales[i]
+	if now() >= s.start {
 		return s, errors.New("gnomes: series " + name + " is on sale since " + dateOf(s.start) +
 			": a sale is withdrawn only before it starts")
 	}

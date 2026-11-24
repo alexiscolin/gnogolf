@@ -80,6 +80,15 @@ func placeholderRows(first int64, supply [len(tiers)]int64) string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
+// genesisTotal is the size of the genesis: its tiers added up.
+func genesisTotal() int64 {
+	n := int64(0)
+	for _, s := range genesisSupply {
+		n += s
+	}
+	return n
+}
+
 func TestThePlaceholderIsLaidOutAsTheCatalogue(cur realm, t *testing.T) {
 	fresh(t, cur)
 	for _, w := range [][5]int64{ // first, last Common, last Rare, last Epic, the Legendary (spec §2)
@@ -164,7 +173,6 @@ func TestTheGenesisIs720Gnomes(t *testing.T) {
 		total += genesisSupply[i]
 	}
 	uassert.Equal(t, int64(720), total, "10x a par-72 course")
-	uassert.Equal(t, int64(720), genesisTotal())
 }
 
 func TestThePricesAtDeployAreTheDecidedOnes(t *testing.T) {

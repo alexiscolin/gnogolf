@@ -36,16 +36,16 @@ func SetApprovalForAll(cur realm, operator address, approved bool) {
 	}
 }
 
-func Name() string                          { return Token.GetName() }
-func Symbol() string                        { return Token.GetSymbol() }
-func OwnerOf(tid string) (address, error)   { return Token.OwnerOf(grc721.TokenID(tid)) }
-func BalanceOf(addr address) (int64, error) { return Token.BalanceOf(addr) }
-func TotalSupply() int64                    { return Token.TotalSupply() }
+func Name() string                          { return token.GetName() }
+func Symbol() string                        { return token.GetSymbol() }
+func OwnerOf(tid string) (address, error)   { return token.OwnerOf(grc721.TokenID(tid)) }
+func BalanceOf(addr address) (int64, error) { return token.BalanceOf(addr) }
+func TotalSupply() int64                    { return token.TotalSupply() }
 
-func GetApproved(tid string) (address, error) { return Token.GetApproved(grc721.TokenID(tid)) }
+func GetApproved(tid string) (address, error) { return token.GetApproved(grc721.TokenID(tid)) }
 
 func IsApprovedForAll(owner, operator address) bool {
-	return Token.IsApprovedForAll(owner, operator)
+	return token.IsApprovedForAll(owner, operator)
 }
 
 // TokenOfOwnerByIndex is owner's i-th token, best first as the locker lists them, from its
@@ -63,5 +63,5 @@ func TokenOfOwnerByIndex(owner address, i int64) (string, error) {
 // salePrice, and how much (EIP-2981: advisory, a marketplace pays it), in
 // royalty/v0's shape.
 func RoyaltyInfo(tid string, salePrice int64) (address, int64, error) {
-	return Royalties.RoyaltyInfo(grc721.TokenID(tid), salePrice)
+	return royalties.RoyaltyInfo(grc721.TokenID(tid), salePrice)
 }

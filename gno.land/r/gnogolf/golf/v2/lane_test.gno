@@ -163,7 +163,7 @@ func TestNoTwoHillsOverlap(t *testing.T) {
 				}
 				together := false
 				for tick := 0; tick < 1024 && !together; tick++ {
-					together = on(tick, a) && on(tick, b)
+					together = physics.There(tick, a.Every, a.On, a.Phase) && physics.There(tick, b.Every, b.On, b.Phase)
 				}
 				if !together {
 					continue
@@ -178,11 +178,6 @@ func TestNoTwoHillsOverlap(t *testing.T) {
 			}
 		}
 	}
-}
-
-// on is whether a timed zone is there at tick, as physics times it.
-func on(tick int, z physics.Zone) bool {
-	return z.Every <= 0 || ((tick+z.Phase)%z.Every+z.Every)%z.Every < z.On
 }
 
 // No course hole has dry ground a ball can reach off its board: from the

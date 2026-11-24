@@ -39,7 +39,7 @@ func SetCloseAt(cur realm, at int64) {
 		panic("gnomes: the genesis sale closed on " + dateOf(closeAt))
 	}
 	if at < now()+closeNotice {
-		panic("gnomes: a closing date is announced at least 7 days ahead")
+		panic("gnomes: a closing date is announced at least " + itoa(closeNotice/(24*3600)) + " days ahead")
 	}
 	if closeAt != 0 && at > closeAt {
 		panic("gnomes: the closing date comes forward, never later than " + dateOf(closeAt))

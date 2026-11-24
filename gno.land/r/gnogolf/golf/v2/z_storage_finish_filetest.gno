@@ -40,3 +40,85 @@ func main(cur realm) {
 // gno.land/r/gnogolf/store: 4771
 // gno.land/r/sys/users: 0
 // gno.land/r/test/storedfinish: 0
+
+// Events:
+// [
+//   {
+//     "type": "HolePublished",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished/v1"
+//       },
+//       {
+//         "key": "slot",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished"
+//       },
+//       {
+//         "key": "sha",
+//         "value": "6a820ba05a6cab8eeb1d32366474aaaffcf36709fe0a903ed39756929b7e1a21"
+//       },
+//       {
+//         "key": "by",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c"
+//       },
+//       {
+//         "key": "official",
+//         "value": "false"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   },
+//   {
+//     "type": "Holed",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished/v1"
+//       },
+//       {
+//         "key": "player",
+//         "value": "g1ve5hyum5ta047h6lta047h6lta047h6lw8hsel"
+//       },
+//       {
+//         "key": "strokes",
+//         "value": "1"
+//       },
+//       {
+//         "key": "mode",
+//         "value": "assisted"
+//       },
+//       {
+//         "key": "shots",
+//         "value": "0.0000,1.0000,0"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   },
+//   {
+//     "type": "Holed",
+//     "attrs": [
+//       {
+//         "key": "hole",
+//         "value": "g15pa2s0tlwxzleu7qy3yel74se90a4ycay0ud4c/finished/v1"
+//       },
+//       {
+//         "key": "player",
+//         "value": "g1wdjkxmmwv3047h6lta047h6lta047h6lcfz24y"
+//       },
+//       {
+//         "key": "strokes",
+//         "value": "1"
+//       },
+//       {
+//         "key": "mode",
+//         "value": "assisted"
+//       },
+//       {
+//         "key": "shots",
+//         "value": "0.0000,1.0000,0"
+//       }
+//     ],
+//     "pkg_path": "gno.land/r/gnogolf/golf/v2"
+//   }
+// ]

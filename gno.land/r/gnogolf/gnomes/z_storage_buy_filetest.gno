@@ -17,7 +17,7 @@ import (
 // of deposit (with grc721/enumerable it was 10,465), the sold bitmap's first
 // write among them. Most of it is the ledger's own two rows for a new
 // holder, its owner and its balance. Its gas less z_storage_genesis's is
-// the buy's, 7.5M: a sale writes nothing beside the catalogue's rows,
+// the buy's, 7.3M: a sale writes nothing beside the catalogue's rows,
 // so it never rewrites them.
 // The -send envelope lands on the realm called, as on chain: the test names
 // gnomes its payee.
@@ -73,4 +73,4 @@ func genesis() string {
 // gno.land/r/test/storedbuy: 0
 
 // Gas:
-// 1403358193
+// 1350592047

@@ -30,7 +30,7 @@ func (holdings) ExtensionKind() string { return "gnomes" }
 // its gas).
 func (holdings) OnMint(to address, tid grc721.TokenID) {
 	if id := parseID(string(tid)); isEarned(id) {
-		held.Set(heldKey(to, id, len(tiers)), "")
+		held.Set(heldKey(to, id, rankOfTier(earnedTier)), "")
 	}
 }
 

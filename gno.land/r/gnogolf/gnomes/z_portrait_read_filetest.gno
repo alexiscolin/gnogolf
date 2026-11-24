@@ -17,7 +17,7 @@ import (
 // two rings, 7,610 bytes of data URI; of every Genesis gnome's, measured,
 // the dearest to draw), at its real row: its tier, its name, its traits;
 // z_portrait_read buys it and reads its TokenURI. The difference of their
-// gas is the read as `gno test` counts it: 74.3M.
+// gas is the read as `gno test` counts it: 74.1M.
 //
 // A chain counts 7.1M more for the same TokenURI on a local chain built
 // from this toolchain. `gno test` runs on a store with no gas meter, so it
@@ -78,4 +78,4 @@ func genesis() string {
 // 199 true 7610
 
 // Gas:
-// 1471312704
+// 1418587716

@@ -43,7 +43,7 @@ var rules string
 // refused until it resumes. Owner only.
 func AcceptRules(cur realm, path string) {
 	assertOwner(0, cur)
-	w := rows.Writer()
+	w := golfRows.Writer()
 	if !strings.HasPrefix(w, "gno.land/r/") {
 		panic("gnomes: store has no rules to accept: its writer is \"" + w + "\", not a realm (\"\" while paused)")
 	}
@@ -126,7 +126,7 @@ func (storeReader) Get(name, key string) (string, bool) { return store.Get(name,
 func (storeReader) Has(name, key string) bool           { return store.Has(name, key) }
 func (storeReader) Writer() string                      { return store.Writer() }
 
-var rows reader = storeReader{}
+var golfRows reader = storeReader{}
 
 // MintEarned mints the caller's earned gnome of kind ("wizard" … "miner")
 // once store proves the feat, and returns its id. Free: nothing may be sent
@@ -230,7 +230,7 @@ func prove(kind, player string) (bool, cup, string) {
 	if kindIndex(kind) == 0 {
 		panic(errKind + kind)
 	}
-	if rows.Writer() != rules {
+	if golfRows.Writer() != rules {
 		return false, cup{}, errRules
 	}
 	switch kind {
@@ -263,10 +263,10 @@ func prove(kind, player string) (bool, cup, string) {
 func cupOf(world, player string, withPar bool) cup {
 	d := strconv.Itoa(worldRank(world))
 	start, end := d+world+"/", d+world+"0"
-	slots := pageRows(rows.Page("slots", start, end, maxCupSlots))
+	slots := pageRows(golfRows.Page("slots", start, end, maxCupSlots))
 	// A cup the proof cannot read in one page is refused, never proven from
 	// its first page (golf takes up to 999 slots a world).
-	if len(slots) == maxCupSlots && rows.Page("slots", slots[maxCupSlots-1][0]+"\x00", end, 1) != "" {
+	if len(slots) == maxCupSlots && golfRows.Page("slots", slots[maxCupSlots-1][0]+"\x00", end, 1) != "" {
 		panic("gnomes: " + world + ": cup too large for the proof")
 	}
 	var c cup
@@ -313,8 +313,8 @@ func lowerBest(id, player string) int {
 	low := 0
 	for _, mode := range []string{"assisted", "pro"} {
 		k := id + " " + mode + " " + player
-		b, ok := rows.Get("bests", k)
-		if !ok || rows.Has("copies", k) {
+		b, ok := golfRows.Get("bests", k)
+		if !ok || golfRows.Has("copies", k) {
 			continue
 		}
 		if s := strokesOf(b); low == 0 || s < low {
@@ -339,7 +339,7 @@ func strokesOf(b string) int {
 
 // parOf is a version's par: field 2 of its entry, format "1" (encodeEntry).
 func parOf(id string) int {
-	s, ok := rows.Get("holes", id)
+	s, ok := golfRows.Get("holes", id)
 	if !ok {
 		panic(errEntry + id)
 	}
@@ -394,9 +394,13 @@ func field(s string, i int) (string, int, bool) {
 //	{"version":1,"kind":"viking","player":"g1…","ok":false,"minted":"",
 //	 "holes":18,"finished":16,"strokes":48,"par":54,"missing":["garden/1",…]}
 //
-// with a "reason" when it cannot be asked ("rules changed").
+// with a "reason" when it cannot be asked ("paused" while SetEarnedOpen holds
+// it, "rules changed").
 func Proof(kind string, player address) string {
 	ok, c, why := prove(kind, player.String())
+	if !earnedOpen {
+		why = "paused"
+	}
 	minted := ""
 	if v := earned.Get(player.String() + " " + kind); v != nil {
 		minted = v.(string)

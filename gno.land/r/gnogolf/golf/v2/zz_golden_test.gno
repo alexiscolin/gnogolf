@@ -18,11 +18,9 @@ import (
 // cheaper must leave every one of these byte for byte as it was. A change to
 // them is a change to the game, and says so by failing here.
 
-func v(x, y float64) physics.Vec2 { return physics.Vec2{X: x, Y: y} }
-
 func lane(zones []physics.Zone, walls ...[]physics.Wall) *physics.Field {
 	return &physics.Field{
-		Walls:    build.Walls(append([][]physics.Wall{build.Box(v(0, 0), v(40, 10))}, walls...)...),
+		Walls:    build.Walls(append([][]physics.Wall{build.Box(physics.V(0, 0), physics.V(40, 10))}, walls...)...),
 		Zones:    zones,
 		Friction: 0.86,
 		Radius:   0.5,
@@ -32,21 +30,21 @@ func lane(zones []physics.Zone, walls ...[]physics.Wall) *physics.Field {
 
 // the fixtures: one of each thing a stroke can meet
 func goldHoles() map[string]*course.Simple {
-	sea := []physics.Vec2{v(1, 3), v(39, 3), v(39, 7), v(1, 7)}
+	sea := []physics.Vec2{physics.V(1, 3), physics.V(39, 3), physics.V(39, 7), physics.V(1, 7)}
 	return map[string]*course.Simple{
-		"timed": {W: 40, H: 10, Title: "Timed", Tee: v(3, 5), Pin: v(37, 5), Substeps: 22, CupRadius: 1.2,
-			Course: lane(nil, build.Timed(build.Bar(v(20, 0.5), v(20, 9.5), 0.5, 'T', "tram"), 12, 5, 0))},
-		"slope": {W: 40, H: 10, Title: "Slope", Tee: v(3, 5), Pin: v(37, 5), Substeps: 24, CupRadius: 1.2,
-			Course: lane([]physics.Zone{{Kind: physics.Slope, Min: v(12, 0), Max: v(24, 10), Vec: v(-0.25, 0), Skin: "slope"}})},
-		"sea": {W: 40, H: 10, Title: "Sea", Tee: v(3, 5), Pin: v(37, 5), Substeps: 22, CupRadius: 1.2, World: "island",
-			Course: lane([]physics.Zone{{Kind: physics.Hazard, Min: v(0, 0), Max: v(40, 10), Vec: v(3, 5), Skin: "sea", Poly: sea, Outside: true}})},
-		"tunnel": {W: 40, H: 10, Title: "Tunnel", Tee: v(3, 5), Pin: v(37, 5), Substeps: 22, CupRadius: 1.2,
-			Course: lane([]physics.Zone{{Kind: physics.Tunnel, Min: v(14, 3), Max: v(17, 7), Vec: v(30, 5), Skin: "tunnel", Round: true}},
-				build.Bar(v(22, 0), v(22, 10), 0.6, '#', "hedge"))},
-		"pulse": {W: 40, H: 10, Title: "Pulse", Tee: v(3, 5), Pin: v(37, 5), Substeps: 22, CupRadius: 1.2,
-			Pulses: []course.Pulse{{Every: 2, On: 1, Walls: build.Bar(v(20, 3), v(20, 7), 0.5, '=', "gate door")}},
-			Course: lane(nil, build.Bar(v(20, 0), v(20, 3), 0.5, '|', "gate"), build.Bar(v(20, 7), v(20, 10), 0.5, '|', "gate"))},
-		"storm": {W: 40, H: 10, Title: "Storm", Tee: v(3, 5), Pin: v(37, 5), Substeps: 22, CupRadius: 1.2, World: "island",
+		"timed": {W: 40, H: 10, Title: "Timed", Tee: physics.V(3, 5), Pin: physics.V(37, 5), Substeps: 22, CupRadius: 1.2,
+			Course: lane(nil, build.Timed(build.Bar(physics.V(20, 0.5), physics.V(20, 9.5), 0.5, 'T', "tram"), 12, 5, 0))},
+		"slope": {W: 40, H: 10, Title: "Slope", Tee: physics.V(3, 5), Pin: physics.V(37, 5), Substeps: 24, CupRadius: 1.2,
+			Course: lane([]physics.Zone{{Kind: physics.Slope, Min: physics.V(12, 0), Max: physics.V(24, 10), Vec: physics.V(-0.25, 0), Skin: "slope"}})},
+		"sea": {W: 40, H: 10, Title: "Sea", Tee: physics.V(3, 5), Pin: physics.V(37, 5), Substeps: 22, CupRadius: 1.2, World: "island",
+			Course: lane([]physics.Zone{{Kind: physics.Hazard, Min: physics.V(0, 0), Max: physics.V(40, 10), Vec: physics.V(3, 5), Skin: "sea", Poly: sea, Outside: true}})},
+		"tunnel": {W: 40, H: 10, Title: "Tunnel", Tee: physics.V(3, 5), Pin: physics.V(37, 5), Substeps: 22, CupRadius: 1.2,
+			Course: lane([]physics.Zone{{Kind: physics.Tunnel, Min: physics.V(14, 3), Max: physics.V(17, 7), Vec: physics.V(30, 5), Skin: "tunnel", Round: true}},
+				build.Bar(physics.V(22, 0), physics.V(22, 10), 0.6, '#', "hedge"))},
+		"pulse": {W: 40, H: 10, Title: "Pulse", Tee: physics.V(3, 5), Pin: physics.V(37, 5), Substeps: 22, CupRadius: 1.2,
+			Pulses: []course.Pulse{{Every: 2, On: 1, Walls: build.Bar(physics.V(20, 3), physics.V(20, 7), 0.5, '=', "gate door")}},
+			Course: lane(nil, build.Bar(physics.V(20, 0), physics.V(20, 3), 0.5, '|', "gate"), build.Bar(physics.V(20, 7), physics.V(20, 10), 0.5, '|', "gate"))},
+		"storm": {W: 40, H: 10, Title: "Storm", Tee: physics.V(3, 5), Pin: physics.V(37, 5), Substeps: 22, CupRadius: 1.2, World: "island",
 			Course: lane(nil)},
 	}
 }
@@ -147,13 +145,13 @@ func TestGoldenReplays(cur realm, t *testing.T) {
 		p := periodOf(id, world, h, kind)
 		// the period's offset from now, not its number, is what repeats
 		got := [3]string{
-			sum(simAt(id, goldShots, p)),
+			sum(SimulateRoundIn(id, goldShots, p)),
 			sum(forecastJSON("", weatherOf(mustHole(id), h, p))),
 			sum(strings.Replace(HoleState(id), `"official":false`, `"official":true`, 1)),
 		}
 		want, ok := golden[name]
 		if !ok {
-			t.Logf("golden %q: {%q, %q, %q} (period %d)", name, got[0], got[1], got[2], p)
+			t.Errorf("golden %q: {%q, %q, %q} (period %d)", name, got[0], got[1], got[2], p)
 			continue
 		}
 		if got != want {
@@ -174,26 +172,9 @@ func TestARoundHasAStrokeLimit(cur realm, t *testing.T) {
 	urequire.True(t, strings.Contains(page, "It is at the stroke limit: Reset (below) before the next shot."), page)
 }
 
-func TestTheTickIsClamped(t *testing.T) {
-	if _, _, k := parseShot("0,5,99999"); k != maxTick {
-		t.Errorf("a huge tick clamps to %d, got %d", maxTick, k)
-	}
-	if _, _, k := parseShot("0,5,-3"); k != 0 {
-		t.Errorf("a negative tick clamps to 0, got %d", k)
-	}
-	if _, _, k := parseShot("0,5"); k != 0 {
-		t.Errorf("no tick is tick 0, got %d", k)
-	}
-}
-
 func TestAFuturePeriodIsRefused(cur realm, t *testing.T) {
 	id := register(cur, "ahead")
-	defer func() {
-		if recover() == nil {
-			t.Fatal("the weather to come is not given out")
-		}
-	}()
-	Weather(id, Period()+1) // a query: no realm crossing, a plain panic
+	urequire.PanicsContains(t, cur, "has not come yet", func() { Weather(id, Period()+1) }) // a query: no realm crossing, a plain panic
 }
 
 func TestOfficialHolesAreListedFirst(cur realm, t *testing.T) {

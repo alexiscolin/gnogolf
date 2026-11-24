@@ -70,7 +70,7 @@ func renderGnome(tid string, g gnome) string {
 	b.WriteString("# " + name + "\n\n")
 	b.WriteString("![" + name + "](" + portrait(g) + ")\n\n")
 	b.WriteString("Gnome " + tid + ", " + tierName(g.tier) + ", of the " + g.series + " series.\n\n")
-	if o, err := Token.OwnerOf(grc721.TokenID(tid)); err == nil {
+	if o, err := token.OwnerOf(grc721.TokenID(tid)); err == nil {
 		b.WriteString("Owner: " + o.String() + "\n")
 	} else if isSold(g.id) {
 		b.WriteString("Burned.\n")

@@ -57,10 +57,10 @@ func AddSeries(cur realm, name, data string) {
 
 func addSeries(name, data string) error {
 	if len(catalogue) >= maxSeries {
-		return errors.New("gnomes: at most 64 series")
+		return errors.New("gnomes: at most " + itoa(maxSeries) + " series")
 	}
 	if !validSlug(name) {
-		return errors.New("gnomes: a series name is 1 to 32 of [a-z0-9-]")
+		return errors.New("gnomes: a series name is 1 to " + itoa(maxSeriesName) + " of [a-z0-9-]")
 	}
 	if seriesNamed(name) >= 0 {
 		return errors.New("gnomes: series " + name + " is already published")
@@ -86,7 +86,7 @@ func addSeries(name, data string) error {
 		count[g.tier]++
 		next++
 		if next-first > maxSeriesRows {
-			return errors.New("gnomes: a series has at most 1000 rows")
+			return errors.New("gnomes: a series has at most " + itoa(maxSeriesRows) + " rows")
 		}
 		start = end + 1
 	}

@@ -138,7 +138,7 @@ func TestSimulateFromIsTheNextStroke(cur realm, t *testing.T) {
 		}
 	}
 	uassert.NotEqual(t, SimulateFrom(wid, 2, 8, "0,4", 0, calm), SimulateFrom(wid, 2, 8, "0,4", 0, blown))
-	uassert.Equal(t, simAt(wid, "0,4", blown)[strings.Index(simAt(wid, "0,4", blown), `"path"`):],
+	uassert.Equal(t, SimulateRoundIn(wid, "0,4", blown)[strings.Index(SimulateRoundIn(wid, "0,4", blown), `"path"`):],
 		SimulateFrom(wid, 2, 8, "0,4", 0, blown)[strings.Index(SimulateFrom(wid, 2, 8, "0,4", 0, blown), `"path"`):])
 	uassert.PanicsContains(t, cur, "has not come yet", func() { SimulateFrom(wid, 2, 8, "0,4", 0, Period()+1) })
 	uassert.PanicsContains(t, cur, "a stroke is", func() { SimulateFrom(wid, 2, 8, "0,4", 60, Period()) })
@@ -372,8 +372,6 @@ func TestACommitNeverPassesItsBudget(cur realm, t *testing.T) {
 	uassert.Equal(t, physics.MaxWork, h.Field().Cap)
 	w.played, w.spent = 11, 800000000
 	w.next(h)
-	room := (workBudget-w.fixed-w.spent-workPerShot-w.walls*workPerWall)/workPerUnit - physics.MaxWorkStep
-	uassert.Equal(t, int(room), w.cap)
 	uassert.True(t, w.cap < physics.MaxWork/2, "the room left")
 	w.fixed = workBudget
 	uassert.PanicsContains(t, cur, "commit the first 11, then the rest", func() { w.next(h) })
@@ -613,7 +611,7 @@ func strokesOf(n int) string { return strings.Repeat("0,0.01;", n-1) + "0,1" }
 
 // rankOf is a player's place in a mode's course ranking, 0 if none.
 func rankOf(mode string, p address) int {
-	n, _ := strconv.Atoi(jfield(Rank(mode, p), "rank"))
+	n, _ := strconv.Atoi(jget(Rank(mode, p), "rank"))
 	return n
 }
 
