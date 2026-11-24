@@ -30,6 +30,7 @@ interface PromoEngine {
     period?: number | null;
   };
   chain: Chain;
+  setGnome: (id: string) => void;
   fire: (deg: number, power: number) => Promise<void>;
   ball: () => Gnome;
   ghost?: () => Gnome | null; // a duel's ghost (engine/rival.ts), once made
@@ -46,6 +47,8 @@ interface Cam {
   deg?: number; turn?: number; back?: number; up?: number; ahead?: number; lookUp?: number; lag?: number;
   // track
   hold?: boolean; off?: readonly number[];
+  // any: the camera still for good once the ball is in (or from that second: a ball the game replays at once)
+  stay?: true | number;
   // orbit
   center?: "ball" | "cup" | Key; a0?: number; speed?: number; r0?: number; r?: number; h0?: number; h?: number;
   // keys
@@ -82,6 +85,8 @@ interface Shot {
   burst?: number | null; burstOpacity?: number; hits?: readonly number[]; rays?: boolean;
   ui?: string; // the page's own pieces left in view (a duel's callout, its score card, a screen): a selector list
   cover?: boolean; // the video's first frame, its poster: its titles (those from 0), burst, rays and drift already landed, no flash
+  // the collection's gnomes, one after another on the tee from second at, a new one every that many seconds, each popping in
+  morph?: { traits: readonly string[]; at: number; every: number };
 }
 
 // a capture tool: dev builds, or a page opened with ?camlog where the test hooks answer (testhooks.ts)
@@ -103,6 +108,7 @@ const pace = (ramp: Ramp | undefined, t: number) => {
 };
 
 let E: PromoEngine | null = null; // the engine's insides, given by attach()
+let morphed: string[] = [], worn = -1, seat = 0; // a morph's gnomes known to the game (their skins' ids), the one on, where he sits
 let cfg: Shot | null = null; // the shot being captured
 let tt = 0; // the shot's own time, in seconds (negative during the pre-roll)
 
@@ -325,6 +331,7 @@ function install() {
         c.flash = 0;
       }
       tt = (c.t0 || 0) - (c.pre || 0); // t0: a later slice of a shot cut into several page loads
+      worn = -1;
       // the chain's answers were fetched ahead: a replay never waits on the network
       const paths = c.paths || {};
       e.chain.simulateRound = () => {
@@ -364,8 +371,10 @@ function install() {
         drifts.push({ el: d, i });
       }
       draw();
+      // (a morph's gnomes known to the game first, the wardrobe fetched)
+      const known = c.morph ? import("./gnomes/wear").then((m) => m.know(c.morph!.traits.map((traits, i) => ({ id: `m${i}`, name: "", traits })))).then((sk) => void (morphed = sk.map((k) => k.id))) : Promise.resolve();
       // a frame the browser still owes (asked for before the freeze) joins the queue first
-      return new Promise((r) => nRaf(() => nSet(r, 0)));
+      return known.then(() => new Promise((r) => nRaf(() => nSet(r, 0))));
     },
     /** One frame on: the clock, the game, the camera and the titles. */
     async step(n = 1) {
@@ -385,6 +394,7 @@ function install() {
         // clockAt: the timed pieces held at one tick (a tram that would sink out of a still shot)
         if (cfg_.clockAt != null && !e.g.flying) e.setClock(cfg_.clockAt);
         tick(r);
+        if (cfg_.morph) morph(cfg_.morph, cfg_.cam);
         // the pieces shown play their CSS animations (a callout's pop) on the promo clock too
         // (a scroll-driven one is left alone)
         if (cfg_.ui) for (const a of document.getAnimations()) {
@@ -500,11 +510,28 @@ function install() {
 const SPARKS = [[8, 30], [90, 20], [18, 82], [84, 74], [50, 2], [64, 92]];
 const STAR = `<svg viewBox="-11 -11 22 22" width="110" height="110"><path d="M0-10Q1.8-1.8 10 0Q1.8 1.8 0 10Q-1.8 1.8-10 0Q-1.8-1.8 0-10Z" fill="#fffaf0" stroke="#144134" stroke-width="1.8" stroke-linejoin="round"/></svg>`;
 
+// -------------------------------------------------------------- the morph
+
+/** The gnome on the tee swapped for the next on each step of the morph (the last kept), each hopping in with a spin
+ *  and a squash as he lands (where the swap set him down: placeBall's), turned with an orbit around him: his face kept
+ *  to the camera as at its start. */
+function morph(m: NonNullable<Shot["morph"]>, c?: Cam) {
+  const k = Math.min(Math.floor((tt - m.at) / m.every), morphed.length - 1);
+  if (k < 0) return;
+  if (k !== worn) (worn = k), E!.setGnome(morphed[k]), (seat = E!.ball().position.y);
+  const u = Math.min(1, (tt - m.at - k * m.every) / m.every), b = E!.ball(), land = Math.max(0, u - 0.7) / 0.3;
+  b.position.y = seat + 0.45 * Math.sin(Math.PI * Math.min(u / 0.7, 1));
+  const turn = c?.mode === "orbit" && c.center === "ball" ? ((c.speed || 30) * Math.max(tt, 0) * Math.PI) / 180 : 0;
+  b.rotation.y = 2 * Math.PI * smoothstep(Math.min(u / 0.7, 1)) - turn;
+  const sq = 0.22 * Math.sin(Math.PI * land);
+  b.scale.set(1 + sq, 1 - sq, 1 + sq);
+}
+
 // -------------------------------------------------------------- the camera
 
 const V = () => new THREE.Vector3();
-const pos = V(), look = V(), dir = new THREE.Vector3(1, 0, 0), prevBall = V(), tmp = V();
-let camInit = false;
+const pos = V(), look = V(), dir = new THREE.Vector3(1, 0, 0), prevBall = V(), tmp = V(), anchor = V(), anchorV = V();
+let camInit = false, stayed = false;
 const shot = chaseState(); // the follow framing, shared with the game's third-person view
 
 function aim(camera: THREE.PerspectiveCamera, c: Cam) {
@@ -513,7 +540,10 @@ function aim(camera: THREE.PerspectiveCamera, c: Cam) {
   // [u, y, v, dz]: board fractions across and along, height and an extra depth in units
   const u = (p: Key) => tmp.set(p[0] * b.w, p[1], p[2] * b.h + (p[3] || 0));
   const k = Math.min(Math.max(tt / T, 0), 1), sk = smoothstep(k);
-  if (c.mode === "follow") {
+  const stop = !!c.stay && camInit && (stayed ||= who.scale.x < 0.97 || !who.visible || (c.stay !== true && tt >= c.stay));
+  if (stop && c.mode !== "track") {
+    // stay: once the ball is in, the camera stays for good (the game's replay after it, from the tee, not followed)
+  } else if (c.mode === "follow") {
     // low behind the ball, looking where it goes: the direction follows its motion
     const d = tmp.subVectors(B, prevBall).setY(0);
     if (!camInit) {
@@ -528,11 +558,20 @@ function aim(camera: THREE.PerspectiveCamera, c: Cam) {
   } else if (c.mode === "track" && c.hold && camInit && (who.scale.x < 0.97 || !who.visible || B.y < -0.3)) {
     // hold: the ball goes into water or a crevasse, the camera stays where it was and watches it go
   } else if (c.mode === "track") {
-    // alongside the ball at a fixed offset, lagging a little
-    const want = V().copy(B).add(V().fromArray(c.off || [0, 3, 9]));
-    if (!camInit) pos.copy(want);
-    else pos.lerp(want, 1 - Math.exp(-(c.lag || 6) / FPS));
-    look.copy(B).y += c.lookUp || 0.3;
+    // alongside the ball at a fixed offset: camera and aim on one point that follows the ball on a critically damped
+    // spring (lag: its stiffness), so the frame glides, never swivels on the ball nor jerks as it starts or stops; once the
+    // ball is in (stay), on the cup: it eases to a stop there (the game's replay after it, from the tee, not followed)
+    const to = stop ? tmp.set(s.cup[0], h(s.cup[0], s.cup[1]), s.cup[1]).clone() : B;
+    // (the spring stepped exactly, as Unity's SmoothDamp does: stable however stiff)
+    const x = (c.lag || 6) / FPS, e = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    if (!camInit) anchor.copy(B), anchorV.set(0, 0, 0);
+    else {
+      const d = tmp.subVectors(anchor, to), step = V().copy(anchorV).addScaledVector(d, (c.lag || 6)).multiplyScalar(1 / FPS);
+      anchorV.addScaledVector(step, -(c.lag || 6)).multiplyScalar(e);
+      anchor.copy(to).add(d.add(step).multiplyScalar(e));
+    }
+    pos.copy(anchor).add(tmp.fromArray(c.off || [0, 3, 9]));
+    look.copy(anchor).y += c.lookUp || 0.3;
   } else if (c.mode === "orbit") {
     const ctr = c.center === "ball" ? V().copy(B) : c.center === "cup" ? V().set(s.cup[0], h(s.cup[0], s.cup[1]), s.cup[1]) : u(c.center!).clone();
     const cr = c.r!, ch = c.h!;

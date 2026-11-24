@@ -2,16 +2,17 @@
 // The Builder's video, for social media: node media/builder/promo.mjs [--record] [--shoot [--only=a,b]] [--edit]
 //
 // The trailer's tone (media/promo/render.mjs, v11): its music ("Dizzy Racing", CC0, 175 BPM, its last 30 s), its
-// titles (big rounded words in ink, a word in gold or red, landing on a beat), cut on the beat. Play first: three fun
+// titles (big rounded words in ink, a word in gold or red, landing on a beat), cut on the beat. The news first, on the
+// cards' paper (the cover: the first frame, whole); then play: three fun
 // holes built of the Builder's own pieces (holes.ts: checked, proved, published on the local chain under AUTHOR), filmed
-// in 3D by the trailer's own rig, each a one-stroker in its world and weather; the Builder in one-word flashes, close
-// up (paint, drop, tweak, any world, play); the test's weathers turning green; the Publish step's 3D view; the dare
-// between friends; the logo, the slogan and the button on the music's last hit.
+// in 3D by the trailer's own rig, each a one-stroker in its world and weather; the Avalanche's making in the Builder,
+// close up, a word each (its trap dropped and grown, snowmen by the cup, played), then the same hole in 3D; a friend
+// dared to beat it, never near the cup; mainnet soon and its surprise: the collection's gnomes on the tee, one after another; the logo, the slogan, the call on the music's last hit.
 //
 // --record: the Builder's take (a headless Chrome against APP, a site with the Builder on; its frames and marks in
 // WORK); --shoot: the 3D shots (render.mjs --cut=builder --frames; --only=name,… some again); --edit: the cut, from
 // the last take and shots; none: all three. -> media/builder/gnogolf-builder.mp4 (1920x1080, H.264 and AAC) and its
-// first frame as gnogolf-builder-cover.jpg. CTA sets the end card's button.
+// first frame as gnogolf-builder-cover.jpg.
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts
 //   then publish holes.json's holes (PublishMine, as AUTHOR), then
 //   APP=https://… node media/builder/promo.mjs
@@ -22,7 +23,6 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { launch, sleep, APP } from "../lib/cdp.mjs";
-import { holingRound } from "../lib/holing.mjs";
 import { title } from "../promo/titles.mjs";
 
 const HERE = path.dirname(new URL(import.meta.url).pathname);
@@ -33,9 +33,8 @@ const FPS = 30, BEAT = 60 / 175;
 const MUSIC = path.join(HERE, "..", "promo", "music", "dizzy_racing.flac"), MUSIC_END = 134.53;
 // the take's window: the Builder at its laptop size, filmed at 1.5x (1920x1080)
 const W = 1280, H = 720, DPR = 1.5;
-// the author the test rounds are proved under: gnodev's test1 (a well-known dev key; nothing is published)
+// the author the holes are published under: gnodev's test1 (a well-known dev key, on the local chain)
 const AUTHOR = process.env.AUTHOR || "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
-const CTA = process.env.CTA || "BUILD YOURS ON GNO.LAND";
 
 // the drawn pointer: an arrow following the page's own pointer events, pressed smaller
 const POINTER = `addEventListener("DOMContentLoaded", () => {
@@ -48,9 +47,9 @@ const POINTER = `addEventListener("DOMContentLoaded", () => {
   addEventListener("pointerdown", (e) => (at(e), (d.style.scale = ".82")), true);
   addEventListener("pointerup", () => (d.style.scale = "1"), true);
   window.__pointer = (on) => (d.style.display = on ? "" : "none");
-  // the first run's hints left out of the film
+  // the first run's hints left out of the film, and what the board says of a piece carried over another on its way
   const s = document.createElement("style");
-  s.textContent = ".bhint { display: none !important; }";
+  s.textContent = ".bhint { display: none !important; } .board__said, .measure--no { visibility: hidden !important; }";
   document.head.appendChild(s);
 });`;
 
@@ -67,6 +66,8 @@ async function record() {
   const frames = [];
   /** @type {Record<string, number>} */
   const marks = {};
+  /** @type {Record<string, number[]>} */
+  const spots = {};
   const now = () => Date.now() / 1000, mark = (/** @type {string} */ n) => ((marks[n] = now()), console.log(`  ${n}`));
   c.on("Page.screencastFrame", (p) => {
     const f = path.join(TAKE, `${String(frames.length).padStart(5, "0")}.jpg`);
@@ -82,239 +83,232 @@ async function record() {
   let at = [W * 0.62, H * 0.55];
   const mouse = (/** @type {string} */ type, [x, y] = at, down = false) =>
     c.send("Input.dispatchMouseEvent", { type, x, y, button: down || type !== "mouseMoved" ? "left" : "none", buttons: down ? 1 : 0, clickCount: 1 });
+  // (on the clock: each step where the pointer should be by now, however long the page took to answer the last)
   const glide = async (/** @type {number[]} */ to, ms = 450, down = false, each = (/** @type {number} */ _u) => Promise.resolve()) => {
-    const from = at, n = Math.max(2, Math.round(ms / 16));
-    for (let k = 1; k <= n; k++) {
-      const u = k / n, e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
+    const from = at, t0 = Date.now();
+    for (let u = 0; u < 1; ) {
+      u = Math.min(1, (Date.now() - t0) / ms);
+      const e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
       at = [from[0] + (to[0] - from[0]) * e, from[1] + (to[1] - from[1]) * e];
       await mouse("mouseMoved", at, down);
       await each(e);
-      await sleep(16);
+      if (u < 1) await sleep(16);
     }
   };
   const press = async () => (await mouse("mousePressed", at, true), await sleep(90), await mouse("mouseReleased", at));
   const centre = (/** @type {string} */ sel) => c.js(`(() => { const r = (${sel}).getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
   const cell = (/** @type {number} */ x, /** @type {number} */ y) => c.js(`(() => { const m = document.querySelector(".board__plane").getScreenCTM(); return [m.a * ${x} + m.c * ${y} + m.e, m.b * ${x} + m.d * ${y} + m.f]; })()`);
-  const button = (/** @type {RegExp} */ re) => `[...document.querySelectorAll("button")].find((b) => ${re}.test(b.textContent.trim()))`;
+  const button = (/** @type {RegExp} */ re, within = "document") => `[...${within}.querySelectorAll("button")].find((b) => ${re}.test(b.textContent.trim()))`;
   const pieces = () => c.js(`document.querySelectorAll("[data-piece]").length`);
   const editor = `!!document.querySelector(".palette [data-tool=grow]") && document.querySelectorAll("[data-end]").length === 2`;
 
   try {
-    // take 1: the flashes, on the Garden's dogleg (the first run)
+    // the Avalanche, built on camera from its file without its trap and its snowmen (the 3D shot's hole, as published): its
+    // trap and a snowman there at first, for their looks to be chosen (the next of each tile takes it), then taken off
+    const holes = JSON.parse(fs.readFileSync(path.join(HERE, "holes.json"), "utf8")), draft = holes.avalanche.draft;
+    const file = path.join(WORK, "avalanche.gnogolf.json");
+    // (its rounds played on camera: no proofs)
+    // (and its green's corner by the cup cut off, three rows of it: painted back on camera, its walls following)
+    const rail = (/** @type {string} */ id, /** @type {number[]} */ a, /** @type {number[]} */ b) => ({ id, entry: "*/rail/", geometry: { t: "rail", a, b }, params: {}, clock: { k: "fixed" } });
+    const cut = [rail("r2", [45.5, 1.5], [45.5, 12.5]), rail("r5", [45.5, 12.5], [35.5, 12.5]), rail("r6", [35.5, 12.5], [35.5, 15.5]), rail("r3", [35.5, 15.5], [1.5, 15.5])];
+    const kept = draft.pieces.filter((/** @type {any} */ p) => p.id !== "p5" && p.id !== "r2" && p.id !== "r3");
+    fs.writeFileSync(file, JSON.stringify({ ...draft, slug: "avalanche", proofs: [], pieces: [...kept.slice(0, 2), ...cut, ...kept.slice(2)] }));
     await c.send("Page.navigate", { url: `${APP}/build/?camlog` });
-    await until(editor, "editor");
+    // (the editor, or the holes' list): to the list, where a file is opened
+    const open = button(/^Open a file/);
+    await until(`!!${open} || !!document.querySelector(".bhead button")`, "the Builder", 30_000);
+    await sleep(600);
+    if (!(await c.ev(`!!${open}`))) await c.js(`document.querySelector(".bhead button").click()`);
+    await until(`!!${open}`, "Open a file…");
+    const { root } = await c.send("DOM.getDocument", { depth: -1, pierce: true });
+    const { nodeId } = await c.send("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
+    await c.send("DOM.setFileInputFiles", { nodeId, files: [file] });
+    await until(`${editor} && document.querySelector(".bhead__name input")?.value === ${JSON.stringify(draft.title)}`, "the Avalanche in the editor", 20_000);
+    for (const id of ["p3", "p4"]) {
+      await glide(await centre(`document.querySelector('[data-piece="${id}"]')`), 100);
+      await press();
+      await until(`!!document.querySelector(".insp__looks [aria-pressed=true]")`, `${id}'s looks`, 5000);
+      await c.js(`document.querySelector(".insp__looks [aria-pressed=true]").click()`);
+      await sleep(200);
+      await c.js(`${button(/^Delete/, `document.querySelector(".insp__acts")`)}.click()`);
+      await until(`!document.querySelector('[data-piece="${id}"]')`, `${id} off`, 5000);
+    }
+    await c.js(`document.querySelectorAll(".palette details").forEach((d) => (d.open = true))`);
     await sleep(1500);
     await c.send("Page.startScreencast", { format: "jpeg", quality: 90, maxWidth: W * DPR, maxHeight: H * DPR });
     await sleep(600);
     await mouse("mouseMoved");
+    /** a piece carried from its tile's row (scrolled into sight) onto a cell of the board, in the look chosen */
+    const place = async (/** @type {string} */ tile, /** @type {number[]} */ to) => {
+      const n = await pieces(), row = `document.querySelector('.palette [data-tile="${tile}"]')`;
+      await c.js(`${row}.scrollIntoView({ block: "center" })`);
+      await glide(await centre(row), 400);
+      await mouse("mousePressed", at, true);
+      await glide(await cell(to[0], to[1]), 550, true);
+      await mouse("mouseReleased", at);
+      await sleep(120);
+      if ((await pieces()) <= n) console.log(`  (${tile} not placed: ${await c.ev(`document.querySelector(".board__said")?.textContent || ""`)})`);
+    };
 
-    // paint: a bay off the dogleg's foot, one long straight stroke from inside the green (a press on a side would move it)
-    await glide(await centre(`document.querySelector(".palette [data-tool=grow]")`), 500);
-    await press();
-    await sleep(300);
-    await glide(await cell(29.5, 25.5), 400); // (clear of the cup: a press on it carries the cup)
-    mark("paint");
-    await mouse("mousePressed", at, true);
-    await glide(await cell(6, 25.5), 1300, true);
-    await mouse("mouseReleased", at);
-    await sleep(700);
-    mark("painted");
+    // draw: the green's corner painted back, one stroke along it (the brush three cells wide), the paint put down after
+    mark("draw");
     await glide(await centre(`document.querySelector(".palette [data-tool=grow]")`), 400);
     await press();
-    await sleep(300);
-
-    // drop: a tunnel from More pieces (its fold opened), onto the top lane (its way out 8 along it)
-    await c.js(`document.querySelectorAll(".palette details").forEach((d) => (d.open = true))`);
-    await sleep(400);
-    const n = await pieces(), tunnel = `document.querySelector(".palette [data-tile=tunnel]")`;
-    await c.js(`${tunnel}.scrollIntoView({ block: "center" })`);
-    await sleep(300);
-    const tile = await centre(tunnel);
-    await glide(tile, 450);
-    mark("drop");
+    await sleep(250);
+    await glide(await cell(37, 14), 500);
     await mouse("mousePressed", at, true);
-    await glide(await cell(8, 9), 650, true);
+    await glide(await cell(44, 14), 900, true);
     await mouse("mouseReleased", at);
-    await sleep(700);
-    mark("dropped");
-    if ((await pieces()) <= n) console.log(`  (the tunnel not placed: ${await c.ev(`document.querySelector(".board__said")?.textContent || ""`)})`);
+    await sleep(350);
+    mark("drawn");
+    await c.js(`document.querySelector(".palette [data-tool=grow]").click()`);
 
-    // tweak: the piece's size slider dragged up, the tunnel growing on the board
-    await c.js(`document.querySelector(".insp__details") && (document.querySelector(".insp__details").open = true)`);
-    const slider = `document.querySelector(".insp__details .range input[type=range]")`; // (its first size: a tunnel's width)
-    await until(`!!${slider}`, "the size slider", 5000);
-    const [lo, hi, v0] = await c.js(`[+${slider}.min, +${slider}.max, +${slider}.value]`);
-    const sr = await c.js(`(() => { const r = ${slider}.getBoundingClientRect(); return [r.left, r.top + r.height / 2, r.width]; })()`);
-    const xOf = (/** @type {number} */ v) => sr[0] + ((v - lo) / (hi - lo)) * sr[2];
-    const v1 = Math.min(hi, v0 + (hi - lo) * 0.35);
-    await glide([xOf(v0), sr[1]], 450);
+    // drop: the crevasse in the middle of the ice
+    mark("drop");
+    await place("drop", [25, 7]);
+    mark("dropped");
+
+    // tweak: the crevasse's corner caught on the board and pulled, the trap growing under the pointer (clear of the cup)
+    const corner = await c.js(`(() => { const hs = [...document.querySelectorAll("[data-handle]")].map((h) => h.getBoundingClientRect()).map((r) => [r.left + r.width / 2, r.top + r.height / 2]); return hs.sort((p, q) => q[0] + q[1] - p[0] - p[1])[0]; })()`);
+    if (!corner) throw new Error("no handle on the crevasse");
+    const [cx, cy] = await cell(25, 7), [ex, ey] = await cell(27.5, 8); // (a cell's size on screen: the pull, 2.5 along and 1 down)
+    await glide(corner, 450);
     mark("tweak");
     await mouse("mousePressed", at, true);
-    await glide([xOf(v1), sr[1]], 900, true, (e) => c.js(`(() => { const el = ${slider}; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ${v0} + (${v1} - ${v0}) * ${e}); el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); })()`));
+    await glide([corner[0] + ex - cx, corner[1] + ey - cy], 800, true);
     await mouse("mouseReleased", at);
-    await c.js(`${slider}.dispatchEvent(new PointerEvent("pointerup", { bubbles: true }))`);
-    await sleep(500);
+    await sleep(300);
     mark("tweaked");
 
-    // play: the button pressed (the cut leaves on the press)
+    // block: two snowmen by the cup
+    mark("block");
+    await place("obstacle", [37, 3.5]);
+    await place("obstacle", [37, 10.5]);
+    mark("blocked");
+
+    // play: the button pressed (the cut centred on it: its spot kept), the test's start cards then
     await until(`!document.querySelector(".bhead__act[aria-disabled]")`, "Play on", 10_000);
-    await glide(await centre(`document.querySelector(".bhead__act")`), 600);
+    spots.play = await centre(`document.querySelector(".bhead__act")`);
+    await glide(spots.play, 1000);
+    await sleep(250);
     mark("play");
     await press();
-    await sleep(800);
-    mark("played");
-
-    // take 2: each video hole opened from its file (any world: the board in each one's look), the Blowhole last, then
-    // holed in each weather and published
-    const holes = JSON.parse(fs.readFileSync(path.join(HERE, "holes.json"), "utf8"));
-    const open = button(/^Open a file/);
-    for (const slug of ["avalanche", "skate-plaza", "blowhole"]) {
-      const file = path.join(WORK, `${slug}.gnogolf.json`);
-      // (its rounds played on camera: no proofs; an address, or Play asks for a name first)
-      fs.writeFileSync(file, JSON.stringify({ ...holes[slug].draft, slug, proofs: [] }));
-      if (slug === "avalanche") await c.send("Page.navigate", { url: `${APP}/build/?camlog` });
-      // (the editor, or the holes' list): to the list, where a file is opened
-      await until(`!!${open} || !!document.querySelector(".bhead button")`, "the Builder again", 30_000);
-      await sleep(600);
-      if (!(await c.ev(`!!${open}`))) await c.js(`document.querySelector(".bhead button").click()`);
-      await until(`!!${open}`, "Open a file…");
-      const { root } = await c.send("DOM.getDocument", { depth: -1, pierce: true });
-      const { nodeId } = await c.send("DOM.querySelector", { nodeId: root.nodeId, selector: "input[type=file]" });
-      await c.send("DOM.setFileInputFiles", { nodeId, files: [file] });
-      await until(`${editor} && document.querySelector(".bhead__name input")?.value === ${JSON.stringify(holes[slug].draft.title)}`, `${slug} in the editor`, 20_000);
-      await sleep(900);
-      mark(`board-${slug}`);
-      await sleep(500);
-    }
-    await until(`!document.querySelector(".bhead__act[aria-disabled]")`, "Play on", 20_000);
-    await c.js(`document.querySelector(".bhead__act").click()`);
-    await until(`!!document.querySelector(".tmode__sign--start")`, "the start card");
-    // the start cards until round 1: the address pasted (the author's), then the next free one if the slug is taken
-    const next = button(/^Use [a-z0-9-]+-\d+$/), paste = button(/^Paste an address/i), field = `document.querySelector(".tmode__addr input")`;
-    for (let k = 0; k < 60 && (await c.ev(`!!document.querySelector(".tmode__sign")`)); k++, await sleep(500)) {
-      if (await c.ev(`!!${next} && !${next}.disabled`)) await c.js(`${next}.click()`);
-      else if (await c.ev(`!!${field}`)) {
-        await c.js(`(() => { const el = ${field}; Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, ${JSON.stringify(AUTHOR)}); el.dispatchEvent(new Event("input", { bubbles: true })); })()`);
-        await sleep(300);
-        await c.js(`${button(/^Use this address$/)}?.click()`);
-      } else if (await c.ev(`!!${paste}`)) await c.js(`${paste}.click()`);
-    }
-    await c.js(`window.__pointer(false)`);
-    for (let w = 1; w <= 6 && !(await c.ev(`!!document.querySelector(".tmode__sum")`)); w++) {
-      await until(`!!window.__g && !!document.querySelector(".tmode__chip--now:not(.tmode__chip--done)") && document.querySelector(".tmode__score strong")?.textContent === "0" && !document.querySelector(".tmode__won")`, "a weather to play", 90_000);
-      const done = await c.js(`document.querySelectorAll(".tmode__chip--done").length`);
-      await sleep(1500); // (the round set up: its weather's period read, as builderwalk waits)
-      const round = await c.js(holingRound(8));
-      if (!round) throw new Error(`no round found in weather ${w}`);
-      mark(`w${w}`);
-      for (const [k, [a, pw]] of round.entries()) {
-        await until(`document.querySelector(".tmode__score strong")?.textContent === "${k}"`, `stroke ${k} ready`, 30_000);
-        if (k) await sleep(500);
-        await c.js(`window.__g.shoot(${a}, ${pw})`); // (back once the ball is still: the last one, holed)
-      }
-      mark(`sunk${w}`);
-      await until(`document.querySelectorAll(".tmode__chip--done").length > ${done} || !!document.querySelector(".tmode__won")`, `weather ${w} holed`, 60_000);
-      mark(`holed${w}`);
-      await until(`!!document.querySelector(".tmode__sum") || !!document.querySelector(".tmode__chip--now:not(.tmode__chip--done)")`, "the next round or the summary", 60_000);
-    }
-    await until(`[...document.querySelectorAll(".tmode__won button")].some((b) => /^Publish →$/.test(b.textContent))`, "Publish on the summary", 60_000);
-    mark("summary");
-    await c.js(`[...document.querySelectorAll(".tmode__won button")].find((b) => /^Publish →$/.test(b.textContent)).click()`);
-    await until(`!!document.querySelector(".pub .preview canvas")`, "the Publish step's 3D view", 30_000);
-    await sleep(1500);
-    // the 3D view swung round fast by a drag, then let go turning on its own
-    await c.js(`window.__pointer(true)`);
-    const pv = await centre(`document.querySelector(".pub .preview")`);
-    await glide([pv[0] - 260, pv[1]], 300);
-    mark("publish");
-    await mouse("mousePressed", at, true);
-    await glide([pv[0] + 300, pv[1] + 20], 1100, true);
-    await mouse("mouseReleased", at);
-    await glide([pv[0] + 420, pv[1] + 240], 500);
-    await sleep(3000);
-    mark("end");
+    await sleep(900);
     await c.send("Page.stopScreencast");
     await sleep(300);
   } finally {
-    fs.writeFileSync(path.join(WORK, "take.json"), JSON.stringify({ frames, marks }));
+    fs.writeFileSync(path.join(WORK, "take.json"), JSON.stringify({ frames, marks, spots }));
     if (c.errors.length) console.log("page errors:", c.errors.slice(0, 5));
     c.kill();
   }
   console.log(`take: ${frames.length} frames over ${(frames[frames.length - 1][0] - frames[0][0]).toFixed(1)} s`);
 }
 
-// the cut on the music's beat grid (175 BPM; the last hit, beat 87.5, on the end card's button). Each stretch is one of:
+// the cut on the music's beat grid (175 BPM; the last hit, beat 109.5, on the end card's call). Each stretch is one of:
 // - shot: the game's own 3D, filmed by the trailer's rig (media/promo/render.mjs, its frames at these beats): a hole
 //   published (holes.ts), its camera, the weather drawn, a one-stroker found in the chain's weather now (ace), timed to
 //   drop in the cup at dropAt seconds into the stretch; the titles land on when it sank (render.mjs's sinks.json, sink
 //   until it is filmed), and dropAt is moved by what the two differ;
 // - from/to: the Builder's take between two marks (seconds after them) played to fill its beats, cropped to [x, y, w]
 //   of its window (16:9);
-// - stills: the take's frames at those marks, an equal share of the beats each (hard cuts), cropped alike.
+// - stills: the take's frames at those marks, an equal share of the beats each (hard cuts), cropped alike;
+//   (on/w in place of crop: centred on a spot the take kept, w wide, the window's edges drawn out past it);
+// - card: the cards' paper (the overlay's), over nothing.
 // Titles at seconds into a stretch; "drop": as its ball drops (sink).
 const UP = { day: true, cup: "" };
-/** @type {{ shot?: any, from?: [string, number], to?: [string, number], stills?: [string, number][], beats: number[], crop?: number[], titles: any[] }[]} */
+// when the friend's ball is stuck for good, in seconds into its shot (seen in its frames)
+const MISS = 1.5;
+// the chase: low behind the ball (the holes run along +x), wide, close on its heels (a stiff spring): speed
+const CHASE = { mode: "track", off: [-3.6, 2.4, 1.4], lag: 22, lookUp: 0.5, fov: 56 };
+// the friend's other side, seen from high up (a stroke unlike the next)
+const DRONE = { mode: "track", off: [-2, 9, 8], lag: 8, lookUp: 0, fov: 50 };
+// the key words: huge, centred, slammed in (a line each when two)
+const WORD = { y: 0, kind: "slam", sparkle: 4 };
+// the morph's gnomes (data/gnomes.json): the showiest, a few Epics then every Legendary
+const MORPH = (() => {
+  const all = JSON.parse(fs.readFileSync(path.join(HERE, "..", "..", "data", "gnomes.json"), "utf8")).gnomes, of = (/** @type {string} */ t) => all.filter((/** @type {any} */ g) => g.tier === t);
+  const spread = (/** @type {any[]} */ gs, n) => Array.from({ length: n }, (_, i) => gs[Math.floor(((i + 0.5) * gs.length) / n)]);
+  return [...spread(of("epic"), 8), ...of("legendary")].map((g) => g.traits);
+})();
+/** @type {{ shot?: any, card?: boolean, from?: [string, number], to?: [string, number], stills?: [string, number][], beats: number[], crop?: number[], on?: string, w?: number, titles: any[] }[]} */
 const CUT = [
-  // the hook: the ball fed to the blowhole, spat over the lagoon, holed
-  { shot: { ...UP, name: "opener", hole: "blowhole", weather: "clear", ace: true, dropAt: 1.8, sink: 2.1, ramp: [1.6, 2.6, 0.45, 0.2],
-    cam: { mode: "follow", deg: 0, back: 5.5, up: 2.4, ahead: 4, fov: 52, lag: 4 }, flash: 0.6 }, beats: [0, 8], titles: [
-    { big: "BUILD YOUR <b>OWN HOLE.</b>", size: 132, drop: true, kind: "slam", y: 300, sparkle: 4 },
+  // the cover (X shows a video's first frame): the news on the cards' paper, all there from the first frame
+  { card: true, beats: [0, 3], titles: [
+    { logo: 600, at: -1, tilt: -3, y: -205, tilt3d: true },
+    { big: "BUILDER MODE<br><b>IS OUT!</b>", size: 130, at: -1, tilt: -3, y: 205 },
+    { pill: "BUILD. SHARE. DARE.", size: 50, at: -1, tilt: 0, y: 410 },
   ] },
-  // the Builder in flashes, close up, a word each
-  { from: ["paint", 0], to: ["painted", -0.2], beats: [8, 10], crop: [330, 300, 640], titles: [{ big: "PAINT.", size: 150, at: 0.02, y: 300 }] },
-  { from: ["drop", 0], to: ["dropped", -0.2], beats: [10, 12], crop: [0, 120, 700], titles: [{ big: "<b>DROP.</b>", size: 150, at: 0.02, y: 300 }] },
-  { from: ["tweak", 0], to: ["tweaked", -0.3], beats: [12, 14], crop: [380, 150, 900], titles: [{ big: "<i>TWEAK.</i>", size: 150, at: 0.02, y: 300 }] },
-  { stills: [["board-avalanche", 0], ["board-skate-plaza", 0], ["board-blowhole", 0]], beats: [14, 17], crop: [272, 120, 700], titles: [{ big: "ANY <b>WORLD.</b>", size: 150, at: 0.02, y: 300 }] },
-  { from: ["play", -0.9], to: ["play", -0.05], beats: [17, 19], crop: [880, 0, 400], titles: [{ big: "PLAY IT.", size: 150, at: 0.02, y: 300 }] },
-  // then play: three holes, three worlds, three weathers
-  { shot: { ...UP, name: "avalanche", hole: "avalanche", weather: "snow", ace: true, dropAt: 4.5, sink: 4.03, ramp: [3.9, 4.9, 0.5, 0.2],
-    cam: { mode: "track", off: [-2, 5.5, 9], lag: 5, lookUp: 0.3, fov: 50 }, flash: 0.5 }, beats: [19, 34], titles: [
-    { big: "SNOW.", size: 170, at: 0.02, to: 1.5, y: 280 },
-    { big: "<b>SUNK!</b>", size: 170, drop: true, kind: "slam", y: 260, sparkle: 4 },
+  // the hook: the ball shot out of the blowhole (its putt and its ride under the lagoon before the shot), spat over the lagoon, holed
+  { shot: { ...UP, name: "opener", hole: "blowhole", weather: "clear", ace: "short", dropAt: 1, putt: -2.5, pre: 2.75, sink: 0.6,
+    cam: { ...CHASE, stay: true }, flash: 0.6 }, beats: [3, 8], titles: [
+    { ...WORD, big: "BUILD YOUR<br><b>OWN HOLE.</b>", size: 210, drop: true },
   ] },
-  { shot: { ...UP, name: "skate", hole: "skate-plaza", weather: "rain", ace: true, dropAt: 4.2, sink: 3.9, ramp: [3.3, 4.3, 0.5, 0.2],
-    cam: { mode: "follow", deg: 0, back: 9, up: 4.5, ahead: 3, fov: 54 }, punch: 0.1 }, beats: [34, 48], titles: [
-    { big: "<b>RAIN.</b>", size: 170, at: 0.02, to: 1.5, y: 280 },
-    { big: "NAILED <i>IT!</i>", size: 160, drop: true, kind: "slam", y: 260, sparkle: 4 },
+  // that hole's making, close up, a word each (in and out quick, the gesture seen under it): the Avalanche built (its green painted, its trap dropped, grown, snowmen by the cup), played
+  { from: ["draw", 0], to: ["drawn", -0.1], beats: [8, 13], crop: [120, 140, 880], titles: [{ ...WORD, big: "DRAW YOUR<br><b>MAP.</b>", size: 250, at: 0.02, to: 0.75 }] },
+  { from: ["drop", 0], to: ["dropped", -0.1], beats: [13, 18], crop: [0, 120, 760], titles: [{ ...WORD, big: "ADD<br><i>TRAPS.</i>", size: 280, at: 0.02, to: 0.75 }] },
+  { from: ["tweak", 0], to: ["tweaked", -0.2], beats: [18, 22], crop: [200, 140, 800], titles: [{ ...WORD, big: "CUSTOMIZE<br><b>IT ALL.</b>", size: 230, at: 0.02, to: 0.75 }] },
+  { from: ["block", 0], to: ["blocked", -0.1], beats: [22, 29], crop: [120, 140, 880], titles: [{ ...WORD, big: "BLOCK<br><b>THE CUP.</b>", size: 250, at: 0.02, to: 0.9 }] },
+  { from: ["play", -1.3], to: ["play", 0.4], beats: [29, 33], on: "play", w: 420, titles: [{ ...WORD, big: "PLAY IT.", size: 300, at: 0.6, y: 250 }] },
+  // the same hole in 3D, then another world
+  { shot: { ...UP, name: "avalanche", hole: "avalanche", weather: "snow", ace: "short", dropAt: 2.62, putt: 0, sink: 2.2,
+    cam: { ...CHASE, stay: true } }, beats: [33, 42], titles: [
+    { ...WORD, big: "MAKE IT<br><i>CRAZY.</i>", size: 260, at: 0.02, to: 0.9 },
+    { ...WORD, big: "<b>SUNK!</b>", size: 340, drop: true },
   ] },
-  { shot: { ...UP, name: "storm", hole: "blowhole", weather: "storm", ace: true, dropAt: 2.3, sink: 2.6, ramp: [2.1, 3.1, 0.5, 0.2],
-    cam: { mode: "orbit", center: "cup", r: 11, h: 5, a0: 200, speed: 24, fov: 46 }, punch: 0.1 }, beats: [48, 58], titles: [
-    { big: "<i>STORMS.</i>", size: 170, at: 0.02, to: 1.4, y: 280 },
-    { big: "HOLE <b>IN ONE!</b>", size: 160, drop: true, kind: "slam", y: 260, sparkle: 4 },
+  { shot: { ...UP, name: "skate", hole: "skate-plaza", weather: "rain", ace: true, dropAt: 3.25, putt: 0, sink: 2.3,
+    cam: { ...CHASE, stay: true }, flash: 0.5 }, beats: [42, 51], titles: [
+    { ...WORD, big: "ANY<br><b>WORLD.</b>", size: 280, at: 0.02, to: 0.9 },
+    { ...WORD, big: "NAILED<br><i>IT!</i>", size: 260, drop: true },
   ] },
-  // proved in each weather: the test's weathers turning green, one cut each
-  { stills: [["holed1", 0.05], ["holed2", 0.05], ["holed3", 0.05], ["holed4", 0.05]], beats: [58, 62], crop: [0, 0, 640], titles: [
-    { big: "HOLE IT IN <b>EVERY WEATHER.</b>", size: 110, at: 0.02, y: 330 },
+  // shared, a friend dared: their goes at it, the stroke count climbing, never near the cup: off a snowman, into the crevasse and
+  // back to the tee; up the right, off the back wall and all the way back across the ice (from high up); over the ice and stuck in the far corner
+  // (holes.ts's hole: shots swept offline)
+  { shot: { ...UP, name: "fail1", hole: "avalanche", weather: "clear", fire: [{ deg: -8, power: 10, at: 2.2 }], cam: CHASE }, beats: [51, 63], titles: [
+    { ...WORD, big: "SHARE IT.<br><i>DARE FRIENDS.</i>", size: 165, at: 0.02, to: 0.8 },
+    { raw: "<div class='bubble'><b>alex.gno</b> sank it in 1.<br>Your turn. <i>Good luck.</i></div>", at: 0.85, to: 2.6, tilt: -2, y: -320 },
+    { ...WORD, big: "STROKE <i>3.</i>", size: 170, at: 2.7, y: -360 },
   ] },
-  // published: the step's 3D view swung round
-  { from: ["publish", -0.2], to: ["end", 0], beats: [62, 70], crop: [16, 120, 940], titles: [{ big: "PUBLISH IT <b>ON-CHAIN.</b>", size: 132, at: 0.02, y: 320 }] },
-  // the dare: a friend's message over the plaza, then why
-  { shot: { ...UP, name: "dare", hole: "skate-plaza", weather: "clear", cam: { mode: "orbit", center: [0.5, 0, 0.5], r: 30, h: 18, a0: 120, speed: 14, fov: 42 } }, beats: [70, 80], titles: [
-    { raw: "<div class='bubble'><b>alex.gno</b> sank it in 3.<br>Your turn. <i>Good luck.</i></div>", at: 0.05, to: 1.0, tilt: -2, y: -60 },
-    { big: "BUILD IT.", size: 150, at: 1.03, to: 1.6, y: 0 },
-    { big: "SHARE IT.", size: 150, at: 1.72, to: 2.3, y: 0 },
-    { big: "BEAT YOUR <b>FRIENDS.</b>", size: 140, at: 2.4, y: 0, sparkle: 4 },
+  { shot: { ...UP, name: "fail2", hole: "avalanche", weather: "clear", fire: [{ deg: 10, power: 9.75, at: 0.05 }], cam: DRONE }, beats: [63, 69], titles: [
+    { ...WORD, big: "STROKE <i>7.</i>", size: 170, at: 0.05, y: -360 },
   ] },
-  // the end card over the avalanche, blurred: the logo, the slogan, the button on the last hit
-  { shot: { ...UP, name: "end", hole: "avalanche", weather: "clear", blur: 14, dim: 0.3, rays: true, cam: { mode: "orbit", center: [0.5, 0, 0.5], r: 34, h: 20, a0: 60, speed: 8, fov: 42 } }, beats: [80, 91.5], titles: [
-    { logo: 520, at: 0, bounce: 3.2, tilt: -3, y: -210, sparkle: 4, tilt3d: true },
-    { big: "YOUR HOLE. <i>THEIR NIGHTMARE.</i>", size: 96, at: 1.03, tilt: -2, y: 140 },
-    { cta: CTA, size: 76, at: 2.57, kind: "slam", tilt: 0, y: 300 },
+  { shot: { ...UP, name: "miss", hole: "avalanche", weather: "clear", fire: [{ deg: -18.5, power: 6.75, at: 0.05 }], cam: { ...CHASE, off: [-4, 5, 2] } }, beats: [69, 79], titles: [
+    { ...WORD, big: "STROKE <i>12.</i>", size: 170, at: 0.05, to: MISS - 0.05, y: -360 },
+    { ...WORD, big: "THEIR<br><i>NIGHTMARE.</i>", size: 230, at: MISS },
+  ] },
+  // what's next: mainnet soon, its surprise (short: the time is the gnomes')
+  { shot: { ...UP, name: "soon", hole: "skate-plaza", weather: "clear", blur: 14, dim: 0.3, rays: true, cam: { mode: "orbit", center: [0.5, 0, 0.5], r: 30, h: 18, a0: 40, speed: 8, fov: 42 } }, beats: [79, 84], titles: [
+    { ...WORD, big: "MAINNET<br><b>SOON.</b>", size: 230, at: 0.05, y: -60 },
+    { pill: "WITH A SURPRISE…", size: 60, at: 0.75, kind: "slam", tilt: 0, y: 260, sparkle: 4 },
+  ] },
+  // the surprise: a gnome on the tee, ready to play, turning into one after another (the rarest last)
+  { shot: { ...UP, name: "gnomes", hole: "blowhole", weather: "clear", morph: { traits: MORPH, at: 0.25, every: 1.25 * BEAT },
+    cam: { mode: "orbit", center: "ball", r: 2.9, h: 1.1, a0: 70, speed: 8, fov: 36, lookUp: 0.15 } }, beats: [84, 104], titles: [
+    { ...WORD, big: "<b>720</b> NFT CHARACTERS.", size: 140, at: 0.3, to: 3.8, y: -360 },
+    { ...WORD, big: "PLAY AS <b>YOURS.</b>", size: 170, at: 3.9, y: -360 },
+    // (not before it: the collection comes with mainnet)
+    { pill: "ARRIVING WITH MAINNET", size: 56, at: 4.2, kind: "slam", tilt: 0, y: 400 },
+  ] },
+  // the end card over the avalanche, blurred: the logo, the slogan, the call on the last hit, the site
+  { shot: { ...UP, name: "end", hole: "avalanche", weather: "clear", blur: 14, dim: 0.3, rays: true, cam: { mode: "orbit", center: [0.5, 0, 0.5], r: 34, h: 20, a0: 60, speed: 8, fov: 42 } }, beats: [104, 116.5], titles: [
+    { logo: 440, at: 0, bounce: 3.2, tilt: -3, y: -260, sparkle: 4, tilt3d: true },
+    { big: "YOUR HOLE. <i>THEIR NIGHTMARE.</i>", size: 110, at: 0.5, tilt: -2, y: -30 },
+    { big: "BUILD YOURS <b>NOW!</b>", size: 150, at: 1.886, kind: "slam", tilt: -3, y: 140, sparkle: 4 },
+    { pill: "GNOGOLF.XYZ", size: 64, at: 2.4, kind: "slam", tilt: 0, y: 330 },
   ] },
 ];
-const HIT = 87.5, LEN = 91.5, MUSIC_AT = +(MUSIC_END - HIT * BEAT).toFixed(3);
+const HIT = 109.5, LEN = 116.5, MUSIC_AT = +(MUSIC_END - HIT * BEAT).toFixed(3);
 const F = (/** @type {number} */ beat) => Math.round(beat * BEAT * FPS);
 const RENDER = path.join(HERE, "..", "promo", "render.mjs"), SHOTS = path.join(HERE, "..", "promo", "shots-builder.json");
 const FILMED = path.join(os.tmpdir(), "gnogolf-promo-builder"); // (render.mjs's WORK for this cut: its frames, the shots' sounds and sinks)
 
 /** The 3D shots for render.mjs (shots-builder.json): each at its stretch's beats, its hole's id, its first stroke a one-stroker found then. */
-const shotsOf = () => CUT.filter((s) => s.shot).map((s) => ({ ...s.shot, hole: `${AUTHOR}/${s.shot.hole}/v1`, beats: s.beats, fire: s.shot.ace ? [{ deg: 0, power: 5, at: 0 }] : undefined }));
+const shotsOf = () => CUT.filter((s) => s.shot).map((s) => ({ ...s.shot, hole: `${AUTHOR}/${s.shot.hole}/v1`, beats: s.beats, fire: s.shot.fire ?? (s.shot.ace ? [{ deg: 0, power: 5, at: 0 }] : undefined) }));
 
 /** The cut as this take allows, each title's time set (a drop's: as its shot's ball sank when filmed, else its sink). */
 function cutOf(/** @type {Record<string, number>} */ marks, /** @type {Record<string, number>} */ sinks = {}) {
   return CUT.map((s) => {
     const a = s.from && marks[s.from[0]] + s.from[1], b = s.to && marks[s.to[0]] + s.to[1];
-    return { ...s, a, b, titles: (s.titles || []).map((/** @type {any} */ t) => (t.drop ? { ...t, at: (sinks[s.shot.name] ?? s.shot.sink) - 0.04 } : t)) };
+    return { ...s, a, b, stills: s.stills?.filter(([m]) => marks[m] != null), titles: (s.titles || []).map((/** @type {any} */ t) => (t.drop ? { ...t, at: (sinks[s.shot.name] ?? s.shot.sink) - 0.04 } : t)) };
   });
 }
 
@@ -411,27 +405,40 @@ async function overlay(/** @type {any[]} */ cut_) {
   await c.send("Page.navigate", { url: `${APP}/` }); // (the site's own Fredoka and the logo's colours)
   for (let k = 0; k < 60 && !(await c.ev(`document.readyState === "complete" && document.fonts.status === "loaded"`)); k++) await sleep(300);
   const cut = {
-    cards: [],
+    cards: cut_.filter((s) => s.card).map((s) => [s.beats[0] * BEAT, s.beats[1] * BEAT]),
     cuts: cut_.filter((s) => s.shot && s.shot.flash).map((s) => s.beats[0] * BEAT), // (a white flash into a shot that asks for one)
     // (each logo its own ids: two logos, or the page's own, would share their clip paths and gradient)
-    titles: cut_.flatMap((s, i) => s.titles.map((/** @type {any} */ t) => ({ ...t, html: title(t).replace(/(id="|url\(#|href="#)([\w-]+)/g, `$1$2-t${i}`), at: t.at < 0 ? -1 : t.at, base: s.beats[0] * BEAT, end: s.beats[1] * BEAT }))),
+    titles: cut_.flatMap((s, i) => s.titles.map((/** @type {any} */ t) => ({ ...t, html: title(t).replace(/(id="|url\(#|href="#)([\w-]+)/g, `$1$2-t${i}`), at: t.at < 0 ? -1 : t.at, base: s.beats[0] * BEAT, end: F(s.beats[1]) / FPS }))),
   };
   await c.js(`document.querySelectorAll("body [id]").forEach((e) => e.removeAttribute("id"))`); // (the page's own logo's ids, hidden, not ours)
   await c.js(`(() => { const s = document.createElement("style"); s.textContent = ${JSON.stringify(CSS)}; document.head.appendChild(s); window.__cut = ${JSON.stringify(cut)}; })()`);
   await c.js(LAYER);
   await c.js(`document.fonts.ready.then(() => true)`);
   for (let f = 0; f < F(LEN); f++) {
-    await c.js(`window.__at(${f / FPS})`);
+    await c.js(`window.__at(${f / FPS}); new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))`); // (painted before it is captured)
     const s = await c.send("Page.captureScreenshot", { format: "png" });
     fs.writeFileSync(path.join(OVER, `${String(f).padStart(5, "0")}.png`), Buffer.from(s.data, "base64"));
   }
   c.kill();
 }
 
+/** The punch: the picture pushed in on each hit (a cut, a slam), in over a few frames and easing back (never a jump
+ *  from one frame to the next), by ffmpeg's scale per frame, its centre kept by the crop after it; t the stretch's own
+ *  from start0. */
+function punch(/** @type {number} */ start0, /** @type {number[]} */ hits) {
+  const T = `(t+${start0.toFixed(3)})`, IN = 0.1;
+  const z = `(1${hits.map((h) => { const d = `(${T}-${h.toFixed(3)})`; return `+0.06*gte(${d},0)*if(lt(${d},${IN}),sin(PI/2*${d}/${IN}),exp(-5*(${d}-${IN})))`; }).join("")})`;
+  return `scale=w='2*trunc(960*${z})':h='2*trunc(540*${z})':eval=frame:flags=lanczos`;
+}
+
 // the cut's frames, a stretch at a time, cropped and scaled to 1920x1080: a shot's from render.mjs at its beats, the
 // take's (each output frame the take's latest by then) or its stills (an equal share each)
-function base(/** @type {any[]} */ cut, /** @type {[number, string][]} */ frames, /** @type {Record<string, number>} */ marks) {
+function base(/** @type {any[]} */ cut, /** @type {[number, string][]} */ frames, /** @type {Record<string, number>} */ marks, /** @type {Record<string, number[]>} */ spots) {
   const ts = frames.map((f) => f[0]);
+  // a card's frames: the paper's colour (the overlay's paper covers it whole), each part made alike for the concat
+  const paper = path.join(WORK, "paper.jpg");
+  execFileSync(FFMPEG, ["-y", "-v", "error", "-f", "lavfi", "-i", "color=c=0xfdebcf:s=1920x1080", "-frames:v", "1", paper]);
+  const hits = cut.flatMap((s) => [s.beats[0] * BEAT, ...s.titles.filter((/** @type {any} */ t) => t.kind === "slam").map((/** @type {any} */ t) => s.beats[0] * BEAT + t.at)]);
   const latest = (/** @type {number} */ at) => frames[Math.max(0, ts.findLastIndex((t) => t <= at))][1];
   const parts = [];
   for (const [i, s] of cut.entries()) {
@@ -440,39 +447,38 @@ function base(/** @type {any[]} */ cut, /** @type {[number, string][]} */ frames
     fs.rmSync(dir, { recursive: true, force: true });
     fs.mkdirSync(dir);
     for (let f = 0; f < n; f++) {
-      const src = s.shot ? path.join(FILMED, "frames", `${String(f0 + f).padStart(5, "0")}.jpg`)
+      const src = s.card ? paper : s.shot ? path.join(FILMED, "frames", `${String(f0 + f).padStart(5, "0")}.jpg`)
         : s.stills ? latest(marks[s.stills[Math.floor((f * s.stills.length) / n)][0]] + s.stills[Math.floor((f * s.stills.length) / n)][1])
         : latest(s.a + ((s.b - s.a) * f) / n);
       if (!fs.existsSync(src)) throw new Error(`no frame ${src} (${s.shot ? "render.mjs --cut=builder --frames first" : "the take"})`);
       fs.symlinkSync(src, path.join(dir, `${String(f).padStart(5, "0")}.jpg`));
     }
-    const [x, y, w] = (s.crop || [0, 0, W]).map((/** @type {number} */ v) => v * DPR), h = (w * 9) / 16;
-    const vf = s.shot ? "scale=1920:1080:flags=lanczos" : `crop=${w}:${h}:${x}:${y},scale=1920:1080:flags=lanczos`;
+    const [x, y, w] = (s.on ? [spots[s.on][0] - s.w / 2, spots[s.on][1] - (s.w * 9) / 32, s.w] : s.crop || [0, 0, W]).map((/** @type {number} */ v) => v * DPR), h = (w * 9) / 16;
+    // (centred on a spot near the window's edge: the edges smeared out past it, P each side)
+    const P = Math.ceil(w), edges = s.on ? `pad=iw+${2 * P}:ih+${2 * P}:${P}:${P},fillborders=left=${P}:right=${P}:top=${P}:bottom=${P}:mode=smear,` : "";
+    const vf = `${s.shot ? "" : `${edges}crop=${w}:${h}:${s.on ? x + P : x}:${s.on ? y + P : y},`}${punch(s.beats[0] * BEAT, hits.filter((t) => t < s.beats[1] * BEAT))},crop=1920:1080`;
     execFileSync(FFMPEG, ["-y", "-v", "error", "-framerate", String(FPS), "-i", path.join(dir, "%05d.jpg"), "-vf", vf, "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "16", out]);
   }
   const list = path.join(WORK, "parts.txt");
   fs.writeFileSync(list, parts.map((p) => `file '${p}'`).join("\n"));
-  execFileSync(FFMPEG, ["-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", list, "-c", "copy", path.join(WORK, "base.mp4")]);
+  // (joined anew, a frame its index at the frame rate: the parts' own clocks would drift a join apart)
+  execFileSync(FFMPEG, ["-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", list, "-vf", `setpts=N/${FPS}/TB`, "-r", String(FPS), "-pix_fmt", "yuv420p", "-c:v", "libx264", "-crf", "16", path.join(WORK, "base.mp4")]);
 }
 
 /** The 3D shots filmed by the trailer's rig: shots-builder.json written, render.mjs run for its frames and sounds only (--only=a,b:
- *  those shots again, the others' kept), each shot's one-stroker found anew in the chain's weather now (a community hole's
- *  path is played live: one cached under another weather may miss), when its ball sank kept for the titles (sinks.json). */
+ *  those shots again, the others' kept), each shot's one-stroker the one render.mjs found and kept with its path (played as
+ *  kept, whatever the chain's weather now), when its ball sank kept for the titles (sinks.json). */
 function shoot() {
   fs.writeFileSync(SHOTS, JSON.stringify(shotsOf(), null, 1) + "\n");
   const only = process.argv.find((a) => a.startsWith("--only="))?.slice(7).split(",");
-  const named = (/** @type {string} */ n) => !only || only.includes(n);
-  const pathsFile = path.join(HERE, "..", "promo", "paths.json"), paths = JSON.parse(fs.readFileSync(pathsFile, "utf8"));
-  for (const s of shotsOf()) if (named(s.name)) for (const k of Object.keys(paths)) if (k.includes(s.hole)) delete paths[k];
-  fs.writeFileSync(pathsFile, JSON.stringify(paths));
   execFileSync(process.execPath, [RENDER, "--cut=builder", "--frames", ...(only ? [`--only=${only.join(",")}`] : [])], { env: { ...process.env, APP }, stdio: "inherit" });
 }
 
 async function edit() {
   const sinks = fs.existsSync(path.join(FILMED, "sinks.json")) ? JSON.parse(fs.readFileSync(path.join(FILMED, "sinks.json"), "utf8")) : {};
-  const { frames, marks } = JSON.parse(fs.readFileSync(path.join(WORK, "take.json"), "utf8")), cut = cutOf(marks, sinks);
+  const { frames, marks, spots } = JSON.parse(fs.readFileSync(path.join(WORK, "take.json"), "utf8")), cut = cutOf(marks, sinks);
   await overlay(cut);
-  base(cut, frames, marks);
+  base(cut, frames, marks, spots);
   const len = (F(LEN) / FPS).toFixed(3);
   // the shots' own sounds (the putt, the cup, the confetti: render.mjs's sfx-<i>.wav, from its shot's start) under the music
   const sfx = shotsOf().map((s, i) => [path.join(FILMED, `sfx-${i}.wav`), F(s.beats[0]) / FPS]).filter(([f]) => fs.existsSync(String(f)));
@@ -482,8 +488,9 @@ async function edit() {
     : `[2:a]afade=t=in:d=0.25,apad[a]`;
   execFileSync(FFMPEG, ["-y", "-v", "error", "-i", path.join(WORK, "base.mp4"), "-framerate", String(FPS), "-i", path.join(OVER, "%05d.png"),
     "-ss", String(MUSIC_AT), "-i", MUSIC, ...ins,
-    "-filter_complex", `[0:v][1:v]overlay=format=auto,format=yuv420p[v];${mix}`,
-    "-map", "[v]", "-map", "[a]", "-t", len, "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-profile:v", "high", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", OUT]);
+    // (each title frame on the nearest picture's, at a steady frame rate: rounded times would pair a frame with the one before, or drop some)
+    "-filter_complex", `[0:v][1:v]overlay=format=auto:ts_sync_mode=nearest,format=yuv420p[v];${mix}`,
+    "-map", "[v]", "-map", "[a]", "-fps_mode", "cfr", "-r", String(FPS), "-t", len, "-c:v", "libx264", "-preset", "slow", "-crf", "18", "-profile:v", "high", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", OUT]);
   execFileSync(FFMPEG, ["-y", "-v", "error", "-i", OUT, "-frames:v", "1", "-q:v", "2", OUT.replace(/\.mp4$/, "-cover.jpg")]);
   console.log(`-> ${OUT} (${len} s)`);
 }

@@ -4,7 +4,7 @@
 import { test, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { SITE, siteURL, siteHost, cupName, CUPS } from "../lib/site.ts";
+import { SITE, siteURL, siteHost, cupName, CUPS, ISSUES, reportHole } from "../lib/site.ts";
 
 const w = globalThis as { window?: unknown };
 const at = (href: string) => {
@@ -63,4 +63,13 @@ test("netlify.toml: a cup's hole, as a link or the address bar has it, is served
   assert.equal(page("cup=garden"), "/h/:cup/", "a cup's link");
   assert.equal(page("cup=garden&gnome=pip"), "/h/:cup/", "the picker of its first hole");
   assert.equal(page("screen=cups"), undefined, "any other screen: the home page");
+});
+
+test("reportHole: an issue titled with the hole's id, its body a link that plays it and why left to say", () => {
+  at("https://gnogolf.xyz/");
+  const id = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5/avalanche/v1", u = new URL(reportHole(id));
+  assert.equal(u.origin + u.pathname, ISSUES);
+  assert.equal(u.searchParams.get("title"), `Report: ${id}`);
+  const body = u.searchParams.get("body") || "";
+  assert.ok(body.includes(`Play it: https://gnogolf.xyz/?hole=${id}`) && body.includes("Why?"));
 });

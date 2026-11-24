@@ -13,6 +13,7 @@ import { buttonClass } from "@/components/button";
 import Share from "@/components/Share";
 import { aboutGnot, connect, hasAdena, publishHole, PRICE } from "@/lib/adena";
 import { BYTE_PRICE, landed, makeChain } from "@/lib/chain";
+import { keepOwn } from "@/lib/community";
 import { explain } from "@/lib/builder/explain";
 import { endpoints, playLink } from "@/lib/builder/holes";
 import { bill, finalHex, gasFor, gnokeyPublish, holeHolds, parLine, publishSteps, type Readings } from "@/lib/builder/publish";
@@ -126,7 +127,11 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
   // after a signature: the chain read until it names the new version
   const land = async () => {
     setSent("landing");
-    if (await landed(async () => (await chain.current(alias).catch(() => "")) === id, () => live.current)) return (setSent("done"), onDone(id));
+    // (sent: Adena's answer, or gnokey's "I ran it": this browser may play its version before its author holds a best on
+    // it, lib/community.ts keepOwn; its alias, the link it is shared by, only once the chain names it: never one a
+    // transaction that failed would let this browser play before its author holds it)
+    await keepOwn(chain, id);
+    if (await landed(async () => (await chain.current(alias).catch(() => "")) === id, () => live.current)) return (await keepOwn(chain, id, true), setSent("done"), onDone(id));
     if (live.current) (setSent(""), setWhy("The chain does not show it yet. If you signed, give it a minute and look again."));
   };
   const adena = async () => {
@@ -167,7 +172,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
         <section className="col pub__doneform">
           <h2>{name} is on gno.land!</h2>
           {strokes > 0 && <p className="pub__beat">{beatLine(strokes)}: your own round is the one to beat.</p>}
-          <p>Play it for real: your best becomes the ghost your friends race.</p>
+          <p>Play it for real: your best becomes the ghost your friends race. Others see it once you have holed it and saved the round.</p>
           <a className={buttonClass({ variant: "gold" })} href={playLink(holeRow(id, draft))}>Play it for real</a>
           <Share {...holeShare(name, id, strokes)} label="Share it" />
           <button type="button" className="linkish" onClick={card}>Save its card</button>
@@ -215,8 +220,9 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
           </div>
           {/* what went wrong, then its Try again */}
           {step.at === "reading" ? <p className="pub__note" role="status">Checking with the chain…</p>
-            : step.why && <p className={step.at === "name" || step.at === "funds" ? "pub__bad" : "pub__note"} role={step.at === "name" ? "alert" : "status"}>{step.why}</p>}
+            : step.why && <p className={step.at === "name" || step.at === "funds" || step.at === "rules" || step.at === "unread" ? "pub__bad" : "pub__note"} role={step.at === "name" ? "alert" : "status"}>{step.why}</p>}
           {step.at === "unread" && <Button onClick={() => setTries((n) => n + 1)}>Try again</Button>}
+          {step.at === "rules" && <Button onClick={() => window.location.reload()}>Reload the page</Button>}
           {step.at === "funds" && <Button onClick={() => setTries((n) => n + 1)}>Check again</Button>}
           {/* the total on the button; what it is made of a tap away, before any signature */}
           <details className="pub__bill">

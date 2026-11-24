@@ -321,6 +321,9 @@ html, body {
   color: var(--green);
 }
 
+.src + .src { margin-left: 10px; }
+.drawer__report { display: inline-block; margin-top: 12px; }
+
 /* the burger: same toon language as the cards — ink border, hard shadow */
 .burger {
   width: 76px;
@@ -1706,6 +1709,7 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 .cup__sum div { padding: 6px 10px; min-width: 58px; }
 .cup__sum dd { margin: 0; font-size: 20px; font-weight: 800; color: var(--green); }
 .cup__next { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.nil { font-weight: 300; color: var(--ink-soft); } /* (a figure not there yet: Golf.tsx Nil) */
 
 /* the menu's head: the cup being played, with a way to another */
 /* a button: the cup being played, the name big on two lines */
@@ -2130,6 +2134,9 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .lb__ghosts i, .podium__ghost i { height: 10px; border-radius: 6px; background: rgba(var(--ink-rgb), .1); }
 .lb__ghosts li:nth-child(2) i:first-of-type { width: 70%; }
 .lb__ghosts li:nth-child(3) i:first-of-type { width: 50%; }
+/* read, nobody there: the places alone, no bars (those say it is still read), the first one's words in their place */
+.lb__ghosts--free b, .podium__free { color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.lb__ghosts--free b { grid-column: 2 / -1; }
 .community ul { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
 
 /* the gnokey fallback of a save: the key's name, then one paste for a terminal */
@@ -2482,13 +2489,37 @@ body:has(.pending) .turncall { top: 34%; }
 /* a community hole's mark: whether its author has holed it (Community.tsx), its line held while the chain answers */
 .community__mark { display: block; min-height: 1.3em; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
 .community__judging { margin: var(--sp-2) 0 0; font-size: 13px; color: var(--ink-soft); }
-/* the community's holes as cards (Community.tsx): the order to list them in by the title, the hole of the day
-   above, then a card each: its map in a window of its world's colours, its lines, Play (and Remix on a computer) */
-.community__head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-2) var(--sp-4); }
-.community__sort.seg { box-shadow: none; }
-.community__sort.seg button { min-height: 36px; padding: 6px 12px; font-size: 13px; white-space: nowrap; }
+/* the community's holes as cards (Community.tsx): the hole of the day and the most played above, then a card each: its map in a window of its world's colours, its lines, Play (and Remix on a computer) */
 .community__day { display: grid; justify-items: start; gap: var(--sp-2); margin-top: var(--sp-4); }
 .community__day .ccard { width: 100%; }
+/* the community's screen: the day's hole and the most played up top, then every hole under its search and filters */
+.community__featured { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--sp-4); align-items: start; margin-bottom: var(--sp-5); }
+.community__featured .community__day { margin-top: 0; }
+.community__trending { display: grid; gap: var(--sp-2); }
+.community__trending .community__cards { margin-top: 0; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.community__featured:not(:has(.community__day)) { grid-template-columns: 1fr; }
+.community__featured:not(:has(.community__trending)) { grid-template-columns: minmax(0, 1fr); max-width: 520px; }
+@media (max-width: 900px) { .community__featured { grid-template-columns: 1fr; } }
+/* a toolbar's search (components/Search.tsx: the shop's, the community's): its icon, and open, a row of its own
+   under the toolbar, the list's width (over nothing, the toolbar unmoved) */
+.gbar__icon svg, .gsearch svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 2.4; stroke-linecap: round; }
+.gsearch { display: flex; align-items: center; gap: var(--sp-2); width: 100%; height: 44px; padding: 0 6px 0 14px; border: var(--edge); border-radius: 14px; background: var(--white); }
+.gsearch input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; font: inherit; font-size: 15px; color: var(--ink); outline: none; }
+.gsearch input::-webkit-search-cancel-button { display: none; }
+/* (its focus ring the field's own frame, as every field's) */
+.gsearch__close svg { width: 16px; height: 16px; }
+/* the community's toolbar, as the shop's (.gbar): a chip a world at its left (pressed, that world's holes only;
+   pressed again, every world), the search's icon and the order at its right; on a phone the worlds a line of their own */
+.community > .eyebrow { display: block; margin-bottom: var(--sp-2); }
+.cbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "worlds end"; align-items: center; gap: var(--sp-2) var(--sp-4); }
+.cbar__worlds { grid-area: worlds; display: flex; flex-wrap: wrap; gap: var(--sp-2); min-width: 0; }
+.cbar__worlds .btn[aria-pressed="true"] { background: var(--gold); }
+.cbar__worlds:has([aria-pressed="true"]) .btn:not([aria-pressed="true"]) { opacity: .55; }
+.cbar__end { grid-area: end; display: flex; align-items: center; gap: var(--sp-2); }
+.cbar .seg { box-shadow: none; }
+.cbar .seg button { min-height: 28px; padding: 4px 12px; font-size: 13px; white-space: nowrap; }
+.community .gsearch { margin-top: var(--sp-2); }
+@media (max-width: 700px) { .cbar { grid-template-columns: minmax(0, 1fr); grid-template-areas: "end" "worlds"; } .cbar__end { justify-content: space-between; } }
 .community .community__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-4); }
 .ccard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); height: 100%; padding: var(--sp-3); border: var(--edge); border-radius: 14px; background: var(--white); }
 .ccard__map { grid-row: 1 / 3; align-self: start; display: grid; place-items: center; padding: 4px; border: var(--edge); border-radius: 12px; background: var(--panel-dots), var(--c1); }

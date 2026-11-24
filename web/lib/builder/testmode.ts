@@ -7,7 +7,7 @@
 // the next weather not holed; without it, a round in calm weather (a try,
 // under an id of its own: TRY_HOLE), the address asked once one is holed.
 import type { Chain } from "../chain";
-import type { HoleRow, Versions } from "../types";
+import type { HoleRow, Mode, Versions } from "../types";
 import type { Draft } from "./draft";
 import type { LocalChain } from "./localchain";
 import { periodFor } from "./proof";
@@ -73,7 +73,9 @@ export function holeRow(id: string, d: Draft): HoleRow {
  *  none the takedown list names, nor any node's (its genesis too: the draft's verdict, kept by chain, asks the network nothing). */
 export function testChain(base: Chain, local: LocalChain, hex: string): Chain {
   const builder = () => Promise.resolve("builder");
-  return { ...base, ...local, holeData: () => Promise.resolve(hex), chainId: builder, genesis: builder };
+  // (its author holds a best on it, as the chain would once they save a round: the draft is being proved here)
+  const bests: Chain["bests"] = (hole, mode, players) => Promise.resolve({ version: 1, hole, mode: mode as Mode, par: 0, rows: players.map((player) => ({ player, name: "", strokes: 1 })) });
+  return { ...base, ...local, holeData: () => Promise.resolve(hex), chainId: builder, genesis: builder, bests };
 }
 
 /** The id a round is played under before the author's address is known: no author's, and no proof is ever kept for it. */
@@ -130,7 +132,7 @@ export function publishTip(world: string, left: readonly string[]): string {
 
 /** The hole-finished card of a try (no address yet): Clear done, what comes next, then why the address. */
 export const askSaid = (world: string) =>
-  `${weatherName("")} ✓ — next: ${weathersSaid(required(world).filter((k) => k))}. Your address names the hole and sets its weather, so we need it once to go on. Nothing is signed.`;
+  `${weatherName("")} ✓ — next: ${weathersSaid(required(world).filter((k) => k))}. The hole is saved under your gno.land address, and its weather comes from it, so we need it once to go on. Nothing is signed.`;
 
 /** Said when a round's shots, replayed in other weathers, hole there too (those weathers proved without a round of their own);
  *  from null: a practice round's, replayed once the address is given ("Your practice round holds in Clear and Wind ✓"). */

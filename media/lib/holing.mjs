@@ -1,9 +1,9 @@
 // @ts-check
 // A holing round of the weather now, found through the Builder test mode's own
 // chain (its ?camlog hook, window.__g): each shot the one ending nearest the
-// cup, within 40 degrees of it, until one holes. For the headless walks through
-// the Builder (scripts/builderwalk.ts, media/builder/promo.mjs): an expression to
-// evaluate in the page, the round's shots as [angle, power], null if none holes.
+// cup, within 40 degrees of it, until one holes. For the headless walk through
+// the Builder (scripts/builderwalk.ts): an expression to evaluate in the page,
+// the round's shots as [angle, power], null if none holes.
 
 /** @param {number} strokes the most a round may take */
 export const holingRound = (strokes) => `(async () => {

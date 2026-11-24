@@ -159,3 +159,22 @@ void test("alongAxis: a stroke in straight legs, its wobble left out; it turns o
   assert.deepEqual([g.from, g.axis], [[16, 10], 1], "the new leg from the corner");
   assert.deepEqual(alongAxis(g, [17.5, 18]), [16, 18], "down the new leg, straight");
 });
+
+void test("a piece pressed and let go where it was (a click that selects it), or dragged back to its place: nothing to undo", async () => {
+  const palette = await loadPalette("garden"), o = { host, palette }, full = { ...o, census };
+  const rock = placePiece(palette.find((e) => e.id === "*/post/rock")!, "r", [15, 10]);
+  const ed = editor({ ...lane("garden", [rock]), slug: "click" }), env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5 });
+  const at = (ed.s.now().pieces.find((p) => p.id === "r")!.geometry as { c: V }).c;
+  assert.equal(ed.s.canUndo(), false);
+  ed.g.down(env(), at, { t: "piece", id: "r" }), ed.g.up(env(), at);
+  assert.equal(ed.s.canUndo(), false, "a click");
+  ed.g.down(env(), at, { t: "piece", id: "r" }), ed.g.move(env(), [at[0] + 2, at[1]]), ed.g.up(env(), at);
+  assert.equal(ed.s.canUndo(), false, "dragged away and back");
+  // a handle and the tee touched a little off their point (inside their hit area), let go unmoved: nothing snaps
+  ed.g.down(env(), [at[0] + 0.3, at[1] + 0.2], { t: "handle", key: "c" }), ed.g.up(env(), [at[0] + 0.3, at[1] + 0.2]);
+  const tee = ed.s.now().tee;
+  ed.g.down(env(), [tee[0] + 0.3, tee[1]], { t: "end", which: "tee" }), ed.g.up(env(), [tee[0] + 0.3, tee[1]]);
+  assert.equal(ed.s.canUndo(), false, "a handle, the tee: touched");
+  ed.g.down(env(), at, { t: "piece", id: "r" }), ed.g.move(env(), [at[0] + 2, at[1]]), ed.g.up(env(), [at[0] + 2, at[1]]);
+  assert.equal(ed.s.canUndo(), true, "moved: undone in one step");
+});

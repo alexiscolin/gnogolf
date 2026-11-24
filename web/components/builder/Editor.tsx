@@ -173,6 +173,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
     return () => void (stale = true);
   }, [draft.world, tries]); // eslint-disable-line react-hooks/exhaustive-deps -- (palette: read, not a reason to load)
 
+  // (a ghost's checks and a clamp's probes leave the trap search out, edit.ts untrapped; what is kept is judged with it)
   const quick: ValidateOptions | null = useMemo(() => palette && { host, palette, slug: draft.slug || undefined }, [host, palette, draft.slug]);
   const full: ValidateOptions | null = useMemo(() => quick && { ...quick, census }, [quick]);
 
@@ -489,6 +490,8 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
                 {/* painting with no piece selected: how the paint goes, in its place */}
                 {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
                   onChoose={(tile, id) => setChosen({ world: draft.world, looks: { ...looks, [tile]: id } })} />}
+                {/* the first run's hints, in order, under the empty settings: never over the hole, the 3D or one another */}
+                {hints && !piece && <Hints world={draft.world} onDone={onHinted} />}
               </aside>
             </div>
           </>
@@ -500,7 +503,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
             </div>
           ) : <p className="bench__wait" aria-busy="true">Loading the {draft.world}&apos;s pieces…</p>
         )}
-        {(hints || again) && <Hints world={draft.world} glossary={again && palette ? { world: draft.world, palette } : null} onDone={() => (setAgain(false), onHinted())} />}
+        {again && palette && <Hints world={draft.world} glossary={{ world: draft.world, palette }} onDone={() => (setAgain(false), onHinted())} />}
       </main>
     </>
   );
