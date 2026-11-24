@@ -1,6 +1,7 @@
 package gnomes
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -31,12 +32,8 @@ func TestGnomeSaysWhoOwnsItAndItsPrice(cur realm, t *testing.T) {
 	fresh(t, cur)
 	id := common()
 	row := func(owner string, sold bool) string {
-		s := "false"
-		if sold {
-			s = "true"
-		}
 		return `{"version":1,"id":"` + itoa(id) + `","series":"genesis","name":"Gnome ` + itoa(id) +
-			`","tier":"common","traits":"v0.` + itoa(id) + `","owner":"` + owner + `","price":36000000,"sold":` + s + `,"closed":false}`
+			`","tier":"common","traits":"v0.` + itoa(id) + `","owner":"` + owner + `","price":36000000,"sold":` + strconv.FormatBool(sold) + `,"closed":false}`
 	}
 	uassert.Equal(t, row("", false), Gnome(itoa(id)))
 	testing.SetRealm(asUser(alice, ugnot(priceOf(id))))
@@ -84,18 +81,21 @@ func TestGnomesOfIsTheLocker(cur realm, t *testing.T) {
 func TestGnomesOfPagesAWallet(cur realm, t *testing.T) {
 	fresh(t, cur)
 	// 205 Commons: one tier, so their rows come in id order (best first is worn_test's)
-	c := func(k int) int64 { return nthOfTier(0, k) }
-	for k := 0; k < 205; k++ {
-		mintTo(alice, mustGnome(c(k)))
+	var c []int64
+	for id := int64(1); len(c) < 205; id++ {
+		if g := mustGnome(id); g.tier == 0 {
+			mintTo(alice, g)
+			c = append(c, id)
+		}
 	}
 	p0 := GnomesOf(alice, 0)
-	uassert.True(t, strings.HasPrefix(p0, `{"version":1,"owner":"`+alice.String()+`","total":205,"next":100,"rows":[`+lockerRow(c(0))+","+lockerRow(c(1))+","))
+	uassert.True(t, strings.HasPrefix(p0, `{"version":1,"owner":"`+alice.String()+`","total":205,"next":100,"rows":[`+lockerRow(c[0])+","+lockerRow(c[1])+","))
 	uassert.Equal(t, 100, countRows(p0))
-	uassert.True(t, strings.Contains(GnomesOf(alice, 100), `"next":200,"rows":[`+lockerRow(c(100))+","))
+	uassert.True(t, strings.Contains(GnomesOf(alice, 100), `"next":200,"rows":[`+lockerRow(c[100])+","))
 	p2 := GnomesOf(alice, 200)
 	uassert.True(t, strings.Contains(p2, `"next":-1`))
 	uassert.Equal(t, 5, countRows(p2))
-	uassert.True(t, strings.HasSuffix(p2, lockerRow(c(204))+"]}"))
+	uassert.True(t, strings.HasSuffix(p2, lockerRow(c[204])+"]}"))
 	uassert.Equal(t, 0, countRows(GnomesOf(alice, 205)))
 	uassert.Equal(t, p0, GnomesOf(alice, -3), "a negative offset reads from the start")
 }

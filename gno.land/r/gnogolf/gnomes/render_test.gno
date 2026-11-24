@@ -50,9 +50,9 @@ func TestTheHomeSaysTheClose(cur realm, t *testing.T) {
 }
 
 func TestGNOTIsWrittenPlainly(t *testing.T) {
-	uassert.Equal(t, "36 GNOT", gnot(36_000_000))
-	uassert.Equal(t, "815.85 GNOT", gnot(815_850_000))
-	uassert.Equal(t, "0.000001 GNOT", gnot(1))
+	uassert.Equal(t, "36", gnot(36_000_000))
+	uassert.Equal(t, "815.85", gnot(815_850_000))
+	uassert.Equal(t, "0.000001", gnot(1))
 }
 
 // Behind the rows' rule, the page escapes a name as Markdown wherever it

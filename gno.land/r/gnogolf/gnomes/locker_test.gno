@@ -1,6 +1,7 @@
 package gnomes
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -26,16 +27,9 @@ func readAll() (int, int) {
 		rows += countRows(p)
 		i := strings.Index(p, `"next":`) + len(`"next":`)
 		j := strings.Index(p[i:], ",")
-		offset = int64(parseSigned(p[i : i+j]))
+		offset, _ = strconv.ParseInt(p[i:i+j], 10, 64)
 	}
 	return rows, pages
-}
-
-func parseSigned(s string) int {
-	if s == "-1" {
-		return -1
-	}
-	return int(parseID(s))
 }
 
 func TestACollectionOf1_50And205ReadsInPages(cur realm, t *testing.T) {

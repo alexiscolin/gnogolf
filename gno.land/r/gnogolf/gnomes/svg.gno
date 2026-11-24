@@ -219,7 +219,7 @@ func shapesOf(out []shape, line string, hat byte) []shape {
 			continue
 		}
 		key := hi<<4 | lo
-		if key += dk; key < 2 {
+		if key += dk; dk != 0 && key < 2 {
 			key = 2 // (moved, still over the body)
 		}
 		out = append(out, shape{key: key, art: s[2:], shift: shift})

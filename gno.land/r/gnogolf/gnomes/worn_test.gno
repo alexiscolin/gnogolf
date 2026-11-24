@@ -1,6 +1,7 @@
 package gnomes
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 
@@ -17,14 +18,7 @@ import (
 func wornJSON(player address, id int64, put bool) string {
 	g, _ := tokenAt(id)
 	return `{"version":1,"player":"` + player.String() + `","id":"` + itoa(id) + `","name":"` + g.name +
-		`","tier":"` + tierName(g.tier) + `","traits":"` + g.traits + `","equipped":` + boolString(put) + `}`
-}
-
-func boolString(b bool) string {
-	if b {
-		return "true"
-	}
-	return "false"
+		`","tier":"` + tierName(g.tier) + `","traits":"` + g.traits + `","equipped":` + strconv.FormatBool(put) + `}`
 }
 
 func TestAPlayerWearsTheirBestGnome(cur realm, t *testing.T) {

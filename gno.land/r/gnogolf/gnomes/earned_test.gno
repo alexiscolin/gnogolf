@@ -236,6 +236,20 @@ func TestWhatDoesNotCount(cur realm, t *testing.T) {
 	uassert.False(t, ok)
 }
 
+// A world of more than a page of slots (store's 300) is refused, not proven
+// from its first page.
+func TestACupTooLargeForThePageRefuses(cur realm, t *testing.T) {
+	f := withRows(t, cur)
+	ids := cupHoles(f, "garden", maxCupSlots+1)
+	for _, id := range ids[:maxCupSlots] {
+		best(f, id, "assisted", alice.String(), 3)
+	}
+	urequire.PanicsContains(t, cur, "cup too large for the proof", func() { prove("wizard", alice.String()) })
+	f.c["slots"].Remove("0garden/301")
+	ok, _, _ := prove("wizard", alice.String())
+	uassert.True(t, ok, "300 slots, one page: proven")
+}
+
 func TestNewRulesProveNothing(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	f.writer = "gno.land/r/gnogolf/golf/v3"

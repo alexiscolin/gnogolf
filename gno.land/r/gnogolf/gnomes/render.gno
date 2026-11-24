@@ -58,7 +58,7 @@ func renderHome() string {
 	for _, s := range sales {
 		c := catalogue[seriesNamed(s.series)]
 		b.WriteString("| " + s.series + " | " + itoa(c.first) + "–" + itoa(c.last) + " | " + dateOf(s.start) + " | " +
-			wholeGNOT(s.prices[0]) + " / " + wholeGNOT(s.prices[1]) + " / " + wholeGNOT(s.prices[2]) + " / " + gnot(s.prices[3]) + " | " +
+			gnot(s.prices[0]) + " / " + gnot(s.prices[1]) + " / " + gnot(s.prices[2]) + " / " + gnot(s.prices[3]) + " GNOT | " +
 			itoa(soldIn(c.first, c.last)) + " of " + itoa(c.last-c.first+1) + " |\n")
 	}
 	return b.String()
@@ -121,15 +121,12 @@ func markdownEscape(s string) string {
 	return b.String()
 }
 
-// wholeGNOT is a price as its number of GNOT alone ("30"), for a row of
-// prices; gnot the full amount ("815.85 GNOT").
-func wholeGNOT(ugnot int64) string { return strings.TrimSuffix(gnot(ugnot), " GNOT") }
-
+// gnot is a price as its number of GNOT ("815.85").
 func gnot(ugnot int64) string {
 	s := itoa(ugnot / 1_000_000)
 	if frac := ugnot % 1_000_000; frac != 0 {
 		f := itoa(frac + 1_000_000)[1:]
 		s += "." + strings.TrimRight(f, "0")
 	}
-	return s + " GNOT"
+	return s
 }

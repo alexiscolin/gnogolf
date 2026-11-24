@@ -14,12 +14,12 @@ import (
 
 // What a portrait costs to read: z_portrait_base buys gnome 199, Figurehead
 // Fen, the heaviest picture of the Genesis (an Epic: its look and its tier's
-// two rings, 8,170 bytes of data URI; of every Genesis gnome's, measured,
-// the largest), at its real row: its tier, its name, its traits;
+// two rings, 7,610 bytes of data URI; of every Genesis gnome's, measured,
+// the dearest to draw), at its real row: its tier, its name, its traits;
 // z_portrait_read buys it and reads its TokenURI. The difference of their
-// gas is the read as `gno test` counts it: 76.0M (75.8M on a Common row).
+// gas is the read as `gno test` counts it: 74.3M.
 //
-// A chain counts more: 83.08M for the same TokenURI on a local chain built
+// A chain counts 7.1M more for the same TokenURI on a local chain built
 // from this toolchain. `gno test` runs on a store with no gas meter, so it
 // never charges what a fresh call pays to load each object it reads from
 // the chain's store (per object 59,000 to read, then 17 a byte, and amino's
@@ -75,7 +75,7 @@ func genesis() string {
 }
 
 // Output:
-// 199 true 8170
+// 199 true 7610
 
 // Gas:
-// 1472992495
+// 1471312704
