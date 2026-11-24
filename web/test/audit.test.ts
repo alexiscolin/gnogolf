@@ -6,6 +6,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 import { surfaceAudit, whatAt, glows, movers, clearance, rideClearance, draws, renderQuality, moverClip, trackOverHazard } from "../lib/engine/audit.ts";
+import { solid } from "../lib/scene/mines-toon.ts";
 import type { TubePath } from "../lib/scene/data.ts";
 import type { Live } from "../lib/engine/types.ts";
 import type { Zone } from "../lib/types.ts";
@@ -130,9 +131,9 @@ test("movers: each live piece as drawn, its outermost live group only, hidden wi
 
 // ---- the rides' and the pieces' checks (the same small course, a piece or two more each)
 
-/** A box w × h × d centred at (x, y, z), in a material of colour c (a named group round it if named). */
+/** A box w × h × d centred at (x, y, z), of colour c as the mines build their parts (solid(): in its vertices, over the white relief()), a named group round it if named. */
 function box(w: number, h: number, d: number, x: number, y: number, z: number, c = 0x777777, name = "") {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshToonMaterial({ color: c }));
+  const m = solid(new THREE.BoxGeometry(w, h, d), c);
   m.position.set(x, y, z);
   if (!name) return m;
   const g = new THREE.Group();

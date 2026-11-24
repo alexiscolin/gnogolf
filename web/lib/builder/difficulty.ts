@@ -22,7 +22,8 @@ import { frame, keyOf, piecesBy, writeDraft } from "./gg1";
 import { pieceName } from "./names";
 import { CELL, gridOf, reach } from "./lane";
 import { cap, FIELD, MAX_PAR } from "./rules";
-import type { GHole, GZone } from "./types";
+import { SURFACE_RAIL } from "./surface";
+import type { GHole } from "./types";
 import type { BuilderHost } from "./wasm";
 import type { PieceRef } from "../scene/census";
 import { calmPeriod } from "./quickshot";
@@ -266,7 +267,6 @@ interface Named {
   piece?: string;
   rail: boolean;
 }
-const shapeOf = (z: GZone) => ({ min: z.min, max: z.max, round: z.round, poly: z.poly, outside: z.outside });
 
 /** The timed pieces (within a stroke, or in a pulse) the way to the cup cannot get round when they are there, each with the share of the time it lets the ball by (RARE or less), the rarest first. */
 function timedOnWay(h: GHole): { ref: PieceRef; open: number; pulse: boolean }[] {
@@ -336,7 +336,7 @@ export async function estimate(sim: Sim, draft: Draft, o: Run = {}): Promise<Est
   const by = piecesBy(d, refs);
   return estimateHole(sim, f.hex, (r) => {
     const p = by.get(keyOf(r));
-    return p && { name: pieceName(p), piece: p.id, rail: p.entry === "*/rail/" };
+    return p && { name: pieceName(p), piece: p.id, rail: p.entry === SURFACE_RAIL };
   }, o, t0);
 }
 
@@ -434,7 +434,7 @@ export async function estimateHole(sim: Sim, hex: string, named: (r: PieceRef) =
   if (k >= 0 && f < 0.4) {
     const where = k === 0 ? "from the tee" : k === forgiving.length - 1 && strokes ? "at the cup" : `on stroke ${k + 1}`, off = misses[k];
     const wet = h.zones.map((z, i) => ({ z, i })).filter(({ z }) => z.kind === "hazard" && !z.outside)
-      .map(({ z, i }) => ({ n: of({ set: "zone", i }), k: off.filter((p) => p.path.some((q) => inZone(shapeOf(z), q[0], q[1]))).length }))
+      .map(({ z, i }) => ({ n: of({ set: "zone", i }), k: off.filter((p) => p.path.some((q) => inZone(z, q[0], q[1]))).length }))
       .sort((x, y) => y.k - x.k)[0];
     const solids = solidsOf(h), tally = new Map<string, { n: Named; k: number }>();
     for (const p of off) {

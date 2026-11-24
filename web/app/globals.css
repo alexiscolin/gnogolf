@@ -1,7 +1,8 @@
 /* gno.land's own palette: #226C57 primary, #60AB96 light, #144134 deep.
    The breakpoints (a custom property cannot sit in @media), here and in title.css:
-     width   1600, 1280, 1100, 900, 860, 720 (min), 700, 600 (the phone), 520, 480, 400
-     height  820 (a 13" laptop), 760, 720, 640
+     width   2120 (min), 1784 (min), 1600, 1440, 1280, 1100, 1050, 900, 760, 720 (min), 700,
+             600 (the phone), 520, 480, 400, 370, 360, 340
+     height  880 (min), 820 (a 13" laptop), 760, 720, 640
      shape   aspect-ratio 1/1 (wide vs upright), pointer: coarse, reduced motion */
 /* Fredoka (SIL OFL 1.1, public/fonts/OFL.txt), its Latin set, every weight
    in one variable file, served from this host: no visitor goes to a font CDN */
@@ -282,6 +283,8 @@ html, body {
 .h-sub { font-size: var(--fs-sub); }
 /* said to a screen reader only (the Builder's page title: its name is a field) */
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* a page's words and links without JavaScript (app/intro.tsx), on a card at its foot */
+.noscript { position: fixed; z-index: 10; left: 16px; right: 16px; bottom: 16px; max-width: 560px; margin: 0 auto; padding: 12px 16px; border-radius: 12px; background: var(--paper); color: var(--ink); line-height: 1.4; }
 
 /* inked display text: paper, a thick ink outline, standing on its drop. The
    one recipe; each piece sets only its size, --ink-w and --ink-drop (at no
@@ -391,6 +394,7 @@ html, body {
 }
 
 .tile {
+  position: relative; /* (its focus ring is drawn round it) */
   display: flex;
   align-items: center;
   gap: 14px;
@@ -796,7 +800,7 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
   font-weight: 600;
 }
 
-/* a done thing and a failed one: the paper, an inked border in their colour, like the warning */
+/* a done thing and a failed one: the paper, an inked border in their colour */
 .note--good {
   background: var(--paper);
   border: 2px solid var(--green);
@@ -1004,8 +1008,6 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
   padding: 14px 28px;
 }
 
-/* the success screen scrolls on a short screen rather than losing its buttons */
-
 /* chain errors carry long hex and URLs */
 .banner p, .note, .mono, .real__fine {
   overflow-wrap: anywhere;
@@ -1054,12 +1056,12 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
    and that shadow, even on every side; anything else, an outline on an ink
    rim. Fields show it on their own frame. */
 /* (in :where, the plain default: any control's own rule wins over it) */
-:where(button, a, summary, input:is([type="checkbox"], [type="range"]), [tabindex]:not([tabindex="-1"])):where(:not(.btn, .burger, .adena, .round, .share__icon)):focus-visible { outline: var(--ring); outline-offset: 2px; box-shadow: 0 0 0 2px var(--ink); }
-:is(.btn, .burger, .adena, .round, .share__icon):focus-visible { outline: none; }
+:where(button, a, summary, input:is([type="checkbox"], [type="range"]), [tabindex]:not([tabindex="-1"])):where(:not(.btn, .burger, .adena, .round, .share__icon, .tile)):focus-visible { outline: var(--ring); outline-offset: 2px; box-shadow: 0 0 0 2px var(--ink); }
+:is(.btn, .burger, .adena, .round, .share__icon, .tile):focus-visible { outline: none; }
 /* a link in a line: a highlighter's stroke under it, not a box round it */
 :is(.linkish, p a, li a):not(.btn):focus-visible { outline: none; border-radius: 6px; background: color-mix(in srgb, var(--gold) 60%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--gold) 60%, transparent); }
 [tabindex="-1"]:focus { outline: none; } /* a dialog holding focus itself (useDialog): no ring until a Tab */
-:is(.btn, .burger, .adena, .round, .share__icon):focus-visible::after { content: ""; position: absolute; inset: -8px -8px calc(-8px - var(--drop, 4px)); border: var(--ring); border-radius: inherit; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); pointer-events: none; }
+:is(.btn, .burger, .adena, .round, .share__icon, .tile):focus-visible::after { content: ""; position: absolute; inset: -8px -8px calc(-8px - var(--drop, 4px)); border: var(--ring); border-radius: inherit; box-shadow: 0 0 0 2px var(--ink), inset 0 0 0 2px var(--ink); pointer-events: none; }
 .share__icon { --drop: 2px; position: relative; } /* (the ring is drawn round it) */
 
 .timed {
@@ -1291,9 +1293,6 @@ h3 small {
 }
 
 .me__row .btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
   padding: 10px 6px;
   font-size: 14px;
@@ -1330,16 +1329,9 @@ h3 small {
 
 .scorecard td {
   text-align: center;
-  font-weight: 700;
   padding: 4px 0;
   border-left: 2px solid rgba(var(--ink-rgb), .15);
   position: relative;
-  font-size: 18px;
-  height: 40px;
-}
-
-.card--compact td {
-  font-size: 16px;
 }
 
 /* a badge the score earned, its medal pressed on the cell's corner (components/Badges.tsx CardStamp) */
@@ -1347,10 +1339,6 @@ h3 small {
 .stamp > span + span { margin-left: -10px; } /* two or three on a hole, overlapping like stamps */
 .stamp svg { display: block; width: 24px; height: auto; }
 .card--compact.scorecard .stamp { right: -4px; top: -14px; } .card--compact.scorecard .stamp svg { width: 16px; } .card--compact.scorecard .stamp > span + span { margin-left: -8px; }
-
-.scorecard td.ace, .scorecard td.under, .scorecard td.par, .scorecard td.oops {
-  font-size: 20px;
-}
 
 /* the seal of a score saved on-chain: the chain's glyph on its green, in the cell's foot */
 .seal { position: absolute; left: 2px; bottom: 2px; width: 14px; height: 14px; }
@@ -1501,7 +1489,6 @@ h3 small {
   .aimbar small { white-space: nowrap; font-size: 11px; }
   .aimbar .bar { width: 180px; }
   .timed { top: 92px; left: 12px; right: 12px; text-align: center; font-size: 12px; }
-  .scorecard td { font-size: 14px; height: 32px; }
   .scorecard tr:nth-child(3) td { font-size: 17px; height: 36px; }
 }
 
@@ -1514,8 +1501,6 @@ h3 small {
   .hint--touch { display: inline; }
 }
 
-
-/* UX pass: legibility, targets, motion */
 .card__par { display: block; font-size: 11px; font-weight: 600; color: var(--ink-soft); margin-top: 1px; }
 .tile[aria-current="true"] .tile__best { color: var(--paper); opacity: .85; }
 .banner--win .banner__row { position: sticky; bottom: -30px; background: var(--paper); padding: 10px 0 6px; flex-wrap: wrap; }
@@ -1557,13 +1542,13 @@ h3 small {
 /* the big call to action, gold (Button's "gold"), deep on its drop: the
    title's start, the picker's pick (their sizes: title.css) */
 .btn--cta {
-  display: inline-flex; align-items: center; gap: 12px;
+  gap: 12px;
   font-weight: 700; letter-spacing: .01em;
   border-radius: 24px;
   box-shadow: 0 7px 0 var(--ink);
 }
-.btn--cta:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 9px 0 var(--ink); }
-.btn--cta:active:not([disabled]) { transform: translateY(5px); box-shadow: 0 2px 0 var(--ink); }
+.btn.btn--cta:hover:not([disabled]) { transform: translateY(-2px); box-shadow: 0 9px 0 var(--ink); }
+.btn.btn--cta:active:not([disabled]) { transform: translateY(5px); box-shadow: 0 2px 0 var(--ink); }
 .btn--cta svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 
 /* the loader: a putting green the ball rolls along to the cup */
@@ -1588,7 +1573,7 @@ h3 small {
 .drawer__settings { display: grid; gap: 8px; padding: 14px 16px; border-bottom: var(--rule); }
 .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 700; cursor: pointer; min-height: 44px; }
 .switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.switch i { box-sizing: border-box; display: block; flex: 0 0 auto; width: 52px; height: 30px; border-radius: 15px; background: var(--disabled); border: var(--edge); position: relative; transition: background .15s; }
+.switch i { display: block; flex: 0 0 auto; width: 52px; height: 30px; border-radius: 15px; background: var(--disabled); border: var(--edge); position: relative; transition: background .15s; }
 /* the knob: centred in the track (26px inside), 3px clear of each end */
 .switch i::after { content: ""; box-sizing: border-box; position: absolute; top: 50%; left: 3px; width: 20px; height: 20px; margin-top: -10px; border-radius: 50%; background: var(--paper); border: var(--edge); transition: transform .15s; }
 .switch input:checked + i { background: var(--green); }
@@ -1752,7 +1737,7 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 .world__stamp { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--hat-ink); color: var(--hat-ink); font-size: 11px; transform: rotate(-12deg); }
 /* the reset menu at the top of the cup screen */
 /* top right, beside the about button (52px at 34px from the corner); it
-   scrolls away with the screen like the back button, never over the cups */
+   scrolls away with the screen, never over the cups */
 .resets { position: absolute; top: 34px; right: 98px; z-index: 6; margin: 0; }
 /* the round corner button, stretched to hold a label: same ink, border and shadow */
 .round--pill { width: auto; height: 52px; border-radius: var(--pill); padding: 0 18px; display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; }
@@ -1811,7 +1796,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 @media (max-width: 400px) {
   /* the hole's name gets the room: "Down the Tunnel" on two lines, not "Down the…" */
   .card--hole { gap: 8px; padding: 8px 10px; } .card__num { min-width: 34px; height: 34px; font-size: 19px; } .card .card__name { font-size: 13px; }
-  /* the cups' Reset a word shorter, clear of the game's tag beside Back (its menu names what goes) */
 }
 /* the course takes the keyboard (arrows aim, space shoots): show when it has it */
 /* the game canvas takes focus for the keyboard aim: a quiet frame, not a red
@@ -1821,7 +1805,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 
 /* the two halves line up column for column; the total sits on its own line */
 .scorecard th { width: 88px; }
-.scorecard td.pad { background: transparent; }
 .scorecard__total { align-items: center; padding-top: 4px; }
 .scorecard__total strong { min-width: 1.2em; text-align: center; }
 /* the hole being played: its column tinted under its dark number */
@@ -1879,7 +1862,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 @keyframes cause { 0% { opacity: 0; transform: translate(-50%, 6px); } 15%, 60% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -8px); } }
 
 /* the leaderboard: a chip at the bottom right of every hole, a sheet with two tabs */
-/* a phone: the bottom row is Restart and Whole course; the chip goes to the icon alone, above them */
 /* one height whatever its tab and mode, so its tabs never move, centred like
    every sheet (800: the course's board on a 900px screen); the board takes
    what is left under them and scrolls in its list */
@@ -1906,7 +1888,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 /* the X sits in the header rows: the few right after it stop short of it */
 .sheet__close ~ .eyebrow, .sheet__close ~ h2, .sheet__close ~ .boards__tabs { margin-right: 52px; }
 .sheet__in:has(> .sheet__close) { padding-top: 22px; }
-/* until launch */
 
 /* the aim mode: a two-way switch with its note, in the menu and the picker */
 .aimset { display: grid; gap: 8px; margin: 4px 0 14px; }
@@ -1928,7 +1909,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .tip { position: relative; }
 .aimset__pop { position: absolute; left: 50%; translate: -50% 0; top: calc(100% + 6px); z-index: 3; width: max-content; max-width: min(240px, calc(100vw - 32px)); padding: 8px 10px; border-radius: 14px; border: var(--edge); background: var(--paper); color: var(--ink); font-size: 12.5px; line-height: 1.4; text-align: left; }
 /* the picker's button, the same size whether it says Choose or Locked */
-.screen .btn--play { min-width: 210px; min-height: 48px; }
+.screen .btn--play { min-width: 210px; }
 
 /* friends and the named-only line */
 .friends h3 { margin: 10px 0 6px; }
@@ -1947,7 +1928,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .lb .friends__list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 12px; border: 0; border-radius: 10px; background: rgba(var(--ink-rgb), .05); } /* a name to manage, not a place */
 .friends__invite { margin-top: 12px; }
 
-.cam-btn { display: inline-flex; align-items: center; gap: 6px; }
 .cam-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; }
 .flag-why { display: block; font-family: var(--font); font-size: 12px; line-height: 1.3; color: var(--ink); } /* why a row is hidden, with Show all on */
 .lb li.me .flag-why { color: var(--paper); }
@@ -1975,7 +1955,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .chip { --h: 48px; display: inline-flex; align-items: center; gap: 6px; height: var(--h); padding: 0 14px; border: var(--edge); border-radius: var(--pill); background: var(--paper); font-size: 13px; font-weight: 700; line-height: 20px; color: var(--ink); white-space: nowrap; }
 .chip--m { --h: 40px; } .chip--s { --h: 32px; padding: 0 10px; }
 /* a HUD card that is a button (the leaderboard) */
-.btn--chip { background: var(--paper); color: var(--ink); display: inline-flex; align-items: center; gap: 8px; height: 48px; padding: 0 16px 0 12px; font-size: 14px; font-weight: 800; }
+.btn--chip { background: var(--paper); color: var(--ink); gap: 8px; height: 48px; padding: 0 16px 0 12px; font-size: 14px; font-weight: 800; }
 .btn--chip svg { width: 22px; height: 22px; fill: var(--gold); stroke: var(--ink); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
 .lbchip { position: fixed; right: 16px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: var(--z-chip); }
 /* the segmented switch: the aim mode, the board's tabs */
@@ -2002,7 +1982,8 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .card--duel .duel__row .eyebrow { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card--duel strong { font-size: 19px; line-height: 1.05; } /* (three lines in the row's height, as tall as its neighbours) */
 .card--duel strong small { font-size: 12px; color: var(--ink-soft); }
-.card--duel .card__par { margin-top: 2px; }
+.card--duel .card__par { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.card--duel .card__par svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 /* a phone: its own width, never cut (the hole's card gives way), the rival's name and the line shorter
    (after the card's own rules, so they hold) */
 @media (max-width: 600px) {
@@ -2010,8 +1991,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
   .card--duel .card__par { gap: 4px; font-size: 10px; } .card--duel .card__par svg { width: 14px; height: 14px; }
   body:has(.card--duel) .timed { top: 106px; } /* (the hole's note under it: the card is the row's tallest) */
 }
-.card--duel .card__par { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.card--duel .card__par svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .card--duel:hover { border-color: var(--ink); }
 .card--peek { background: var(--gold); border-color: var(--ink); }
 .card--peek .eyebrow, .card--peek .card__par { color: var(--ink); }
@@ -2034,7 +2013,6 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 /* the course's records to beat: a slim strip under the cups' title, seen without scrolling */
 .podium { margin: 4px auto 32px; width: 100%; max-width: 980px; text-align: left; }
 .podium__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
-.podium__head .linkish { font-size: 13px; }
 .podium__links { display: flex; gap: 16px; }
 /* the records to beat as the rival board's stickers (title.css .sticker), three across at any width */
 .podium__row { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
@@ -2060,7 +2038,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .featured { margin: 4px 0 14px; }
 .featured__h { margin: 0 0 10px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
 .lb .featured__row { overflow: visible; max-height: none; padding: 8px 0 4px; mask-image: none; animation: none; gap: 12px; } /* (not the rows' scrolling list) */
-.lb .featured__row > li { display: block; padding: 0; border: 0; background: none; }
+.lb .featured__row > li { padding: 0; border: 0; background: none; }
 /* in a sheet: the phone's card at any width, face over name, the name a size down */
 .featured .sticker { grid-template: auto auto auto / minmax(0, 1fr); justify-items: center; min-height: 0; padding: 14px 8px 8px; text-align: center; }
 .featured .sticker__face { grid-row: auto; width: 44px; height: 44px; }
@@ -2236,7 +2214,7 @@ body:has(.sheet) .screen__about, body:has(.sheet) .screen__back { visibility: hi
 .drawer__panel .drawer__settings:last-child { border-bottom: 0; } /* the settings ruled off from the holes; the last block (clearing the card) needs none */
 .scorecard__links { margin-left: auto; display: flex; gap: 14px; font-size: 13px; }
 /* the camera button keeps one width whatever its mode's name, so Restart never shifts */
-.cam-btn { min-width: 150px; justify-content: center; }
+.cam-btn { min-width: 150px; }
 .cam-btn__dots { display: inline-flex; gap: 3px; margin-left: 10px; position: relative; top: 2px; }
 .cam-btn__dots i { width: 5px; height: 5px; border-radius: 50%; border: 1.5px solid currentColor; }
 .cam-btn__dots i[data-on] { background: currentColor; }
@@ -2322,19 +2300,19 @@ body:has(.hud--top) .pending { top: max(14px, env(safe-area-inset-top)); min-hei
 /* on a front screen, centred on its corner buttons' line (Back, About: 34px + 52/2) */
 body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
 /* ------------------------------------------------ by breakpoint
-   The media rules no later rule fights, gathered here: wide to narrow, the
-   motion switch last. The ones a later rule overrides stay where they are. */
+   The media rules no later rule fights, gathered here. The ones a later rule
+   overrides stay where they are. */
 
 @media (max-width: 600px) {
   /* a phone: the hint wraps inside the screen instead of running off both sides */
   /* (clear of the Players chip, right, at its height) */
-  .hint { white-space: normal; text-align: center; width: calc(100vw - 156px); }
+  .hint { width: calc(100vw - 156px); }
   .aimbar, .cause { max-width: calc(100vw - 156px); }
   .aimbar .bar { width: min(180px, calc(100vw - 180px)); }
   .title__facts { flex-direction: column; align-items: flex-start; gap: 10px; }
   .screen__back { top: 30px; left: 30px; }
   /* a phone: under the weather badge (92px + its 60), not over it */
-  .toast { top: 160px; white-space: normal; text-align: center; width: calc(100vw - 32px); }
+  .toast { top: 160px; width: calc(100vw - 32px); }
   .resets { top: 30px; right: 94px; }
   .round--pill { height: 44px; margin-top: 4px; padding: 0 14px; font-size: 13px; }
   /* a tight top row: a round badge, the vane alone with the sky tucked on it */
@@ -2438,7 +2416,7 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
 @media (max-width: 1100px) and (min-aspect-ratio: 1/1) { .screen--title .title__facts { display: none; } }
 /* a finger's targets, 44px (the picker's aim switch: title.css) */
 @media (pointer: coarse) {
-  .seg button, .details summary, .unnamed summary, .resets__menu .btn, .lb__race, :not(p, span, small) > .linkish, .lb--full > .real__fine > .linkish { min-height: 44px; }
+  .seg button, .details summary, .unnamed summary, .resets__menu .btn, .lb__race, :not(p, span, small) > .linkish, .lb--full > .real__fine > .linkish, .podium__links > .linkish { min-height: 44px; }
   .lb__flagged a { display: inline-block; padding: 12px 4px; margin: -12px -4px; } /* (its "Tell us": a finger's tap round the word) */
   /* what stays small to the eye takes the tap round it: the clip's download,
      the share icons (8px apart), the aim's (i) (its line's, not the switch's above) */
@@ -2492,7 +2470,6 @@ body:has(.pending) .turncall { top: 34%; }
 @media (max-width: 360px) {
   .lb li:has(.lb__holes) .lb__race { grid-row: 3; } /* (under the strokes and their sky, not over them) */
   .card--hole { flex: 0 0 auto; min-width: 58px; } .card--duel { flex: 1 1 0; min-width: 0; }
-  .card--duel .card__par span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 @media (max-width: 340px) { .worlds--v2 .modetag { display: none; } } /* (the cups' Scores pill takes its room) */
 @media (max-height: 640px) { .boards > .lb--full > ol { flex-shrink: 0; } } /* (a short screen: the sheet scrolls, not a box in it) */
@@ -2511,7 +2488,7 @@ body:has(.pending) .turncall { top: 34%; }
 .community__day { display: grid; justify-items: start; gap: var(--sp-2); margin-top: var(--sp-4); }
 .community__day .ccard { width: 100%; }
 .community .community__cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--sp-4); margin-top: var(--sp-4); }
-.ccard { box-sizing: border-box; display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); height: 100%; padding: var(--sp-3); border: var(--edge); border-radius: 14px; background: var(--white); }
+.ccard { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: var(--sp-2) var(--sp-3); height: 100%; padding: var(--sp-3); border: var(--edge); border-radius: 14px; background: var(--white); }
 .ccard__map { grid-row: 1 / 3; align-self: start; display: grid; place-items: center; padding: 4px; border: var(--edge); border-radius: 12px; background: var(--panel-dots), var(--c1); }
 .ccard__svg { display: block; width: 60px; height: 60px; }
 .ccard__text { display: grid; align-content: start; gap: var(--sp-1); min-width: 0; line-height: 1.25; }

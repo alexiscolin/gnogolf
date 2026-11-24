@@ -1,6 +1,6 @@
 "use client";
 
-// The hole in 3D (the GUI spec's B2, top right): the game's own buildHole on
+// The hole in 3D (the publish step's, the GUI spec's B4): the game's own buildHole on
 // the hole as a player's client gets it (HoleState of the canonical bytes,
 // builder.wasm), framed from above as the overview frames it. What it shows
 // is what will be published. Drawn again whenever the checked hole changes.
@@ -22,7 +22,7 @@ const FRAMED: Readonly<{ yaw: number; pitch: number; zoom: number }> = { yaw: 0,
 const SPIN = (2 * Math.PI) / 60_000;
 
 /** capture: set to a function that draws the view now and gives its canvas (read it in the same task: a share card). */
-export default function Preview({ state, fresh, capture }: { state: Hole | null; fresh: boolean; capture?: { current: (() => HTMLCanvasElement | null) | null } }) {
+export default function Preview({ state, capture }: { state: Hole | null; capture?: { current: (() => HTMLCanvasElement | null) | null } }) {
   const box = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement | null>(null);
   const three = useRef<{ renderer: THREE.WebGLRenderer; scene: ReturnType<typeof makeScene>; camera: THREE.PerspectiveCamera; course: THREE.Object3D | null } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -130,7 +130,7 @@ export default function Preview({ state, fresh, capture }: { state: Hole | null;
       }}
       onPointerUp={() => void (drag.current = null)} onPointerCancel={() => void (drag.current = null)}
       onDoubleClick={() => ((orbit.current = { ...FRAMED }), turned())}>
-      <span className="pill">{state ? (fresh ? "3D · in sync" : "3D · catching up") : "3D · waiting for the checks"}</span>
+      <span className="pill">{state ? "3D · in sync" : "3D · waiting for the checks"}</span>
       <span className="preview__how" aria-hidden="true">Drag to turn · scroll to zoom</span>
     </div>
   );

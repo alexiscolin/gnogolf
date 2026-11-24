@@ -290,9 +290,9 @@ function useTitleScene(host: RefObject<HTMLDivElement | null>, film: RefObject<H
   const [scene, setScene] = useState<{ world: string; live: boolean; phase: Visit["phase"]; bare: boolean } | null>(null);
   useEffect(() => {
     if (!visit) {
-      // a link to a hole (?hole=, ?cup=): the title is only its loader, on the
-      // default sky, with nothing behind it
-      const deep = /[?&](hole|cup)=/.test(location.search);
+      // a link to a hole (?hole=, ?cup=, its page /h/…): the title is only its
+      // loader, on the default sky, with nothing behind it
+      const deep = /[?&](hole|cup)=/.test(location.search) || /^\/h\//.test(location.pathname);
       const world = deep ? guessWorld() : nextWorld(), live = !deep && !wantsStill(), canvas = live ? document.createElement("canvas") : null;
       if (canvas) canvas.className = "title__canvas";
       const v: Visit = (visit = { world, canvas, video: null, phase: "splash", p: null, ready: false, bare: deep, kill: undefined, notify() {} });

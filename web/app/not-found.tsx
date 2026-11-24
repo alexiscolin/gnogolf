@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "No such page · Gnogolf", robots: { 
 
 export default function NotFound() {
   return (
-    <div className="banner" role="alertdialog" aria-labelledby="lost-title">
+    <main className="banner" aria-labelledby="lost-title">
       <div className="banner__in">
         <h2 id="lost-title">No such page</h2>
         <p>This ball rolled off the course.</p>
@@ -15,6 +15,6 @@ export default function NotFound() {
           <a className={buttonClass({ variant: "primary" })} href="/">Play Gnogolf</a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

@@ -2,10 +2,10 @@
 // game's own drawing: still flat bands of light under an ink line, but each
 // material its own bands and marks (docs/gnomes/design.md, "Materials").
 // Polished things (metal, glaze, porcelain, crystal, frost) get a fourth,
-// bright band and a glint; wood its grain, stone its speckle, wool its
-// stitches, gingerbread its icing; neon trades the ink line for a lit one,
-// lava glows through its cracks. Colours stay the skin's: a material is how
-// the light takes them.
+// bright band and a glint (crystal its facets instead); wood its grain,
+// stone its speckle, wool its stitches, gingerbread its icing; neon trades
+// the ink line for a lit one, lava glows through its cracks. Colours stay
+// the skin's: a material is how the light takes them.
 import * as THREE from "three";
 import { flat, hullOf, share, texOf } from "./materials";
 import { seeded } from "./common";
@@ -23,6 +23,8 @@ export interface Dressed {
 
 /** Materials that dress the beard too: a statue's, a knitted toy's, frost. */
 const WHOLE: ReadonlySet<Material> = new Set(["stone", "wool", "crystal", "frost"]);
+/** The polished materials: a fourth, bright band, and a glint but on crystal. */
+const POLISHED: ReadonlySet<Material> = new Set(["metal", "glaze", "porcelain", "crystal", "frost"]);
 
 // light in bands, as materials.ts does it; a polished thing has a fourth,
 // narrow and bright: its shine
@@ -107,9 +109,8 @@ function surface(kind: Material, base: number, detail: number): THREE.Material {
   let m = made.get(key);
   if (m) return m;
   const marks = MARKS[kind], map = marks ? share(painted(key, (x, r) => marks(x, r, css(base), css(detail)))) : null;
-  const polished = kind === "metal" || kind === "glaze" || kind === "porcelain" || kind === "crystal" || kind === "frost";
   const opts: THREE.MeshToonMaterialParameters = {};
-  if (polished || kind === "stone") opts.gradientMap = polished ? SHINE : MATTE; // (else flat()'s own bands)
+  if (POLISHED.has(kind) || kind === "stone") opts.gradientMap = POLISHED.has(kind) ? SHINE : MATTE; // (else flat()'s own bands)
   if (map) opts.map = map;
   if (kind === "lava") Object.assign(opts, { emissive: detail, emissiveMap: map, emissiveIntensity: 0.8 });
   // a metal's faint lift of its own light, the same for every part: the bake merges a gnome's
@@ -166,7 +167,7 @@ export function dressMatter(g: THREE.Group, skin: Skin, parts: Dressed): ((t: nu
     band.position.y = -0.1;
     g.add(band);
   }
-  if (kind === "metal" || kind === "glaze" || kind === "porcelain" || kind === "frost") glint(g);
+  if (POLISHED.has(kind) && kind !== "crystal") glint(g);
   if (kind === "lava") {
     const m = parts.body.material as THREE.MeshToonMaterial;
     return (t) => (m.emissiveIntensity = 0.65 + 0.35 * Math.sin(t / 700));

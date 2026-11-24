@@ -1,11 +1,12 @@
 "use client";
 
-// The gnome shop's frame, in the game's first load (light: no shop logic):
-// what the shop screen (Shop.tsx, its own chunk) shows around its data, so
-// the screen has its final layout from its first paint. ShopSkeleton is what
-// shows while the shop's chunk downloads (Golf.tsx's dynamic import), and
-// Shop.tsx draws its own head and slots with the same pieces while the chain
-// answers: the same sizes then, nothing moving once the figures come in.
+// The gnome shop's frame, in the shop's part of the game (Game.tsx's chunk;
+// light: no shop logic): what the shop screen (Shop.tsx, its own chunk) shows
+// around its data, so the screen has its final layout from its first paint.
+// ShopSkeleton is what shows while the shop's chunk downloads (Game.tsx
+// ShopScreen), and Shop.tsx draws its own head and slots with the same pieces
+// while the chain answers: the same sizes then, nothing moving once the
+// figures come in.
 import "@/app/gnomes.css";
 import { FrontScreen } from "@/components/About";
 import { Button } from "@/components/ui";

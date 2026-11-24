@@ -310,14 +310,23 @@ void test("replay: a named cause (a slope) glows and clears through fadeSlopes",
   api.clearGlow(); // never throws with nothing left glowing
 });
 
-void test("replay: a wind cause over a windy zone, and a tilt when it isn't wind", () => {
-  const { E, ball } = makeFixture();
-  const api = makeReplay(E);
-  const wind = mkZone({ kind: "slope", min: [-1, -1], max: [7, 1], skin: "wind", vec: [1, 0] });
-  E.g.s = mkHole([wind]) as unknown as GameState["s"];
-  return withFakeClock(() => api.replay([[0, 0], [3, 0]], false, "00", "-w")).then(() => {
+void test("replay: a wind cause over a windy zone, and a tilt when it isn't wind", async () => {
+  const named = async (zones: Zone[], why: string) => {
+    const { E, ball } = makeFixture();
+    const kinds = new Set<string>();
+    E.causes.at = (_p, _vx, _vz, c) => (kinds.add(c!.kind), null);
+    E.g.s = mkHole(zones) as unknown as GameState["s"];
+    await withFakeClock(() => makeReplay(E).replay([[0, 0], [3, 0]], false, "00", why));
     assert.ok(Math.abs(ball.position.x - 3) < 1e-6);
-  });
+    return [...kinds];
+  };
+  const box = { min: [-1, -1] as Vec2, max: [7, 1] as Vec2 };
+  assert.deepEqual(await named([mkZone({ kind: "slope", ...box, skin: "wind", vec: [1, 0] })], "-w"), ["wind"]);
+  // a mines vent: moving air by the chain's own flag, on a clock, and a hill under it
+  const vent = mkZone({ kind: "slope", ...box, skin: "vent", air: true, every: 8, on: 3, vec: [0.25, 0] });
+  assert.deepEqual(await named([vent], "-w"), ["wind"]);
+  assert.deepEqual(await named([mkZone({ kind: "slope", ...box, vec: [0.2, 0] }), vent], "-s"), ["slope"]);
+  assert.deepEqual(await named([mkZone({ kind: "slope", ...box, skin: "seesaw", every: 8, on: 4, vec: [0.2, 0] })], "-s"), ["tilt"]);
 });
 
 void test("replay: no flags at all (an older realm) guesses the flight from the ground itself", async () => {
@@ -480,6 +489,22 @@ void test("a ride's frame that throws lets the camera go and tells its set piece
   assert.ok(pinned, "the ride had the camera");
   assert.equal(g.ride, null, "let go after the throw");
   assert.equal(at[at.length - 1], -1, "its set piece told it is over");
+});
+
+void test("replay: a drop's camera lets go once the ball is gone, even when a frame comes late (a tab hidden mid-fall)", async () => {
+  const { E, g, ball } = makeFixture();
+  const api = makeReplay(E);
+  // the void round the lane: off it past x 3, back to the start
+  const dark = mkZone({ kind: "hazard", min: [0, -10], max: [20, 10], poly: [[-1, -1], [3, -1], [3, 1], [-1, 1]], outside: true, skin: "void" });
+  g.s = mkHole([dark]) as unknown as GameState["s"];
+  let late = 0, pinned = false;
+  const frame = () => {
+    pinned ||= !!g.ride;
+    if (!late && g.ride && ball.scale.x < 1) late = 2000; // going down out of sight: the next frame 2 s on
+  };
+  await withSteppedClock(16, frame, () => api.replay([[0, 0], [2.9, 0], [0, 0]], false, "000", "---"), (t) => t + late);
+  assert.ok(pinned && late, "the camera over the lip, the ball going down");
+  assert.equal(g.ride, null, "let go");
 });
 
 /** What a fall puts in the scene (the geometries' types): into a hazard of

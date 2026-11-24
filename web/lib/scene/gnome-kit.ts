@@ -10,7 +10,7 @@ import type { Skin } from "./gnome";
 export const KIT_HATS = ["straw", "bucket", "sailor", "bandana", "beret", "beanie", "alpine", "slouch", "pith",
   "skullcap", "souwester", "mill", "mushroom"] as const;
 export type KitHat = (typeof KIT_HATS)[number];
-export const isKitHat = (s: Skin["shape"]): s is KitHat => !!s && (KIT_HATS as readonly string[]).includes(s);
+const isKitHat = (s: Skin["shape"]): s is KitHat => !!s && (KIT_HATS as readonly string[]).includes(s);
 
 const Q = Math.PI / 2;
 const at = <T extends THREE.Object3D>(o: T, x: number, y: number, z: number) => (o.position.set(x, y, z), o);
@@ -158,9 +158,11 @@ export function hatTop(skin: Skin) {
   return skin.tall ? 1.02 : 0.575;
 }
 
-/** One of the collection's hats, into the hat's group. */
-export function kitHat(hat: THREE.Group, skin: Skin & { shape: KitHat }) {
+/** One of the collection's hats, into the hat's group: whether the skin wears one. */
+export function kitHat(hat: THREE.Group, skin: Skin) {
+  if (!isKitHat(skin.shape)) return false;
   hat.add(...HATS[skin.shape].build(skin, flat(skin.hat)));
+  return true;
 }
 
 /** A dab on the face: a disc lying on the head's surface at (x, y). */

@@ -31,11 +31,11 @@
 // after), an arrow moves the focused one a cell, Enter or Space opens or
 // shuts it; painting itself takes the pointer.
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
-import { middleOf, pieceLabel, whereOf } from "@/lib/builder/edit";
+import { pieceLabel, whereOf } from "@/lib/builder/edit";
 import { commonShift } from "@/lib/builder/editor";
 import { boxIn, centreOn, FLAT, frameView, fromPlane, islandIn, gridLines, matrixOf, pinch, relook, toBoard, toPlane, toScreen, zoomAt, type Look, type View } from "@/lib/builder/view";
 import { BOARD, MARGIN } from "@/lib/builder/gg1";
-import { handlesOf, type HandleKey } from "@/lib/builder/handles";
+import { handlesOf, middleOf, type HandleKey } from "@/lib/builder/handles";
 import { type PaletteEntry } from "@/lib/builder/palette";
 import type { ValidateOptions } from "@/lib/builder/pipeline";
 import type { Draft, Piece, V } from "@/lib/builder/draft";
@@ -273,7 +273,7 @@ export default function Board(props: BoardProps) {
   // Show me: the piece in the middle of the board
   useEffect(() => {
     const p = props.show && draft.pieces.find((q) => q.id === props.show!.id);
-    if (p && size.w) setView((v) => v && centreOn(v, toPlane(middleOf(p), look), { w: size.w, h: size.h - 56 }));
+    if (p && size.w) setView((v) => v && centreOn(v, toPlane(middleOf(p), look), { w: size.w, h: size.h - DOCK.bottom }));
   }, [props.show?.n]); // eslint-disable-line react-hooks/exhaustive-deps -- (asked, not as the draft changes)
   // a re-framed draft moved as a whole: the view follows, nothing jumps
   useEffect(() => {
@@ -528,7 +528,7 @@ export default function Board(props: BoardProps) {
             <animateMotion dur="1s" fill="freeze" path={rollPath} />
           </circle>
         )}
-        {ghost && <g className="board__ghost" pointerEvents="none"><PieceShape p={ghost.p} state={ghost.why ? "bad" : "ghost"} /></g>}
+        {ghost && <g className={`board__ghost${ghost.why ? " board__ghost--no" : ""}`} pointerEvents="none"><PieceShape p={ghost.p} state={ghost.why ? "bad" : "ghost"} /></g>}
         {/* the brush under the pointer: the cells a press paints (or erases), exactly; none over a side or an end */}
         {mode && green && <rect ref={brush} className={`board__brush board__brush--${mode}${side || end ? " board__brush--off" : ""}`} x={-1e3} y={-1e3} width={BRUSH} height={BRUSH} pointerEvents="none" />}
         {/* the stroke as one ghost: the green it makes, and its walls */}

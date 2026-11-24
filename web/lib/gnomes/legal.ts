@@ -8,7 +8,7 @@
 // what is missing anywhere else.
 import { aboutGnot as about } from "../adena";
 import { shortAddr } from "../chain";
-import { dateParts, gnot, totalOf, utcDate, type Bill } from "./shop";
+import { dateParts, gnot, tierName, totalOf, utcDate, type Bill } from "./shop";
 
 const env = (v: string | undefined, placeholder: string) => (v && v.trim()) || placeholder;
 /** Who sells (特定商取引法に基づく表記; the EU's trader): name, geographical address, e-mail. */
@@ -42,7 +42,6 @@ export const parLine = (tier: string, price: number) => (Object.hasOwn(PAR, tier
 /** Words the shop never uses (§5), lower case. */
 export const BANNED = ["invest ", "investment opportunity", "floor", "returns on", "roi", "profit", "appreciate", "will go up", "last chance", "only "];
 
-const TIER: Record<string, string> = { common: "Common", rare: "Rare", epic: "Epic", legendary: "Legendary", earned: "Earned" };
 /** A time in Japan's (UTC+9), as the copy says it: "Mon 14 Dec, 03:00 JST". */
 export function jstDate(unix: number) {
   const p = dateParts(unix + 9 * 3600);
@@ -69,7 +68,7 @@ export function review(o: Order): { total: Term; pay: Term[]; terms: Term[] } {
   return {
     total: ["Total", `${gnot(o.total)} GNOT at most`],
     pay: [
-      ["Item", `${o.name} (#${o.id}, ${TIER[o.tier] || o.tier}), ${o.n} ${o.n === 1 ? "item" : "items"}`],
+      ["Item", `${o.name} (#${o.id}, ${tierName(o.tier)}), ${o.n} ${o.n === 1 ? "item" : "items"}`],
       ["Price", `${gnot(o.price)} GNOT`],
       ["Other costs", `Storage deposit about ${about(o.deposit)} GNOT (held by the chain, returned if you burn the gnome) + network fee about ${about(o.fee)} GNOT. Neither is paid to us.`],
       ["Payment", "Paid now, in GNOT, from your own wallet, in the transaction you sign."],
@@ -95,7 +94,7 @@ export function receipt(r: Receipt) {
   return [
     `Seller: ${SELLER.name}, ${SELLER.address}, ${SELLER.email}`,
     `Date and time: ${r.at ? stamp(r.at) : "(the block's, on the chain)"}`,
-    `Item: ${r.name}, #${r.id}, ${TIER[r.tier] || r.tier}. Contract ${r.realm}`,
+    `Item: ${r.name}, #${r.id}, ${tierName(r.tier)}. Contract ${r.realm}`,
     `Price paid: ${gnot(r.price)} GNOT (+ network fee ${about(r.fee)} GNOT, storage deposit ${about(r.deposit)} GNOT held by the chain)`,
     `Delivered to: ${r.address}`,
     `Sale period: ${salePeriod(r.closesAt, r.now)}`,

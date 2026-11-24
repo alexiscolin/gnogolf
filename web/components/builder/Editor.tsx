@@ -21,7 +21,7 @@ import { Button } from "@/components/ui";
 import { useFlash } from "@/components/common";
 import { census } from "@/lib/builder/drawn";
 import { canPlace, toWorld, copyPiece, dropEnd, fixOf, gate, movePiece, placeNear, placePiece, removePiece, roomFor, whereOf, clampMove } from "@/lib/builder/edit";
-import { brokenLine, CHECKING, gauges, meterFace, NO_GL, offAtLimit, pieceGauges, playWhenAsked, sameShape, testGate } from "@/lib/builder/editor";
+import { brokenLine, CHECKING, gauges, meterFace, offAtLimit, pieceGauges, playWhenAsked, sameShape, testGate } from "@/lib/builder/editor";
 import { stageRenderer } from "@/lib/builder/stage";
 import { retitle, slugOf as slugOfTitle } from "@/lib/builder/templates";
 import { frame } from "@/lib/builder/gg1";
@@ -63,7 +63,7 @@ import { FLAT, fromPlane, TILT, type Look } from "@/lib/builder/view";
 const CHECK_MS = 150;
 /** How long after a clean check the difficulty meter is asked (about 400 ms after the last change). */
 const METER_MS = 250;
-/** The Builder's worlds, for the header's "…" menu. */
+/** The Builder's worlds, for the header's world menu. */
 const WORLDS = Object.keys(FIELD);
 /** Quick shots kept on the board: the latest and three faded. */
 const SHOTS_KEPT = 4;
@@ -102,9 +102,9 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const shapeOf = useRef(kept);
   if (!sameShape(shapeOf.current, kept)) shapeOf.current = kept;
   const shape = shapeOf.current;
-  const [palette, setPalette] = useState<readonly PaletteEntry[] | null>(null);
-  // the world the palette is of (a switch hands it over with the draft: nothing unmounts to load it again)
-  const paletteWorld = useRef("");
+  // each world's palette as loaded (a switch hands its own over with the draft, an undo finds the one before: nothing unmounts to load it again)
+  const [palettes, setPalettes] = useState<ReadonlyMap<string, readonly PaletteEntry[]>>(new Map());
+  const palette = palettes.get(draft.world) ?? null;
   // its load failed (offline, an old deploy's chunk gone), and each Try again (the world's loader forgets a failed load)
   const [unloaded, setUnloaded] = useState(false), [tries, setTries] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
@@ -174,11 +174,10 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
 
   // the world's palette, loaded with its module
   useEffect(() => {
-    if (palette && paletteWorld.current === draft.world) return;
+    if (palette) return;
     let stale = false;
-    setPalette(null);
     setUnloaded(false);
-    void loadPalette(draft.world).then((p) => !stale && ((paletteWorld.current = draft.world), setPalette(p)), () => !stale && setUnloaded(true));
+    void loadPalette(draft.world).then((p) => !stale && setPalettes((m) => new Map(m).set(draft.world, p)), () => !stale && setUnloaded(true));
     return () => void (stale = true);
   }, [draft.world, tries]); // eslint-disable-line react-hooks/exhaustive-deps -- (palette: read, not a reason to load)
 
@@ -274,13 +273,14 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const commit = () => (session.commit(), refresh());
   const cancel = () => (session.cancel(), refresh());
 
-  /** A one-step edit, made only if the gate lets it through (census and all; the hole as kept, its errors as checked already); refused: why, or what to say instead. */
-  const tryEdit = (next: Draft | null, fail: string, refused?: string) => {
-    if (!next || !full) return say(fail);
+  /** A one-step edit, made only if the gate lets it through (census and all; the hole as kept, its errors as checked already); refused: why, or what to say instead. Whether it was made. */
+  const tryEdit = (next: Draft | null, fail: string, refused?: string): boolean => {
+    if (!next || !full) return (say(fail), false);
     const before = checked?.of === shape && draft === kept ? checked.v.issues.filter((i) => i.severity === "error") : undefined;
     const r = gate(draft, next, full, before);
-    if ("why" in r) return say(refused ?? r.why);
+    if ("why" in r) return (say(refused ?? r.why), false);
     set(r);
+    return true;
   };
   const piece = draft.pieces.find((p) => p.id === selected) ?? null;
   const turn = () => {
@@ -295,8 +295,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const copy = () => piece && quick && tryEdit(copyPiece(draft, piece.id, quick), roomFor(draft, piece) || "No room near it for a copy.");
   // deleted: the focus to the board (Tab goes on to its pieces), not lost with the Inspector's button
   const remove = () => {
-    if (!piece) return;
-    tryEdit(removePiece(draft, piece.id), "");
+    if (!piece || !tryEdit(removePiece(draft, piece.id), "")) return;
     setSelected(null);
     requestAnimationFrame(() => document.querySelector<HTMLElement>(".board")?.focus());
   };
@@ -343,8 +342,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
       if ("refused" in r) return say(`The ${w} has no ${r.refused.join(", ")}.`);
       if ("why" in r) return say(`Not in the ${w}: ${r.why}`);
       // (its pieces with it, in the same render: the board and the column stay mounted, the hole built once)
-      paletteWorld.current = w;
-      setPalette(p);
+      setPalettes((m) => new Map(m).set(w, p));
       set(r);
     }, () => say(`The ${w}'s pieces could not load: try again.`)); // (offline, a deploy mid-flight: the hole stays where it is)
   };
@@ -450,7 +448,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   return (
     <main className={`bench tint--${draft.world}`}>
       <Header title={draft.title} address={{ slug: draft.slug, fixed: !!draft.proofs.length }} world={draft.world} worlds={WORLDS} step="edit"
-        steps={{ edit: { locked: "", done: false }, play: { locked: playOff && playOff !== CHECKING ? (gl ? playOff : NO_GL) : "", done: proved }, publish: { locked: shut, done: false } }}
+        steps={{ edit: { locked: "", done: false }, play: { locked: playOff === CHECKING ? "" : playOff, done: proved }, publish: { locked: shut, done: false } }}
         action={proved ? { text: "Publish", onClick: publish } : { text: "Play", key: "T", off: playOff, onClick: play }}
         meter={meterFace(clean, est, shape)} lineOn={lineOn} onLine={guess || lineOn ? () => setLineOn((on) => !on) : undefined} bump={parBump}
         history={{ undo: () => (session.undo(), refresh()), redo: () => (session.redo(), refresh()), canUndo: session.canUndo(), canRedo: session.canRedo() }}

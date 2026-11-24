@@ -4,6 +4,7 @@
 // with its name, world, par and author over it, and the author's own score
 // to beat (proof.ts builderScore).
 import { holeLink, strokesWord } from "@/components/common";
+import { FONT, GREEN, INK, PAPER } from "@/lib/brand";
 import { MAX_TITLE } from "@/lib/builder/draft";
 import { holeByline } from "@/lib/builder/holes";
 
@@ -37,14 +38,14 @@ export function shareCard(from: HTMLCanvasElement, lines: [string, string, strin
   const x = c.getContext("2d");
   if (!x) return Promise.resolve(null);
   x.drawImage(from, 0, 0, W, pic);
-  x.fillStyle = "#fdf6e9";
+  x.fillStyle = PAPER;
   x.fillRect(0, pic, W, strip);
-  x.fillStyle = "#144134";
-  x.font = "700 56px Fredoka, ui-rounded, system-ui, sans-serif";
+  x.fillStyle = INK;
+  x.font = `700 56px ${FONT}`;
   x.fillText(lines[0], 48, pic + 72);
-  x.font = "600 32px Fredoka, ui-rounded, system-ui, sans-serif";
+  x.font = `600 32px ${FONT}`;
   x.fillText(lines[1], 48, pic + 120);
-  x.fillStyle = "#226c57";
+  x.fillStyle = GREEN;
   x.fillText(lines[2], 48, pic + 160);
   return new Promise((r) => c.toBlob(r, "image/png"));
 }

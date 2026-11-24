@@ -59,6 +59,9 @@ void test("anything else is refused, with why", () => {
   const twice = base();
   twice.pieces[1] = { ...twice.pieces[1], id: "p1" };
   assert.equal(why(twice), "Two pieces are called p1.");
+  const end = base();
+  end.pieces[1] = { ...end.pieces[1], id: "tee" };
+  assert.equal(why(end), "Piece tee has a name the Builder keeps for the tee and the cup.", "(the board selects the tee and the cup by these)");
   const pulse = base();
   pulse.pieces[1] = { ...pulse.pieces[1], clock: { k: "stroke", pulse: 4 } };
   assert.equal(why(pulse), "Piece p2 comes and goes with a pulse the draft does not have.");

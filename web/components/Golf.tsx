@@ -350,8 +350,6 @@ function Toast({ text, onDone, ms = 3200, center }: { text: string; onDone: () =
 // saved: null when not known yet (counted as a first save: the larger).
 const depositOf = (saved: boolean | null, bytePrice: number, firstOnCourse: boolean, strokes: number) => depositBytes(saved !== true, firstOnCourse, strokes) * bytePrice;
 
-
-
 export default function Golf() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const game = useRef<Game | null>(null);
@@ -439,7 +437,7 @@ export default function Golf() {
     setAimState(m);
     game.current && game.current.setMode(m);
   };
-  const [chainName, setChainName] = useState("");
+  const [chainId, setChainId] = useState<string | null>(null);
   // the curtain between holes: shut on the way out, open once the next is built
   const [curtain, setCurtain] = useState<{ n: string; name: string; id: string; open?: boolean } | null>(null);
   // the page's own timers (the curtain's wait, the demo's, the ?won and ?shot
@@ -539,6 +537,8 @@ export default function Golf() {
     if (had.includes(id)) return true;
     return !!(allList.length && UNLOCKS[gn.unlock].ok(cups));
   };
+  const unlockedRef = useRef(unlocked); // (for an answer landing after this render: readWorn's)
+  unlockedRef.current = unlocked;
   // once earned, remembered — outside render, so a render never writes storage
   useEffect(() => {
     if (!allList.length) return;
@@ -548,6 +548,7 @@ export default function Golf() {
   // playing for real: who is connected, and where the current round's record is
   const [real, setReal] = useState<WalletFrom | false>(false); // the explainer is open, and from where
   const [account, setAccount] = useState<Account | null>(null);
+  const me = account && account.address;
   // the connected wallet's records, read at each visit: on a new device or cleared data the holes this
   // browser has no score for filled from the chain, then only what was saved since (played elsewhere:
   // a New game or a reset is not filled back); the cups, gnomes and badges follow, said wherever the
@@ -622,7 +623,7 @@ export default function Golf() {
   useEffect(() => void (over && s && s.holed && s.id && !played && track("save_expired", { where: "card", hole: s.id, strokes: s.strokes })), [over]); // eslint-disable-line react-hooks/exhaustive-deps -- as it runs out
   const canSave = !played && !closed; // the card's one action while it lasts
   // the place a finished hole would take on its board, shown on the save button
-  const nudge = useRankNudge(s, game.current && game.current.chain, account && account.address, (s && s.roundMode) || aim, played, closed);
+  const nudge = useRankNudge(s, game.current && game.current.chain, me, (s && s.roundMode) || aim, played, closed);
   // a name just taken in the game, said until the next hole
   const [namedAs, setNamedAs] = useState("");
   const holeNow = s && s.id;
@@ -631,8 +632,9 @@ export default function Golf() {
   // started from the gnome's, for its own hole's round
   const [nameStem, setNameStem] = useState(() => suggestName(gnome));
   useEffect(() => setNameStem(suggestName(gnome)), [holeNow, gnome]);
-  // a save under way, one per card (the win card's, the waiting round's): a second click starts no second one
-  const savingWin = useRef(false), savingKept = useRef(false);
+  // a save under way, either card's (the win card's, the waiting round's: the same round can be on both):
+  // a second click starts no second one
+  const saving = useRef(false);
   // the rounds whose last commit went through, and how that went (SENT)
   const [sentRounds] = useState(() => new Map<string, Rec>(loadSent()));
   const markSent = (key: string, rec: Rec) => {
@@ -668,7 +670,7 @@ export default function Golf() {
   // the shot's clip once made (ShareClip), for the share buttons to send
   const [clip, setClip] = useState<Clip | null>(null);
   // and the place the round took, once saved
-  const savedPlace = useSavedPlace(s, game.current && game.current.chain, account && account.address, (s && s.roundMode) || aim, onChain);
+  const savedPlace = useSavedPlace(s, game.current && game.current.chain, me, (s && s.roundMode) || aim, onChain);
 
   const play = (direct = false) => {
     setScreen("play");
@@ -680,7 +682,7 @@ export default function Golf() {
   const choose = (id: string) => {
     setGnome(id);
     // a locked one is only being looked at: it is not saved and not played
-    if (!unlockedRef.current(id)) return;
+    if (!unlocked(id)) return;
     // a gnome of the collection is this account's pick, kept in this browser (free, nothing on chain);
     // one of the game's is the browser's too
     if (!GNOMES.some((g) => g.id === id)) {
@@ -688,7 +690,10 @@ export default function Golf() {
     } else (saveGnome(id), SHOP && account && pick(account.address, id));
     game.current && game.current.setGnome(id);
   };
-  const unlockedRef = useRef<(id: string) => boolean>(() => true);
+  // the picker left on a locked gnome (its Back, Escape, the browser's Back): back to the one really chosen
+  useEffect(() => {
+    if (screen !== "pick" && !unlocked(gnome)) setGnome(savedGnome());
+  }, [screen, gnome]); // eslint-disable-line react-hooks/exhaustive-deps -- as either turns
 
   useEffect(() => {
     if (!cfg || !canvas.current) return;
@@ -767,7 +772,7 @@ export default function Golf() {
     // the game's first frame) and the test hooks (?camlog, a dev ?won) are
     // modules of their own, fetched only for a page that asks for them.
     const logs = camlog();
-    const wantPromo = /[?&]promo/.test(window.location.search) && (DEV || logs), wantProbes = logs || cfg.won > 0;
+    const wantPromo = /[?&]promo/.test(window.location.search) && (DEV || logs), wantProbes = logs || (DEV && cfg.won > 0);
     const wantWardrobe = SHOP && !!(cfg.traits || cfg.rivalTraits); // (a collection gnome to draw: its wardrobe and the shop's part first)
     // on the title, the hole behind it is built in the first idle moment (1.2 s
     // at most): built at once with the title's own scene, a phone's first
@@ -830,9 +835,9 @@ export default function Golf() {
 
   useEffect(() => {
     let live = true;
-    if (holeId && game.current && !chainName) void within(game.current.chain.chainId()).then((n) => live && setChainName(n)).catch(() => {});
+    if (holeId && game.current && !chainId) void within(game.current.chain.chainId()).then((n) => live && setChainId(n)).catch(() => {});
     return () => void (live = false);
-  }, [holeId, chainName]);
+  }, [holeId, chainId]);
 
   // a dare in the link (by: the sharer), or a player picked on a board: their
   // best on each hole played, read on the chain with its round, raced as a
@@ -856,7 +861,6 @@ export default function Golf() {
   const movedGhosts = useRef(new Set<string>());
   const dareNow = useRef(""); // the rival raced now: a read for another one, or for a duel dropped, lands on nothing
   dareNow.current = dare && !solo ? dare : "";
-  const me = account && account.address;
   // a save's state is its account's: another account starts afresh, and the won round and the
   // kept one show how their save went for this one (sent before a reload: only read again,
   // "Check again"; an account gone a moment, Adena locked, finds its saved round saved)
@@ -976,13 +980,14 @@ export default function Golf() {
   const raceWith = (player: string, from: RivalKind = "board") => (setBoard(false), game.current?.reset(), pickRival(player, from));
   // a rival picked on the rival screen (or its board's sheet): their ghosts next, their bests kept when read there
   const toGhosts = (player: string, bests?: ReadonlyMap<string, Readonly<Record<Mode, number>>>, from?: RivalKind) => (sound("select"), bests && setRivalOn({ by: player, bests, at: saves }), raceWith(player, from), setScreen("ghosts"));
-  const dropDuel = () => {
-    track("duel_dropped", { rival: rivalKind() });
+  // Play solo, the picker's or the game's choice's: the duel dropped for the page (note: the word said as it goes)
+  const dropDuel = (note: string | null) => {
+    if (dare && !solo) track("duel_dropped", { rival: rivalKind() });
     setSolo(true);
     setRival(null);
     setDareNote("");
-    setLinkNote("Solo now. Your strokes still count.");
-    // (its link goes with it: the keyboard's focus to the picker's button)
+    setLinkNote(note);
+    // (on the picker its link goes with it: the keyboard's focus to its button)
     requestAnimationFrame(() => document.querySelector<HTMLElement>(".screen--pick .btn--play")?.focus());
   };
 
@@ -1060,7 +1065,7 @@ export default function Golf() {
   useEffect(() => {
     const c = game.current && game.current.chain;
     if (SHOP && c && dare) askWorn(c, dare);
-  }, [dare]);
+  }, [dare, chainUp]);
   const openShop = (v: ShopView = {}) => {
     if (!shopOn) return; // (no door to the shop where it is not offered, nor before the region has answered)
     if (screen !== "shop") shopFrom.current = screen === "title" ? "modes" : screen;
@@ -1099,12 +1104,12 @@ export default function Golf() {
   // block a wallet window opened after long waits); each read gives up at 4 s
   const [gasPrice, setGasPrice] = useState(PRICE);
   const [funds, setFunds] = useState<number | null>(null);
-  const [chainId, setChainId] = useState<string | null>(null);
   const [ourNode, setOurNode] = useState<boolean | null>(null); // is Adena's active network this node?
   const [slowSign, setSlowSign] = useState(false); // Adena open for more than 10 s
   const [bytePrice, setBytePrice] = useState(BYTE_PRICE); // ugnot per stored byte (vm params)
   const [best, setBest] = useState<number | null>(null); // this player's best on this hole, in this round's mode (0: none; null: unknown)
   const saved = best == null ? null : best > 0; // whether they have one
+  const [bestAsked, setBestAsked] = useState(""); // the hole and mode whose best was asked, answered or not
   const [ghostHere, setGhostHere] = useState(false); // a best of theirs here in either mode: their link dares (a friend races either)
   // the player's saved holes on the course, per mode (Rank() "holes"; null: not read)
   const [onCourse, setOnCourse] = useState<{ assisted: number; pro: number } | null>(null);
@@ -1122,7 +1127,8 @@ export default function Golf() {
     const c = game.current.chain;
     void Promise.all([within(c.bests(saveId, "assisted", [account.address])), within(c.bests(saveId, "pro", [account.address]))])
       .then(([a, p]) => live && (setBest((saveMode === "pro" ? p : a).rows[0]?.strokes ?? 0), setGhostHere(a.rows.length + p.rows.length > 0)))
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => live && setBestAsked(`${saveId}#${saveMode}`));
     void Promise.all([within(c.rank("assisted", account.address)), within(c.rank("pro", account.address))])
       .then(([a, p]) => live && setOnCourse({ assisted: a.holes, pro: p.holes }))
       .catch(() => {});
@@ -1178,7 +1184,6 @@ export default function Golf() {
     const land = <T,>(f: (v: T) => void) => (v: T) => live && f(v);
     const c = game.current.chain;
     void within(c.gasPrice()).then(land(setGasPrice)).catch(() => {});
-    void within(c.chainId()).then(land(setChainId)).catch(() => {});
     void within(c.balance(account.address)).then(land(setFunds)).catch(() => live && setFunds(null));
     void onOurNode(c.rpc).then(land(setOurNode));
     void within(c.storagePrice()).then(land(setBytePrice)).catch(() => {});
@@ -1187,7 +1192,7 @@ export default function Golf() {
     const back = () => document.visibilityState === "visible" && void within(c.balance(account.address)).then(land(setFunds)).catch(() => {});
     document.addEventListener("visibilitychange", back);
     return () => ((live = false), document.removeEventListener("visibilitychange", back));
-  }, [account, holedNow]);
+  }, [account, holedNow, chainUp]);
   // a hole won: the chain's clock read again (at most once a minute), for the
   // save's countdown, and the gas price for the gnokey fallback (no Adena)
   useEffect(() => {
@@ -1230,7 +1235,7 @@ export default function Golf() {
     if (!r) return;
     const round = roundOf(r);
     // (its state is its own round's; forgotten or replaced, no later part goes)
-    void saveRound(r, (rec) => setPendingRec({ round, rec }), () => !!pendingNow.current && roundOf(pendingNow.current) === round, savingKept, saveName, send, who);
+    void saveRound(r, (rec) => setPendingRec({ round, rec }), () => !!pendingNow.current && roundOf(pendingNow.current) === round, saveName, send, who);
   };
 
   // the round the win card offers to save (send: false, only asked of the chain for who: a gnokey save)
@@ -1238,7 +1243,7 @@ export default function Golf() {
     if (send && block) return setReal("card");
     if (!s || !game.current || !s.id) return;
     const r = { ...s, id: s.id }, round = roundOf(r);
-    await saveRound(r, (rec) => roundKey.current === round && setRecord(rec), () => roundKey.current === round, savingWin, saveName, send, who);
+    await saveRound(r, (rec) => roundKey.current === round && setRecord(rec), () => roundKey.current === round, saveName, send, who);
   }
   // a gnokey save said done, for the round on offer (the won one, else the kept one)
   const gnokeySaved = (who: string) => (winning ? void recordIt(false, who) : keptSave(false, who));
@@ -1247,21 +1252,21 @@ export default function Golf() {
    * Puts a finished round on the chain: in as many commits as the chain cuts
    * it into, each signed in Adena, then read back. land says how it goes;
    * alive: the player is still on it (a later commit is not sent otherwise);
-   * lock: that card's save under way; name: taken in the first signature;
+   * name: taken in the first signature;
    * send: false, nothing is sent: only whether the chain holds it already,
    * as the best of who (a gnokey key's address), the account's by default.
    */
-  async function saveRound(r: SaveOf, land: (rec: Rec) => void, alive: () => boolean, lock: { current: boolean }, name: string | null, send = true, who = "") {
+  async function saveRound(r: SaveOf, land: (rec: Rec) => void, alive: () => boolean, name: string | null, send = true, who = "") {
     // the player the chain is asked about: the account connected, which alone sends
-    const player = (!send && who) || (account && account.address);
+    const player = (!send && who) || me;
     if (!player || (send && !account) || !game.current) return;
     // busy before anything is awaited: a second click must not start a second save
-    if (lock.current) return;
+    if (saving.current) return;
     // a round that went through is not sent again: the chain would play it again, and charge for it
     // (one the chain could not confirm yet is read again, not sent)
     const key = sentKey(game.current.chain, player, r), sentAs = sentRounds.get(key);
     if (sentAs && !(sentAs.at === "unsure" && sentAs.sent)) return land(sentAs);
-    lock.current = true;
+    saving.current = true;
     land(sentAs || !send ? { at: "checking" } : { at: "signing" });
     // the save's funnel (analytics): the part being signed, of how many, and the gas asked
     const t0 = performance.now(), at = { part: 0, parts: 0, gas: 0 };
@@ -1395,7 +1400,7 @@ export default function Golf() {
       if (name && at.part <= 1) track("name_registered", { ok: false, via: "save", reason: cancelled ? "cancelled" : reason });
       land(cancelled ? null : { at: "refused", error: messageOf(err), stale: /weather .* is over|is not the current weather/.test(String((err as SendError).message)) });
     } finally {
-      lock.current = false;
+      saving.current = false;
     }
   }
 
@@ -1410,7 +1415,6 @@ export default function Golf() {
     return () => window.removeEventListener("keydown", onKey);
   }, [cupsScreen]);
 
-  unlockedRef.current = unlocked;
   // the new hole is on screen, built and its shaders ready: open the curtain
   // a hole that would not load or draw: the curtain goes, so its banner (Try again, Pick a hole) is seen
   const errorNow = !!(s && s.error);
@@ -1443,10 +1447,10 @@ export default function Golf() {
   const finishSaid = useRef(false);
   useEffect(() => {
     if (!holed) return void (finishSaid.current = false);
-    if (!playing || finishSaid.current || (account && saveId && best == null)) return; // (the player's best read first: it decides what the card pushes)
+    if (!playing || finishSaid.current || (account && saveId && bestAsked !== `${saveId}#${saveMode}`)) return; // (the player's best asked first: it decides what the card pushes)
     finishSaid.current = true;
     track("finished_shown", { primary: pushSave ? "save" : rematch ? "rematch" : cupWon && s && cupWon.id === s.id ? "cup" : "next", can_save: canSave, phone_only: phoneOnly, duel: !!won });
-  }, [holed, playing, best]); // eslint-disable-line react-hooks/exhaustive-deps -- as it shows
+  }, [holed, playing, bestAsked]); // eslint-disable-line react-hooks/exhaustive-deps -- as it shows
   const nextAfter = cupWon && s ? nextCup(cupWon.cup, s.worlds) : ""; // the cup after the one just complete
   // the hole a link opened, named over the gnomes (from the cups, the player knows where they go)
   const linked = s && s.linked && s.id && s.name ? `${s.place ? `Hole ${holeNumber(s.holes, s.id)} · ` : ""}${s.name}` : "";
@@ -1554,8 +1558,8 @@ export default function Golf() {
   const holesNow = cardHoles(Object.keys(card).length), savedAny = Object.keys(onChainCard).length > 0;
   useEffect(() => register({ card_holes: holesNow, saved_any: savedAny }), [holesNow, savedAny]);
   useEffect(() => {
-    register({ aim, cam: camNow, gnome: gnomeWord(gnome), adena: hasAdena(), connected: !!account, wallet_on_node: ourNode, chain: chainName || null, network: cfg ? networkOf(cfg.rpc) : null, hole: playing ? holeId : null, cup: playing ? world : null });
-  }, [aim, camNow, gnome, account, ourNode, chainName, cfg, playing, holeId, world]);
+    register({ aim, cam: camNow, gnome: gnomeWord(gnome), adena: hasAdena(), connected: !!account, wallet_on_node: ourNode, chain: chainId, network: cfg ? networkOf(cfg.rpc) : null, hole: playing ? holeId : null, cup: playing ? world : null });
+  }, [aim, camNow, gnome, account, ourNode, chainId, cfg, playing, holeId, world]);
   // the screen in view, the ones the address bar does not follow (the sheets, the cards) included
   const view = feedbackOpen ? "feedback" : support ? "support" : rules ? "rules" : about ? "about" : board ? "boards" : badgesOpen ? "badges" : cardOpen ? "card" : real ? "wallet" : cupWon && cupWon.open ? "victory" : playing && holed ? "finished" : screen;
   useEffect(() => (register({ screen: view }), track("screen", { name: view })), [view]);
@@ -1618,12 +1622,12 @@ export default function Golf() {
       {screen === "title" && <Title loading={!s} world={s ? s.world : undefined} gnome={SHOP ? gnomeById(gnome) : undefined} onStart={() => (setScreen(dare && !solo && dare === linkDare.current ? "ghosts" : "modes"), (linkDare.current = ""))} onAbout={() => setAbout(true)} />}
       {screen === "modes" && (
         <Modes gnome={gnome} counts={s ? s.worlds : undefined} onBack={() => setScreen(BACK.modes)} onAbout={() => setAbout(true)}
-          onSolo={() => (dare && !solo && track("duel_dropped", { rival: rivalKind() }), setSolo(true), setRival(null), setLinkNote(null), setDareNote(""), setScreen("worlds"))} onDuel={() => setScreen("rival")}
+          onSolo={() => (dropDuel(null), setScreen("worlds"))} onDuel={() => setScreen("rival")}
           onBuild={builderOn() ? () => router.push(buildLink(endpoints(window.location.search).keep)) : undefined}
           shop={shopOn ? { skin: shopSkin, line: shopBits ? shopBits.shopLine(promo) : SHOP_LINE, onOpen: () => openShop() } : undefined} />
       )}
       {screen === "rival" && s && (
-        <Rival s={s} chain={game.current && game.current.chain} me={account && account.address} mode={aim} gnome={gnome} onBack={() => setScreen(BACK.rival)} onAbout={() => setAbout(true)}
+        <Rival s={s} chain={game.current && game.current.chain} me={me} mode={aim} gnome={gnome} onBack={() => setScreen(BACK.rival)} onAbout={() => setAbout(true)}
           onPick={toGhosts} onBoard={() => setBoard(true)} onConnect={account ? undefined : () => (hasAdena() ? void connectWallet() : setReal("rival"))} />
       )}
       {screen === "ghosts" && (
@@ -1645,7 +1649,7 @@ export default function Golf() {
           chain={game.current && game.current.chain}
           racing={dare && !solo && <p className="dare">Racing {rivalName}</p>}
           next={(c) => toPlay[c][0]?.name}
-          podium={<Podium chain={game.current && game.current.chain} me={account && account.address} mode={aim} gnome={gnome} onOpen={() => setBoard(true)}
+          podium={<Podium chain={game.current && game.current.chain} me={me} mode={aim} gnome={gnome} onOpen={() => setBoard(true)}
             holes={toPlay[guessCup(s.world || "")].slice(0, 6)} onRace={(p, id) => (raceWith(p), openHole(id))}
             extra={<>
               <button className="linkish" onClick={() => (sound("blip"), setBadgesOpen(true))}>Badges {badgesEarned().length}/{BADGES.length} →</button>
@@ -1655,7 +1659,7 @@ export default function Golf() {
           onPick={enterCup}
         />
       )}
-      {screen === "pick" && <Picker world={(s && s.world) || "garden"} backLabel={cupsScreen === "ghosts" ? "Back to their ghosts" : undefined} hole={linked} dare={duel ? <DuelNote duel={duel} mode={aim} sky={sky} onDrop={dropDuel} mark={<Collector chain={game.current?.chain} player={dare} />} /> : !dareHole || dareHole === holeId ? dareNote : ""} aim={aim} onAim={setAim} gnome={gnome} onChange={choose} onPick={play} unlocked={unlocked} chosen={savedGnome()}
+      {screen === "pick" && <Picker world={(s && s.world) || "garden"} backLabel={cupsScreen === "ghosts" ? "Back to their ghosts" : undefined} hole={linked} dare={duel ? <DuelNote duel={duel} mode={aim} sky={sky} onDrop={() => dropDuel("Solo now. Your strokes still count.")} mark={<Collector chain={game.current?.chain} player={dare} />} /> : !dareHole || dareHole === holeId ? dareNote : ""} aim={aim} onAim={setAim} gnome={gnome} onChange={choose} onPick={play} unlocked={unlocked} chosen={savedGnome()}
         onPlayAs={(id) => (setGnome(id), play())}
         owned={(() => {
           // the collection under the picker's tile (in a region the shop is offered in): the player's own gnomes first, else the sale
@@ -1666,13 +1670,7 @@ export default function Golf() {
           return shopOn ? <CollectionSection promo={promo} owned={row} onOpen={() => openShop()} /> : row;
         })()}
         onAbout={() => setAbout(true)}
-       
-        onBack={() => {
-          sound("blip");
-          // leaving on a locked gnome: back to the one really chosen
-          if (!unlocked(gnome)) setGnome(savedGnome());
-          setScreen(cupsScreen);
-        }} />}
+        onBack={() => (sound("blip"), setScreen(cupsScreen))} />}
 
       {SHOP && screen === "shop" && game.current && (
         <Shop chain={game.current.chain} account={account} wallet={wallet} onConnect={() => void connectWallet()} view={shopView} onView={setShopView}
@@ -1920,7 +1918,7 @@ export default function Golf() {
             <Share
               // with a round of the sharer's on the chain here, the link dares the friend to beat it;
               // a duel dares them back once saved, and before, passes the rival's own dare on
-              link={s ? holeLink(s, gnome, won && !onChain ? won.duel.ghost.player : daring ? account.address : "", won ? "duel" : "hole") : ""}
+              link={holeLink(s, gnome, won && !onChain ? won.duel.ghost.player : daring ? account.address : "", won ? "duel" : "hole")}
               {...(won ? (!onChain ? { label: "Dare a friend", kind: "dare" } : won.duel.self ? { label: "Share your ghost", kind: "share_ghost" } : { label: "Dare them back", kind: "dare_back" }) : daring ? { label: "Dare a friend", kind: "dare" } : savedPlace ? { label: `Share your #${savedPlace.rank}`, kind: "share_rank" } : { label: "Share", kind: "share" }) satisfies { label: string; kind: ShareKind }}
               saved={onChain}
                 snapshot={() => (game.current ? game.current.snapshot(caption(s, won)) : Promise.resolve(null))}
@@ -1929,8 +1927,6 @@ export default function Golf() {
               />
             </div>
             {cfg && cfg.clips && <ShareClip make={(run) => (game.current ? game.current.clip(run, caption(s, won)) : Promise.resolve(null))} name={clipName(s.id || "")} onClip={setClip} />}
-
-
             {/* where the round is: said by the save clock below while it can still go on-chain */}
             {(onChain || s.period == null) && (
               <p>
@@ -1942,7 +1938,7 @@ export default function Golf() {
               </p>
             )}
             {won && <DuelFine duel={won.duel} mode={s.roundMode || aim} sky={sky} round={game.current ? game.current.chain.roundURL(won.duel.ghost.hole, won.duel.ghost.player) : undefined} />}
-            <Standings s={s} card={card} saved={onChainCard} chain={game.current && game.current.chain} me={account && account.address} mode={s.roundMode || aim} compact fresh={freshBadges} onRules={() => setRules(true)} />
+            <Standings s={s} card={card} saved={onChainCard} chain={game.current && game.current.chain} me={me} mode={s.roundMode || aim} compact fresh={freshBadges} onRules={() => setRules(true)} />
             <Unlocked fresh={fresh} onMeet={meet} />
             <NewBadges ids={freshBadges} onOpen={() => setBadgesOpen(true)} />
             <RecordState record={record} account={account} s={s} chain={game.current && game.current.chain} named={namedAs} />
@@ -1969,13 +1965,10 @@ export default function Golf() {
               // (once saved, the saved line says the name too)
               if (!warn && namedAs) return played ? null : <p className="note note--good">You are <b>{namedAs}</b> now: save your round to take your place.</p>;
               if (!warn && nudge.noName && account && chain)
-                return canSave ? (
+                return (
                   // while it can be saved, the name goes in the save's own signature
-                  <NameForm chain={chain} account={account.address} chainId={chainId} price={gasPrice} onNamed={(n) => (setNamedAs(n), nudge.named())}
-                    typed={typed} lead={rankAt ? `Your name at #${rankAt} on the board` : "Your name on the board"} />
-                ) : (
-                  <NameForm chain={chain} account={account.address} chainId={chainId} price={gasPrice} onNamed={(n) => (setNamedAs(n), nudge.named())}
-                    lead={onChain ? "Saved! Now put it on the board" : "Get on the board"} />
+                  <NameForm chain={chain} account={account.address} chainId={chainId} price={gasPrice} onNamed={(n) => (setNamedAs(n), nudge.named())} typed={canSave ? typed : undefined}
+                    lead={canSave ? (rankAt ? `Your name at #${rankAt} on the board` : "Your name on the board") : onChain ? "Saved! Now put it on the board" : "Get on the board"} />
                 );
               return warn && <p className="note note--warn">{warn}</p>;
             })()}
@@ -2021,12 +2014,12 @@ export default function Golf() {
             )}
             {canSave && !phoneOnly && account && costNow && <p className="real__fine">{costNow}. You confirm in Adena.</p>}
             {/* a gnokey save said done: the chain asked for it, for the account connected or the key's address (a phone: none, the handoff above) */}
-            {!played && !closed && !phoneOnly && <Gnokey s={s} chain={game.current && game.current.chain} price={gasPrice} chainId={chainId || chainName} me={account && account.address} onSent={gnokeySaved} />}
+            {!played && !closed && !phoneOnly && <Gnokey s={s} chain={game.current && game.current.chain} price={gasPrice} chainId={chainId} me={me} onSent={gnokeySaved} />}
             {/* no account to know the player by: their name with gnokey too (its Claim ranks the rounds saved before it) */}
             {!account && !phoneOnly && s.official && game.current && (
               <details className="details gnokey">
                 <summary>Rank it: take your gno.land name with gnokey</summary>
-                <NameForm chain={game.current.chain} account={null} chainId={chainId || chainName || null} price={gasPrice} lead="Your name on the board" onNamed={() => {}} folded />
+                <NameForm chain={game.current.chain} account={null} chainId={chainId} price={gasPrice} lead="Your name on the board" onNamed={() => {}} folded />
               </details>
             )}
             {/* the gnomes' sale, one quiet line at the card's foot (never among its actions) */}
@@ -2075,16 +2068,16 @@ export default function Golf() {
       )}
 
       {board && s && (
-        <Boards mode={aim} s={s} gnome={gnome} inHole={screen === "play"} onRace={screen === "play" ? raceWith : undefined} onGhosts={screen === "play" || screen === "rival" ? toGhosts : undefined} chain={game.current && game.current.chain} me={account && account.address} onClose={() => setBoard(false)} goTo={(id) => (setBoard(false), goTo(id))} onConnect={account ? undefined : () => (setBoard(false), setReal("board"))} />
+        <Boards mode={aim} s={s} gnome={gnome} inHole={screen === "play"} onRace={screen === "play" ? raceWith : undefined} onGhosts={screen === "play" || screen === "rival" ? toGhosts : undefined} chain={game.current && game.current.chain} me={me} onClose={() => setBoard(false)} goTo={(id) => (setBoard(false), goTo(id))} onConnect={account ? undefined : () => (setBoard(false), setReal("board"))} />
       )}
 
       {cardOpen && s && (
         <Sheet className="cardsheet" label="Scorecard" onClose={() => setCardOpen(false)}>
             <span className="eyebrow">Gnogolf · the cup and its card</span>
             <h2>The cup</h2>
-            <Standings s={s} card={card} saved={onChainCard} chain={game.current && game.current.chain} me={account && account.address} mode={aim} onRules={() => setRules(true)}
+            <Standings s={s} card={card} saved={onChainCard} chain={game.current && game.current.chain} me={me} mode={aim} onRules={() => setRules(true)}
               fresh={freshBadges} badges={{ onOpen: () => (setCardOpen(false), setBadgesOpen(true)) }} />
-            <FullBoard key={aim} kind="course" s={s} chain={game.current && game.current.chain} me={account && account.address} mode={aim} onRace={screen === "play" ? (p) => (setCardOpen(false), raceWith(p)) : undefined} onGhosts={(p) => (setCardOpen(false), toGhosts(p))} />
+            <FullBoard key={aim} kind="course" s={s} chain={game.current && game.current.chain} me={me} mode={aim} onRace={screen === "play" ? (p) => (setCardOpen(false), raceWith(p)) : undefined} onGhosts={(p) => (setCardOpen(false), toGhosts(p))} />
         </Sheet>
       )}
 
@@ -2104,13 +2097,13 @@ export default function Golf() {
 
       {about && (
         <About web={cfg ? cfg.web : ""} counts={s ? s.worlds : undefined} onClose={() => setAbout(false)} onRules={() => (setAbout(false), setRules(true))}
-          support={game.current && <Tip chain={game.current.chain} me={account && account.address} chainId={chainId} price={gasPrice} onConnect={() => (setAbout(false), setReal("about"))} />} />
+          support={game.current && <Tip chain={game.current.chain} me={me} chainId={chainId} price={gasPrice} onConnect={() => (setAbout(false), setReal("about"))} />} />
       )}
       {support && game.current && (
         <Sheet className="about" label="Support the game" onClose={() => setSupport(false)}>
           <span className="eyebrow">Support</span>
           <h2>Keep the gnomes rolling</h2>
-          <Tip chain={game.current.chain} me={account && account.address} chainId={chainId} price={gasPrice} onConnect={() => (setSupport(false), setReal("support"))} bare />
+          <Tip chain={game.current.chain} me={me} chainId={chainId} price={gasPrice} onConnect={() => (setSupport(false), setReal("support"))} bare />
         </Sheet>
       )}
       {rules && <Rules onClose={() => setRules(false)} onBadges={() => (setRules(false), setBadgesOpen(true))} />}
@@ -2136,7 +2129,7 @@ export default function Golf() {
           // from a won hole (or one kept through a reload), connecting leads straight to its save
           onSave={s && s.holed && canSave ? () => (setReal(false), void recordIt()) : pending ? () => (setReal(false), keptSave()) : null}
           rpc={cfg && cfg.rpc}
-          chainName={chainName}
+          chainName={chainId || ""}
           cost={costNow}
           funds={funds}
           lack={lackNow}
@@ -2149,7 +2142,7 @@ export default function Golf() {
           onNamed={(n) => (setNamedAs(n), nudge.named())}
           waiting={pending ? `your ${strokesWord(pending.strokes)} on ${pending.name || "this hole"}` : s && s.holed && canSave ? "this round" : null}
           // the round on offer, with gnokey too: said done, the sheet goes for its card to say how it went
-          gnokey={toSave && !played && <Gnokey s={toSave} chain={game.current && game.current.chain} price={gasPrice} chainId={chainId || chainName} me={account && account.address} onSent={(who) => (setReal(false), gnokeySaved(who))} />}
+          gnokey={toSave && !played && <Gnokey s={toSave} chain={game.current && game.current.chain} price={gasPrice} chainId={chainId} me={me} onSent={(who) => (setReal(false), gnokeySaved(who))} />}
         />
       )}
 
@@ -2500,9 +2493,6 @@ function RealPlay({ from, account, wallet, onConnect, onClose, onSave, rpc, chai
   );
 }
 
-/** The camera modes' names, on the camera button. */
-
-
 interface PickerProps {
   /** the cup picked: the screen takes its colours */
   world: string;
@@ -2617,7 +2607,6 @@ function AimSetting({ aim, onChange, compact = false }: { aim: Mode; onChange: (
     </div>
   );
 }
-
 
 /** The hole on the shared picture's card and the clip's, as its link card has it (media/og): the hole and the score;
  *  a duel's, who was raced, both counts, and its result shouted. */
@@ -2747,7 +2736,6 @@ function Victory({ cup, best, holes, card, saved, fresh, snapshot, onBack, onRep
   );
 }
 
-
 /**
  * A gnome just unlocked, on the cup's card: turning on its stage as in the
  * picker, what earned it, and the one action: play as it (in the next cup,
@@ -2785,9 +2773,6 @@ function Unlocked({ fresh, onMeet }: { fresh: readonly Skin[]; onMeet: (id: stri
     </p>
   );
 }
-
-
-
 
 /** The card: hole, par and your score, ten holes to a row, with the totals. */
 // fresh: the badges the current hole just earned, stamped on its score

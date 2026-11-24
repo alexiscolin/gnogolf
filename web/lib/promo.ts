@@ -314,6 +314,7 @@ function install() {
     /**
      * Sets a shot up and stops the clock. cfg: { cam, fire: [{ at, deg, power }],
      * titles: [{ html, at, to, kind }], flash, punch, card, blur, pre, paths: { "deg,power": result } }
+     * (paths: the first stroke's answer only, as render.mjs keeps it: every round asked is answered with it)
      */
     setup(c: Shot) {
       cfg = c;
@@ -326,10 +327,9 @@ function install() {
       tt = (c.t0 || 0) - (c.pre || 0); // t0: a later slice of a shot cut into several page loads
       // the chain's answers were fetched ahead: a replay never waits on the network
       const paths = c.paths || {};
-      e.chain.simulateRound = (_id, shots) => {
-        const k = shots.map((s) => String(s).split(",").slice(0, 2).join(",")).join(";");
-        const r = paths[k] || Object.values(paths)[0];
-        if (!r) return Promise.reject(new Error("promo: no cached path for " + k));
+      e.chain.simulateRound = () => {
+        const r = Object.values(paths)[0];
+        if (!r) return Promise.reject(new Error("promo: no cached path"));
         return Promise.resolve(r);
       };
       e.g.view = "ball";

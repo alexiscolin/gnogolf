@@ -98,9 +98,12 @@ void test("the dot: new plays or players since the author's last visit, kept in 
 
 const proof = (kind: string, strokes: number, o: Partial<Proof> = {}): Proof => ({ key: "k", id: ID, kind, period: 1, shots: Array.from({ length: strokes }, () => "0.0000,1.0000,0"), commits: [[0, strokes]], strokes, maxWork: 0, ...o });
 
-void test("testRounds: the author's rounds of that version, one a weather, the fewest strokes", () => {
+void test("testRounds: the author's rounds of that version, one a weather, the latest", () => {
   const list = [proof("", 3), proof("", 2), proof("wind", 4), proof("rain", 2, { id: `${ME}/dogleg/v2` })];
   assert.deepEqual(testRounds(list, ID).map((p) => [p.kind, p.strokes]), [["", 2], ["wind", 4]]);
+  // a round of the hole before an edit, in fewer strokes, kept under the same id: not the hole published
+  const edited = [proof("", 2, { key: "before" }), proof("", 3)];
+  assert.deepEqual(testRounds(edited, ID).map((p) => [p.key, p.strokes]), [["k", 3]]);
 });
 
 /** A period whose weather is kind, and the one before it before. */

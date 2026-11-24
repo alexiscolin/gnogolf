@@ -7,7 +7,7 @@
 // the render census (E12); the chain's PublishMine checks (L2), the data's
 // size (E9) and its work (E11). The issues are the issues list's; canPlace
 // and the board's clamps read the same rules (edit.ts).
-import { checkHole, KERB_GAP, LOOSE, work, WORK_WARN, type Issue } from "./checks";
+import { checkHole, crosses, KERB_GAP, LOOSE, work, WORK_WARN, type Issue } from "./checks";
 import { explain } from "./explain";
 import { BOARD, LIMITS, MARGIN, barCorners, frame, keyOf, piecesBy, writeDraft } from "./gg1";
 import { pieceName } from "./names";
@@ -112,12 +112,6 @@ function extent(d: Draft): Issue[] {
   return out;
 }
 
-/** Whether segments cross at a point inside both. */
-function crosses(a: V, b: V, c: V, e: V) {
-  const o = (p: V, q: V, r: V) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
-  const d1 = o(c, e, a), d2 = o(c, e, b), d3 = o(a, b, c), d4 = o(a, b, e), t = 1e-9;
-  return ((d1 > t && d2 < -t) || (d1 < -t && d2 > t)) && ((d3 > t && d4 < -t) || (d3 < -t && d4 > t));
-}
 /** Whether a point lies strictly inside a convex outline (its edges, in order). */
 const within = (q: V, sides: readonly [V, V][]) => {
   const s = sides.map(([a, b]) => (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]));
@@ -125,10 +119,10 @@ const within = (q: V, sides: readonly [V, V][]) => {
 };
 const segSeg = (a: V, b: V, c: V, e: V) => (crosses(a, b, c, e) ? 0 : Math.min(segDist(a[0], a[1], c, e), segDist(b[0], b[1], c, e), segDist(c[0], c[1], a, b), segDist(e[0], e[1], a, b)));
 
-/** The draft's own rules on its bars: out of the lane (E10), crossing another bar (E13), against a rail (E15). */
+/** The draft's own rules on its bars: out of the lane (E10), crossing another bar or a rail (E13), against a rail (E15). */
 function bars(d: Draft, h: GHole, palette: readonly PaletteEntry[], refs: Map<string, PieceRef[]>): Issue[] {
   const out: Issue[] = [], { reaches } = reach(h, LOOSE(h));
-  const barList = d.pieces.filter((p): p is Piece & { geometry: { t: "bar"; a: V; b: V; thick: number } } => p.geometry.t === "bar" && p.clock.k !== "stroke");
+  const barList = d.pieces.filter((p): p is Piece & { geometry: { t: "bar"; a: V; b: V; thick: number } } => p.geometry.t === "bar");
   const rails = d.pieces.filter((p) => p.geometry.t === "rail" && p.clock.k === "fixed");
   const edges = (p: (typeof barList)[number]) => { const c = barCorners(p.geometry.a, p.geometry.b, p.geometry.thick); return c.map((q, k): [V, V] => [q, c[(k + 1) % 4]]); };
   barList.forEach((p, i) => {
@@ -247,6 +241,5 @@ export function about(i: Issue, id: string, refs: Map<string, PieceRef[]>): bool
 export const atFault = (v: Pick<Validated, "issues" | "refs">, ids: readonly string[]): Set<string> =>
   new Set(ids.filter((id) => v.issues.some((i) => i.severity === "error" && about(i, id, v.refs))));
 
-/** The id a draft is shown under in the builder's own wasm (its test mode has its real one). */
 /** The id a full check loads the draft under (its census, its state). */
 export const DRAFT_ID = "draft/v1";

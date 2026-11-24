@@ -6,10 +6,10 @@
 // pipeline (pipeline.ts validate), so the board refuses exactly what the
 // issues list would.
 import type { Issue } from "./checks";
-import { nextId, type ClockSpec, type Draft, type Geometry, type Piece, type V } from "./draft";
+import { nextId, withoutEmptyPulses, type ClockSpec, type Draft, type Geometry, type Piece, type V } from "./draft";
 import { entryParts, frame } from "./gg1";
 import { pieceName } from "./names";
-import { handlesOf, QUARTER, setHandle, snap, type HandleKey } from "./handles";
+import { clampTo, handlesOf, middleOf, QUARTER, setHandle, snap, type HandleKey } from "./handles";
 import { CELL } from "./lane";
 import { entry as entryIn, type PaletteEntry, type Range } from "./palette";
 import { about, validate, type ValidateOptions } from "./pipeline";
@@ -31,12 +31,6 @@ export interface PlaceParams {
 
 /** The clock a timed piece starts with: on for half of a 40-substep cycle. */
 export const START_SUBSTEPS = { every: 40, on: 20, phase: 0 };
-
-/** v kept in r and on its steps (from r.min). */
-export function clampTo(v: number, r: Range): number {
-  const k = Math.round((Math.min(r.max, Math.max(r.min, v)) - r.min) / r.step);
-  return Math.min(r.max, +(r.min + k * r.step).toFixed(6));
-}
 
 const pick = (v: number | undefined, r: Range | undefined) => (r ? clampTo(v ?? r.def, r) : undefined);
 /** A size on the grid (a quarter), within its range. */
@@ -69,15 +63,6 @@ export function placePiece(e: PaletteEntry, id: string, at: V, p: PlaceParams = 
   return { id, entry: e.id, geometry, params, clock };
 }
 
-/** A piece's middle, for an arrow, a label or the pointer it follows. */
-export function middleOf(p: Piece): V {
-  const g = p.geometry;
-  if (g.t === "rail" || g.t === "bar") return [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2];
-  if (g.t === "post") return g.c;
-  if (g.t === "poly") return [g.pts.reduce((s, v) => s + v[0], 0) / g.pts.length, g.pts.reduce((s, v) => s + v[1], 0) / g.pts.length];
-  return [(g.min[0] + g.max[0]) / 2, (g.min[1] + g.max[1]) / 2];
-}
-
 /**
  * The armed entry's piece as the board's ghost has it: centred under the
  * pointer, placed at a point on the grid of step (so every point of it is,
@@ -98,12 +83,11 @@ export const whereOf = (g: Geometry): V => (g.t === "rail" || g.t === "bar" ? g.
  * the world has no entry for.
  */
 export function changeWorld(d: Draft, world: string, palette: readonly PaletteEntry[]): Draft | { refused: string[] } {
-  const refused: string[] = [];
+  const refused: string[] = [], match = matchIn(palette);
   const pieces = d.pieces.map((p) => {
-    const { kind, skin } = entryParts(p.entry);
-    const e = palette.find((x) => x.kind === kind && x.skin === skin && x.world === world) ?? palette.find((x) => x.kind === kind && x.skin === skin);
-    if (!e) refused.push(`${pieceName(p)} at ${pt(whereOf(p.geometry))}`);
-    return e ? { ...p, entry: e.id } : p;
+    const id = match(entryParts(p.entry));
+    if (!id) refused.push(`${pieceName(p)} at ${pt(whereOf(p.geometry))}`);
+    return id ? { ...p, entry: id } : p;
   });
   return refused.length ? { refused } : { ...d, world, pieces, proofs: [] };
 }
@@ -144,7 +128,7 @@ const keyOf = (i: Issue) => `${i.rule} ${i.piece ?? "-"}`;
  * of the lane's own taken out leaves it open, its errors no measure of what
  * the rail does where it goes. before: was's own errors, when the caller has them.
  */
-export function editErrors(was: Draft, after: Draft, id: string, o: ValidateOptions, before?: readonly Issue[]): Issue[] {
+function editErrors(was: Draft, after: Draft, id: string, o: ValidateOptions, before?: readonly Issue[]): Issue[] {
   const had = new Set((before ?? errorsOf(was, o)).map(keyOf));
   const v = validate(after, o);
   return v.issues.filter((i) => i.severity === "error" && (about(i, id, v.refs) || !had.has(keyOf(i))));
@@ -309,13 +293,13 @@ export function newErrors(before: readonly Issue[], after: Draft, o: ValidateOpt
 }
 
 
-/** The draft without the piece (its proofs kept: their key says whether they still hold, an undo brings them back). */
-export const removePiece = (d: Draft, id: string): Draft => without(d, id);
+/** The draft without the piece, and without a pulse it leaves empty (its proofs kept: their key says whether they still hold, an undo brings them back). */
+export const removePiece = (d: Draft, id: string): Draft => withoutEmptyPulses(without(d, id));
 
-/** The nearest place to p's (rings a grid step apart, out to FIX_REACH, never where it is) where it may go in rest; null if none. */
-function nearest(rest: Draft, p: Piece, o: ValidateOptions, r0 = CELL, reach = FIX_REACH): Piece | null {
+/** The nearest place to p's (rings a grid step apart from r0, the FIX_TRIES nearest places, never where it is) where it may go in rest; null if none. */
+function nearest(rest: Draft, p: Piece, o: ValidateOptions, r0 = CELL): Piece | null {
   const before = errorsOf(rest, o), from = whereOf(p.geometry), seen = new Set<string>();
-  for (let r = r0; r <= reach + 1e-9; r += CELL) {
+  for (let r = r0; ; r += CELL) {
     for (let k = 0; k < FIX_DIRECTIONS; k++) {
       const a = (2 * Math.PI * k) / FIX_DIRECTIONS, v = onQuarter([from[0] + r * Math.cos(a), from[1] + r * Math.sin(a)], rest.tee), key = v.join(" ");
       if (seen.has(key) || (v[0] === from[0] && v[1] === from[1])) continue;
@@ -325,7 +309,6 @@ function nearest(rest: Draft, p: Piece, o: ValidateOptions, r0 = CELL, reach = F
       if (canPlace(rest, moved, o, before).length === 0) return moved;
     }
   }
-  return null;
 }
 
 /** A piece as a screen reader names it: what it is and where ("The rock obstacle at (13.5, 6.5)"). */
@@ -369,19 +352,18 @@ export function copyPiece(d: Draft, id: string, o: ValidateOptions): Draft | nul
   const p = d.pieces.find((q) => q.id === id);
   if (p && roomFor(d, p)) return null;
   // (clear of the piece copied: from its own size on, not the places it covers)
-  const c = p && nearest(d, { ...p, id: nextId(d) }, o, sizeOf(p.geometry), sizeOf(p.geometry) + FIX_REACH);
+  const c = p && nearest(d, { ...p, id: nextId(d) }, o, sizeOf(p.geometry));
   return c ? frame({ ...d, pieces: [...d.pieces, c] }) : null;
 }
 
-/** How far fixOf looks for a place, and in how many directions on each ring. */
-export const FIX_REACH = 3;
+/** In how many directions a fix or a copy looks on each ring. */
 const FIX_DIRECTIONS = 16;
 /** The places a fix or a copy tries at most, nearest first. */
 const FIX_TRIES = 64;
 
 /**
  * The one-click fix of an issue: its piece moved to the nearest place (rings
- * a grid step apart, out to FIX_REACH) where it may go, the draft framed
+ * a grid step apart, the FIX_TRIES nearest) where it may go, the draft framed
  * again; null when the issue is the whole hole's (no piece to move) or no
  * place near is free.
  */

@@ -5,7 +5,7 @@
 // weather is, for the HUD. Lightning is the page's: a flash over everything.
 import * as THREE from "three";
 import { mod } from "../terrain";
-import { motion } from "./materials";
+import { motion, share } from "./materials";
 import { setLighting } from "./camera";
 import type { LitScene } from "./data";
 import type { Forecast, MutVec2, Zone } from "../types";
@@ -95,7 +95,7 @@ function blob() {
   g.addColorStop(1, "rgba(255,255,255,0)");
   x.fillStyle = g;
   x.fillRect(0, 0, 128, 128);
-  return (blobTex = new THREE.CanvasTexture(c));
+  return (blobTex = share(new THREE.CanvasTexture(c)));
 }
 
 // a storm cloud, drawn like the rest of the game: a flat puffy shape, slate
@@ -124,7 +124,7 @@ function stormCloud() {
   g.addColorStop(1, "#353e50");
   x.fillStyle = g;
   shape(0, 6), x.fill();
-  cloudTex = new THREE.CanvasTexture(c);
+  cloudTex = share(new THREE.CanvasTexture(c));
   cloudTex.colorSpace = THREE.SRGBColorSpace;
   return cloudTex;
 }
@@ -187,12 +187,13 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
   const drops = Array.from({ length: RAIN }, () => ({ x: 0, y: 0, z: 0, v: 0 }));
   // in the cave the water drips from the vault at its own spots (drip), not everywhere
   let drip: MutVec2[] = [];
+  const fall = () => (now && now.snow ? 1.2 + Math.random() : cave ? CAVE.drop[0] + Math.random() * CAVE.drop[1] : 16 + Math.random() * 6);
   const seed = (d: (typeof drops)[number], top: boolean) => {
     const at = cave && drip.length ? drip[Math.floor(Math.random() * drip.length)] : null;
     d.x = at ? at[0] + (Math.random() - 0.5) * 0.12 : area.x + Math.random() * area.w;
     d.z = at ? at[1] + (Math.random() - 0.5) * 0.12 : area.z + Math.random() * area.d;
     d.y = top ? 9 + Math.random() * 3 : Math.random() * 12;
-    d.v = cave ? CAVE.drop[0] + Math.random() * CAVE.drop[1] : 16 + Math.random() * 6;
+    d.v = fall();
   };
   drops.forEach((d) => seed(d, false));
 
@@ -430,7 +431,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
   let last: number | null = null, lastZones: readonly WeatherZone[] = [], lastFc: Pick<Forecast, "wind"> | null = null;
   // the Low tier: a third of the rain, half the banks, clouds, rings and gusts
   let thin = false;
-  const share = (n: number) => (thin ? Math.ceil(n / (n === RAIN ? 3 : 2)) : n);
+  const tier = (n: number) => (thin ? Math.ceil(n / (n === RAIN ? 3 : 2)) : n);
   let rainN = RAIN;
   return {
     /** Low: fewer particles of every kind (the next set() and on). */
@@ -473,7 +474,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
     set(zones: readonly WeatherZone[] | null, fc: Pick<Forecast, "wind"> | null = null): WeatherNow | null {
       lastZones = zones || [];
       lastFc = fc;
-      rainN = Math.round(share(RAIN) * (cave ? CAVE.rain : 1));
+      rainN = Math.round(tier(RAIN) * (cave ? CAVE.rain : 1));
       rainGeo.setDrawRange(0, rainN * 2);
       // a storm's wind blows in timed gusts (skinned "wind"): streaked like a hole's own
       gusts = (zones || []).filter((q) => (q.skin === "gust" || q.skin === "wind") && (q.every ?? 0) > 0);
@@ -494,7 +495,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
       rain.visible = !!now && (now.rain || now.storm || now.snow);
       // snow: the same particles, slow and short, drifting
       rain.material.color.setHex(now && now.snow ? 0xffffff : cave ? 0xbfe4ff : 0xeaf6ff);
-      drops.forEach((d) => (d.v = now && now.snow ? 1.2 + Math.random() : cave ? CAVE.drop[0] + Math.random() * CAVE.drop[1] : 16 + Math.random() * 6));
+      drops.forEach((d) => (d.v = fall()));
       const raining = !!now && (now.rain || now.storm);
       // the rain's puddles are where the chain has them (they slow the ball
       // there), cut at the lane's edge: none spills over its side or the water
@@ -505,17 +506,17 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
       const lava = cave ? (zones || []).filter((q): q is Zone => q.skin.startsWith("lava") && !!q.min && !!q.max) : [];
       steam = pz.filter((q) => lava.some((l) => Math.max(l.min[0] - q.max[0], q.min[0] - l.max[0], l.min[1] - q.max[1], q.min[1] - l.max[1]) < 3))
         .map((q) => [(q.min[0] + q.max[0]) / 2, (q.min[1] + q.max[1]) / 2] as MutVec2);
-      splashes.forEach((sp, k) => (sp.m.visible = raining && k < share(SPLASH)));
+      splashes.forEach((sp, k) => (sp.m.visible = raining && k < tier(SPLASH)));
 
-      banks.forEach((b, k) => (b.m.visible = (!!now && now.fog && !cave && k < share(BANKS)) || (k < steam.length * 4 && k < share(BANKS))));
-      clouds.forEach((c, k) => (c.m.visible = !!now && now.storm && k < share(CLOUDS)));
+      banks.forEach((b, k) => (b.m.visible = (!!now && now.fog && !cave && k < tier(BANKS)) || (k < steam.length * 4 && k < tier(BANKS))));
+      clouds.forEach((c, k) => (c.m.visible = !!now && now.storm && k < tier(CLOUDS)));
       if (!raining) wet = 0;
       setFog(!!now && now.fog);
       // Lights out: the dark gallery's light (the world puts its lanterns out, userData.weather)
       if (cave) setLighting(scene as LitScene, now && now.fog ? "gallery" : caveTime);
       const s = now && now.wind ? Math.hypot(now.wind[0], now.wind[1]) : 0;
       // a breeze shows a few gusts, a gale a dozen
-      const n = s ? share(Math.max(3, Math.min(TRAILS, Math.round(3 + (s / 0.08) * 9)))) : 0;
+      const n = s ? tier(Math.max(3, Math.min(TRAILS, Math.round(3 + (s / 0.08) * 9)))) : 0;
       trails.forEach((tr, k) => ((tr.m.visible = k < n), k < n && reseedTrail(tr), (tr.t = k / Math.max(1, n))));
       bits.forEach((b, k) => ((b.m.visible = k < Math.round((n / TRAILS) * BITS)), reseedBit(b, true)));
       trailMesh.visible = n > 0;

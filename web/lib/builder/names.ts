@@ -10,6 +10,7 @@
 import { BINDINGS, KIND, type Binding } from "./bindings";
 import { entryParts } from "./gg1";
 import { cap, kicks } from "./rules";
+import { own } from "../own";
 import type { Draft } from "./draft";
 import type { Kind } from "../scene/worlds";
 
@@ -72,16 +73,13 @@ const NAMED: Readonly<Record<string, string>> = {
 
 /** An entry's one name ("Wall", "Wet sand", "Lagoon"): NAMED's, else its skin's, else (a plain form of a new kind) its tile's. */
 export function entryName(e: Named): string {
-  const own = `${e.kind}/${e.skin}`;
-  if (Object.hasOwn(NAMED, own)) return NAMED[own];
-  return cap(e.skin || (TILES.find((t) => t.takes(e))?.name ?? e.kind));
+  return own(NAMED, `${e.kind}/${e.skin}`) ?? cap(e.skin || (TILES.find((t) => t.takes(e))?.name ?? e.kind));
 }
 
 /** An entry by its id, as naming reads it: its kind and skin, with their binding (none: the plain form). */
 const namedOf = (id: string): Named => {
-  const { kind, skin } = entryParts(id), k = Object.hasOwn(KIND, kind) ? KIND[kind as Kind] : null;
-  const own = k && Object.hasOwn(BINDINGS[kind as Kind], skin) ? BINDINGS[kind as Kind][skin] : {};
-  return { clocks: ["fixed"], ...k, ...own, kind, skin };
+  const { kind, skin } = entryParts(id), k = own(KIND, kind), b = k && own(BINDINGS[kind as Kind], skin);
+  return { clocks: ["fixed"], ...k, ...b, kind, skin };
 };
 
 /** A piece's name in a sentence: "the wall", "the plank", "the lagoon". */

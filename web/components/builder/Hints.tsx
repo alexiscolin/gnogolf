@@ -8,13 +8,14 @@
 // "?"), a glossary of the world's pieces comes under them, on one screen:
 // each palette tile's picture, its name and what it does (tiles.ts), and
 // every key, in a sheet as the game's (its X, Escape or the dim round it puts it away).
-import { allTiles, pictureOf } from "@/lib/builder/tiles";
+import { allTiles } from "@/lib/builder/tiles";
 import { cap, required, theWorld } from "@/lib/builder/rules";
 import { weathersSaid } from "@/lib/builder/rules";
 import type { PaletteEntry } from "@/lib/builder/palette";
 import { KEYS } from "@/lib/builder/keys";
 import { entryName } from "@/lib/builder/names";
 import { MOD } from "./Inspector";
+import { Picture } from "./Palette";
 import { Sheet } from "@/components/ui";
 
 /** The four, the world's weathers named in Play's. */
@@ -44,7 +45,7 @@ export default function Hints({ world, onDone, glossary = null }: {
       <ul>
         {tiles.map((t) => (
           <li key={t.key} className="bgloss__piece" title={t.looks.length > 1 ? t.looks.map(entryName).join(", ") : undefined}>
-            <img src={pictureOf(glossary.world, t.looks[0])} width={44} height={44} alt="" decoding="async" />
+            <Picture world={glossary.world} e={t.looks[0]} px={44} />
             <span><b>{t.name}</b><small>{t.does || "a piece of its own"}</small></span>
           </li>
         ))}

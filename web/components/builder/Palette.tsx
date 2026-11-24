@@ -27,7 +27,7 @@ import { sound } from "@/lib/feel";
 import type { PaintMode } from "@/lib/builder/surface";
 
 /** A look's picture: a file, its place kept (no shift as it loads). */
-const Picture = ({ world, e, px }: { world: string; e: PaletteEntry; px: number }) => (
+export const Picture = ({ world, e, px }: { world: string; e: PaletteEntry; px: number }) => (
   <img src={pictureOf(world, e)} width={px} height={px} alt="" draggable={false} decoding="async" />
 );
 

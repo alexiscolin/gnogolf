@@ -11,7 +11,8 @@ import type { HoleIn, V, ZoneIn } from "./types";
 /** The grid's cell: the builder's snap. */
 export const CELL = 0.25;
 
-const shapeOf = (z: ZoneIn) => ({ min: z.min, max: z.max, round: !!z.round, poly: z.poly, outside: z.outside });
+/** A zone as inZone reads it. */
+export const shapeOf = (z: ZoneIn) => ({ min: z.min, max: z.max, round: !!z.round, poly: z.poly, outside: z.outside });
 /** A zone a ball cannot rest in: a hazard sends it back, a tunnel or a loop moves it on. */
 export const moves = (z: ZoneIn) => z.kind === "hazard" || z.kind === "tunnel" || z.kind === "loop";
 

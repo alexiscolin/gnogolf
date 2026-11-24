@@ -263,10 +263,10 @@ export const readMs = (text: string) => Math.max(6000, 2000 + 60 * text.length);
 export const nextCup = (cup: string, counts: Readonly<Record<string, number>>) =>
   CUPS.slice(CUPS.indexOf(cup as Cup) + 1).find((c) => (counts[c] || 0) > 0) || "";
 
-/** What the next stroke n is worth on a par, called out big before it (solo): for an ace, eagle,
- *  birdie, par, bogey; past that, how far over par the round already is. */
+/** What the next stroke n is worth on a par, called out big before it (solo): for an ace, albatross,
+ *  eagle, birdie, par, bogey; past that, how far over par the round already is. */
 export const strokeFor = (n: number, par: number) =>
-  n === 1 ? "For an ace!" : n <= par - 2 ? "For eagle!" : n === par - 1 ? "For birdie!" : n === par ? "For par!" : n === par + 1 ? "For bogey" : `${n - 1 - par} over par`;
+  n === 1 ? "For an ace!" : n <= par - 3 ? "For albatross!" : n === par - 2 ? "For eagle!" : n === par - 1 ? "For birdie!" : n === par ? "For par!" : n === par + 1 ? "For bogey" : `${n - 1 - par} over par`;
 
 /** A score in golf's own words, from the strokes against par. */
 export function golfTerm(strokes: number, par: number) {

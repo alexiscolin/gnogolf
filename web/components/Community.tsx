@@ -217,6 +217,7 @@ function useLevels(chain: Pick<Chain, "holeData" | "chainId" | "genesis" | "real
         let level = await keptLevel(chain, id);
         if (level == null) {
           const { makeMeter } = await import("@/lib/builder/meter");
+          if (!live) return; // (a list gone meanwhile stopped its meter already: none made after)
           const m = (meter.current ??= makeMeter(() => {}));
           level = await chain.holeData(id).then((hex) => m.rate(hex), () => null);
           if (level != null) void keepLevel(chain, id, level);

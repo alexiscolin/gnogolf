@@ -62,7 +62,7 @@ export interface Events {
   cup_complete: { cup: string; strokes: number; vs_par: number; best: boolean };
   duel_started: Pick<Play, "hole" | "cup"> & { rival: RivalKind; ghost: number; mixed: boolean };
   duel_result: { rival: RivalKind; result: "win" | "loss" | "tie"; strokes: number; ghost: number };
-  share: { target: string; what: "hole" | "cup" | "board" | "clip"; kind?: ShareKind; dare?: boolean; saved?: boolean };
+  share: { target: string; what: "hole" | "cup" | "board" | "clip" | "gnome"; kind?: ShareKind; dare?: boolean; saved?: boolean };
   wallet: { adena: boolean; connected: boolean };
   wallet_connect: { stage: "asked" | "ok" | "refused"; reason?: string };
   pending_restored: { hole: string; strokes: number; left_s: number | null };

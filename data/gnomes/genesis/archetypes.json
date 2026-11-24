@@ -1,5 +1,5 @@
 {
-  "note": "The Genesis series' Commons and Rares are made from these (scripts/gnomes.ts): an archetype is a look that belongs together; a palette is a set of colours that do, its key colour (the hat's, a baker's coat) worn with any of the archetype's wardrobe for the other; a Common is an archetype in one of its palettes with a beard and a few of its things, a Rare one more (a pattern or a piece) and a trail. Lines are an opener (the palette's, or a Rare's piece or pattern) and the archetype's tail; both stand alone, so any pair reads. Colours are data/../vocab.ts COLOURS names.",
+  "note": "The Genesis series' Commons and Rares are made from these (scripts/gnomes.ts): an archetype is a look that belongs together; a palette is a set of colours that do, its key colour (the hat's, a baker's coat) worn with any of the archetype's wardrobe for the other; a Common is an archetype in one of its palettes with a beard and a few of its things, a Rare one more (a pattern or a piece) and a trail. Lines are an opener (the palette's, or a Rare's piece or pattern) and the archetype's tail; both stand alone, so any pair reads. Colours are web/lib/gnomes/vocab.ts COLOURS names.",
   "given": [
     "Pip",
     "Bramble",

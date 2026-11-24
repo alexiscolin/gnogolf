@@ -14,8 +14,6 @@ import type { HoleIn } from "./types";
 import { MAX_BYTES, type Validated } from "./pipeline";
 import { BUILDER_LIMITS, pieceCounts } from "./limits";
 
-/** Weathers in a sentence: "Clear and Rain", "Clear, Wind and Rain". */
-
 /**
  * The dock's one line, said only when nothing else says it: the rounds an
  * edit broke (carry.ts: the proofs it could not carry over), the weathers
@@ -140,7 +138,7 @@ export function pieceGauges(d: Pick<Draft, "pieces">): Gauge[] {
   return [gauge("Pieces", c.pieces, BUILDER_LIMITS.pieces, `${c.pieces} / ${BUILDER_LIMITS.pieces}`), gauge("Moving", c.moving, BUILDER_LIMITS.moving, `${c.moving} / ${BUILDER_LIMITS.moving}`)];
 }
 
-/** What one piece of an entry takes of each count: a bar four walls, a polygon its points. */
+/** What one piece of an entry takes of each count: a bar four walls. */
 const needs = (e: PaletteEntry) => ({
   walls: e.kind === "rail" ? 1 : e.kind === "bar" ? 4 : 0,
   posts: e.kind === "post" ? 1 : 0,

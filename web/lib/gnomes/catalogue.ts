@@ -104,18 +104,17 @@ const WORDS: Record<string, string> = {
 };
 /** A code as people say it ("stormwatch": "storm watcher"). */
 export const wordOf = (s: string) => (WORDS[s] ?? s.replace(/-/g, " "));
-const word = wordOf;
 
-/** A token's traits as a list for people (the token page, the realm's
- *  metadata attributes): what is there, plainly named, nothing that is not. */
+/** A token's traits as a list for people (the token page): what is there,
+ *  plainly named, nothing that is not. */
 export function traitRows(t: Traits): { trait: string; value: string }[] {
   const rows: [string, string][] = [
-    ["Tier", t.tier], ["Home", worldName(t.home)], ["Archetype", t.archetype],
-    ["Hat", `${colourName(t.hatColour ?? -1)} ${word(t.hat)}`], ["Beard", t.beard === "none" ? word("none") : `${colourName(t.hair ?? -1)} ${word(t.beard)}`],
+    ["Tier", t.tier], ["Home", worldName(t.home)], ["Archetype", wordOf(t.archetype)],
+    ["Hat", `${colourName(t.hatColour ?? -1)} ${wordOf(t.hat)}`], ["Beard", t.beard === "none" ? wordOf("none") : `${colourName(t.hair ?? -1)} ${wordOf(t.beard)}`],
     ["Body", t.pattern === "plain" ? colourName(t.body ?? -1) : `${colourName(t.body ?? -1)} ${t.pattern}, ${colourName(t.patternColour ?? -1)}`],
-    ...t.accessories.map((a): [string, string] => ["Wears", word(a)]),
-    ["Piece", t.piece ? `${colourName(t.pieceColour ?? -1)} ${word(t.piece)}` : ""],
-    ["Material", t.material === "toon" ? "" : t.material], ["Prop", t.prop ? word(t.prop) : ""],
+    ...t.accessories.map((a): [string, string] => ["Wears", wordOf(a)]),
+    ["Piece", t.piece ? `${colourName(t.pieceColour ?? -1)} ${wordOf(t.piece)}` : ""],
+    ["Material", t.material === "toon" ? "" : t.material], ["Prop", t.prop ? wordOf(t.prop) : ""],
     ["Trail", t.trail ? `${colourName(t.trailColour ?? -1)} ${t.trail}` : ""], ["Holing", t.holing === "confetti" ? "" : `${colourName(t.holingColour ?? -1)} ${t.holing}`],
   ];
   return rows.filter(([, v]) => v.trim()).map(([trait, value]) => ({ trait, value: cap(value.trim()) }));

@@ -2,6 +2,7 @@
 // messages"): each L2 refusal is shown so, with the realm's own sentence
 // under it, for an author to search. An unknown sentence is shown as it is.
 import { LIMITS } from "./gg1";
+import { own } from "../own";
 import type { Issue } from "./checks";
 
 const COUNTS: Record<string, keyof typeof LIMITS> = { walls: "walls", posts: "posts", zones: "zones", "polygon points": "polyTotal", pulses: "pulses", skins: "skins" };
@@ -33,7 +34,7 @@ export function explain(sentence: string, counts: Partial<Record<keyof typeof LI
     "golf: a community hole's name and note carry no web address": "The name or the note looks like a web address. Write \"St. Andrews\", not \"St.Andrews\".",
     "golf: publishing community holes is not open yet": "Publishing is not open yet. Your draft is kept.",
   };
-  return Object.hasOwn(plain, s) ? plain[s] : s;
+  return own(plain, s) ?? s;
 }
 
 // a piece's name that is ground, not a thing (two of them: two patches), or already a plural (two sets)
@@ -63,7 +64,6 @@ export function plainOf(i: Pick<Issue, "rule" | "text">): string {
   if ((r = m(/^The cup touches (.+)$/))) return `The cup is inside ${r[1]}: move the cup or ${r[1]}.`;
   if ((r = m(/^The cup cannot be reached from the tee: the gap between (.+) and (.+) is ([\d.]+) wide, narrower than the ball .*$/))) return `The ball can't get between ${r[1]} and ${r[2]} (${r[3]} wide): widen the gap.`;
   if ((r = m(/^The cup cannot be reached from the tee: the (tee is closed in|cup is closed off)$/))) return r[1] === "tee is closed in" ? "The tee is closed in: no way to the cup. Open a way through." : "The cup is closed off: no way from the tee. Open a way through.";
-  if (/^The cup cannot be reached from the tee$/.test(t)) return "The ball can't get from the tee to the cup: open a way through.";
   if ((r = m(/^The gap between (.+) and (.+) is ([\d.]+) wide, and the way to the cup goes through it: at least ([\d.]+), .*$/))) return `The way to the cup squeezes between ${r[1]} and ${r[2]} (${r[3]} wide): widen it to at least ${r[4]}.`;
   if (i.rule === "E13" && (r = m(/^(.+) (overlaps|stands on|crosses|lies over|stands in) (.+)$/)))
     return r[1].toLowerCase() === r[3].toLowerCase() ? `${two(r[1])} ${BOTH[r[2]]}: move one.` : `${r[1]} ${r[2]} ${r[3]}: move one of them.`;

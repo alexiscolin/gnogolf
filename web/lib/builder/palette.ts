@@ -14,7 +14,6 @@ import { POSTS, BARS, MOUTHS } from "../scene/pieces";
 import { DRAWN as COURSE_DRAWN } from "../scene/course";
 import { DRAWN as ZONES_DRAWN } from "../scene/zones";
 import { WORLD_NAMES, loadWorld, worldOf, type Kind, type Skins } from "../scene/worlds";
-import { own } from "../own";
 import { FIELD, notABuilderWorld } from "./rules";
 import { BINDINGS, KIND, type Binding, type Clock, type Range, type Shape } from "./bindings";
 
@@ -108,7 +107,7 @@ function sharedDraw(kind: Kind, skin: string): Draw {
  * way kept once, as the world's; a shared one away from its HOME borrowed,
  * and the shore's left out where there is no sea.
  */
-export function paletteOf(world: string, own: Skins = {}, sea = false): PaletteEntry[] {
+function paletteOf(world: string, own: Skins = {}, sea = false): PaletteEntry[] {
   const out: PaletteEntry[] = [];
   const mine = new Set<string>();
   for (const [kind, skins] of Object.entries(own) as [Kind, readonly string[]][]) {
@@ -145,5 +144,5 @@ export async function loadPalette(world: string): Promise<readonly PaletteEntry[
 
 /** The entry of a palette by its id ("island/post/palm"), undefined for none. */
 export function entry(id: string, palette: readonly PaletteEntry[]): PaletteEntry | undefined {
-  return own(Object.fromEntries(palette.map((e) => [e.id, e])), id);
+  return palette.find((e) => e.id === id);
 }

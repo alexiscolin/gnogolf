@@ -117,6 +117,15 @@ void test("decode refuses what Decode refuses", () => {
   assert.throws(() => host.decode("00"), /golf: course: not GG1 data/);
 });
 
+void test("the hole pages' names and pars (app/h/holes.json, written by media/og/og.mjs) are the course data's", () => {
+  const pages = JSON.parse(fs.readFileSync(new URL("web/app/h/holes.json", repo), "utf8")) as Record<string, { name: string; par: number }>;
+  const data = Object.fromEntries(lines.map(([slot, , , h]) => {
+    const g: GHole = host.decode(h);
+    return [slot, { name: g.title, par: g.par }];
+  }));
+  for (const [slot, page] of Object.entries(pages)) assert.deepEqual(page, data[slot], slot);
+});
+
 const ID = "g1hvuayx9ll7dal54kr0f6t89j8867z8lf5vtxgv/t/v1", P = 5967997;
 
 void test("state answers HoleState at the clock set; forecast refuses a period ahead of it", () => {

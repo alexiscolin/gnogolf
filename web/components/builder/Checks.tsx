@@ -38,7 +38,7 @@ export default function Checks({ broken, gauges, issues, busy, onShow, onFix }: 
         ))}
       </ul>
       {d.dials.length > 0 && (
-        <div className="gauges" aria-label="Limits near">
+        <div className="gauges" role="group" aria-label="Limits near">
           {d.dials.map((g) => (
             <div key={g.name} className={`gauge gauge--${g.level}`} title={g.title}>
               <span>{g.label}</span><em>{g.shown}</em>

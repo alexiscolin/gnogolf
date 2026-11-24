@@ -6,7 +6,7 @@
 // it gives itself to makeBall.
 import * as THREE from "three";
 import { setWardrobe, type Skin, type Wardrobe } from "./gnome";
-import { isKitHat, kitHat, kitWear, kitPiece, hatTop, patternedBody, type KitHat } from "./gnome-kit";
+import { kitHat, kitWear, kitPiece, hatTop, patternedBody } from "./gnome-kit";
 import { propOf } from "./gnome-props";
 import { dressMatter } from "./gnome-matter";
 import { dressLegend } from "./gnome-legend";
@@ -63,7 +63,7 @@ function lamp(g: THREE.Group, hat: THREE.Group) {
 
 export const wardrobe: Wardrobe = {
   body: patternedBody,
-  hat: (hat, skin) => isKitHat(skin.shape) && (kitHat(hat, skin as Skin & { shape: KitHat }), true),
+  hat: kitHat,
   top: hatTop,
   dress,
   lamp,

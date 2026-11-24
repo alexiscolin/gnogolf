@@ -4,6 +4,7 @@
 // link leading out), and /rpc to a node on this machine only.
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -90,4 +91,23 @@ void test("the playground serves the build as the static host does, and /rpc fro
   assert.throws(() => playgroundServer({ root: path.join(dir, "outside.txt"), rpc: `http://127.0.0.1:${nodePort}` }), /folder/);
   assert.throws(() => playgroundServer({ root: out, rpc: "http://100.64.12.34:26657" }), /127\.0\.0\.1/);
   assert.throws(() => playgroundServer({ root: out, rpc: "http://127.0.0.1.example:80" }), /127\.0\.0\.1/);
+});
+
+void test("the playground starts as try-local.sh starts it, from a path with a space, through a link", async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "playground-")), script = path.join(dir, "playground server.mjs");
+  fs.symlinkSync(path.resolve(import.meta.dirname, "../../scripts/playground-server.mjs"), script);
+  const c = spawn(process.execPath, [script, dir, "0", "http://127.0.0.1:1"]);
+  try {
+    const said = await new Promise<string>((done) => {
+      let s = "";
+      c.stdout.on("data", (b: Buffer) => {
+        s += String(b);
+        if (s.includes("\n")) done(s);
+      });
+      c.on("close", () => done(s));
+    });
+    assert.match(said, /^playground: /);
+  } finally {
+    c.kill();
+  }
 });

@@ -66,6 +66,13 @@ const HOLES_TTL = 10 * 60e3; // a hole registered meanwhile shows within ten min
 
 /** A pause of ms: between two reads of the chain, a retry, a beat. */
 export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Whether seen() finds a signed transaction in, asked every 3 s for 90 s (it lands within a few blocks) while live() (the page waiting for it still open). */
+export async function landed(seen: () => Promise<boolean>, live: () => boolean): Promise<boolean> {
+  for (const t0 = Date.now(); Date.now() - t0 < 90_000 && live(); await wait(3000)) {
+    if (await seen()) return true;
+  }
+  return false;
+}
 /** What the chain charges per stored byte (ugnot) when its own price is not read yet or not readable: the vm's default. */
 export const BYTE_PRICE = 100;
 

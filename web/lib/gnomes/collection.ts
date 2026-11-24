@@ -14,8 +14,8 @@
 // each chain and address.
 import { isAddress, type Chain } from "../chain";
 import { worldName } from "../card";
-import { TIER_LOOK, wordOf, type Listed } from "./catalogue";
-import { makeShop, type Held } from "./shop";
+import { wordOf, type Listed } from "./catalogue";
+import { makeShop, tierName, type Held } from "./shop";
 import { askWorn, wornKnown } from "./wear";
 import { shopShown } from "./geo";
 import type { Served } from "./served";
@@ -140,8 +140,7 @@ export function albumNext(a: Album, h: Holding, home: string) {
  *  Epics of Garden" where his world holds more of his tier). */
 export function seriesLine(g: Pick<Gnome, "id" | "tier" | "home">, gnomes: readonly Pick<Gnome, "tier" | "home">[]) {
   const kin = gnomes.filter((x) => x.tier === g.tier && x.home === g.home).length, tier = TIER_ROWS.find(([t]) => t === g.tier);
-  const one = Object.hasOwn(TIER_LOOK, g.tier) ? TIER_LOOK[g.tier].label : g.tier;
-  return `#${g.id} · ${kin <= 1 ? `the only ${one}` : `one of ${kin} ${tier ? tier[1] : g.tier}`} of ${worldName(g.home)} · 1 of ${gnomes.length}`;
+  return `#${g.id} · ${kin <= 1 ? `the only ${tierName(g.tier)}` : `one of ${kin} ${tier ? tier[1] : g.tier}`} of ${worldName(g.home)} · 1 of ${gnomes.length}`;
 }
 
 // ------------------------------------------------------------ where it shows (ADR-011)

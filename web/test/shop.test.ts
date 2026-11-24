@@ -5,7 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
-  makeShop, soldSet, gnot, landing, utcDate, nowRow, promoOf, promoWords, canBuyCard, showsClosing, closingSlot, theirTitle, whyNot, bill, shelf, teamOrder, shareWords, PAGE, onSale, cardFact, saleLine,
+  makeShop, soldSet, gnot, landing, utcDate, nowRow, promoOf, promoWords, canBuyCard, showsClosing, closingSlot, theirTitle, whyNot, saleWhyNot, bill, shelf, teamOrder, shareWords, PAGE, onSale, cardFact, saleLine,
   type Collection, type CanBuy, type SeriesRow,
 } from "../lib/gnomes/shop.ts";
 import type { Catalogue } from "../lib/gnomes/catalogue.ts";
@@ -255,6 +255,7 @@ test("shop: Buy on a card on sale only", () => {
   assert.equal(canBuyCard(entries[2], seen), false, "yours");
   assert.equal(canBuyCard(entries[0], { ...seen, now: T0 - 60 }), false, "its sale not started yet");
   assert.equal(canBuyCard(entries[0], { ...seen, c: collection({ series: [genesis({ sale: null })] }) }), false, "no sale opened yet");
+  assert.equal(canBuyCard(entries[0], { ...seen, c: collection({ open: false }) }), false, "the sale paused");
 });
 
 // ------------------------------------------------------------ why not, in plain words
@@ -278,6 +279,13 @@ test("shop: every refusal CanBuy gives has its words: the button's and a note", 
   assert.deepEqual(w(can({ reason: "unknown" })), { button: "No gnome by that number", note: "" });
   // a code this page does not know: the realm's own sentence, never silence
   assert.deepEqual(w(can({ reason: "newer" as CanBuy["reason"], said: "the moon is full" })), { button: "Can't be bought now", note: "The chain says: the moon is full." });
+});
+test("shop: no buyer to ask CanBuy for (no wallet connected): what the sale alone says, in Buy's order and whyNot's words", () => {
+  const tansy = { id: 94, tier: "epic" as const, home: "garden" as const };
+  assert.equal(saleWhyNot(collection(), tansy, T0 + 60), null, "on sale");
+  assert.deepEqual(saleWhyNot(collection({ open: false }), tansy, T0 - 60), { button: "Paused for a moment", note: "The sale picks up where it stopped." }, "paused: Buy's first refusal");
+  assert.deepEqual(saleWhyNot(collection(), tansy, T0 - 60), { button: "Opens today, 18:00 UTC", note: "From the Garden." });
+  assert.deepEqual(saleWhyNot(collection({ series: [genesis({ sale: null })] }), tansy, T0), { button: "Not on sale yet", note: "From the Garden. Its sale opens before Mon 14 Dec, 18:00 UTC, or never." });
 });
 
 // ------------------------------------------------------------ a buy sent, not confirmed

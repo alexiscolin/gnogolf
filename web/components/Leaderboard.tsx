@@ -109,7 +109,7 @@ const flagsOf = (chain: Chain) =>
     })
     .catch(() => ((flagsOnce = null), track("flags_stale", { hours: -1 }), readFlags("", ""))));
 function useFlags(chain: Chain | null | undefined) {
-  const [f, setF] = useState<Flags>({});
+  const [f, setF] = useState<Flags | null>(null);
   useEffect(() => {
     if (!chain) return;
     let live = true;
@@ -201,7 +201,7 @@ function Friends({ s, chain, me, mode = "pro", inHole = true, onConnect, onRace 
           ))}
         </ol>
       )}
-      <h3>The course <small>{course ? `${course.holes} holes · ${RANKED_BY}` : RANKED_BY}</small></h3>
+      <h3>The course <small>{course?.holes ? `${course.holes} holes · ${RANKED_BY}` : RANKED_BY}</small></h3>
       {!c && <p className="lb__empty">Reading the chain…</p>}
       {c && c.length === 0 && <p className="lb__empty">No saved rounds yet: be the first.</p>}
       {c && c.length > 0 && (
@@ -274,7 +274,7 @@ export function Boards({ s, chain, me, onClose, goTo, mode: mine = "pro", inHole
         <span className="eyebrow">Players · saved on-chain</span>
         <h2>Beat a record</h2>
         <div className="boards__modes">
-          <Segmented className="seg--s" role="tablist" label="Aim mode" value={mode} onChange={setMode} options={AIMS} />
+          <Segmented className="seg--s" label="Aim mode" value={mode} onChange={setMode} options={AIMS} />
           <InfoTip label="About these boards" note={<>{HONEST} Ranked: players with a gno.land name{!(me && myName) && ", taken when you save"}.</>} />
         </div>
         <Segmented className="boards__tabs" full role="tablist" label="Board" value={tab} onChange={setTab} options={[...(friendsFirst ? [["friends", "Friends"] as const] : []), ...(inHole ? [["hole", "This hole"] as const] : []), ["course", "The course"] as const, ...(friendsFirst ? [] : [["friends", "Friends"] as const])]} />
@@ -372,9 +372,9 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    // a page of the course's board, its places kept, the flagged out
+    // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
     const page = (at: number, n: number) =>
-      Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows.map((r, i) => ({ ...r, at: at + i + 1 })), f.flags) }));
+      Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
     void Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null])
       .then(async ([top, mine]) => {
         // (a page that fails: the first one's players stand in)
@@ -412,14 +412,16 @@ function SkyMark({ kind, mine }: { kind: SkyKind | undefined; mine: boolean }) {
 export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace, onGhosts, row, max, gnome }: BoardProps & { kind: "hole" | "course"; onGhosts?: (player: string) => void; /** a row drawn otherwise (the rival's stickers) */ row?: (r: Placed) => ReactNode; max?: number }) {
   const PAGE = 20, TOP = 5;
   const id = s.id || "";
-  const [rows, setRows] = useState<readonly Placed[] | null>(null);
+  const [loaded, setRows] = useState<readonly Placed[] | null>(null);
   const [head, setHead] = useState<{ par: number; holes: number; players: number; finished?: number } | null>(null);
   const [next, setNext] = useState(0); // the next page's offset, 0 at the end
   const [err, setErr] = useState(false); // a page the chain did not give
   const [more, setMore] = useState(false);
   const [mine, setMine] = useState<{ rank: number; of: number; strokes: number; holes?: number; par?: number } | null>(null);
   const [mineRead, setMineRead] = useState(!me); // (your place asked: the records put forward wait for it, then hold)
-  const flags = useFlags(chain);
+  const flagList = useFlags(chain), flags = flagList || {};
+  // the rows wait for the bot check's list: a flagged player is never placed, nor put forward, then taken out
+  const rows = flagList && loaded;
   const [showAll, setShowAll] = useState(false);
   // the course's rows with a best on the hole played, read with their page (one read a page, not one a row):
   // their Race is there, the others' (all of them if the read failed) their ghosts. A hole's rows all race there.
@@ -555,7 +557,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
   // your score as a dare says it: a hole's strokes, the course's holes and score against par
   const myBest = myRow || mine, myScore = !myBest ? "" : kind === "hole" ? strokesWord(myBest.strokes) : `${holesWord(myBest.holes || 0)} at ${vsPar(standingVs(myBest))}`;
   // the rows to come, blank: drawn as the rows will be (the rival's stickers, as many as it shows)
-  const ghosts = row ? <ol aria-hidden="true">{Array.from({ length: max || 3 }, (_, i) => <li key={i}><StickerGhost at={i + 1} /></li>)}</ol> : <Ghosts />;
+  const ghosts = row ? <ol aria-hidden="true">{Array.from({ length: max || 3 }, (_, i) => <li key={i}><StickerGhost /></li>)}</ol> : <Ghosts />;
   const title = kind === "hole" ? s.name : "The course";
   const own = !max && !row; // (a board of its own, not the rival's stickers)
   const listedRows = shown ? (whole || !own ? shown.rows.slice(0, max) : shown.rows.slice(0, TOP)) : [];
@@ -666,7 +668,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
             label="Dare a friend"
             kind="dare"
             saved
-            text={`⚔ Beat my ${myScore} ${kind === "hole" ? `on ${s.name}` : "across the course"} in Gnogolf (${mode}), saved on-chain: race my ghost, free to play, no wallet needed.${SHARE_TAGS}`}
+            text={`⚔ Beat my ${myScore} ${kind === "hole" ? `on ${s.name}` : "across the course"} in Gnogolf (${AIM_NAMES[mode]}), saved on-chain: race my ghost, free to play, no wallet needed.${SHARE_TAGS}`}
             link={kind === "hole" ? holeLink(s, "", me || "", "board") : dareLink(me || "", "board")}
           />
         </div>
@@ -749,22 +751,15 @@ interface Gain { pass: readonly string[]; best: boolean; sky: SkyKind; beat?: Ri
 type Rival = { player: string; name: string; strokes: number };
 const NO_GAIN: Gain = { pass: [], best: false, sky: "" };
 
-/** The chain's own name registrar on gnoweb (onyx, mainnet and a local gno: v0; pearl had v1), NEXT_PUBLIC_NAMEREG if set. */
-function NameLink({ chain, children }: { chain: Chain | null; children: ReactNode }) {
-  const [reg, setReg] = useState(process.env.NEXT_PUBLIC_NAMEREG || "");
-  useEffect(() => {
-    if (reg || !chain) return;
-    let live = true;
-    void chain.nameReg().then((r) => live && setReg(r), () => {});
-    return () => void (live = false);
-  }, [chain, reg]);
-  if (!chain || !reg) return <>{children}</>;
-  return (
+/** The chain's own name registrar on gnoweb (onyx, mainnet and a local gno: v0; pearl had v1), the words alone till it is read. */
+const NameLink = ({ chain, reg, children }: { chain: Chain; reg: string; children: ReactNode }) =>
+  reg ? (
     <a href={chain.web + "/" + reg.replace(/^(gno\.land)?\//, "")} target="_blank" rel="noopener noreferrer">
       {children}
     </a>
+  ) : (
+    <>{children}</>
   );
-}
 
 /**
  * A name typed (what follows "nym-"), the chain asked about it once the typing
@@ -810,14 +805,13 @@ export function NameForm({ chain, account, chainId, price, lead, onNamed, typed,
   const [err, setErr] = useState<string | null>(null); // Adena's refusal
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState("");
-  // the registrar gnokey calls, as registerName's (read once there is a paste to make)
+  // the registrar, as registerName's: the link under the form, and gnokey's paste
   const [reg, setReg] = useState("");
   useEffect(() => {
-    if (typed) return;
     let live = true;
     void chain.nameReg().then((r) => live && setReg(r), () => {});
     return () => void (live = false);
-  }, [chain, typed]);
+  }, [chain]);
   // a name taken with gnokey, said done: the account connected asked (gnokey's key may be another)
   const sent = async () => {
     if (!account) return;
@@ -880,7 +874,7 @@ export function NameForm({ chain, account, chainId, price, lead, onNamed, typed,
                 : why === undefined
                   ? stem ? `Checking ${name}…` : "Type the name you want."
                   : `✓ ${name}`}
-        {bad && typed ? " · Fix it, or clear it to save without a name." : ""} · <NameLink chain={chain}>names on gno.land ↗</NameLink>
+        {bad && typed ? " · Fix it, or clear it to save without a name." : ""} · <NameLink chain={chain} reg={reg}>names on gno.land ↗</NameLink>
       </small>
     </form>
     {/* (outside the form: its Copy and its key's field submit nothing) */}
@@ -1061,25 +1055,25 @@ const Place = ({ at, plain = false }: { at: number; plain?: boolean }) =>
   <span className={plain && at > 3 ? "lb__rank" : `podium__medal${at <= 3 ? ` podium__medal--${at}` : ""}`}>{at}</span>;
 
 /** A place nobody holds yet, or not yet read: a sticker drawn blank. */
-const StickerGhost = ({ at = 0 }: { at?: number }) => <div className="sticker podium__ghost"><Frame className="sticker__face" />{at > 0 && <Place at={at} />}<i /></div>;
+const StickerGhost = () => <div className="sticker podium__ghost"><Frame className="sticker__face" /><i /></div>;
 /** A board's player as a sticker: their gnome flat (in their ghost's skin;
- *  yours, your gnome), their place, name and a line under it (sub); a tap
+ *  yours, your gnome), their name and a line under it (sub); a tap
  *  races them (onClick), else it only shows. */
-// tag: why it is there (a ghost put forward), said over its corner instead of a place
+// tag: why it is there (a ghost put forward), said over its corner
 // say: what a tap does, for a reader (racing them, by default)
 // go: what a tagged card's tap starts, said on it (Race, by default: "Their holes" lists their ghosts)
-export function Sticker({ player, at = 0, tag, sub, chain, me, gnome, onClick, say, go = "Race" }: { player: string; at?: number; tag?: string; sub: string; chain: Chain | null; me?: string | null; gnome: string; onClick?: () => void; say?: string; go?: string }) {
+export function Sticker({ player, tag, sub, chain, me, gnome, onClick, say, go = "Race" }: { player: string; tag?: string; sub: string; chain: Chain | null; me?: string | null; gnome: string; onClick?: () => void; say?: string; go?: string }) {
   const { label } = useWho(chain, player, me), mine = player === me;
   useWorn(chain, mine ? "" : player);
   const body = (<>
     <Face skin={mine ? gnomeById(gnome) : rivalSkin(player, gnome)} />
-    {tag ? <span className="sticker__tag">{tag}</span> : at > 0 && <Place at={at} />}
+    {tag && <span className="sticker__tag">{tag}</span>}
     <span className="sticker__who"><Collector chain={chain} player={player} />{label}</span>
     <span className="sticker__sub">{sub}</span>
     {tag && onClick && !say && <span className="sticker__go" aria-hidden="true">{go} ▸</span>}
   </>);
   return onClick
-    ? <button className="sticker" aria-label={`${say ? `${label}: ${say}` : mine ? "Race your best" : go === "Race" ? `Race ${label}'s ghost` : `${label}: ${go.toLowerCase()}`}: ${tag || `#${at}`}, ${sub}`} onClick={onClick}>{body}</button>
+    ? <button className="sticker" aria-label={`${say ? `${label}: ${say}` : mine ? "Race your best" : go === "Race" ? `Race ${label}'s ghost` : `${label}: ${go.toLowerCase()}`}: ${tag ? `${tag}, ` : ""}${sub}`} onClick={onClick}>{body}</button>
     : <div className="sticker">{body}</div>;
 }
 /** A board's face wears the gnome its player wears for everyone (SHOP): asked with the page's other faces in

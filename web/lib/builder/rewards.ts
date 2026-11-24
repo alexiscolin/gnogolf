@@ -163,11 +163,11 @@ export function keepSeen(now: Seen): void {
 export const isFresh = (id: string, s: { plays: number; players: number }, seen: Seen) =>
   s.plays > (seen[id]?.plays ?? 0) || s.players > (seen[id]?.players ?? 0);
 
-/** The author's test rounds of a published version, one a weather: the fewest strokes. */
+/** The author's test rounds of a published version, one a weather: the latest, the round that proved it (or its shots, carried to an edit since); an earlier one is of the hole before an edit, kept for an undo. */
 export function testRounds(proofs: readonly Proof[], id: string): Proof[] {
-  const best = new Map<string, Proof>();
-  for (const p of proofs) if (p.id === id && (!best.has(p.kind) || p.strokes < best.get(p.kind)!.strokes)) best.set(p.kind, p);
-  return [...best.values()];
+  const latest = new Map<string, Proof>();
+  for (const p of proofs) if (p.id === id) latest.set(p.kind, p);
+  return [...latest.values()];
 }
 
 /**

@@ -3,14 +3,14 @@
 // Next's error boundary: a render error anywhere shows this, not a blank page
 // (and tells analytics: React keeps a caught error from the window's own handler).
 import { useEffect } from "react";
-import { Button } from "@/components/ui";
+import { Button, Dialog } from "@/components/ui";
 import { trackError } from "@/lib/analytics";
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => trackError("render", error, { digest: error.digest }), [error]);
   return (
     <div className="banner" role="alertdialog" aria-labelledby="crash-title">
-      <div className="banner__in">
+      <Dialog className="banner__in">
         <h2 id="crash-title">Something went wrong</h2>
         <p>The game hit an error in this browser. Your scores are safe; reloading usually fixes it.</p>
         <details className="details">
@@ -22,7 +22,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
           <Button variant="primary" onClick={() => window.location.reload()}>Reload</Button>
         </div>
         <button className="linkish crash__retry" onClick={() => reset()}>or try again without reloading</button>
-      </div>
+      </Dialog>
     </div>
   );
 }

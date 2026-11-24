@@ -43,13 +43,13 @@ interface ShareProps {
   saved?: boolean;
 }
 /** The system sheet only where it is the phone's own (on a desktop it is a bare OS panel without the networks people mean). */
-export const onPhone = () => typeof navigator !== "undefined" && !!navigator.share && isTouch();
+const onPhone = () => typeof navigator !== "undefined" && !!navigator.share && isTouch();
 /** One button's share (a gnome's sheet): the phone's own sheet with the words and the link, else the link copied
  *  (copy: useCopied's, so its button says so), tracked as Share's are. */
 export function shareOrCopy(text: string, url: string, copy: (text: string) => unknown) {
   sound("blip");
   const sheet = onPhone();
-  track("share", { target: sheet ? "sheet" : "copy", what: "hole", kind: "share" });
+  track("share", { target: sheet ? "sheet" : "copy", what: "gnome", kind: "share" });
   if (sheet) void navigator.share({ title: "Gnogolf", text, url }).catch(() => {}); // (cancelled: nothing to say)
   else void copy(url);
 }

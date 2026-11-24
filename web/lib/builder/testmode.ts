@@ -43,7 +43,7 @@ export async function freeSlug(chain: Pick<Chain, "versions">, author: string, s
 }
 
 /** A hole id's version (author/slug/vN: N; 0 for none). */
-const versionOf = (id: string) => Number(/\/v(\d+)$/.exec(id)?.[1] ?? 0);
+export const versionOf = (id: string) => Number(/\/v(\d+)$/.exec(id)?.[1] ?? 0);
 
 /**
  * Whether the draft, played under next (its alias's next version), would be
@@ -121,8 +121,6 @@ export const nowSaid = (kind: string, at?: { n: number; of: number }) => (at ? `
 
 /** The weathers row's eyebrow: what to do, then how many are left once one is sunk ("Sink it in each · 2 to go"). */
 export const toGo = (of: number, done: number) => `Sink it in each${!done ? "" : done < of ? ` · ${of - done} to go` : " · all sunk ✓"}`;
-
-/** The weathers in a sentence: "Clear, Wind and Rain". */
 
 /** Why Publish is shut: the world's weathers named, or the ones still to sink once some are (left: proof.ts unproven under the next id). */
 export function publishTip(world: string, left: readonly string[]): string {

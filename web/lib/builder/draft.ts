@@ -183,6 +183,7 @@ export function parseDraft(text: string): Draft | string {
   const ids = new Set<string>();
   for (const p of d.pieces) {
     if (!isObj(p) || typeof p.id !== "string" || !p.id) return "A piece has no name.";
+    if (p.id === "tee" || p.id === "pin") return `Piece ${p.id} has a name the Builder keeps for the tee and the cup.`;
     if (ids.has(p.id)) return `Two pieces are called ${p.id}.`;
     ids.add(p.id);
     if (typeof p.entry !== "string") return `Piece ${p.id} has no palette entry.`;
@@ -241,7 +242,7 @@ function rebuild(d: Draft): Draft {
 export const exportDraft = (d: Draft) => JSON.stringify(d, null, 1);
 
 /** Undo and redo over whole drafts, HISTORY steps deep: a drag is one push. */
-export const HISTORY = 200;
+const HISTORY = 200;
 export function history(first: Draft) {
   const past: Draft[] = [];
   let now = first, future: Draft[] = [];
@@ -385,4 +386,12 @@ export function dropDraft(key: string) {
 export function nextId(d: Pick<Draft, "pieces">): string {
   const n = d.pieces.reduce((m, p) => Math.max(m, Number(/^p(\d+)$/.exec(p.id)?.[1] ?? 0)), 0);
   return `p${n + 1}`;
+}
+
+/** The draft without the pulses no piece is in, each piece kept in its own (numbered again); as it is when every pulse has one. */
+export function withoutEmptyPulses(d: Draft): Draft {
+  const used = d.pulses.map((_, i) => d.pieces.some((p) => p.clock.k === "stroke" && p.clock.pulse === i));
+  if (!used.includes(false)) return d;
+  const to = used.map((_, i) => used.slice(0, i).filter(Boolean).length);
+  return { ...d, pulses: d.pulses.filter((_, i) => used[i]), pieces: d.pieces.map((p) => (p.clock.k === "stroke" ? { ...p, clock: { k: "stroke", pulse: to[p.clock.pulse] } } : p)) };
 }

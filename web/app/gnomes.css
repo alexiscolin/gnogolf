@@ -1,8 +1,9 @@
 /* The gnome shop's own pieces (components/gnomes/*), on the game's tokens,
    controls, sheet and front screen (globals.css, title.css): only what the
-   game had no piece for. Loaded with the shop's chunk; nothing here touches
-   a screen of the game. The GUI spec's mockups (kit.css, "NEW") are the
-   reference. */
+   game had no piece for. Loaded with the shop's part of the game
+   (gnomes/Game.tsx: the picker's Collection and the player's row, the finish
+   card's line), so on the game's screens too: every rule here keeps to the
+   shop's pieces. The GUI spec's mockups (kit.css, "NEW") are the reference. */
 
 /* the tiers: one colour and one shape each (the shape reads in grey too); never --chain's blue */
 :root {
@@ -39,7 +40,7 @@
    head in the corner buttons' row, the gutters slim (the banner's room at the end, as the cups') */
 .screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { justify-content: flex-start; padding: 0 40px 48px; } /* (24 inside the page's frame, 16 in) */
 @media (max-width: 600px) { .screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { padding-inline: 16px; } } /* (the page's frame closer: globals.css) */
-.shop .worlds__in { width: min(1160px, 100%); display: grid; gap: var(--sp-4); justify-items: stretch; }
+.shop .worlds__in { width: min(1160px, 100%); display: grid; justify-items: stretch; }
 .shop .front__head { justify-self: center; }
 /* a player's page's Race: centred at its own width, as every call to action of the game (the column stretches the rest) */
 .shop .worlds__in > .btn--cta { justify-self: center; }
@@ -62,12 +63,10 @@
 
 /* the shop's head: the game's front head (its pill, its title at the rival's size, its line), level with the corner
    buttons; then the sale's line and the toolbar, the gnomes above the fold */
-/* one rhythm: the game's section gap between the head, the sale's line, the toolbar and the shelf */
-/* room to breathe, the game's steps: 32 between the head, the card, the toolbar and the shelf, the card a step more
-   on each side (40); a phone a step tighter (24, the card 28) */
+/* one rhythm, the game's steps: 32 between the head, the sale's card, the toolbar and the shelf; a phone a step tighter (24) */
 .shop .worlds__in { padding-top: calc(var(--sp-7) + var(--sp-2)); gap: var(--sp-6); }
 /* (a computer: its pill, its title and its line each with room round it) */
-@media (min-width: 701px) { .shop .front__head > .eyebrow { margin-bottom: var(--sp-2); } .shop .shop__pitch { margin-top: var(--sp-2); } }
+@media (min-width: 701px) { .shop .front__head > .eyebrow { margin-bottom: var(--sp-2); } }
 /* the foot: room for the fixed chips (the network's, Feedback, Support: --chip-room) and a row's gap under the last
    row, so its names and prices scroll clear of them */
 body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-room) + var(--sp-5)); }
@@ -188,6 +187,7 @@ body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-r
 .gshelf > li { display: flex; }
 .gcard { display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; min-width: 0; padding: var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); box-shadow: var(--shadow-btn); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: transform var(--t-pop) var(--spring); }
 .gcard:hover { transform: translateY(-3px); }
+@media (prefers-reduced-motion: reduce) { .gcard:hover { transform: none; } }
 /* the name on two lines at most, his number right after it (its room kept: two lines whatever the name, the blank
    card's too) */
 .gcard__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.3em; margin: 0 4px; font-size: 15px; font-weight: 700; line-height: 1.15; overflow: hidden; overflow-wrap: anywhere; }
@@ -220,7 +220,6 @@ body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-r
 
 /* a gnome's sheet: the game's sheet, a little wider, its parts on one column, its action pinned */
 .gsheet.sheet__in { max-width: 520px; width: 100%; display: grid; gap: var(--sp-5); max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; }
-html:has(.gsheet) { overflow: hidden; }
 /* the shop's sheets open inside its screen (its stacking context, under the network banner, a later sibling): the
    banner goes while one is open, as the corner buttons do (globals.css), never a chip over the sheet's Buy */
 body:has(.shop .sheet) .netbanner { visibility: hidden; }
@@ -230,7 +229,7 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
    action in the footer */
 .gsheet__head { display: grid; justify-items: center; gap: var(--sp-4); text-align: center; }
 .gsheet__id { display: grid; justify-items: center; gap: var(--sp-2); width: 100%; text-align: center; }
-.gsheet__meta { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-2); }
+.gsheet__meta { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-2); font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 .gsheet .more { text-align: center; }
 .gsheet .more .review { text-align: left; }
 .gsheet__pic { display: grid; justify-items: center; gap: var(--sp-3); }
@@ -247,7 +246,6 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 /* Share beside the one action: a third of its width, its height */
 .gsheet__act { display: grid; grid-template-columns: 1fr 3fr; gap: var(--sp-2); }
 .gsheet__act > .btn { height: 100%; min-height: 52px; }
-.gsheet__meta { font-size: 13px; font-weight: 700; color: var(--ink-soft); }
 .gsheet__line { margin: 0; color: var(--ink) !important; text-align: center; text-wrap: pretty; }
 /* the price block: his price, the trust lines under it, 8 apart; the price stronger than the small print */
 .gsheet__offer { display: grid; justify-items: center; gap: var(--sp-2); }
@@ -271,7 +269,6 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 /* a phone: 16 between the parts, 16 over and under the footer's rule, the picture clear of the close by 8 at least */
 @media (max-width: 600px) {
   .gsheet.sheet__in { gap: var(--sp-4); }
-  .gsheet__foot { bottom: -22px; margin: 0 -18px -22px !important; padding: var(--sp-4) 18px 22px; }
   .gsheet__head .gtile { width: min(200px, 52vw); }
   .gsheet__head--small .gtile { width: 64px; } /* (an order's, a receipt's: small on a phone too) */
 }
@@ -295,16 +292,16 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 /* a consent: its own box, never pre-ticked; the order waits for both */
 .box { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--sp-3); align-items: start; padding: var(--sp-4); border: 2px solid rgba(var(--ink-rgb), .3); border-radius: 12px; background: var(--white); color: var(--ink); font-size: 14px; line-height: 1.4; cursor: pointer; }
 .box input { width: 22px; height: 22px; margin: 0; accent-color: var(--green); }
-.box:has(input:checked) { border-color: var(--green); background: #eaf4ee; }
+.box:has(input:checked) { border-color: var(--green); background: var(--mint); }
 @media (max-width: 600px) { .box { font-size: 15px; } .gsheet__foot--order .box { font-size: 13px; } }
 .legal { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink-soft); text-align: center; }
 .legal a, .gsheet a { color: var(--green); }
-/* the receipt: printed, or saved as a PDF, alone */
+/* the receipt: printed, or saved as a PDF, alone (a screen without one prints as it is) */
 .receipt { display: grid; gap: var(--sp-3); padding: var(--sp-5); border: 2px dashed rgba(var(--ink-rgb), .35); border-radius: 12px; background: var(--white); font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
 .receipt h3 { margin: 0; font-size: 16px; }
 .receipt p { margin: 0 !important; color: var(--ink) !important; }
 @media print {
-  body * { visibility: hidden !important; }
+  :where(body:has(.receipt)) * { visibility: hidden !important; }
   .receipt, .receipt * { visibility: visible !important; }
   .receipt { position: fixed; inset: 0; border: 0; }
 }
@@ -349,6 +346,7 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 }
 .gcollect--door { color: inherit; font: inherit; cursor: pointer; transition: transform var(--t-pop) var(--spring); }
 .gcollect--door:hover { transform: translateY(-2px); }
+@media (prefers-reduced-motion: reduce) { .gcollect--door:hover { transform: none; } }
 .gcollect__go { flex: none; pointer-events: none; }
 /* the finish card's one line, at its foot */
 .gpromo__line { margin: 12px 0 0; text-align: center; font-size: 14px; }

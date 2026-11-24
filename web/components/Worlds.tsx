@@ -260,19 +260,19 @@ export default function Worlds({ counts = {}, stats, current, onPick, onBack, on
         Scores ▾
       </button>
       {resets && (
-        <div className="resets__menu" role="menu">
+        <div className="resets__menu">
           {onRestore && (
-            <Button role="menuitem" size="s" className="resets__restore" disabled={restoring} aria-busy={restoring} onClick={() => (sound("blip"), onRestore())}>
+            <Button size="s" className="resets__restore" disabled={restoring} aria-busy={restoring} onClick={() => (sound("blip"), onRestore())}>
               {restoring ? "Reading the chain…" : "Get my saved holes back"}
             </Button>
           )}
           {played.map((w) => (
-            <Button key={w.id} role="menuitem" size="s" className={wipe === w.id ? "btn--danger" : ""} onClick={() => clear(w.id, () => onReset(w.id))}>
+            <Button key={w.id} size="s" className={wipe === w.id ? "btn--danger" : ""} onClick={() => clear(w.id, () => onReset(w.id))}>
               {wipe === w.id ? "Sure? Tap again" : w.name}
             </Button>
           ))}
           {played.length > 0 && (
-            <Button role="menuitem" size="s" className={wipe === "all" ? "btn--danger" : ""} onClick={() => clear("all", onResetAll)}>
+            <Button size="s" className={wipe === "all" ? "btn--danger" : ""} onClick={() => clear("all", onResetAll)}>
               {wipe === "all" ? "Sure? Badges go too" : "Every cup"}
             </Button>
           )}

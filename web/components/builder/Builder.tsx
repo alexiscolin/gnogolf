@@ -155,9 +155,9 @@ export default function Builder() {
     );
   }
   return (
-    <Start host={host} author={author} drafts={drafts.map((k) => k.draft)} said={said}
-      onOpen={(i) => openAt(drafts[i].key)}
+    <Start host={host} author={author} drafts={drafts} said={said}
+      onOpen={openAt}
       onAdd={(d, broken = "") => { add(d); setOpened(broken); }}
-      onDelete={(i) => { dropDraft(drafts[i].key); setDrafts(drafts.filter((_, k) => k !== i)); }} />
+      onDelete={(key) => { dropDraft(key); setDrafts((list) => list.filter((k) => k.key !== key)); }} />
   );
 }

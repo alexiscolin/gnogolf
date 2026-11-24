@@ -44,7 +44,7 @@ import { endpoints, keepAuthor } from "@/lib/builder/holes";
 import { makeLocalChain } from "@/lib/builder/localchain";
 import { holdsIn, holdsToo } from "@/lib/builder/carry";
 import { FIND_BACK, replay, suggestPar, unproven, type Proof } from "@/lib/builder/proof";
-import { askSaid, cameFrom, clock, finished, heldSaid, toGo, holeRow, nowSaid, parSaid, plan, slugOf, summary, testChain, TRY_HOLE, tryPlan, type Act } from "@/lib/builder/testmode";
+import { askSaid, cameFrom, clock, finished, heldSaid, toGo, holeRow, nowSaid, parSaid, plan, slugOf, summary, testChain, TRY_HOLE, tryPlan, versionOf, type Act } from "@/lib/builder/testmode";
 import { nextSlug, typedSlug } from "@/lib/builder/templates";
 import { playKey } from "@/lib/builder/keys";
 import { NO_GL } from "@/lib/builder/editor";
@@ -263,7 +263,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
   const [asked, setAsked] = useState(readdress);
   const clash = !!author && !!next?.read && !cameFrom(draft, next.id), choosing = !!author && !!next && (asked || clash);
   const id = !author ? TRY_HOLE : choosing ? null : next?.id ?? null, unread = !!author && next?.read === false;
-  const v = Number(/\/v(\d+)$/.exec(next?.id ?? "")?.[1] ?? 0);
+  const v = versionOf(next?.id ?? "");
   useEffect(() => {
     if (unread) setAside("The chain could not be read: played as a new hole (v1). If it has versions already, play it again once it can be.");
     else if (id && !trying && v > 1) setAside(`A new version of ${draft.title || "your hole"}: v${v}, with weather of its own.`);
@@ -363,6 +363,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
 
   // the game on the current weather's period; a new one for the next weather
   useEffect(() => {
+    since.current = 0; // (no time shown until this game has started)
     if (!id || !now || !canvas) return;
     if (now.period < 0) return setNote(`No ${weatherName(now.kind).toLowerCase()} came in the last ${FIND_DAYS} days of this hole's weather: it cannot be proved in it.`);
     const renderer = stageRenderer();
@@ -429,7 +430,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
 
   const mineProofs = draft.proofs.filter((p) => p.key === proofKey && p.id === id);
   const par = proved ? suggestPar(mineProofs) : 0;
-  const time = took ?? (now && tick ? Math.max(0, tick - since.current) : null);
+  const time = took ?? (now && tick && since.current ? Math.max(0, tick - since.current) : null);
   const rows = proved || provedNow ? summary(kinds.map(({ kind }) => ({ kind, strokes: mineProofs.find((p) => p.kind === kind)?.strokes ?? 0, ms: times[kind] })), par) : null;
   // every weather holed as it opened: the summary at once
   const card = proved && !now ? rows
@@ -445,9 +446,9 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
       <div ref={stage} />
       {/* the game's own HUD (Golf.tsx's hud--top): the strokes and the time, the weather now, the weathers to hole beside; Back to Build */}
       <header className="hud hud--top">
-        <div className="card card--score tmode__score" aria-live="polite" aria-atomic="true">
+        <div className="card card--score tmode__score">
           <span className="eyebrow">Strokes</span>
-          <strong>{snap ? snap.strokes : 0}</strong>
+          <strong aria-live="polite" aria-atomic="true">{snap ? snap.strokes : 0}</strong>
           <span className="card__par">{said_ || (time == null && "\u00a0")}{said_ && time != null && " · "}{time != null && <Clock text={clock(time)} />}</span>
         </div>
         <Weather w={snap?.weather ?? CALM} flash={snap?.flash ?? 0} night={snap?.time === "night"} world={snap?.look ?? draft.world} />

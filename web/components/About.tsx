@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import { ADENA_URL, FAUCET, NETWORK, OTHER_URL } from "@/lib/network";
 import { Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
-import { REALM_PATH, pkgsPath, storePath } from "@/lib/chain";
+import { REALM_PATH, RULES as LIMITS, pkgsPath, storePath } from "@/lib/chain";
 import { sound } from "@/lib/feel";
 import { optedOut, optOut } from "@/lib/analytics";
 import { courseCount, holesWord, plural } from "@/components/common";
@@ -42,7 +42,7 @@ const STEPS: readonly { title: string; text: string; icon: ReactNode }[] = [
 ];
 // what gnoweb shows of the game, to check it plays as it says: the code, where the records are kept (and who may change the rules), the physics, the holes' format, the game as text
 const VERIFY = [["The realm's code", `${REALM_PATH}$source`], ["Where the records are kept", storePath(REALM_PATH)], ["The physics", `${pkgsPath(REALM_PATH)}physics$source`], ["The hole data", `${pkgsPath(REALM_PATH)}course$source`], ["The game as text", REALM_PATH]] as const;
-const FACTS = ["Weather that changes every 5 minutes", "Gnomes to unlock", "Assisted and Pro, ranked apart", "Open source"];
+const FACTS = [`Weather that changes every ${LIMITS.periodMs / 60000} minutes`, "Gnomes to unlock", "Assisted and Pro, ranked apart", "Open source"];
 /** The course's fact, from the chain's holes per cup ("5 cups · 90 holes"); none before it has answered. */
 function courseFact(counts: Readonly<Record<string, number>>) {
   const { cups, holes } = courseCount(counts);
@@ -130,10 +130,10 @@ const RULES: readonly (readonly [string, readonly (readonly [string, string])[]]
     ["Strokes", "Pull back and let go: every shot is a stroke. Hole out in as few as you can; par is the number to beat."],
     ["Water and falls", "In the water or the sea, in lava, a shaft or the void (the Crystal Mines), off a roof or off the board, the ball goes back where you shot from. The stroke counts, nothing more."],
     ["Moving pieces", "On a timed hole the pieces run on a clock: the moment you let go decides where they are."],
-    ["Weather", "It changes every 5 minutes, the same for everyone: calm, wind, fog, rain, storm or snow, and the ball runs with it."],
+    ["Weather", `It changes every ${LIMITS.periodMs / 60000} minutes, the same for everyone: calm, wind, fog, rain, storm or snow, and the ball runs with it.`],
     ["Underground", `The Crystal Mines never get a storm or snow, and name the rest as a mine does: still air (calm), a draught (the wind: it pushes the ball), dripping (the rain: the green and the crystal ice run a little faster, and puddles slow the ball), lights out (the fog: the aim dots stop ${sight(true, false)} units ahead). Two galleries are always dark: your lamp lights the dots ${sight(false, true)} units ahead, ${sight(true, true)} with the lights out.`],
     ["Aim", "Assisted shows the whole aim line, Pro shows none. Each is ranked on its own boards."],
-    ["Limit", "A round stops at 60 strokes: start the hole again."],
+    ["Limit", `A round stops at ${LIMITS.maxRoundStrokes} strokes: start the hole again.`],
   ]],
   ["Your card", [
     ["Your score", "The cup card keeps your latest score on each hole, in this browser: play a hole again and the new score replaces it. Your best stays on the boards once saved."],

@@ -158,7 +158,7 @@ export function makeTrail(skin: Skin): GnomeTrail | null {
   if (!skin.trail || !motion) return null;
   const color = skin.trailColor ?? 0xffffff, rib = RIBBONS[skin.trail];
   if (rib) return ribbon(color, rib);
-  const s = swarm(SHAPES[skin.trail] ?? SHAPES.stars, color, 24, FADE_S);
+  const s = swarm(SHAPES[skin.trail], color, 24, FADE_S);
   let last = -1, prev = 0;
   return {
     group: s.mesh,

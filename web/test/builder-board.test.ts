@@ -70,7 +70,8 @@ void test("turnPiece: a quarter turn about its middle, on the grid", () => {
   const rock = put("p", "*/post/rock", [5, 5]);
   assert.deepEqual(turnPiece(rock, O).geometry, rock.geometry, "a round thing: unchanged");
   // what R and Turn say of a piece turning leaves the same: never a silent key
-  assert.equal(notTurned(rock, O), "A round piece looks the same turned: nothing to turn.");
+  assert.equal(notTurned(rock, O), "It looks the same turned: nothing to turn.");
+  assert.equal(notTurned(put("w", "*/hazard/water", [10, 6]), O), "It looks the same turned: nothing to turn.", "a square pond: never called round");
   assert.equal(notTurned(plank, O), "");
 });
 
@@ -84,6 +85,9 @@ void test("nextId, copyPiece, removePiece: a fresh name; a copy where it may go,
   const proved = { ...d, proofs: [{ key: "k", id: "x", kind: "", period: 1, shots: [], commits: [], strokes: 1, maxWork: 1 }] };
   const r = removePiece(proved, "p1");
   assert.deepEqual([r.pieces.some((p) => p.id === "p1"), r.proofs], [false, proved.proofs]);
+  const pulsed: Draft = { ...d, pieces: [...d.pieces, { ...put("b1", "*/bar/plank", [12, 14]), clock: { k: "stroke", pulse: 0 } }, { ...put("b2", "*/bar/plank", [18, 14]), clock: { k: "stroke", pulse: 1 } }], pulses: [{ every: 3, on: 1, phase: 0 }, { every: 4, on: 2, phase: 1 }] };
+  const left = removePiece(pulsed, "b1");
+  assert.deepEqual([left.pulses, left.pieces.find((p) => p.id === "b2")!.clock], [[{ every: 4, on: 2, phase: 1 }], { k: "stroke", pulse: 0 }], "the pulse it leaves empty dropped, the other's piece still in its own");
   assert.equal(copyPiece(d, "nope", ctx), null);
 });
 

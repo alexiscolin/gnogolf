@@ -3,6 +3,7 @@
 // world's own, kind and short (within the realm's 40), the same for a draft
 // and a roll (no Math.random: a seed from the draft, the roll's number), a
 // new one at each roll of the die by the name field.
+import { own } from "../own";
 import type { Draft } from "./draft";
 
 export const WORDS: Record<string, { adjectives: readonly string[]; nouns: readonly string[] }> = {
@@ -36,7 +37,7 @@ export const seedOf = (d: Pick<Draft, "world" | "tee" | "pin" | "pieces">): stri
 
 /** The name suggested for the seed's draft at roll n (0 the first): a new pair each roll, around the whole list. */
 export function suggestName(world: string, seed: string, n: number): string {
-  const { adjectives: a, nouns: b } = WORDS[world] ?? WORDS.garden, all = a.length * b.length;
+  const { adjectives: a, nouns: b } = own(WORDS, world) ?? WORDS.garden, all = a.length * b.length;
   // a prime stride that does not divide the pairs' count walks them all before it repeats one, both words moving
   const step = [61, 67, 71, 73].find((p) => all % p !== 0)!, k = (hash(seed) + n * step) % all;
   return `${a[k % a.length]} ${b[Math.floor(k / a.length) % b.length]}`;

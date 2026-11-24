@@ -26,7 +26,7 @@ export const BALL_R = 0.5;
 
 // The cup is drawn at the radius the chain holes a ball in: the course's
 // 1.2, or a hole's own (HoleState cupR: the Crystal Mines' 1.1 and 1.0).
-export const CUP_R = 1.2;
+const CUP_R = 1.2;
 export const cupRadius = (s: { cupR?: number }) => s.cupR || CUP_R;
 
 /** A slope that is air, not ground: it pushes the ball but raises no ramp.
@@ -74,10 +74,10 @@ export function closest(x: number, z: number, a: Vec2, b: Vec2) {
   nearest.d = Math.hypot(x - a[0] - u * dx, z - a[1] - u * dz);
   return nearest;
 }
-/** A zone's box: its centre (cx, cz), its half-sizes (hx, hz) and its sizes (w, h). */
 /** A zone with no area: its box inverted or flat on either axis (a NaN too). GG1 holds a zone's corners to the board, not
  *  to each other: a hole published from a terminal may have one, and the scene draws nothing of it. */
 export const emptyZone = (z: Pick<Zone, "min" | "max">) => !(z.max[0] > z.min[0] && z.max[1] > z.min[1]);
+/** A zone's box: its centre (cx, cz), its half-sizes (hx, hz) and its sizes (w, h). */
 export const boxOf = (q: Pick<Zone, "min" | "max">) => {
   const w = q.max[0] - q.min[0], h = q.max[1] - q.min[1];
   return { cx: (q.min[0] + q.max[0]) / 2, cz: (q.min[1] + q.max[1]) / 2, hx: w / 2, hz: h / 2, w, h };
@@ -149,8 +149,8 @@ export function inset(q: Shape, x: number, y: number, edges: readonly Seg[] = ed
 
 // garden water, sunk into the ground: from the zone's own edge (where the
 // chain drowns the ball) a bank falls to the water, and on to the bed. Heights
-// under the lane's lowest point round the pond; bank: how wide it is
-export const POOL = { water: -0.42, bed: -0.8, bank: 0.6 };
+// under the lane's lowest point round the pond
+export const POOL = { water: -0.42, bed: -0.8 };
 // the water sunk that way, by skin, and how wide its bank is: a pond's of
 // earth, a rock pool's, a lagoon's of sand, a canal's quay wall (steep)
 export const POOLS: Record<string, { bank: number }> = { water: { bank: 0.6 }, tidepool: { bank: 0.5 }, lagoon: { bank: 0.8 }, canal: { bank: 0.22 } };
@@ -177,12 +177,17 @@ export const DISH: Record<string, { depth: number; run: number; lip: number; rip
  */
 export function sandIn(q: Shape, walls: readonly Pick<Wall, "a" | "b">[], x: number, y: number) {
   if (!inZone(q, x, y)) return -1;
-  let sum = 0;
-  for (const [a, b] of edgesOf(q)) sum += Math.exp(-segDist(x, y, a, b) / SHORE);
-  for (const w of walls) sum += Math.exp(-segDist(x, y, w.a, w.b) / SHORE);
-  const d = Math.min(q.round ? inset(q, x, y) : Infinity, sum ? -SHORE * Math.log(sum) : Infinity);
   const n = 0.75 * Math.sin(x * 1.3 + y * 0.6) * Math.cos(y * 1.1 - x * 0.4) + 0.25 * Math.sin(x * 2.9 - y * 2.3 + 1.1);
-  return d - (0.17 + 0.09 * n);
+  return softIn(q, edgesOf(q), walls, x, y) - (0.17 + 0.09 * n);
+}
+
+/** How far (x, y) is from these edges and walls, blended by a soft minimum so every corner rounds off inward, and
+ *  never past a Round zone's own outline: a sand's (sandIn) and a pond's shore (terrain's shoreIn). */
+function softIn(q: Shape, edges: readonly Seg[], walls: readonly Pick<Wall, "a" | "b">[], x: number, y: number) {
+  let sum = 0;
+  for (const [a, b] of edges) sum += Math.exp(-segDist(x, y, a, b) / SHORE);
+  for (const w of walls) sum += Math.exp(-segDist(x, y, w.a, w.b) / SHORE);
+  return Math.min(q.round ? inset(q, x, y) : Infinity, sum ? -SHORE * Math.log(sum) : Infinity);
 }
 
 /**
@@ -499,15 +504,15 @@ export function terrain(s: Pick<HoleState, "board" | "walls" | "zones" | "start"
   const onSlope = s.zones.some((q) => q.kind === "slope" && !airy(q) && s.cup[0] >= q.min[0] && s.cup[0] < q.max[0] && s.cup[1] >= q.min[1] && s.cup[1] < q.max[1]);
   // a landing stops short of a slope near it: reaching onto one, it dug a
   // dip in the hill that a ball rolling back sped up climbing out of
-  const CUP_R = cupRadius(s); // (this hole's)
-  const landR = Math.min(CUP_R + 1.6, ...hills.map((q) => Math.hypot(Math.max(q.min[0] - s.cup[0], 0, s.cup[0] - q.max[0]), Math.max(q.min[1] - s.cup[1], 0, s.cup[1] - q.max[1]))));
-  const flatR = Math.min(CUP_R + 0.3, landR);
+  const cupR = cupRadius(s);
+  const landR = Math.min(cupR + 1.6, ...hills.map((q) => Math.hypot(Math.max(q.min[0] - s.cup[0], 0, s.cup[0] - q.max[0]), Math.max(q.min[1] - s.cup[1], 0, s.cup[1] - q.max[1]))));
+  const flatR = Math.min(cupR + 0.3, landR);
   const level = (x: number, z: number) => {
     // on a slope the landing is just the cup itself: the rings lie flat, the
     // slope comes back right after
     if (onSlope) {
       const d = Math.hypot(x - s.cup[0], z - s.cup[1]);
-      return d <= CUP_R + 0.15 ? cupH : d < CUP_R + 0.9 ? cupH + (raw(x, z) - cupH) * smoothstep((d - CUP_R - 0.15) / 0.75) : raw(x, z);
+      return d <= cupR + 0.15 ? cupH : d < cupR + 0.9 ? cupH + (raw(x, z) - cupH) * smoothstep((d - cupR - 0.15) / 0.75) : raw(x, z);
     }
     const d = Math.hypot(x - s.cup[0], z - s.cup[1]);
     if (d <= flatR) return cupH;
@@ -522,8 +527,10 @@ export function terrain(s: Pick<HoleState, "board" | "walls" | "zones" | "start"
   // its edge — the zone's, or a wall's where one crosses it, so no kerb dips
   // into it; a bed of soil is heaped up. The ball rides it (height), as it is
   // drawn.
+  // (a wall within a unit of a zone's box: one that may cross it)
+  const near = (q: Zone, w: Wall) => Math.min(w.a[0], w.b[0]) < q.max[0] + 1 && Math.max(w.a[0], w.b[0]) > q.min[0] - 1 && Math.min(w.a[1], w.b[1]) < q.max[1] + 1 && Math.max(w.a[1], w.b[1]) > q.min[1] - 1;
   const dishes = s.zones.filter((q) => q.kind === "surface" && own(DISH, q.skin)).map((q) => ({
-    q, ...own(DISH, q.skin)!, walls: s.walls.filter((w) => Math.min(w.a[0], w.b[0]) < q.max[0] + 1 && Math.max(w.a[0], w.b[0]) > q.min[0] - 1 && Math.min(w.a[1], w.b[1]) < q.max[1] + 1 && Math.max(w.a[1], w.b[1]) > q.min[1] - 1),
+    q, ...own(DISH, q.skin)!, walls: s.walls.filter((w) => near(q, w)),
   }));
   const dish = (x: number, z: number) => {
     let h = 0;
@@ -563,7 +570,7 @@ export function terrain(s: Pick<HoleState, "board" | "walls" | "zones" | "start"
     // the lane): the bank comes up to meet them, or the ground sank away under
     // the kerb and the water showed through beneath it. Not a crossing's own
     // rails: the water goes on under those.
-    const walls = s.walls.filter((w) => !w.every && Math.min(w.a[0], w.b[0]) < q.max[0] + 1 && Math.max(w.a[0], w.b[0]) > q.min[0] - 1 && Math.min(w.a[1], w.b[1]) < q.max[1] + 1 && Math.max(w.a[1], w.b[1]) > q.min[1] - 1
+    const walls = s.walls.filter((w) => !w.every && near(q, w)
       && !spans.some((sp) => [w.a, w.b].every(([x, z]) => x > sp.q.min[0] - 0.4 && x < sp.q.max[0] + 0.4 && z > sp.q.min[1] - 0.4 && z < sp.q.max[1] + 0.4)));
     return { q, edges, walls, bank: own(POOLS, q.skin)!.bank, level: lo + POOL.water, bed: lo + POOL.bed };
   });
@@ -571,14 +578,8 @@ export function terrain(s: Pick<HoleState, "board" | "walls" | "zones" | "start"
   // minimum), so the shore rounds its corners inside the zone, and wobbled,
   // so it is not ruled. Never past the zone's edge: the chain drowns the ball
   // there, and the bank starts there.
-  const shoreIn = (p: (typeof pools)[number], x: number, z: number) => {
-    if (!inZone(p.q, x, z)) return 0;
-    let sum = 0;
-    if (!p.q.round) for (const [a, b] of p.edges) sum += Math.exp(-segDist(x, z, a, b) / SHORE);
-    for (const w of p.walls) sum += Math.exp(-segDist(x, z, w.a, w.b) / SHORE);
-    const d = Math.min(p.q.round ? inset(p.q, x, z) : Infinity, sum ? -SHORE * Math.log(sum) : Infinity);
-    return Math.max(0, d - 0.07 * (1 + Math.sin(x * 1.7 + z * 0.8) * Math.cos(z * 1.3 - x * 0.6)));
-  };
+  const shoreIn = (p: (typeof pools)[number], x: number, z: number) =>
+    inZone(p.q, x, z) ? Math.max(0, softIn(p.q, p.q.round ? [] : p.edges, p.walls, x, z) - 0.07 * (1 + Math.sin(x * 1.7 + z * 0.8) * Math.cos(z * 1.3 - x * 0.6))) : 0;
   const poolAt = (x: number, z: number) => {
     let best: { k: number; d: number; level: number; bed: number; skin: string } | null = null;
     for (const p of pools) {

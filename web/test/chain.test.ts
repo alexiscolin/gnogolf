@@ -4,7 +4,7 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import {
-  makeChain, errorKind, undeclared, isAddress, isHoleId, isSlug, safeEndpoint, pullShot, shotOf, roundShots, RULES, REALM_PATH, pkgsPath, storePath, isRealmPath, DEFAULT_RPC, BYTE_PRICE,
+  makeChain, errorKind, undeclared, isAddress, isHoleId, isSlug, safeEndpoint, pullShot, shotOf, roundShots, RULES, REALM_PATH, pkgsPath, storePath, isRealmPath, DEFAULT_RPC, BYTE_PRICE, landed,
 } from "../lib/chain.ts";
 
 // ------------------------------------------------------------ the wire
@@ -214,6 +214,13 @@ test("pkgsPath: the packages beside the realm, in the repo tree and as stage.sh 
   assert.equal(pkgsPath("/r/nym-alexiscolin000/gnogolf/golf/v2"), "/p/nym-alexiscolin000/gnogolf/");
   assert.equal(storePath("/r/nym-alexiscolin000/gnogolf/golf/v2"), "/r/nym-alexiscolin000/gnogolf/store");
   assert.equal(storePath(REALM_PATH), "/r/gnogolf/store");
+});
+
+test("landed: yes as soon as the chain shows it; nothing read once the page waiting for it is gone", async () => {
+  let asked = 0;
+  assert.equal(await landed(() => (asked++, Promise.resolve(true)), () => true), true);
+  assert.equal(await landed(() => (asked++, Promise.resolve(true)), () => false), false);
+  assert.equal(asked, 1, "gone: never asked");
 });
 
 // ------------------------------------------------------------ makeChain: params, clock, links

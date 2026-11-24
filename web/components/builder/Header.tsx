@@ -1,7 +1,7 @@
 "use client";
 
 // The Builder's one header (the GUI spec's B1): Back (the draft is kept),
-// the hole's name in place (the one place it is edited: its address follows
+// the hole's name in place (its address follows
 // it, shown on Publish), the three steps (Build, Play, Publish), and on the
 // right the difficulty chip (a click shows the meter's line on the board),
 // the history and the mode's one action, the way on (Play, in Build; once
@@ -11,6 +11,7 @@
 import { useRef } from "react";
 import { MOD } from "./Inspector";
 import { worldName } from "@/lib/builder/rules";
+import { MAX_TITLE } from "@/lib/builder/draft";
 import { CHECKING, shortWhy } from "@/lib/builder/editor";
 import type { Level } from "@/lib/builder/difficulty";
 import { Button, Dice, InfoTip } from "@/components/ui";
@@ -45,7 +46,8 @@ function Meter({ m, on, onLine, bump }: { m: MeterChip; on: boolean; onLine?: ()
         <i aria-hidden="true">{[0, 1, 2, 3].map((k) => <b key={k} className={m.level != null && k <= m.level ? "on" : undefined} />)}</i>
         <span aria-hidden="true">{m.word}</span>
       </button>
-      {bump && <em key={bump} className="meter__delta" role="status">{bump}</em>}
+      {/* (kept in the page when empty: a live region only speaks of what changes in it) */}
+      <span role="status">{bump && <em key={bump} className="meter__delta">{bump}</em>}</span>
     </span>
   );
 }
@@ -61,7 +63,7 @@ const HistoryIcon = ({ redo = false }: { redo?: boolean }) => (
 const keys = (redo: boolean) => `${MOD === "⌘" ? "Meta" : "Control"}+${redo ? "Shift+" : ""}Z`;
 
 /** The world menu, a button of the game's that says the world: the hole moved to another (judged there first: Editor's world), the one it is in ticked. */
-function More({ world, worlds, onWorld }: { world: string; worlds: readonly string[]; onWorld: (w: string) => void }) {
+function WorldMenu({ world, worlds, onWorld }: { world: string; worlds: readonly string[]; onWorld: (w: string) => void }) {
   const menu = useRef<HTMLDetailsElement>(null);
   return (
     <details ref={menu} className="bhead__more" onKeyDown={(e) => e.key === "Escape" && menu.current?.open && (e.stopPropagation(), (menu.current.open = false))}>
@@ -116,11 +118,11 @@ export default function Header({ title, address, world, worlds = [], step, steps
           <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </Button>
         <span className="bhead__name">
-          <input value={title} maxLength={40} placeholder="Name your hole" aria-label="The hole's name" onChange={(e) => onTitle(e.target.value)}
+          <input value={title} maxLength={MAX_TITLE} placeholder="Name your hole" aria-label="The hole's name" onChange={(e) => onTitle(e.target.value)}
             title={address && (address.fixed ? `Its address: ${address.slug}, kept since its first round (a new name changes the name only)` : `Its address follows its name: ${address.slug}`)} />
           {onRoll && <Button variant="icon" size="m" type="button" className="bhead__roll" aria-label="Suggest a name" title="Suggest a name (again: another)" onClick={onRoll}><Dice /></Button>}
         </span>
-        {onWorld && worlds.length > 1 && <More world={world} worlds={worlds} onWorld={onWorld} />}
+        {onWorld && worlds.length > 1 && <WorldMenu world={world} worlds={worlds} onWorld={onWorld} />}
       </div>
       <ol className="stepper" aria-label="Build, play, publish">
         {(["edit", "play", "publish"] as const).map((s, i) => {

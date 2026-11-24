@@ -153,7 +153,7 @@ function liner(rand: () => number, used: Set<string>) {
  */
 export function generateSeries(s: SeriesConfig, recipe: Recipe, epics: readonly Design[], legendaries: readonly Design[], gnomes: readonly Traits[], tris?: Triangles): Entry[] {
   const rand = seeded(s.seed), out: Entry[] = [], taken: Traits[] = [];
-  const name = namer(recipe, rand, new Set([...epics, ...legendaries].map((d) => d.name))), line = liner(rand, new Set());
+  const name = namer(recipe, rand, new Set([...epics, ...legendaries].map((d) => d.name))), line = liner(rand, new Set([...epics, ...legendaries].map((d) => d.line)));
   const designs = { epic: epics, legendary: legendaries };
   // the hand designs first: the generated ones keep away from them
   const hand = new Map<string, Traits[]>();

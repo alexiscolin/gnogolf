@@ -173,6 +173,7 @@ test("catalogue: a gallery's filters and a token's trait list", () => {
   assert.ok(rows.some((r) => r.trait === "Material" && r.value === "Metal"));
   assert.ok(!traitRows(PLAIN).some((r) => ["Material", "Trail", "Holing", "Prop", "Piece"].includes(r.trait)), "nothing that is not there");
   assert.equal(traitRows({ ...PLAIN, beard: "none" }).find((r) => r.trait === "Beard")!.value, "Clean-shaven");
+  assert.equal(traitRows({ ...PLAIN, archetype: "stormwatch" }).find((r) => r.trait === "Archetype")!.value, "Storm watcher");
 });
 
 test("validate: the catalogue passes every rule", () => {
@@ -281,6 +282,12 @@ test("generate: the same data and seed make the same gnomes; too little data say
   // every hand design is a prop of the table, every Legendary's piece a legend one
   for (const d of epics) assert.ok(PROP_DESIGNS[d.prop] && !("legend" in PROP_DESIGNS[d.prop]), d.prop);
   for (const d of legs) assert.ok("legend" in PROP_DESIGNS[d.prop], d.prop);
+});
+
+test("generate: a generated line keeps off the hand designs' lines, as a name does off their names", () => {
+  const s = config.series[0], { recipe, epics, legs } = dataOf(s.id), line = catalogue.gnomes[0].line;
+  const made = generateSeries(s, recipe, [{ ...epics[0], line }, ...epics.slice(1)], legs, []);
+  assert.equal(made.filter((g) => g.line === line).length, 1);
 });
 
 test("colour: OKLab lightness and distance as the eye sees them", () => {

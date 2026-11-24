@@ -3,7 +3,8 @@
 // says): "rebuild" keeps the build served and the new one alone, its numbers
 // only growing; "close" writes the date in seed.env; no command goes on when
 // the chain does not answer; no command opens a sale (the seed opens the
-// genesis's, every gnome at once).
+// genesis's, every gnome at once); a start that fails exits with a failure,
+// cleaned up.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -95,4 +96,16 @@ void test("try-local close: the date set on the chain and in seed.env; no comman
     assert.match(r.out, /usage/, cmd);
   }
   assert.doesNotMatch(p.calls(), /OpenSale/, "no sale opened from here");
+});
+
+void test("try-local start: a failure once the cleanup is set (gnokey makes no seed phrase) is still a failure", async () => {
+  const p = playground("http://127.0.0.1:1", "");
+  // the onyx toolchain, its gnokey saying nothing; no port taken, no tailnet
+  const onyx = path.join(p.dir, "cache/gno-toolchains/onyx");
+  fs.mkdirSync(onyx, { recursive: true });
+  for (const f of [path.join(onyx, "gnokey"), path.join(onyx, "gnodev"), path.join(p.dir, "bin/netstat"), path.join(p.dir, "bin/tailscale")]) fs.writeFileSync(f, "#!/bin/bash\n", { mode: 0o755 });
+  fs.mkdirSync(path.join(p.dir, "web/node_modules"));
+  const r = await p.run();
+  assert.match(r.out, /try-local: stopped/);
+  assert.notEqual(r.code, 0);
 });

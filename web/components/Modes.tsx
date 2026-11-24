@@ -123,19 +123,26 @@ export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, o
   // the course's holes, where a ghost can be
   const holes = useMemo(() => (s.allHoles || []).filter((h) => h.official).map((h) => ({ id: h.id, name: h.name, par: parOf(h) })), [s.allHoles]);
   const picks = useRivalPicks(chain, me, mode);
+  const asking = useRef(false); // (a Race pressed again while the chain answers the first: one at a time)
   const go = async (e: FormEvent) => {
     e.preventDefault();
-    const v = typed.trim();
-    // (a chain that did not answer is not a name it does not know)
-    const addr = isAddress(v) ? v : chain ? await chain.resolveName(v).catch(() => null) : "";
-    if (addr === null) return setNote("The chain did not answer. Try again in a moment.");
-    track("ui", { action: "rival_typed", found: !!addr });
-    if (!addr) return setNote(`No gno.land name “${v}” here. Check the spelling, or pick someone below.`);
-    // a duel is played where their ghost is: someone with no saved round has none (a failed read lets them through)
-    // (their bests go with them: not read twice)
-    const bests = chain && holes.length ? await chain.bestsOf(holes.map((h) => h.id), addr).catch(() => undefined) : undefined;
-    if (bests && !bests.size) return setNote(`${v} has no saved round yet: no ghost to race. Pick someone below.`);
-    onPick(addr, bests, "friend");
+    if (asking.current) return;
+    asking.current = true;
+    try {
+      const v = typed.trim();
+      // (a chain that did not answer is not a name it does not know)
+      const addr = isAddress(v) ? v : chain ? await chain.resolveName(v).catch(() => null) : "";
+      if (addr === null) return setNote("The chain did not answer. Try again in a moment.");
+      track("ui", { action: "rival_typed", found: !!addr });
+      if (!addr) return setNote(`No gno.land name “${v}” here. Check the spelling, or pick someone below.`);
+      // a duel is played where their ghost is: someone with no saved round has none (a failed read lets them through)
+      // (their bests go with them: not read twice)
+      const bests = chain && holes.length ? await chain.bestsOf(holes.map((h) => h.id), addr).catch(() => undefined) : undefined;
+      if (bests && !bests.size) return setNote(`${v} has no saved round yet: no ghost to race. Pick someone below.`);
+      onPick(addr, bests, "friend");
+    } finally {
+      asking.current = false;
+    }
   };
   return (
     <FrontScreen className="front--fit modes" inner="rival" back="Back to the games" onBack={onBack} onAbout={onAbout} eyebrow="Choose your rival" title="Who do we race?">

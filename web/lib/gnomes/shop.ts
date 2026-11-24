@@ -7,6 +7,7 @@
 import { depositFor, feeFor, upToHundredth } from "../adena";
 import { GNOMES_REALM, isAddress, isObj, nums, shortAddr, strs, type Chain, type Obj } from "../chain";
 import { cap as capitalised, theWorld } from "../card";
+import { own } from "../own";
 import { TIER_LOOK, filterGnomes, type Listed, type Query } from "./catalogue";
 import type { Tier } from "./vocab";
 
@@ -159,7 +160,8 @@ export function utcDate(unix: number, now: number, short = false) {
 /** The same time in the player's own clock, for a hover and a screen reader. */
 export const localDate = (unix: number) => new Date(unix * 1000).toLocaleString(undefined, { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
 
-const label = (t: string) => (TIER_LOOK[t as Tier] || { label: t }).label;
+/** A tier's name as the screens and the receipt say it ("Legendary"); a word not a tier, as it is. */
+export const tierName = (t: string) => own(TIER_LOOK, t)?.label ?? t;
 const plural = (word: string, n: number) => (n === 1 ? word : word + "s");
 const tierIndex = (c: Collection, t: string) => c.tiers.findIndex((x) => x.name === t);
 /** Whether a gnome is the closed genesis's: the closing closes the genesis alone (close.gno isClosed), a later series sells on. */
@@ -217,7 +219,7 @@ export function saleLine(row: Now, c: Collection, entries: readonly Pick<Listed,
   const { sale } = row, inSale = entries.filter((e) => e.id >= sale.first && e.id <= sale.last);
   const tiers = BUY_TIERS.map((tier) => {
     const of = inSale.filter((e) => e.tier === tier), found = of.filter((e) => sold(e.id)).length, price = sale.row.prices[tierIndex(c, tier)] ?? 0;
-    return { tier, found, total: of.length, price, label: `${label(tier)}${price > 0 ? `, ${gnot(price)} GNOT` : ""}: ${found} of ${of.length} found a player` };
+    return { tier, found, total: of.length, price, label: `${tierName(tier)}${price > 0 ? `, ${gnot(price)} GNOT` : ""}: ${found} of ${of.length} found a player` };
   }).filter((t) => t.total > 0);
   const legends = inSale.filter((e) => e.tier === "legendary"), waiting = legends.filter((e) => !sold(e.id)), until = utcDate(sale.row.playersUntil, now, true), opens = utcDate(sale.row.start, now, true);
   // (short: a phone's, the day said only when it is not today's)
@@ -298,11 +300,11 @@ export function whyNot(r: CanBuy, c: Collection, g: Pick<Listed, "id" | "tier" |
     case "players-only": return { button: `Players first until ${utcDate(r.window.until, now, true)}`, note: "Save one round on-chain to buy now.", play: true };
     case "window-cap": {
       const cap = c.tiers[i]?.playerCap ?? 0;
-      return { button: `${cap - r.window.left[t]} of ${cap} ${plural(label(t), cap)} this window`, note: `Your share until ${utcDate(r.window.until, now, true)}. Then open to everyone.` };
+      return { button: `${cap - r.window.left[t]} of ${cap} ${plural(tierName(t), cap)} this window`, note: `Your share until ${utcDate(r.window.until, now, true)}. Then open to everyone.` };
     }
     case "cap": {
       const cap = c.tiers[i]?.cap ?? 0;
-      return { button: `${cap - r.left[t]} of ${cap} ${plural(label(t), cap)}`, note: "The most one wallet buys." };
+      return { button: `${cap - r.left[t]} of ${cap} ${plural(tierName(t), cap)}`, note: "The most one wallet buys." };
     }
     case "later": return { button: sale ? `Opens ${utcDate(sale.start, now, true)}` : "Not on sale yet", note: from };
     case "unlisted": return { button: "Not on sale yet", note: c.closesAt ? `${from} Its sale opens before ${utcDate(c.closesAt, now)}, or never.` : from };
@@ -311,6 +313,12 @@ export function whyNot(r: CanBuy, c: Collection, g: Pick<Listed, "id" | "tier" |
     case "unknown": case "ids": return { button: "No gnome by that number", note: "" };
     default: return { button: "Can't be bought now", note: `The chain says: ${r.said}.` };
   }
+}
+/** whyNot with no buyer to ask CanBuy for (no wallet connected): what the sale alone says, Buy's first refusals in its
+ *  order (paused, no sale for his series, not opened yet), none of which reads more of a CanBuy; null while on sale. */
+export function saleWhyNot(c: Collection, g: Pick<Listed, "id" | "tier" | "home">, now: number) {
+  const sale = saleOf(c, g.id), reason: Reason = !c.open ? "paused" : !sale ? "unlisted" : now < sale.start ? "later" : "";
+  return reason ? whyNot({ ok: false, reason } as CanBuy, c, g, now) : null;
 }
 
 // ------------------------------------------------------------ a buy sent, not confirmed
@@ -337,10 +345,10 @@ export type Bill = ReturnType<typeof bill>;
 export const PAGE = 48;
 type View = "mine" | "all";
 interface Seen { c: Collection; sold: (id: number) => boolean; mine: ReadonlySet<number>; now: number }
-/** Whether a gnome is on sale now: his series' sale started, not sold, not the closed genesis's. */
+/** Whether a gnome is on sale now: the sale not paused, his series' sale started, not sold, not the closed genesis's. */
 export function onSale(e: Some, c: Collection, sold: (id: number) => boolean, now: number) {
   const s = saleOf(c, e.id);
-  return !sold(e.id) && !closedOut(c, e.id) && !!s && s.start <= now;
+  return c.open && !sold(e.id) && !closedOut(c, e.id) && !!s && s.start <= now;
 }
 /** Whether a gnome was never made: the closed genesis's, never sold. */
 export const neverMade = (e: Some, s: Seen) => closedOut(s.c, e.id) && !s.sold(e.id);
@@ -362,7 +370,7 @@ export const theirTitle = (name: string, who: string) => `${name || shortAddr(wh
 export const showsClosing = (c: Collection) => c.closesAt > 0 && !c.series[0]?.closed;
 /** The closing line's place in the shop's head: its line, none, or its room kept while the sale is not read yet (null). */
 export const closingSlot = (c: Collection | null): "line" | "none" | "room" => (!c ? "room" : showsClosing(c) ? "line" : "none");
-/** Whether a card in the gallery shows Buy: on sale now (its sale started, unsold, the sale not closed) and not the player's. */
+/** Whether a card in the gallery shows Buy: on sale now (its sale started and not paused, unsold, the sale not closed) and not the player's. */
 export const canBuyCard = (e: Listed, s: Seen) => !s.mine.has(e.id) && onSale(e, s.c, s.sold, s.now);
 /** A card's one fact: the price on sale, "Yours", "Found a player", "Never made", when it opens, or not on sale yet. */
 export function cardFact(e: Listed, s: Seen) {

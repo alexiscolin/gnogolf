@@ -141,7 +141,7 @@ export const useDialogOpen = () => useSyncExternalStore(watch, anyModal, () => f
 let pressed: HTMLElement | null = null;
 if (typeof document !== "undefined")
   document.addEventListener("pointerdown", (e) => void (pressed = e.target instanceof Element ? e.target.closest<HTMLElement>("button, a, summary, [tabindex]") : null), true);
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, summary, [tabindex]:not([tabindex="-1"])';
 
 /**
  * What every dialog does: focus moves into it when it opens (the dialog
@@ -204,8 +204,10 @@ interface SheetProps {
 export function Sheet({ label, onClose, className = "", role = "dialog", children }: SheetProps) {
   const id = useId();
   const ref = useDialog<HTMLDivElement>(onClose);
+  // where the press began: one begun in the sheet and let go over the dim (a text selected by dragging) clicks the dim too, and is no tap on it
+  const inside = useRef(false);
   return (
-    <div className="sheet" onClick={onClose}>
+    <div className="sheet" onPointerDown={(e) => (inside.current = e.target !== e.currentTarget)} onClick={() => !inside.current && onClose()}>
       <div ref={ref} tabIndex={-1} className={`sheet__in ${className}`.trim()} role={role} aria-modal="true" aria-label={label} id={id} onClick={(e) => e.stopPropagation()}>
         <SheetClose onClose={onClose} />
         {children}

@@ -1,8 +1,8 @@
 "use client";
 
 // The publish step (the GUI spec's B4; the hole-builder design's "The
-// publish flow"): the hole as players will see it (the editor's board), and the form (its right column): its name
-// (edited in the header, the one place) and its note as the chain will keep
+// publish flow"): the hole as players will see it (in 3D, Preview.tsx), and the form (its right column): its name
+// (typed here as in the header) and its note as the chain will keep
 // them (builder.wasm's check, PublishMine's own cleaning, its link check
 // live), its address, the permanence said before anything else, the total
 // on the button and the bill under "What publishing costs" before any signature, then
@@ -19,14 +19,14 @@ import { Button, InfoTip } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import Share from "@/components/Share";
 import { aboutGnot, connect, hasAdena, publishHole, PRICE } from "@/lib/adena";
-import { BYTE_PRICE, makeChain, wait } from "@/lib/chain";
+import { BYTE_PRICE, landed, makeChain } from "@/lib/chain";
 import { explain } from "@/lib/builder/explain";
 import { endpoints, playLink } from "@/lib/builder/holes";
 import { bill, finalHex, gasFor, gnokeyPublish, holeHolds, parLine, publishSteps, type Readings } from "@/lib/builder/publish";
 import { census } from "@/lib/builder/drawn";
 import { loadPalette } from "@/lib/builder/palette";
 import { builderScore, proofKey, provedAt, shaOf } from "@/lib/builder/proof";
-import { holeId, holeRow, slugOf } from "@/lib/builder/testmode";
+import { holeId, holeRow, slugOf, versionOf } from "@/lib/builder/testmode";
 import { ISSUES } from "@/lib/site";
 import { loadTakedown, takenDown } from "@/lib/takedown";
 import { sameSources } from "@/lib/sim/sources";
@@ -37,9 +37,6 @@ import Preview from "./Preview";
 import { beatLine, cardLines, holeShare, saveFile as download, shareCard } from "./share";
 import { MAX_NOTE } from "@/lib/builder/draft";
 import { worldName } from "@/lib/builder/rules";
-
-/** How long the chain is read for the new version after a signature (it lands within a few blocks). */
-const LAND_MS = 90_000;
 
 export default function Publish({ host, draft, author, next, onDraft, onRetest, onReaddress, onBuild, onDone }: {
   host: BuilderHost;
@@ -112,16 +109,21 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
       : "The rounds that proved it no longer play out the same on its final data: play it again.";
     if (!hex || !key || !proved) return setReadings((r) => ({ ...r, hole: key && !proved ? untested : undefined }));
     setReadings((r) => ({ ...r, hole: undefined }));
-    const judged = loadPalette(draft.world).then((palette) => holeHolds({ ...draft, title: name }, hex, key, proved, { host, palette, census }));
-    void Promise.all([judged, shaOf(hex)]).then(([hole, s]) => {
-      if (!live.current) return;
-      setReadings((r) => ({ ...r, hole }));
-      setSha(s);
-    }, (e: unknown) => live.current && setReadings((r) => ({ ...r, hole: e instanceof Error ? e.message : String(e) })));
+    // (judged once the typing stops, each judging replaying every round; one overtaken by a newer dropped)
+    let stale = false;
+    const t = setTimeout(() => {
+      const judged = loadPalette(draft.world).then((palette) => holeHolds({ ...draft, title: name }, hex, key, proved, { host, palette, census }));
+      void Promise.all([judged, shaOf(hex)]).then(([hole, s]) => {
+        if (stale) return;
+        setReadings((r) => ({ ...r, hole }));
+        setSha(s);
+      }, (e: unknown) => !stale && setReadings((r) => ({ ...r, hole: e instanceof Error ? e.message : String(e) })));
+    }, 300);
+    return () => ((stale = true), clearTimeout(t));
   }, [hex, key, proved, draft, host, name]);
 
   const id = readings.versions ? holeId(author, draft.slug, readings.versions) : "";
-  const v = Number(id.slice(id.lastIndexOf("/v") + 2)) || 1;
+  const v = versionOf(id) || 1;
   const sizes = { bytes: cost?.bytes ?? hex.length / 2, name, note, v, newAuthor: true };
   const b = bill({ ...sizes, gasPrice: prices.gas, bytePrice: prices.byte });
   const gas = gasFor(sizes), deposit = b.deposit;
@@ -130,9 +132,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
   // after a signature: the chain read until it names the new version
   const land = async () => {
     setSent("landing");
-    for (const t0 = Date.now(); Date.now() - t0 < LAND_MS && live.current; await wait(3000)) {
-      if ((await chain.current(alias).catch(() => "")) === id) return (setSent("done"), onDone(id));
-    }
+    if (await landed(async () => (await chain.current(alias).catch(() => "")) === id, () => live.current)) return (setSent("done"), onDone(id));
     if (live.current) (setSent(""), setWhy("The chain does not show it yet. If you signed, give it a minute and look again."));
   };
   const adena = async () => {
@@ -167,7 +167,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
     return (
       <main className="pub pub--done">
         <section className="pub__hole" aria-label="Your hole">
-          <Preview state={state} fresh capture={capture} />
+          <Preview state={state} capture={capture} />
           <div className="pub__card"><b>{lines[0]}</b><small>{lines[1]}</small></div>
         </section>
         <section className="col pub__doneform">
@@ -190,7 +190,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
   return (
     <main className="pub">
       <section className="pub__hole" aria-label="The hole as players will see it">
-        <Preview state={state} fresh />
+        <Preview state={state} />
       </section>
       <section className="col pub__form" aria-labelledby="pub-head">
         <h2 className="col__head" id="pub-head">Publish on gno.land</h2>

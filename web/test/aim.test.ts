@@ -133,6 +133,19 @@ void test("preview() does nothing for a pull too soft to shoot", () => {
   assert.equal(chain.pending.length, 0);
 });
 
+void test("a pull brought back too soft to shoot puts its dots away", (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { E, aimer, aim } = makeRig();
+  E.dragging = true;
+  E.shot.power = 8;
+  aim.visible = true; // as aimAt() sets it before every preview
+  aimer.preview();
+  E.shot.power = 0.2; // slid back toward the press: letting go shoots nothing
+  aim.visible = true;
+  aimer.preview();
+  assert.equal(aim.visible, false);
+});
+
 void test("preview() in pro mode shows no dots and never asks the chain", () => {
   const { E, g, aimer, aim, chain } = makeRig();
   E.dragging = true;
@@ -238,6 +251,26 @@ void test("the chain's answer replaces the line, morphs the dots, and is cached 
   assert.equal(aimer.moving(), false);
   aimer.forget();
   assert.equal(aimer.known(g.id!, g.shots, shot), undefined);
+});
+
+void test("swung too far from the chain's dots, the straight line is drawn along the aim, not turned by the swing", async (t) => {
+  t.mock.timers.enable({ apis: ["setTimeout"] });
+  const { E, aimer, aim, dots, chain } = makeRig();
+  E.dragging = true;
+  E.shot.power = 5;
+  aimer.preview();
+  t.mock.timers.tick(120);
+  chain.pending[0].resolve(mkStroke([[0, 0], [6, 0]]));
+  await settle();
+  assert.equal(aimer.moving(), true); // the chain's dots still bending into place
+  E.shot.angle = 0.3; // past what the swung dots stand for
+  aimer.preview();
+  assert.equal(aimer.moving(), false, "nothing of the dropped dots bends over the line");
+  const m = new THREE.Matrix4(), p = new THREE.Vector3();
+  aim.updateMatrixWorld(true);
+  dots.getMatrixAt(dots.count - 1, m);
+  p.setFromMatrixPosition(m.premultiply(aim.matrixWorld));
+  assert.ok(Math.abs(Math.atan2(p.z, p.x) - 0.3) < 1e-4, `drawn at ${Math.atan2(p.z, p.x)}`);
 });
 
 void test("an aim already answered, revisited, is served from cache with no second request", async (t) => {

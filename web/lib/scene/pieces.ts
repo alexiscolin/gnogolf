@@ -34,7 +34,7 @@ const P = {
 
 /** Stripes on a canvas: for awnings, buoys and stall covers. */
 const stripeTex = new Map<string, THREE.CanvasTexture>();
-function stripes(a: number, b: number, n = 6, vertical = true) {
+function stripes(a: number, b: number, n: number, vertical = true) {
   const key = `${a}-${b}-${n}-${vertical}`;
   const had = stripeTex.get(key);
   if (had) return had;
@@ -100,7 +100,7 @@ function coral(p: PostLike, y: number) {
 }
 
 /** A boulder filling the circle exactly; `color` for sandstone outcrops. */
-function boulder(p: PostLike, y: number, color: number = C.stone, flatten = 0.8) {
+function boulder(p: PostLike, y: number, color: number, flatten: number) {
   const geo = new THREE.DodecahedronGeometry(1, 0);
   const a = geo.attributes.position;
   let far = 0;

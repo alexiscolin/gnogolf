@@ -18,7 +18,7 @@ import { Emblem } from "@/components/Worlds";
 import { Button, Segmented, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import { gnomeById } from "@/lib/scene";
-import { exportDraft, type Draft } from "@/lib/builder/draft";
+import { exportDraft, type Draft, type Kept } from "@/lib/builder/draft";
 import { draftMap, draftState } from "@/lib/builder/cards";
 import { draftFile, fromFile, openPublished, type Opened } from "@/lib/builder/importing";
 import { census } from "@/lib/builder/drawn";
@@ -27,6 +27,7 @@ import { startsIn } from "@/lib/builder/templates";
 import { endpoints, playLink } from "@/lib/builder/holes";
 import { goToMenu } from "@/lib/menu";
 import { proofKey } from "@/lib/builder/proof";
+import { versionOf } from "@/lib/builder/testmode";
 import { FIELD, weatherName, worldName } from "@/lib/builder/rules";
 import { factsOf, isFresh, statsLine, statsOf, versusLine, type HoleStats } from "@/lib/builder/rewards";
 import type { BuilderHost } from "@/lib/builder/wasm";
@@ -46,21 +47,20 @@ const download = (d: Draft) => saveFile(new Blob([exportDraft(d)], { type: "appl
 export default function Start({ host, author, drafts, said = "", onOpen, onAdd, onDelete }: {
   host: BuilderHost;
   author: string | null;
-  drafts: readonly Draft[];
+  drafts: readonly Kept[];
   /** why something asked of the Builder on arrival (a remix) did not open */
   said?: string;
-  onOpen: (i: number) => void;
-  /** a new draft, opened */
+  onOpen: (key: string) => void;
   /** a new draft, and why it is broken if it is (a file opened as it is: "" if it passes) */
   onAdd: (d: Draft, broken?: string) => void;
-  onDelete: (i: number) => void;
+  onDelete: (key: string) => void;
 }) {
   const [world, setWorld] = useState("garden");
   const [hole, setHole] = useState("");
   const [why, setWhy] = useState(said);
   useEffect(() => void (said && setWhy(said)), [said]);
   const [busy, setBusy] = useState(false);
-  const [wipe, setWipe] = useState<number | null>(null); // the draft asked to be deleted, before the sheet's yes
+  const [wipe, setWipe] = useState<string | null>(null); // the draft asked to be deleted, before the sheet's yes
   const file = useRef<HTMLInputElement>(null);
   const router = useRouter(); // (the game's menu without a reload: the app's own navigation)
   // each starter's map
@@ -73,7 +73,7 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
   // the author's holes on the chain: each draft's own (its alias), and those this browser has no draft of
   const { got, reload } = useRewards(chain, author);
   const rowOf = (d: Draft) => (author && d.slug && got?.rows.find((h) => h.slot === `${author}/${d.slug}`)) || null;
-  const elsewhere = got?.rows.filter((h) => !drafts.some((d) => rowOf(d) === h)) ?? [];
+  const elsewhere = got?.rows.filter((h) => !drafts.some((k) => rowOf(k.draft) === h)) ?? [];
   const maps = useHoleMaps(chain, elsewhere.map((h) => h.id));
   const live = (h: HoleRow) => {
     if (!got || !author) return null;
@@ -92,6 +92,7 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
     void openPublished(chain, host, census, id, author).then(take).finally(() => setBusy(false));
   };
   const count = drafts.length + elsewhere.length, any = count > 0;
+  const wiped = drafts.find((k) => k.key === wipe);
   const fresh = (
     <section className="bholes__new" aria-labelledby="bholes-new">
       <div className="bholes__bar">
@@ -126,15 +127,15 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
       {got && author && got.rows.length > 0 && <BuilderBadges facts={factsOf(got.rows, got.saved, author)} />}
       {any ? (
         <ul className="bholes__list">
-          {drafts.map((d, i) => {
+          {drafts.map(({ key, draft: d }) => {
             // (under the id its Publish would go by: the version after the one on the chain, else its first; the author unknown, the best of its ids)
-            const h = rowOf(d), st = draftState(d, keys[i] ?? null, author && d.slug ? (h ? afterOf(h.id) : `${author}/${d.slug}/v1`) : null);
+            const h = rowOf(d), st = draftState(d, keys.get(key) ?? null, author && d.slug ? `${author}/${d.slug}/v${(h ? versionOf(h.id) : 0) + 1}` : null);
             return (
-              <li key={i} className="bholes__draft bholes__draft--open">
+              <li key={key} className="bholes__draft bholes__draft--open">
                 <span className="bholes__map bholes__map--s"><HoleMap hole={draftMap(d)} className="bholes__svg" /></span>
                 <span className="bholes__name">
                   {/* the whole card opens it (this button's area covers it: its other links over it) */}
-                  <button type="button" className="bholes__pick" title={d.title || undefined} onClick={() => onOpen(i)}><b>{d.title || "A hole with no name yet"}</b></button>
+                  <button type="button" className="bholes__pick" title={d.title || undefined} onClick={() => onOpen(key)}><b>{d.title || "A hole with no name yet"}</b></button>
                   <small>{worldName(d.world)} · {d.pieces.length} pieces</small>
                   {/* its weathers, ticked as holed (published and none holed here since: its line on the chain says it all, unless its
                       rounds were of the version before: played again for the next) */}
@@ -150,7 +151,7 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
                 <span className="bholes__acts">
                   {h && <a className="linkish" href={playLink(h, keep)}>Play</a>}
                   <button type="button" className="linkish" onClick={() => download(d)}>Export</button>
-                  <button type="button" className="linkish" onClick={() => setWipe(i)}>Delete</button>
+                  <button type="button" className="linkish" onClick={() => setWipe(key)}>Delete</button>
                 </span>
               </li>
             );
@@ -186,14 +187,14 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
         <Workshop />
         {/* a returning builder's holes first, above the fold; none yet, the starters first and the empty list's line after */}
         {any ? <>{mine}{fresh}</> : <>{fresh}{mine}</>}
-        {wipe !== null && drafts[wipe] && (
+        {wiped && (
           // the game's own sheet (focus in, Tab kept, Escape, focus back to the row's Delete)
           <Sheet className="confirm" role="alertdialog" label="Delete this hole" onClose={() => setWipe(null)}>
-            <h2>Delete &ldquo;{drafts[wipe].title || "this hole"}&rdquo;?</h2>
+            <h2>Delete &ldquo;{wiped.draft.title || "this hole"}&rdquo;?</h2>
             <p>It goes from this browser. Export it first to keep a copy.</p>
             <div className="banner__row">
               <Button onClick={() => setWipe(null)}>Keep it</Button>
-              <Button variant="primary" className="btn--danger" onClick={() => (onDelete(wipe), setWipe(null))}>Delete</Button>
+              <Button variant="primary" className="btn--danger" onClick={() => (onDelete(wiped.key), setWipe(null))}>Delete</Button>
             </div>
           </Sheet>
         )}
@@ -214,9 +215,6 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
   );
 }
 
-/** The version after a hole's (author/slug/vN: vN+1). */
-const afterOf = (id: string) => id.replace(/\/v(\d+)$/, (_, n: string) => `/v${Number(n) + 1}`);
-
 /** A published hole's line on its card: on the chain, a dot for what is new since the last look, its players and plays, its best against the author's. */
 function Live({ s, fresh }: { s: HoleStats; fresh: boolean }) {
   const vs = versusLine(s);
@@ -229,12 +227,12 @@ function Live({ s, fresh }: { s: HoleStats; fresh: boolean }) {
   );
 }
 
-/** Each draft's proof key (proof.ts proofKey: the hole as it is now), for its state; null with no proofs, or one fit refuses. */
-function useKeys(drafts: readonly Draft[], host: BuilderHost) {
-  const [keys, setKeys] = useState<(string | null)[]>([]);
+/** Each draft's proof key by its own key (proof.ts proofKey: the hole as it is now), for its state; null with no proofs, or one fit refuses. */
+function useKeys(drafts: readonly Kept[], host: BuilderHost) {
+  const [keys, setKeys] = useState<ReadonlyMap<string, string | null>>(new Map());
   useEffect(() => {
     let live = true;
-    void Promise.all(drafts.map((d) => (d.proofs.length ? proofKey(d, host) : Promise.resolve(null)))).then((k) => live && setKeys(k));
+    void Promise.all(drafts.map(({ draft: d }) => (d.proofs.length ? proofKey(d, host) : Promise.resolve(null)))).then((found) => live && setKeys(new Map(drafts.map((k, i) => [k.key, found[i]]))));
     return () => void (live = false);
   }, [drafts, host]);
   return keys;

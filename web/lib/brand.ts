@@ -4,7 +4,9 @@
 // on a 2D canvas in the page's own colours and font (Fredoka, once loaded).
 import { siteHost } from "./site";
 
-const INK = "#144134", INK_SOFT = "#4f7a6c", GREEN = "#226c57", PAPER = "#fdf6e9", HAT = "#e0524b";
+/** The page's ink, green and paper, for what is drawn on a canvas (the cards, the clip, the Builder's card). */
+export const INK = "#144134", GREEN = "#226c57", PAPER = "#fdf6e9";
+const INK_SOFT = "#4f7a6c", HAT = "#e0524b";
 /** The site's font stack, for text drawn on a canvas (the cards, the clip, the mines' signs). */
 export const FONT = "Fredoka, ui-rounded, system-ui, sans-serif";
 

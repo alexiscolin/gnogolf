@@ -202,7 +202,7 @@ const TUNNEL_COLORS = [C.cap, 0x5b6fb5, C.sun, 0xe98fb0];
 const ZONE_DRAW: [(z: Zone) => boolean, ZoneDraw][] = [
   [(z) => z.skin === "seesaw", seesaw],
   [(z) => z.skin === "castle tube", (z, s, t, g) => {
-    const castle = (s.posts || []).find((p) => p.skin === "sandcastle");
+    const castle = s.posts.find((p) => p.skin === "sandcastle");
     const { cx, cz } = boxOf(z);
     return castle ? castleSlide(z, s, t, g, castle, [cx, cz], z.vec) : g;
   }],
@@ -961,7 +961,7 @@ function sandPatch(z: Zone, walls: readonly Wall[], t: T, color: number, snow: b
       const gx = (t.height(x + 0.06, zz) - t.height(x - 0.06, zz)) / 0.12, gz = (t.height(x, zz + 0.06) - t.height(x, zz - 0.06)) / 0.12;
       const lit = Math.min(1.14, Math.max(0.8, 1 - 1.3 * (gx * Lx + gz * Lz) / Math.hypot(gx, 1, gz)));
       const rim = 1 - Math.min(1, Math.max(0, d / 0.16)), lip = Math.exp(-(((d - 0.2) / 0.1) ** 2));
-      const k = lit * (snow ? 1 + 0.06 * rim : 1 - 0.15 * rim * rim) * (1 + 0.05 * lip) * (1 - 0.08 * smooth01(d / own(DISH, z.skin)!.run));
+      const k = lit * (snow ? 1 + 0.06 * rim : 1 - 0.15 * rim * rim) * (1 + 0.05 * lip) * (1 - 0.08 * smoothstep(d / own(DISH, z.skin)!.run));
       c.copy(base).multiplyScalar(k);
       // (alpha along the outline's distance, on a slow ramp: the cut between
       // two vertices falls where the outline is, not on the grid)
@@ -984,7 +984,6 @@ function sandPatch(z: Zone, walls: readonly Wall[], t: T, color: number, snow: b
   // (drawn over the lane's coarser mesh, which may bulge through a dish between its vertices)
   return new THREE.Mesh(geo, flat(0xffffff, { alphaMap: greenMask(t), alphaTest: 0.5, vertexColors: true, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }));
 }
-const smooth01 = (x: number) => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
 
 /** Sand (or deep snow): fine grains, and raked lines in a bunker, or on a
  *  beach's wet sand a few pebbles and shells instead. */
@@ -1154,7 +1153,7 @@ function drawTunnel(z: Zone, s: Hole, t: T, g: THREE.Group, { w, h }: Opts) {
     return g;
   }
   if (z.skin === "castle gate") {
-    const castle = (s.posts || []).find((p) => p.skin === "sandcastle");
+    const castle = s.posts.find((p) => p.skin === "sandcastle");
     if (castle) return castleSlide(z, s, t, g, castle, [cx, cz], [ox, oz]);
   }
   if (z.skin === "warp") {
@@ -1300,4 +1299,4 @@ function seesaw(z: Zone, s: Hole, t: T, g: THREE.Group) {
   return g;
 }
 
-export { zoneDetail, organic, rings, tone, type Blob };
+export { zoneDetail, organic };

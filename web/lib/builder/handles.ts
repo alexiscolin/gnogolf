@@ -58,6 +58,12 @@ const side = (from: number, v: number, r: Range, up: boolean) => {
   return up ? from + k : from - k;
 };
 
+/** v kept in r and on its steps (from r.min). */
+export function clampTo(v: number, r: Range): number {
+  const k = Math.round((Math.min(r.max, Math.max(r.min, v)) - r.min) / r.step);
+  return Math.min(r.max, +(r.min + k * r.step).toFixed(6));
+}
+
 /** The piece with one handle moved to `to`, within its entry's ranges and on the grid from origin, the tee (a radius on its entry's steps). */
 export function setHandle(p: Piece, key: HandleKey, to: V, e: PaletteEntry, origin: V): Piece {
   const g = p.geometry;
@@ -65,10 +71,7 @@ export function setHandle(p: Piece, key: HandleKey, to: V, e: PaletteEntry, orig
   let geometry: Geometry = g;
   if (g.t === "post") {
     if (key === "c") geometry = { ...g, c: onQ(to, origin) };
-    else if (key === "r") {
-      const r = Math.hypot(to[0] - g.c[0], to[1] - g.c[1]), s = e.size;
-      geometry = { ...g, r: Math.min(s.max, +(s.min + Math.round((Math.min(s.max, Math.max(s.min, r)) - s.min) / s.step) * s.step).toFixed(6)) };
-    }
+    else if (key === "r") geometry = { ...g, r: clampTo(Math.hypot(to[0] - g.c[0], to[1] - g.c[1]), e.size) };
   } else if (g.t === "rail" || g.t === "bar") {
     if (key === "a") geometry = { ...g, a: end(g.b, to, e.size, g.a, origin) };
     else if (key === "b") geometry = { ...g, b: end(g.a, to, e.size, g.b, origin) };
@@ -81,15 +84,20 @@ export function setHandle(p: Piece, key: HandleKey, to: V, e: PaletteEntry, orig
 }
 
 /** Why turning p changes nothing ("" when it does): R and Turn say it rather than do nothing. */
-export const notTurned = (p: Piece, origin: V) => (JSON.stringify(turnPiece(p, origin)) === JSON.stringify(p) ? "A round piece looks the same turned: nothing to turn." : "");
+export const notTurned = (p: Piece, origin: V) => (JSON.stringify(turnPiece(p, origin)) === JSON.stringify(p) ? "It looks the same turned: nothing to turn." : "");
+
+/** A piece's middle, for an arrow, a label or the pointer it follows. */
+export function middleOf(p: Piece): V {
+  const g = p.geometry;
+  if (g.t === "rail" || g.t === "bar") return [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2];
+  if (g.t === "post") return g.c;
+  if (g.t === "poly") return [g.pts.reduce((s, v) => s + v[0], 0) / g.pts.length, g.pts.reduce((s, v) => s + v[1], 0) / g.pts.length];
+  return [(g.min[0] + g.max[0]) / 2, (g.min[1] + g.max[1]) / 2];
+}
 
 /** The piece turned a quarter about its middle, on the grid from origin, the tee (a slope's push turned with it); a post as it was. */
 export function turnPiece(p: Piece, origin: V): Piece {
-  const g = p.geometry;
-  const mid: V = g.t === "rail" || g.t === "bar" ? [(g.a[0] + g.b[0]) / 2, (g.a[1] + g.b[1]) / 2]
-    : g.t === "post" ? g.c
-    : g.t === "poly" ? [g.pts.reduce((s, v) => s + v[0], 0) / g.pts.length, g.pts.reduce((s, v) => s + v[1], 0) / g.pts.length]
-    : [(g.min[0] + g.max[0]) / 2, (g.min[1] + g.max[1]) / 2];
+  const g = p.geometry, mid = middleOf(p);
   const t = (v: V): V => onQ([mid[0] - (v[1] - mid[1]), mid[1] + (v[0] - mid[0])], origin);
   let geometry: Geometry;
   switch (g.t) {

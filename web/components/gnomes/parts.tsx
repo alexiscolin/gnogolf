@@ -12,10 +12,9 @@ import { useCopied } from "@/components/common";
 import { retryIn } from "@/lib/retry";
 import { siteURL } from "@/lib/site";
 import { shareOrCopy } from "@/components/Share";
-import { TIER_LOOK, type Listed } from "@/lib/gnomes/catalogue";
+import type { Listed } from "@/lib/gnomes/catalogue";
 import type { Look, Portraits } from "@/lib/gnomes/onchain";
-import { gnot, utcDate, localDate, type SaleCard, type TierShare } from "@/lib/gnomes/shop";
-import type { Tier } from "@/lib/gnomes/vocab";
+import { gnot, tierName, utcDate, localDate, type SaleCard, type TierShare } from "@/lib/gnomes/shop";
 
 // a tier's shape, read in grey too: a disc, a diamond, a gem, a crown; a leaf for an earned one
 const SHAPE: Record<string, ReactNode> = {
@@ -25,7 +24,6 @@ const SHAPE: Record<string, ReactNode> = {
   legendary: <path d="M2 12 3 5l3 3 2-5 2 5 3-3 1 7z" />,
   earned: <path d="M3 13C3 7 7 3 13 3c0 6-4 10-10 10z" />,
 };
-export const tierName = (t: string) => (TIER_LOOK[t as Tier] || { label: t }).label;
 
 /** A tier's chip: its shape and its name, on its colour. */
 export const TierChip = ({ tier }: { tier: string }) => (

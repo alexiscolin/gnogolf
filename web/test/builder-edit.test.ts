@@ -1,8 +1,9 @@
-// The editor's edits (lib/builder/edit.ts), pure: placing an entry, keeping a
+// The editor's edits (lib/builder/edit.ts, handles.ts), pure: placing an entry, keeping a
 // value in its range, changing world.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { changeWorld, clampTo, matchIn, placePiece, unknownEntry } from "../lib/builder/edit.ts";
+import { changeWorld, matchIn, placePiece, unknownEntry } from "../lib/builder/edit.ts";
+import { clampTo } from "../lib/builder/handles.ts";
 import { emptyDraft, type Draft } from "../lib/builder/draft.ts";
 import { loadPalette } from "../lib/builder/palette.ts";
 import "./scene-harness.ts";

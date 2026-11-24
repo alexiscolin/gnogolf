@@ -41,7 +41,7 @@ export function startsIn(world: string): Start[] {
 }
 
 /** What a starter's card says it is, in a line: the straight and the dogleg by their shape, a signature by its world's own piece (its first that is not a rail) and what it does to the ball. */
-export function startLine(name: string, d: Draft): string {
+function startLine(name: string, d: Draft): string {
   if (name === "straight") return "A short lane to learn the tools";
   if (name === "dogleg") return "One turn to bank around";
   const sig = d.pieces.find((p) => p.geometry.t !== "rail");

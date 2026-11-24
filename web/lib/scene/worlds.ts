@@ -22,12 +22,16 @@
 //                          (cosmetic: the ball is drawn on it), or none
 //   laneLook(m, s)      its own texture on the lane's material (a shader hook added to m)
 //   piece(kind, item, t, s) -> Object3D?     its own drawing of a lane piece
+//   skins   { post: [...], ... }   the skins piece() draws from the piece alone, by
+//           kind: what the Builder's palette offers (lib/builder/palette.ts)
 //   extras(ex, s, t) -> { group, skins: Set }?  its own drawing of a stroke's pieces
 //   walls   true: piece() is asked for a lone skinned wall too (item.walls: that one)
 //   wearStep n: the lane's wear overlay laid n rows a unit (2 without it)
 //   ahead   n: a stroke's extras come with the next n strokes' (ex.ahead), for
 //           the look-ahead; its extras' group may say steady (ud): swapped at
 //           once, not grown, the world animating the change itself
+//   ghostLine true: the timed pieces' dashed outlines drawn as one line (course.ts ghostLine)
+//   pieceFade true: its pieces' own fades join the canopy's (course.ts fadeOf)
 //   ring(s, x, z, k) -> boolean   a bounce at (x, z) (k: how hard, 0 silent):
 //           true when the world answers it itself (a singing crystal)
 //   open(z) -> number?   a zone the lane is cut open over (a shaft, a sump): the

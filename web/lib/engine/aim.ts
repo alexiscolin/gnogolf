@@ -41,11 +41,6 @@ export function steerAim(yaw: number, dx: number, down: number, dt: number, vw: 
   const y = yaw - Math.sign(dx) * rate * dt, dir = y - FINE * Math.max(-1, Math.min(1, dx / zone));
   return { yaw: y, dir, spin: rate > 0 ? Math.sign(dx) : 0, shot: down < CANCEL ? null : pullShot(down, vw, vh, dir, MAX_POWER) };
 }
-// How much the aim dots give away, by aim mode. Assisted: the chain's whole
-// path (the straight line before it answers as far as the pull is strong,
-// 2 + power × 1.6 units). Pro: no line at all — the elastic and the gnome
-// turning along it are the direction, like a real putter — and the chain is
-// not asked. Rounds of each mode are ranked apart on the chain.
 
 /** The first len units along path, the last one cut short. */
 function clipPath(path: readonly Vec2[], len: number) {
@@ -78,6 +73,11 @@ type Wanted = Pick<Question, "angle" | "deg" | "power" | "shots" | "id">;
 
 export function makeAimer(E: Live) {
   const { g, chain, aim, band, ground } = E;
+  // How much the aim dots give away, by aim mode. Assisted: the chain's whole
+  // path (the straight line before it answers as far as the pull is strong,
+  // 2 + power × 1.6 units). Pro: no line at all — the elastic and the gnome
+  // turning along it are the direction, like a real putter — and the chain is
+  // not asked. Rounds of each mode are ranked apart on the chain.
   const shows = () => (g.roundMode || E.mode) !== "pro";
   let shown: { angle: number } | null = null; // the aim the dots on screen were computed for (see interpolate)
   const straight: [MutVec2, MutVec2] = [[0, 0], [0, 0]]; // the provisional line (reused), until the chain answers
@@ -113,12 +113,12 @@ export function makeAimer(E: Live) {
     d.instanceMatrix.needsUpdate = true;
     if (k >= 1) morph = null;
   }
-  // the aim put away: no dots, no elastic, nothing turned
   // the dashed outlines of timed pieces that are away, shown only while aiming
   // (the hole's, and the stroke's own: its extras')
   const ghosts = (on: boolean) => {
     for (const o of [g.course, E.extras]) if (o) ud(o).ghosts?.(on);
   };
+  // the aim put away: no dots, no elastic, nothing turned
   const dropAim = () => {
     // a preview on its way is no longer wanted
     if (asked) asked.abort(), (asked = null), (asking = false);
@@ -221,12 +221,12 @@ export function makeAimer(E: Live) {
   }
   function preview() {
     interpolate();
-    if (!(E.shot.power > 0.3)) return; // too soft to shoot: nothing to ask
+    if (!(E.shot.power > 0.3)) return void (aim.visible = false); // too soft to shoot: no line, nothing to ask
     if (!shows()) return void (aim.visible = false); // pro: no line, no request
     // the chain's dots swung round the ball stand for the new aim only while
     // it is close to theirs: past that they would cross walls, and the
     // straight line (stopped at the first thing in the way) says it better
-    if (shown && Math.abs(angDiff(E.shot.angle, shown.angle)) > SWING_MAX) shown = null;
+    if (shown && Math.abs(angDiff(E.shot.angle, shown.angle)) > SWING_MAX) (shown = morph = null), (aim.rotation.y = 0), aim.position.set(0, 0, 0);
     // no answer from the chain yet for this pull: a straight line of dots
     // along the aim, stopped at the first wall or post, replaced by the
     // chain's the moment it lands
