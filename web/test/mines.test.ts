@@ -98,7 +98,7 @@ test("ring: a crystal bumper sings when the replay's own hole object (not the co
   const { piece, ring } = await import("../lib/scene/mines-pieces.ts");
   const t = { height: () => 0, onGreen: () => true } as unknown as Parameters<typeof piece>[2];
   const s = { hole: "gno.land/r/x/hole2", slot: "mines/2", board: { w: 20, h: 10 }, zones: [], walls: [], posts: [], cup: [18, 5], start: [2, 5] } as unknown as Parameters<typeof piece>[3];
-  // the course is built from a copy of the hole (engine.ts decorOf), the replay rings with the engine's own object
+  // the course is built from a copy of the hole (engine/loader.ts decorOf), the replay rings with the engine's own object
   piece("post", { c: [10, 5], r: 0.8, skin: "crystal bumper" }, t, { ...s, hole: "mines/2" });
   assert.equal(ring(s, 10.9, 5, 0), true, "the nearest crystal answers");
   assert.equal(ring(s, 2, 2, 0), false, "none near: no crystal answers");

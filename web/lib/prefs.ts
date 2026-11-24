@@ -1,6 +1,7 @@
 // What this browser remembers of the player: the camera picked this session,
-// the Builder's Inspector folded or not, the gnome, and the gnomes earned.
-import { GNOMES } from "./scene/gnome";
+// the Builder's Inspector folded or not, the gnome (and the one a shared
+// link asks for), and the gnomes earned.
+import { GNOMES, gnomeById } from "./scene/gnome";
 import { reducedMotion } from "./device";
 import { lowGfx } from "./engine/pace";
 import type { CamMode } from "./engine/types";
@@ -58,6 +59,20 @@ export function savedGnome() {
 }
 export function saveGnome(id: string) {
   try { localStorage.setItem(GNOME_KEY, id); } catch {}
+}
+
+/** The gnome a shared link asks for (?gnome=), and whether this player has it. */
+export function linkedGnome() {
+  const want = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("gnome");
+  const gn = want ? GNOMES.find((x) => x.id === want) : undefined;
+  return gn && { id: gn.id, name: gn.name, open: !gn.unlock || earned().includes(gn.id) };
+}
+/** The locked gnome a shared link asked for, said once: null when there is none. */
+export function lockedNote() {
+  const gn = linkedGnome();
+  if (!gn || gn.open) return null;
+  const mine = gnomeById(savedGnome());
+  return `${gn.name.replace(/^The /, "")} is locked — playing as ${mine.name.replace(/^The /, "")}`;
 }
 
 // A list of ids this browser keeps for good (the gnomes earned, the badges,

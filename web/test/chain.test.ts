@@ -523,7 +523,7 @@ test("extras: read once per hole version and stroke (the look-ahead and the next
     if (down) throw new Error("node down");
     return qevalReply(EXTRAS_REPLY);
   });
-  // a timed hole's load (strokes 0..3), then three strokes each with its two ahead (as engine.ts showExtras asks)
+  // a timed hole's load (strokes 0..3), then three strokes each with its two ahead (as engine/extras.ts showExtras asks)
   await Promise.all([0, 1, 2, 3].map((k) => chain.extras("mines/8/v3", k)));
   for (const stroke of [0, 1, 2]) await Promise.all([stroke, stroke + 1, stroke + 2].map((k) => chain.extras("mines/8/v3", k)));
   assert.deepEqual(asked, [0, 1, 2, 3, 4].map((k) => `Extras("mines/8/v3", ${k})`), "each stroke once: 5 reads, not 13");

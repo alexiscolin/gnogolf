@@ -873,7 +873,7 @@ function landingLamps(landings: readonly Zone[], now: Extras, next: Extras | nul
   return g;
 }
 
-/** An open shaft at a landing (a pulse): the lane is cut open there (engine.ts reads a stroke's hazards ahead: Hole.pulseZones), the shaft drawn as the hole's own are, a chain slung across its mouth. */
+/** An open shaft at a landing (a pulse): the lane is cut open there (engine/loader.ts reads a stroke's hazards ahead: Hole.pulseZones), the shaft drawn as the hole's own are, a chain slung across its mouth. */
 function openShaft(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), pit = zone(z, t, s);
   if (pit) g.add(pit);

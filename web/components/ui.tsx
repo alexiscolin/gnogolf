@@ -110,6 +110,8 @@ export function InfoTip({ label, note, className = "aimset__info", tabIndex, chi
 export const VsPar = ({ vs, words = false }: { vs: number; words?: boolean }) => (
   <b className={vs < 0 ? "good" : vs > 0 ? "bad" : undefined}>{(words ? vsParWords : vsPar)(vs)}</b>
 );
+/** No figure yet (a total, a rank): a light dash, not the bold figure's black bar. */
+export const Nil = () => <span className="nil">–</span>;
 
 /** The X in a sheet's corner, the same everywhere. */
 const CloseX = () => (

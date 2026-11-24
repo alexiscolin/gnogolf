@@ -65,6 +65,11 @@ const HOLES_TTL = 10 * 60e3; // a hole registered meanwhile shows within ten min
 
 /** A pause of ms: between two reads of the chain, a retry, a beat. */
 export const wait = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** p, or a rejection once ms have gone by (its timer cleared either way). */
+export function within<T>(p: Promise<T>, ms = 4000): Promise<T> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<never>((_, no) => (t = setTimeout(() => no(new Error("The chain did not answer in time.")), ms)))]).finally(() => clearTimeout(t));
+}
 /** Whether seen() finds a signed transaction in, asked every 3 s for 90 s (it lands within a few blocks) while live() (the page waiting for it still open). */
 export async function landed(seen: () => Promise<boolean>, live: () => boolean): Promise<boolean> {
   for (const t0 = Date.now(); Date.now() - t0 < 90_000 && live(); await wait(3000)) {

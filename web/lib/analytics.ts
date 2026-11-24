@@ -34,7 +34,7 @@ export const WALLET_STEPS = ["adena", "connect", "funds", "name", "save"] as con
 export type SaveBlock = "no_adena" | "no_account" | "no_funds" | "wrong_node" | "no_name" | null;
 /** Why a name typed is refused (chain.ts nameRefusal): a rule of the registrar's broken, taken, too close to one taken, refused otherwise. */
 export type NameRefusal = "chars" | "reserved" | "length" | "digits" | "taken" | "lookalike" | "invalid" | "no_registrar";
-/** Where a shared link was shared from: its src= (links.ts holeLink, dareLink; Golf.tsx cupLink). */
+/** Where a shared link was shared from: its src= (links.ts holeLink, dareLink; game/Victory.tsx cupLink). */
 export type ShareSrc = "hole" | "cup" | "board" | "duel";
 /** What a share button offers, by its words: a dare, a duel's dare back, a place, your own ghost, the round. */
 export type ShareKind = "dare" | "dare_back" | "share_rank" | "share_ghost" | "share";

@@ -1759,7 +1759,7 @@ function corkscrew(z: Zone, t: Terrain, _s: Hole) {
 
 /**
  * The lift (hole 8): a pulse tunnel, at one landing or another with the
- * stroke (the stroke's pieces: engine.ts builds them anew each stroke and
+ * stroke (the stroke's pieces: engine/extras.ts builds them anew each stroke and
  * grows them in). Drawn whole at every stroke, the same: a balanced hoist, a
  * gantry over each landing (the cage-door rings), its sheave, a rope from
  * sheave to sheave, a cage in each shaft hung from it, one the counterweight

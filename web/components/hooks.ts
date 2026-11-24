@@ -1,6 +1,8 @@
-// Small hooks the screens share.
+// Small hooks the screens share, and the empty list their memos keep.
 
 import { useEffect, useRef, useState } from "react";
+
+export const NONE: readonly never[] = []; // an empty list that stays the same one: memos keep
 
 /** "Copied ✓" for a moment: copy(text) puts it on the clipboard, copied says
  *  so for ms (its timer goes with the component). */

@@ -7,7 +7,7 @@ import type { Terrain } from "../terrain";
 import type { WeatherNow } from "./weather";
 
 /** A hole as the scene draws it: the chain's, `hole` keyed for its decor
- *  (engine.ts decorOf), and unbaked for the trailer's hole that builds itself. */
+ *  (engine/loader.ts decorOf), and unbaked for the trailer's hole that builds itself. */
 export interface Hole extends HoleState {
   unbaked?: boolean;
   /** the hazards a stroke's pulses lay (fetched ahead for a world that cuts the lane under them: worlds.ts ahead, open) */

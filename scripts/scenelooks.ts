@@ -80,7 +80,7 @@ if (!isMainThread) {
     host.load(slot, hex);
     for (const period of [PERIOD, PERIOD + 1]) {
       host.setperiod(period);
-      // (dressed as the game dresses it: its look keyed by its old realm, engine.ts decorOf)
+      // (dressed as the game dresses it: its look keyed by its old realm, engine/loader.ts decorOf)
       const built = record(`${slot}@${period}`, { ...(JSON.parse(host.state(slot)) as Hole), official: true, hole: legacyOf(slot) || slot });
       for (let stroke = 0; stroke < 4; stroke++) {
         const ex = JSON.parse(host.extras(slot, stroke)) as Extras;

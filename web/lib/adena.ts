@@ -214,6 +214,8 @@ export async function current() {
     return null;
   }
 }
+/** The connected Adena account. */
+export type Account = NonNullable<Awaited<ReturnType<typeof current>>>;
 
 /** Follows the account and network chosen in Adena. */
 // Adena has no way to take a listener back: one pair is registered for the
