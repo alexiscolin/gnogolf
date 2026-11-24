@@ -55,7 +55,7 @@ anyone can replay it again.
 
 ## Run it
 
-You need Go, Node 22.6 or later, and a
+You need Go, Node 22.15 or later, and a
 [gnolang/gno](https://github.com/gnolang/gno) checkout next to this repo. The
 game runs on onyx (`onyx-1`, mainnet's code), so the tools are built from the
 tag `chain/onyx`, into the folder the scripts look in:
@@ -76,9 +76,9 @@ scripts/try-local.sh
 ```
 
 A local chain with the 90 holes, the gnome shop and the Builder, two
-throwaway wallets, and the site built with every switch on. It prints the
-links and what to try; `TAILNET=0` keeps it on this machine.
-[docs/try-local.md](docs/try-local.md) has the rest.
+throwaway wallets, and the site built with the shop, the Builder and the
+community holes on. It prints the links and what to try; `TAILNET=0` keeps
+it on this machine. [docs/try-local.md](docs/try-local.md) has the rest.
 
 ### By hand
 
@@ -133,14 +133,14 @@ in the URL.
 |---|---|
 | `?hole=garden/7`, `?cup=garden&hole=7` | opens a hole (any build) |
 | `?screen=cups` | straight to the cups; also `modes`, `rival`, `pick` (any build) |
-| `?rpc=`, `?web=` | another node, another gnoweb (a dev or local build) |
+| `?rpc=`, `?web=` | another node, another gnoweb (a dev or local build): this machine's, or over https a `*.gno.land` host, the build's own or one in `NEXT_PUBLIC_ALLOWED_HOSTS` |
 | `?play` | skips the title |
-| `?shot=angle,power` | fires a shot on load: how the smoke test and the screenshots are taken |
+| `?shot=angle,power` | fires a shot on load |
 | `?demo=angle,power;angle,power` | plays these shots once the game starts |
 | `?weather=wind,rain,fog,storm` | shows that forecast without asking the chain |
 | `?world=island` | dresses the hole in another world's look |
 | `?traits=<hex>`, `?rivaltraits=<hex>` | plays as a collection gnome, dresses every ghost in one |
-| `?clips` | offers a clip of the holing shot |
+| `?clips` | offers a clip of the holing shot (`npm run dev` only) |
 | `/g/?geo=blocked` | the shop as a blocked region sees it |
 
 The switches of a build, set in the environment (`web/.env.example`):
@@ -161,10 +161,10 @@ SKIP_GNO=1 scripts/check.sh   # the client alone
 scripts/check.sh --smoke      # then a played round, on a local chain and npm run dev
 ```
 
-`check.sh` runs the Gno tests with their gas and storage goldens, the holes'
-fingerprints, the packages staged as a deploy takes them, the gnomes'
-portraits and catalogue, the wasm against the realm byte for byte, then the
-types, the linter, and the unit tests with their coverage floor. Besides the
+`check.sh` runs the types and the linter, the Gno tests with their gas and
+storage goldens, the holes' fingerprints, the packages staged as a deploy
+takes them, the gnomes' portraits, catalogue and looks, the wasm against the
+realm byte for byte, and the unit tests with their coverage floor. Besides the
 toolchain it needs TinyGo 0.42.0
 (`brew install tinygo-org/tools/tinygo`, with binaryen's `wasm-opt`) and
 Chrome (`CHROME` says where).
