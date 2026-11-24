@@ -19,7 +19,7 @@ import { animate, state } from "./state";
 import { seeded, onGround, GRASS, type Rand } from "./common";
 import { ud, type Hole } from "./data";
 import { MINES, lit } from "./mines-kit";
-import { once, GOLD, GOLD_DARK, goldMat, INK_THIN, inked, facets, knobbly, lumps, vnoise, paint, strata, boulder, gem, form, splay, glow, halo, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, beam, log, rivets, plate, TIMBER, solid, tinted } from "./mines-toon";
+import { once, GOLD, GOLD_DARK, goldMat, INK_THIN, inked, facets, knobbly, lumps, vnoise, paint, fill, strata, boulder, gem, form, splay, glow, halo, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, BRASS, beam, log, rivets, plate, TIMBER, solid, tinted } from "./mines-toon";
 import { segDist, inZone, there, smoothstep } from "../terrain";
 import { sound } from "../feel";
 import * as machines from "./mines-machines";
@@ -318,7 +318,7 @@ function railguard(f: Frame, t: Terrain, s: Hole) {
     if (meets(p)) continue;
     const end = beam(0.3, H + 0.14, 0.3, IRON_DARK);
     end.position.set((sd * (f.len + 0.05)) / 2, (H + 0.14) / 2, 0);
-    const stop = plate(0.1, 0.26, 0.34, 0xc9a24a);
+    const stop = plate(0.1, 0.26, 0.34, BRASS);
     stop.position.set((sd * (f.len + 0.05)) / 2 + sd * 0.19, H - 0.12, 0);
     inner.add(end, stop);
   }
@@ -331,8 +331,7 @@ function railguard(f: Frame, t: Terrain, s: Hole) {
 /** A skinned wall (one, or the four of a bar) as the mines draw it; undefined for a skin not ours. */
 function wall(bar: Bar, t: Terrain, s: Hole) {
   const skin = bar.skin, rand = seeded("mw" + s.hole + bar.c.join());
-  if (bar.timing || skin === "drill" || skin === "rockfall" || skin === "dynamite" || skin === "vault door" || skin === "turntable" || skin === "boulder" || skin === "safe door")
-    return machines.bar(bar, t, s);
+  if (bar.timing || skin === "drill" || skin === "boulder" || skin === "safe door") return machines.bar(bar, t, s);
   const draw: Record<string, (f: Frame) => THREE.Object3D> = {
     rockface: (f) => rockface(f, t, rand, s),
     crystal: (f) => facetWall(f, t, rand, false, s),
@@ -456,13 +455,11 @@ function buffer(r: number, face: number) {
   g.add(inner);
   // a ring of sandbags round its foot, two courses, as wide as the post plays at the ball's height: it is soft
   const bags: THREE.BufferGeometry[] = [];
-  const br = r;
-  for (const [course, n, rr] of [[0, 9, br * 0.74], [1, 8, br * 0.68]] as const)
+  for (const [course, n, rr] of [[0, 9, r * 0.74], [1, 8, r * 0.68]] as const)
     for (let k = 0; k < n; k++) {
       const a = ((k + course * 0.5) / n) * Math.PI * 2, len = (2 * Math.PI * rr) / n + 0.06;
-      bags.push(new THREE.SphereGeometry(1, 8, 5).scale(len / 2, 0.14, br * 0.2 + 0.06).rotateY(-a + Math.PI / 2).translate(Math.cos(a) * rr, 0.13 + course * 0.24, Math.sin(a) * rr).toNonIndexed());
+      bags.push(new THREE.SphereGeometry(1, 8, 5).scale(len / 2, 0.14, r * 0.2 + 0.06).rotateY(-a + Math.PI / 2).translate(Math.cos(a) * rr, 0.13 + course * 0.24, Math.sin(a) * rr).toNonIndexed());
     }
-  if (!bags.length) return g;
   const bg = mergeGeometries(bags.map((q) => (q.deleteAttribute("uv"), q)));
   paint(bg, (x, y, z, c) => c.set(0xb49c74).multiplyScalar(0.85 + 0.25 * Math.sin(x * 11 + z * 7) * 0.4 + y * 0.3));
   bg.computeVertexNormals();
@@ -501,13 +498,13 @@ function crystalPost(r: number, rand: Rand) {
   return g;
 }
 
+const GEMS = [0xe0306a, 0x1fb070, 0x3a5af0, 0xd09a2a] as const;
 /**
  * A jewel bumper: the strongroom's riches as a post (inside its circle) —
  * an iron-bound strongbox with its lid thrown back, heaped with coin, a big
  * cut jewel on top; or a stack of gold ingots crossed course on course, the
  * jewel set on its top. Deep, saturated stones, lit from within.
  */
-const GEMS = [0xe0306a, 0x1fb070, 0x3a5af0, 0xd09a2a] as const;
 function jewel(r: number, rand: Rand, k: number) {
   const g = new THREE.Group(), c = GEMS[k % GEMS.length];
   // (on a heap of spilt coin as wide as the post plays at the ball's height)
@@ -526,7 +523,7 @@ function jewel(r: number, rand: Rand, k: number) {
       band.position.set(u * W, H / 2, 0);
       g.add(band);
     }
-    const lock = plate(0.22, 0.26, 0.06, BRASS_);
+    const lock = plate(0.22, 0.26, 0.06, BRASS);
     lock.position.set(0, H * 0.7, D / 2 + 0.04);
     g.add(lock);
     const lid = beam(W, 0.12, D, TIMBER_DARK);
@@ -556,7 +553,7 @@ function jewel(r: number, rand: Rand, k: number) {
     top = 0.72;
   }
   // the jewel: a brilliant (a crown over a pavilion) on its gold collet
-  const collet = inked(paint(new THREE.CylinderGeometry(r * 0.4, r * 0.3, 0.14, 12), (_x, _y, _z, cc) => cc.set(GOLD)), goldMat(), INK_THIN);
+  const collet = inked(fill(new THREE.CylinderGeometry(r * 0.4, r * 0.3, 0.14, 12), GOLD), goldMat(), INK_THIN);
   collet.position.y = top + 0.05;
   g.add(collet);
   const crown = new THREE.CylinderGeometry(r * 0.3, r * 0.5, 0.2, 8).translate(0, 0.1, 0);
@@ -573,7 +570,6 @@ function jewel(r: number, rand: Rand, k: number) {
   g.rotation.y = rand() * Math.PI;
   return g;
 }
-const BRASS_ = 0xc9a24a;
 
 /**
  * The frozen waterfall's column (a post): the fall poured from the vault and
@@ -644,7 +640,7 @@ function post(p: Post, t: Terrain, s: Hole) {
       return at(jewel(r, rand, Math.max(0, k)));
     }
     case "frozen fall": return at(frozenColumn(r, rand));
-    case "bat": return pulses.batPost(p, t, s); // (a roost on the hole itself: rare, the pulses draw them)
+    case "bat": return pulses.batPost(p, t); // (a roost on the hole itself: rare, the pulses draw them)
     default: return undefined;
   }
 }
@@ -662,8 +658,9 @@ interface Singer { c?: Vec2; r?: number; a?: Vec2; b?: Vec2; flash: THREE.Mesh; 
 const singers = new Map<string, { t: Terrain; list: Singer[] }>();
 const choirOf = (s: Hole) => s.slot || s.hole;
 function singer(s: Hole, t: Terrain, where: { c?: Vec2; r?: number; a?: Vec2; b?: Vec2 }, g: THREE.Object3D) {
-  let reg = singers.get(choirOf(s));
-  if (!reg || reg.t !== t) singers.set(choirOf(s), (reg = { t, list: [] })); // a new build of the hole: a new choir
+  const key = choirOf(s);
+  let reg = singers.get(key);
+  if (!reg || reg.t !== t) singers.set(key, (reg = { t, list: [] })); // a new build of the hole: a new choir
   const [x, z] = where.c || [((where.a![0] + where.b![0]) / 2), ((where.a![1] + where.b![1]) / 2)];
   // the flash: a bright shell, live, hidden until it rings
   const flash = glow(new THREE.IcosahedronGeometry((where.r || 0.8) + 1.6, 1), 0xbff8ff, 0.9);
@@ -671,6 +668,8 @@ function singer(s: Hole, t: Terrain, where: { c?: Vec2; r?: number; a?: Vec2; b?
   flash.visible = false;
   ud(flash).live = true;
   g.add(flash);
+  // (the choir goes with its course, not kept for the visit: disposeCourse frees what its first crystal's flash owns)
+  if (!reg.list.length) ud(flash).owned = [{ dispose: () => void (singers.get(key) === reg && singers.delete(key)) }];
   const me: Singer = { ...where, flash, at: -99, note: 0 };
   reg.list.push(me);
   // notes by place along the board's long way: a run up the scale

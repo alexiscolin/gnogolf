@@ -180,6 +180,17 @@ test("rideClearance: a ride's ball under a rock hidden, under a glow seen throug
   assert.equal(rideClearance({ g: { course: new THREE.Group() } } as unknown as Live), null, "no tubes");
 });
 
+test("rideClearance: a curved ride's ball where the replay draws it, at the curve's own point ease(k)", () => {
+  const { E, course } = rig();
+  const c = new THREE.CatmullRomCurve3([new THREE.Vector3(1, 0.5, 1), new THREE.Vector3(1.5, 0.5, 1), new THREE.Vector3(5, 0.5, 2), new THREE.Vector3(9, 0.5, 2)]) as unknown as TubePath & { userData: unknown };
+  const seen: THREE.Vector3[] = [], ease = (k: number) => k * k;
+  c.userData = { ride: { ms: 1000, ease, at: (k: number, ball: THREE.Object3D) => void (k >= 0 && seen.push(ball.position.clone())) } };
+  course.userData.tubes = new Map([[zone({ kind: "tunnel", min: [0, 0], max: [1, 1], skin: "adit" }), c]]);
+  rideClearance(E);
+  assert.equal(seen.length, 61);
+  seen.forEach((p, i) => assert.ok(p.distanceTo(c.getPoint(ease(i / 60))) < 1e-9, `frame ${i}: ${p.distanceTo(c.getPoint(ease(i / 60))).toFixed(4)} off`));
+});
+
 test("draws: the course's draws by owner, and each of the rides' own", () => {
   const { E } = rig();
   const d = draws(E)!;

@@ -182,9 +182,9 @@ export function makeGesture(out: Out) {
         return click ? (out.onPaint({ cells: d.green.cells, open: toggleSide(d.green.open, d.side) }, d.side.open ? undefined : SIDE_LOCKED), { painted: true }) : null;
       }
       if (e.armed && !d) {
-        const p = ghostOf(e, at), why = canPlace(e.draft, p, e.full);
+        const p = ghostOf(e, at), next = { ...e.draft, pieces: [...e.draft.pieces, p] }, why = canPlace(e.draft, p, e.full, undefined, next);
         if (why.length) return { refused: refusalOf(why[0]) };
-        out.onSet(frame({ ...e.draft, pieces: [...e.draft.pieces, p] }));
+        out.onSet(frame(next));
         out.onSelect(p.id);
         if (!keep) out.onDisarm(); // Shift keeps it armed: several in a row
         return { placed: p.id };

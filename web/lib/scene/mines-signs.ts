@@ -15,11 +15,11 @@
 // decor's bake merges the signs with the rest (a draw for the faces).
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { relief, share, texOf } from "./materials";
+import { relief, texOf } from "./materials";
 import { seeded, type Rand } from "./common";
 import { inZone, inSea, segDist, boxOf, type Terrain } from "../terrain";
 import { MINES, darkGallery, chamferField } from "./mines-kit";
-import { INK, INK_THIN, chamfer, paint, log, boulder, vnoise, TIMBER, TIMBER_DARK, IRON, IRON_DARK, RUST } from "./mines-toon";
+import { once, INK, INK_THIN, chamfer, paint, fill, log, boulder, vnoise, TIMBER, TIMBER_DARK, IRON, IRON_DARK, RUST } from "./mines-toon";
 import { FONT } from "../brand";
 import type { Hole, Height } from "./data";
 import type { Extras, Vec2, Wall, Zone } from "../types";
@@ -110,11 +110,17 @@ function bounce(x: X, c: Paint) {
   disc(x, c.acc, 94, 18, 7);
 }
 
+/** Every sign, in rank order: a hole with more pieces than room signs its machines first (plan). */
 const SIGNS: Record<string, Spec> = {
   cage: { words: "CATCH THE CAGE", look: "time", icon: (x, c) => {
     line(x, c.fg, 3, 14, 4, 14, 96), line(x, c.fg, 3, 70, 4, 70, 96);
     cageBars(x, c, 22, 22, 40, 50);
     clock(x, c, 78, 76, 18);
+  } },
+  lift: { words: "GREEN LAMP GO", look: "time", icon: (x, c) => {
+    cageBars(x, c, 14, 24, 46, 56);
+    disc(x, "#3fbf5f", 80, 30, 11, 4, c.fg);
+    disc(x, RED, 80, 66, 11, 4, c.fg);
   } },
   soft: { words: "COME IN SOFT", look: "warn", icon: (x, c) => {
     cageBars(x, c, 50, 26, 44, 56);
@@ -126,11 +132,6 @@ const SIGNS: Record<string, Spec> = {
     x.beginPath();
     for (let k = 0; k <= 8; k++) x.lineTo(46 + k * 6, 92 + 3 * Math.sin(k * 1.6));
     x.stroke();
-  } },
-  lift: { words: "GREEN LAMP GO", look: "time", icon: (x, c) => {
-    cageBars(x, c, 14, 24, 46, 56);
-    disc(x, "#3fbf5f", 80, 30, 11, 4, c.fg);
-    disc(x, RED, 80, 66, 11, 4, c.fg);
   } },
   geyser: { words: "GEYSER", look: "go", icon: (x, c) => {
     poly(x, c.fg, 36, 92, 42, 44, 58, 44, 64, 92);
@@ -182,10 +183,18 @@ const SIGNS: Record<string, Spec> = {
     line(x, c.fg, 4, 2, 86, 76, 86);
     clock(x, c, 84, 76, 15);
   } },
-  carts: { words: "MIND THE CARTS", look: "warn", icon: (x, c) => {
-    cart(x, c, 0, 4);
-    line(x, c.fg, 5, 2, 94, 98, 94);
-    arrow(x, c.acc, 6, 30, 18, 4, 18), arrow(x, c.acc, 6, 70, 18, 96, 18);
+  points: { words: "TIME THE POINTS", look: "time", icon: (x, c) => {
+    line(x, c.fg, 5, 20, 96, 20, 4), line(x, c.fg, 5, 40, 96, 40, 4);
+    for (const [w, bend] of [[5, 20], [5, 40]] as const) {
+      x.strokeStyle = c.fg;
+      x.lineWidth = w;
+      x.beginPath();
+      x.moveTo(bend, 70);
+      x.quadraticCurveTo(bend, 40, bend + 40, 20);
+      x.stroke();
+    }
+    line(x, c.acc, 6, 70, 80, 56, 60);
+    clock(x, c, 82, 80, 16);
   } },
   turntable: { words: "TURNS EACH STROKE", look: "time", icon: (x, c) => {
     disc(x, "", 50, 54, 32, 6, c.fg);
@@ -196,6 +205,11 @@ const SIGNS: Record<string, Spec> = {
     x.arc(50, 54, 44, -2.6, -0.6);
     x.stroke();
     poly(x, c.acc, 50 + Math.cos(-0.6) * 44 + 8, 54 + Math.sin(-0.6) * 44 - 6, 50 + Math.cos(-0.6) * 44 + 6, 54 + Math.sin(-0.6) * 44 + 12, 50 + Math.cos(-0.6) * 44 - 10, 54 + Math.sin(-0.6) * 44 + 2);
+  } },
+  carts: { words: "MIND THE CARTS", look: "warn", icon: (x, c) => {
+    cart(x, c, 0, 4);
+    line(x, c.fg, 5, 2, 94, 98, 94);
+    arrow(x, c.acc, 6, 30, 18, 4, 18), arrow(x, c.acc, 6, 70, 18, 96, 18);
   } },
   pick: { words: "MIND THE PICK", look: "warn", icon: (x, c) => {
     x.strokeStyle = c.acc;
@@ -240,6 +254,18 @@ const SIGNS: Record<string, Spec> = {
     arrow(x, c.acc, 6, 50, 86, 94, 86);
     disc(x, "", 26, 16, 7, 4, c.fg), disc(x, "", 38, 8, 5, 4, c.fg);
   } },
+  falls: { words: "TIME THE FALLS", look: "time", icon: (x, c) => {
+    line(x, c.fg, 6, 4, 8, 76, 8);
+    for (const cx of [20, 38, 56]) {
+      x.strokeStyle = c.acc;
+      x.lineWidth = 8;
+      x.beginPath();
+      x.moveTo(cx, 8);
+      for (let y = 8; y <= 88; y += 10) x.lineTo(cx + (y % 20 ? 4 : -4), y);
+      x.stroke();
+    }
+    clock(x, c, 82, 76, 16);
+  } },
   between: { words: "BETWEEN THE FALLS", look: "time", icon: (x, c) => {
     // the two curtains on their clock, the pool at their foot, the way past it along the far side
     for (const cx of [14, 66]) {
@@ -256,18 +282,6 @@ const SIGNS: Record<string, Spec> = {
     x.fill();
     arrow(x, c.fg, 7, 0, 30, 86, 30, 16);
     clock(x, c, 86, 78, 13);
-  } },
-  falls: { words: "TIME THE FALLS", look: "time", icon: (x, c) => {
-    line(x, c.fg, 6, 4, 8, 76, 8);
-    for (const cx of [20, 38, 56]) {
-      x.strokeStyle = c.acc;
-      x.lineWidth = 8;
-      x.beginPath();
-      x.moveTo(cx, 8);
-      for (let y = 8; y <= 88; y += 10) x.lineTo(cx + (y % 20 ? 4 : -4), y);
-      x.stroke();
-    }
-    clock(x, c, 82, 76, 16);
   } },
   stalactites: { words: "FALLING ROCK", look: "warn", icon: (x, c) => {
     line(x, c.fg, 6, 4, 8, 96, 8);
@@ -478,19 +492,6 @@ const SIGNS: Record<string, Spec> = {
     x.fill();
     line(x, c.fg, 5, 4, 94, 96, 94);
   } },
-  points: { words: "TIME THE POINTS", look: "time", icon: (x, c) => {
-    line(x, c.fg, 5, 20, 96, 20, 4), line(x, c.fg, 5, 40, 96, 40, 4);
-    for (const [w, bend] of [[5, 20], [5, 40]] as const) {
-      x.strokeStyle = c.fg;
-      x.lineWidth = w;
-      x.beginPath();
-      x.moveTo(bend, 70);
-      x.quadraticCurveTo(bend, 40, bend + 40, 20);
-      x.stroke();
-    }
-    line(x, c.acc, 6, 70, 80, 56, 60);
-    clock(x, c, 82, 80, 16);
-  } },
 };
 
 // ------------------------------------------------------------ the faces
@@ -589,25 +590,21 @@ function face(x: X, name: string, ox: number, oy: number) {
   x.restore();
 }
 
-let atlas: THREE.CanvasTexture | null = null;
 /** The faces' texture, drawn once (again once the site's font has come). */
-function faces() {
-  if (atlas) return atlas;
+const faces = () => once("sign faces", () => {
   const canvas = document.createElement("canvas");
   canvas.width = CELL_W * COLS;
   canvas.height = CELL_H * ROWS;
   const x = canvas.getContext("2d")!;
   const draw = () => ORDER.forEach((n, i) => face(x, n, (i % COLS) * CELL_W, Math.floor(i / COLS) * CELL_H));
   draw();
-  const t = (atlas = share(texOf(canvas)));
+  const t = texOf(canvas), fonts = document.fonts;
   t.anisotropy = 4;
-  const fonts = typeof document !== "undefined" ? document.fonts : undefined;
   if (fonts && !fonts.check(`700 40px ${FONT}`)) void fonts.load(`700 40px ${FONT}`).then(() => (draw(), (t.needsUpdate = true)), () => {});
   return t;
-}
-let faceMat: THREE.MeshBasicMaterial | null = null;
+});
 /** The faces' material: unlit (enamel catching the lamp: it reads in the dark), a hair under white. */
-const faceMaterial = () => (faceMat ||= share(new THREE.MeshBasicMaterial({ map: faces(), color: 0xe8e2da })));
+const faceMaterial = () => once("sign face", () => new THREE.MeshBasicMaterial({ map: faces(), color: 0xe8e2da }));
 
 /** A face's quad (w × h, facing +z at z) on its cell of the atlas. */
 function faceGeo(name: string, w: number, h: number, z: number, back = false) {
@@ -635,7 +632,6 @@ const merged = (list: THREE.BufferGeometry[]) => mergeGeometries(list.map((g) =>
   for (const k of Object.keys(q.attributes)) if (!["position", "normal", "color"].includes(k)) q.deleteAttribute(k);
   return q;
 }));
-const tinted = (g: THREE.BufferGeometry, color: number, k = 1) => paint(g, (_x, _y, _z, c) => c.set(color).multiplyScalar(k));
 
 /** The plate: iron rusting at its edges and riveted (enamel), or a plank with its nails (paint); its faces both sides. */
 function plate(name: string) {
@@ -650,7 +646,7 @@ function plate(name: string) {
   const heads: THREE.BufferGeometry[] = [];
   for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) {
     const head = new THREE.SphereGeometry(go ? 0.045 : 0.06, 6, 3, 0, TAU, 0, Math.PI / 2).rotateX(sz * Math.PI / 2);
-    heads.push(tinted(head.translate(sx * (FW / 2 - 0.12), sy * (FH / 2 - 0.12), sz * (d / 2 + 0.012)), IRON_DARK));
+    heads.push(fill(head.translate(sx * (FW / 2 - 0.12), sy * (FH / 2 - 0.12), sz * (d / 2 + 0.012)), IRON_DARK));
   }
   g.add(new THREE.Group().add(new THREE.Mesh(merged([body, ...heads]), relief()), new THREE.Mesh(body, INK_THIN)));
   const m = faceMaterial();
@@ -664,7 +660,7 @@ function links(n: number, x: number, z: number, top: number) {
   for (let k = 0; k < n; k++) {
     const l = new THREE.TorusGeometry(0.075, 0.022, 4, 8).scale(0.7, 1.2, 1);
     if (k % 2) l.rotateY(Math.PI / 2);
-    out.push(tinted(l.translate(x, top - 0.13 - k * 0.15, z), IRON, 0.9));
+    out.push(fill(l.translate(x, top - 0.13 - k * 0.15, z), IRON, 0.9));
   }
   return out;
 }
@@ -784,7 +780,7 @@ interface Field {
 const STEP = 0.5, MARGIN = 10;
 const fields = new WeakMap<Hole, Field>();
 
-const voidsOf = (s: Hole) => (s.zones || []).filter((q) => q.skin === "void" && q.kind === "hazard");
+const voidsOf = (s: Hole) => s.zones.filter((q) => q.skin === "void" && q.kind === "hazard");
 const centreOf = (q: Zone): [number, number] => q.poly && q.poly.length > 2 && !q.outside
   ? [q.poly.reduce((a, p) => a + p[0], 0) / q.poly.length, q.poly.reduce((a, p) => a + p[1], 0) / q.poly.length]
   : [boxOf(q).cx, boxOf(q).cz];
@@ -794,7 +790,7 @@ function fieldOf(s: Hole, t: Terrain): Field {
   if (had) return had;
   const W = s.board.w, H = s.board.h, M = MARGIN;
   const nx = Math.ceil((W + 2 * M) / STEP), nz = Math.ceil((H + 2 * M) / STEP), n = nx * nz;
-  const pits = (s.zones || []).filter((q) => q.kind === "hazard");
+  const pits = s.zones.filter((q) => q.kind === "hazard");
   const lane = new Uint8Array(n), wall = new Uint8Array(n);
   const cell = (x: number, z: number) => {
     const i = Math.floor((x + M) / STEP), j = Math.floor((z + M) / STEP);
@@ -806,7 +802,7 @@ function fieldOf(s: Hole, t: Terrain): Field {
       if (t.onGreen(x, z) && !pits.some((q) => inZone(q, x, z))) lane[j * nx + i] = 1;
     }
   // the rails (untimed walls) cut the lane: the flood goes round them
-  for (const w of s.walls || []) {
+  for (const w of s.walls) {
     if (w.every) continue;
     const L = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]), k = Math.max(1, Math.ceil(L / 0.1));
     for (let u = 0; u <= k; u++) {
@@ -837,7 +833,7 @@ function fieldOf(s: Hole, t: Terrain): Field {
   };
   const tee = cell(s.start[0], s.start[1]);
   if (tee >= 0) (geo[tee] = 0), flood([tee]);
-  const tunnels = (s.zones || []).filter((q) => q.kind === "tunnel");
+  const tunnels = s.zones.filter((q) => q.kind === "tunnel");
   for (let pass = 0; pass < tunnels.length; pass++) {
     let more = false;
     for (const q of tunnels) {
@@ -924,7 +920,6 @@ const OVERHEAD = new Set(["cable car", "cart ride", "geyser"]);
 const NEAR = 6.5;
 /** The machines a hole may have two of, far apart (two tracks of carts, two geysers...): one sign each. */
 const TWICE = new Set(["geyser", "pistons", "doors", "power", "steam", "stamps"]);
-const RANK = ["cage", "lift", "soft", "geyser", "cablecar", "ride", "drill", "doors", "vault", "gates", "points", "turntable", "carts", "pick", "stamps", "wheel", "pistons", "falls", "between", "stalactites", "tide", "blast", "rockfall", "crumbles", "boulder", "bats", "power", "magnet", "steam", "sway", "belt", "chute", "adit", "ladder", "kick", "jewels", "banked", "slippery", "dark", "hot"];
 
 /**
  * Where a hole's signs go: its pieces gathered by sign (near ones as one),
@@ -969,9 +964,9 @@ function plan(s: Hole, at: Ground, list: Mark[], cap: number, taken: { x: number
     }
     return { name: q.name, ...best, top, pts: q.pts };
   });
-  firsts.sort((a, b) => RANK.indexOf(a.name) - RANK.indexOf(b.name) || a.g - b.g);
+  firsts.sort((a, b) => ORDER.indexOf(a.name) - ORDER.indexOf(b.name) || a.g - b.g);
   // what a sign keeps clear of: every piece (and its track run on past the lane), the tunnels' ways, the hazards
-  const all: Lists = { walls: [...(s.walls || []), ...(extra?.walls || [])], posts: [...(s.posts || []), ...(extra?.posts || [])], zones: [...(s.zones || []), ...(extra?.zones || [])] };
+  const all: Lists = { walls: [...s.walls, ...(extra?.walls || [])], posts: [...s.posts, ...(extra?.posts || [])], zones: [...s.zones, ...(extra?.zones || [])] };
   // (a plain wall out in the void is the board's frame, not drawn: nothing to keep clear of)
   const segs: [Vec2, Vec2, number][] = all.walls.filter((w) => !inSea(w, all.zones)).map((w) => [w.a, w.b, w.every ? 1.6 : 1.2]);
   // (a track: the bars of one clock, near each other, in a line; run on 6 past its ends into its portals,
@@ -1163,7 +1158,7 @@ const grounds = new WeakMap<Hole, { at: Ground; taken: { x: number; z: number }[
 export function signs(s: Hole, at: Ground) {
   const taken: { x: number; z: number }[] = [];
   grounds.set(s, { at, taken, seen: new Map() });
-  const list = marks({ walls: s.walls || [], posts: s.posts || [], zones: s.zones || [] }, s.zones || []);
+  const list = marks(s, s.zones);
   if (darkGallery(s)) list.push({ name: "dark", pts: [[s.start[0], s.start[1]]] });
   return build(s, at, plan(s, at, list, 5, taken, null), true);
 }
@@ -1182,12 +1177,12 @@ export function pulseSigns<T extends { group: THREE.Object3D; skins: Set<string>
     if (!q) continue;
     for (const w of q.walls) held.seen.set(JSON.stringify(w), { walls: [w], posts: [], zones: [] });
     for (const p of q.posts) held.seen.set(JSON.stringify(p), { walls: [], posts: [p], zones: [] });
-    for (const z of q.zones || []) held.seen.set(JSON.stringify(z), { walls: [], posts: [], zones: [z] });
+    for (const z of q.zones) held.seen.set(JSON.stringify(z), { walls: [], posts: [], zones: [z] });
   }
   const key = [...held.seen.keys()].join("\n");
   if (held.plan?.key !== key) {
     const seen = [...held.seen.values()], all: Lists = { walls: seen.flatMap((q) => q.walls), posts: seen.flatMap((q) => q.posts), zones: seen.flatMap((q) => q.zones) };
-    held.plan = { key, spots: plan(s, held.at, marks(all, [...(s.zones || []), ...all.zones]), 3, [...held.taken], all) };
+    held.plan = { key, spots: plan(s, held.at, marks(all, [...s.zones, ...all.zones]), 3, [...held.taken], all) };
   }
   const spots = held.plan.spots;
   if (spots.length) own.group.add(build(s, { ...held.at, reserve: () => {} }, spots, false));

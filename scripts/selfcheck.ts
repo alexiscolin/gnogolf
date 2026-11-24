@@ -75,7 +75,7 @@ check("realm calls", () => {
   const calls: [string, number, string][] = [];
   // reads: qeval(`Name(…)`) and vm(REALM, "Name(…)")
   for (const m of reads.matchAll(/(?:qeval\(`|vm\(REALM, ")([A-Z]\w*)\(/g)) calls.push([m[1], argsAt(reads, m.index + m[0].length), "chain.ts"]);
-  // and those inside an expression: qstr(REALM, `func() … BestOf(…) …`)
+  // and those inside an expression: qstr(REALM, `func() … bestOfPlayer(…) …`)
   // (a method, after a dot, is its type's; the expression's own funcs and Go's are not the realm's)
   const GO = new Set(["func", "string", "rune", "len", "int", "int64", "append", "make", "panic"]);
   for (const q of reads.matchAll(/qstr\(REALM, `([^`]*)`/g)) {
@@ -83,7 +83,7 @@ check("realm calls", () => {
     const own = new Set([...gno.matchAll(/\b(\w+(?:, \w+)*) :=/g)].flatMap((m) => m[1].split(", ")));
     for (const m of gno.matchAll(/(?<![.\w])([A-Za-z]\w*)\(/g)) if (!GO.has(m[1]) && !own.has(m[1])) calls.push([m[1], argsAt(gno, m.index + m[0].length), "chain.ts"]);
   }
-  assert.ok(calls.some(([name]) => name === "BestOf"), "bestsOf's BestOf not found: the patterns drifted");
+  assert.ok(calls.some(([name]) => name === "bestOfPlayer"), "bestsOf's bestOfPlayer not found: the patterns drifted");
   // writes: call("Name", [..]) and [realm, "Name", [..]]
   for (const m of writes.matchAll(/(?:call\("|\[realm, ")([A-Z]\w*)", \[/g)) calls.push([m[1], argsAt(writes, m.index + m[0].length), "adena.ts"]);
   assert.ok(calls.length > 20, `only ${calls.length} calls found: the patterns drifted`);

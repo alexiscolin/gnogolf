@@ -272,7 +272,7 @@ export function rideClearance(E: Live) {
     for (let i = 0; i <= 60; i++) {
       const k = i / 60, u = Math.min(1, Math.max(0, ride.ease ? ride.ease(k) : k));
       ball.visible = true;
-      tube.getPointAt(u, ball.position);
+      tube.getPoint(u, ball.position);
       ride.at?.(k, ball);
       if (!ball.visible) continue;
       seen++;

@@ -536,9 +536,9 @@ export function makeChain({ rpc = DEFAULT_RPC, web = DEFAULT_WEB }: { rpc?: stri
     bestsOf: async (holes: readonly string[], player: string): Promise<ReadonlyMap<string, { pro: number; assisted: number }>> => {
       const got = new Map<string, { pro: number; assisted: number }>();
       if (!isAddress(player)) return got;
-      const ids = holes.slice(0, 100), who = `address(${s(player)})`;
-      // a line "<id> <pro> <assisted>" a hole (the realm's strconv is not in reach here: n writes the digits)
-      const out = await qstr(REALM, `func() (s string) { n := func(v int) (t string) { for { t = string(rune(48+v%10)) + t; v /= 10; if v == 0 { return } } }; for _, h := range []string{${ids.map(s).join(", ")}} { p, a := BestOf(h, "pro", ${who}), BestOf(h, "assisted", ${who}); if p+a > 0 { s += h + " " + n(p) + " " + n(a) + "\\n" } }; return }()`);
+      const ids = holes.slice(0, 100), who = s(player);
+      // a line "<id> <pro> <assisted>" a hole, read once for both modes (BestOf reads and decodes it for each); the realm's strconv is not in reach here: n writes the digits
+      const out = await qstr(REALM, `func() (s string) { n := func(v int) (t string) { for { t = string(rune(48+v%10)) + t; v /= 10; if v == 0 { return } } }; for _, h := range []string{${ids.map(s).join(", ")}} { e := readHole(h); p, a := bestStrokes(bestOfPlayer(e, modeOf("pro"), ${who})), bestStrokes(bestOfPlayer(e, modeOf("assisted"), ${who})); if p+a > 0 { s += h + " " + n(p) + " " + n(a) + "\\n" } }; return }()`);
       const best = (v: string) => (/^(0|[1-9]\d?)$/.test(v) && Number(v) <= RULES.maxRoundStrokes ? Number(v) : NaN); // (0: none in that mode)
       for (const line of out.split("\n")) {
         const [id, pro, assisted, ...rest] = line.split(" "), b = { pro: best(pro), assisted: best(assisted) };

@@ -48,7 +48,7 @@ const listIn = <K, V>(m: Map<K, V[]>, k: K) => {
  */
 /** Clips a polygon to a rectangle (Sutherland–Hodgman): a round pond that
  *  reaches past the lane's walls is drawn only inside them. */
-function clipRect(pts: Vec2[], x0: number, z0: number, x1: number, z1: number): Vec2[] {
+export function clipRect(pts: readonly Vec2[], x0: number, z0: number, x1: number, z1: number): readonly Vec2[] {
   const edges: [(p: Vec2) => boolean, (a: Vec2, b: Vec2) => MutVec2][] = [
     [(p) => p[0] >= x0, (a, b) => [x0, a[1] + ((b[1] - a[1]) * (x0 - a[0])) / (b[0] - a[0])]],
     [(p) => p[0] <= x1, (a, b) => [x1, a[1] + ((b[1] - a[1]) * (x1 - a[0])) / (b[0] - a[0])]],

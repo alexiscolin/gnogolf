@@ -58,9 +58,9 @@ export function stalagmites(rand: Rand, h: number) {
 }
 
 /** A rock pillar: a column of rock in strata, flared at its foot, rising
- *  into the dark: from `sink` (local height) down it goes into the dark of a
- *  chasm, from `fade` up into the vault's (its top then unseen, none drawn). */
-export function pillar(rand: Rand, h: number, r: number, sink = 0, fade = 0) {
+ *  into the dark: from `fade` (local height) up it goes into the vault's
+ *  (its top then unseen, none drawn). */
+export function pillar(rand: Rand, h: number, r: number, fade = 0) {
   const g = new THREE.Group();
   const geo = new THREE.CylinderGeometry(r * 0.75, r * 1.25, h, 9, 6, true);
   const p = geo.attributes.position;
@@ -73,7 +73,6 @@ export function pillar(rand: Rand, h: number, r: number, sink = 0, fade = 0) {
   const body = knobbly(geo, rand, r * 0.2, 1.1 / r, true), seed = rand() * 9;
   paint(body, (x, y, z, c) => {
     strata(y, x, z, fade ? h * 2 : h, c, seed);
-    if (sink) c.lerp(DARK, 1 - Math.min(1, Math.max(0, y / sink)) ** 1.5);
     if (fade) c.lerp(VAULT, Math.min(1, Math.max(0, (y - fade) / (h - fade))));
   });
   g.add(facets(body, relief()));
@@ -86,7 +85,7 @@ export function pillar(rand: Rand, h: number, r: number, sink = 0, fade = 0) {
   return g;
 }
 
-const DARK = new THREE.Color(MINES.void), VAULT = new THREE.Color(MINES.vault);
+const VAULT = new THREE.Color(MINES.vault);
 
 // ------------------------------------------------------------ timber and iron
 
@@ -235,7 +234,7 @@ export function orePile(rand: Rand, r = 1) {
 }
 
 /** A barrel: staves bulging, two iron hoops. */
-export function barrel(rand: Rand) {
+function barrel(rand: Rand) {
   const g = new THREE.Group();
   // staves bulging at the middle: a cylinder of eight, its middle ring pushed out
   const geo = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8, 2).translate(0, 0.4, 0);
@@ -249,7 +248,7 @@ export function barrel(rand: Rand) {
 }
 
 /** A crate of planks; a dynamite crate (red, its sticks on top) now and then. */
-export function crate(rand: Rand) {
+function crate(rand: Rand) {
   const g = new THREE.Group(), s = 0.6 + rand() * 0.2, tnt = rand() < 0.3;
   const geo = new THREE.BoxGeometry(s, s * 0.8, s * 0.9).translate(0, s * 0.4, 0);
   const base = new THREE.Color(tnt ? 0xa8392e : TIMBER_LIGHT);
@@ -263,7 +262,7 @@ export function crate(rand: Rand) {
 
 /** Cave mushrooms glowing: pale stems, caps lit from within (the crystals'
  *  material, one draw with them). */
-export function mushrooms(rand: Rand) {
+function mushrooms(rand: Rand) {
   const g = new THREE.Group(), hue = rand() < 0.6 ? 0x6ff0c8 : 0xb89cff, stem = flat(0xe8dcc8);
   const n = 3 + Math.floor(rand() * 4);
   for (let k = 0; k < n; k++) {
@@ -323,8 +322,6 @@ export function headframe(h: number) {
   g.add(at(inked(new THREE.CylinderGeometry(0.4, 0.4, 1.2, 10).rotateX(Math.PI / 2), flat(IRON), INK_THIN), hx + 1.3, 1.3, 0));
   return g;
 }
-
-// a ripple spreading on still water (each its own clone: its opacity fades)
 
 // ------------------------------------------------------------ life
 
@@ -415,7 +412,7 @@ const SPARK = share(new THREE.PointsMaterial({ color: 0xffd27a, size: 0.12, tran
 export function cartLoop(rand: Rand, path: THREE.CatmullRomCurve3, n: number, crew = true) {
   const g = new THREE.Group(), L = path.getLength(), N = Math.round(L / 0.75);
   g.name = "mines:cartLoop";
-  const sleepers: THREE.BufferGeometry[] = [], railsG: THREE.BufferGeometry[] = [];
+  const sleepers: THREE.BufferGeometry[] = [];
   const p = new THREE.Vector3(), tan = new THREE.Vector3(), side = new THREE.Vector3();
   for (let k = 0; k < N; k++) {
     const u = k / N;
@@ -439,19 +436,7 @@ export function cartLoop(rand: Rand, path: THREE.CatmullRomCurve3, n: number, cr
   const rg = new THREE.BufferGeometry();
   rg.setAttribute("position", new THREE.Float32BufferAttribute(rp, 3));
   rg.computeVertexNormals();
-  railsG.push(rg);
-  const merged = (list: THREE.BufferGeometry[]) => {
-    const out = new THREE.BufferGeometry(), pos: number[] = [], nor: number[] = [];
-    for (const q of list) {
-      const b = q.index ? q.toNonIndexed() : q;
-      pos.push(...(b.attributes.position.array as Float32Array));
-      nor.push(...(b.attributes.normal.array as Float32Array));
-    }
-    out.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    out.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-    return out;
-  };
-  g.add(new THREE.Mesh(merged(sleepers), relief()), new THREE.Mesh(merged(railsG), flat(IRON_DARK)));
+  g.add(new THREE.Mesh(mergeGeometries(sleepers), relief()), new THREE.Mesh(rg, flat(IRON_DARK)));
   // each cart pushed by a miner leaning into it
   const cart = oreCart(rand, true), set = instances(cart.g, n), men = crew ? instances(minerBody(rand), n) : null, e = new THREE.Euler(), cp = new THREE.Vector3();
   const CART = new THREE.Vector3().setScalar(1.25), MEN = new THREE.Vector3().setScalar(MAN);
@@ -796,7 +781,7 @@ export function liftTower(rand: Rand, h: number) {
   (ud(cable).live = true), (cable.name ||= "mines:liftTower");
   g.add(cable);
   animate((t) => {
-    const u = (Math.sin(t * 0.3) + 1) / 2, e = u * u * (3 - 2 * u);
+    const e = smoothstep((Math.sin(t * 0.3) + 1) / 2);
     cage.position.y = D - 0.05 + e * (h - 2.8 - D); // (at the landing its floor flush with the deck)
     cw.position.y = h - 1 - e * (h - 2.4);
     cp.setY(1, cage.position.y + 2.4), cp.setY(3, cw.position.y + 0.45), (cp.needsUpdate = true);
@@ -832,7 +817,7 @@ export function drillHead(rand: Rand, R: number) {
 
 /** A steam boiler: a riveted drum on saddles, its firebox glowing, a gauge,
  *  a stack; its whistle's steam (props.ts smoke at `steam`). */
-export function boiler(rand: Rand, lava: THREE.Material) {
+export function boiler(lava: THREE.Material) {
   const g = new THREE.Group();
   const drum = new THREE.CylinderGeometry(1, 1, 3.4, 16).rotateZ(Math.PI / 2);
   const rust = new THREE.Color(RUST), iron = new THREE.Color(0x6a4a3e);
@@ -846,7 +831,6 @@ export function boiler(rand: Rand, lava: THREE.Material) {
   const gauge = new THREE.Mesh(new THREE.CircleGeometry(0.22, 12), flat(0xf2ead8));
   g.add(at(gauge, 0.3, 2.3, 0.96, -0.5), at(new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.04, 4, 12), flat(MINES.brass)), 0.3, 2.3, 0.97, -0.5));
   g.add(at(new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 6), flat(MINES.brass)), -0.6, 2.8, 0));
-  void rand;
   return { g, steam: new THREE.Vector3(-0.6, 3.1, 0), fire: new THREE.Vector3(-1.9, 1.3, 0) };
 }
 
@@ -983,7 +967,7 @@ function carriers(rand: Rand, a: THREE.Vector3, b: THREE.Vector3) {
   (ud(team).live = true), (team.name ||= "mines:carriers");
   const L = a.distanceTo(b), yaw = Math.atan2(b.x - a.x, b.z - a.z) - Math.PI / 2;
   animate((t) => {
-    const u = (t * 0.6 / L) % 2, v = u < 1 ? u : 2 - u, e = v * v * (3 - 2 * v);
+    const u = (t * 0.6 / L) % 2, e = smoothstep(u < 1 ? u : 2 - u);
     team.position.lerpVectors(a, b, e);
     team.position.y += Math.abs(Math.sin(t * 5)) * 0.04;
     team.rotation.y = yaw + (u < 1 ? 0 : Math.PI);
@@ -1039,7 +1023,6 @@ function toolRack(rand: Rand) {
   return g;
 }
 
-/** Crates stacked two or three high, a dynamite one among them now and then. */
 // the stores stacked three ways: a pyramid of crates, a row against the wall
 // with sacks on them, a pallet of crates and barrels
 const STACKS: readonly (readonly [number, number, number, "c" | "s" | "b"])[][] = [
@@ -1047,6 +1030,7 @@ const STACKS: readonly (readonly [number, number, number, "c" | "s" | "b"])[][] 
   [[0, 0, 0, "c"], [1.1, 0, 0, "c"], [2.2, 0, 0, "c"], [0.1, 1, 0, "s"], [1.2, 1, 0, "s"], [2.0, 1, 0.1, "s"]],
   [[0, 0, 0, "c"], [1.05, 0, 0, "b"], [0, 0, 1.05, "b"], [1.05, 0, 1.05, "c"], [0.5, 1, 0.5, "s"]],
 ];
+/** Crates stacked two or three high, a dynamite one among them now and then. */
 export function crateStack(rand: Rand) {
   const g = new THREE.Group(), plan = STACKS[Math.floor(rand() * STACKS.length)], n = plan.length - Math.floor(rand() * 2);
   for (let k = 0; k < n; k++) {
@@ -1110,6 +1094,8 @@ function tripod(make: () => THREE.Object3D) {
   return { g, pts: [new THREE.Vector3(0, H - 1.1, 0)] };
 }
 
+type Composition = "spire" | "fan" | "urchin" | "fluorite" | "druse";
+const COMPOSITIONS: Composition[] = ["spire", "fan", "urchin", "fluorite", "druse"];
 /**
  * A giant crystal group on its rock, about h tall, its heart for the caller's
  * light, in one of a few compositions (never the same cone twice): a spire
@@ -1118,8 +1104,6 @@ function tripod(make: () => THREE.Object3D) {
  * (cubes stacked and interpenetrating), or a druse (a bed of many points on a
  * broad rock). Graded colour, small shards as accents at its feet.
  */
-type Composition = "spire" | "fan" | "urchin" | "fluorite" | "druse";
-const COMPOSITIONS: Composition[] = ["spire", "fan", "urchin", "fluorite", "druse"];
 export function giantCrystal(rand: Rand, h: number, hue: number, kind: Composition = COMPOSITIONS[Math.floor(rand() * COMPOSITIONS.length)]) {
   const g = new THREE.Group();
   const bed = kind === "druse" ? boulder(rand, h * 0.6, h * 0.16, h * 0.5, 1) : boulder(rand, h * 0.35, h * 0.14, h * 0.3, 1);
@@ -1182,7 +1166,7 @@ function poolOf(pts: readonly THREE.Vector2[]) {
  * it meets the rock, drips ringing on it), a jetty of planks on posts
  * running out into it and a raft moored to it; its middle (for the glow).
  */
-export function lake(rand: Rand, rx: number, rz: number) {
+function lake(rand: Rand, rx: number, rz: number) {
   const g = new THREE.Group(), n = 28, pts: THREE.Vector2[] = [];
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2, w = 0.85 + 0.15 * Math.sin(a * 3 + rand() * 6) + 0.05 * rand();
@@ -1215,7 +1199,7 @@ export function lake(rand: Rand, rx: number, rz: number) {
 }
 /** A mole in a miner's helmet popping out of its hill now and then, looking
  *  round, and down again. */
-export function mole(rand: Rand) {
+function mole(rand: Rand) {
   const g = new THREE.Group();
   const hill = knobbly(new THREE.SphereGeometry(0.6, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), rand, 0.06, 4).scale(1, 0.45, 1);
   paint(hill, (x, _y, z, c) => c.set(0x6b5244).lerp(new THREE.Color(0x4a3e58), 0.5 + 0.5 * Math.sin(x * 7 + z * 5)));
@@ -1300,7 +1284,7 @@ export function ponyStall(rand: Rand) {
  * flame flickering and its smoke), crates and a barrel, a miner sitting by
  * the fire; its fire's point (for the caller's light and smoke).
  */
-export function camp(rand: Rand) {
+function camp(rand: Rand) {
   const g = new THREE.Group();
   // the tent: an A of canvas on its ridge pole, a flap open
   const canvas = new THREE.CylinderGeometry(1.3, 1.3, 2.6, 3, 1, true, Math.PI / 2, Math.PI * 2).rotateZ(Math.PI / 2).scale(1, 1.05, 1).translate(0, 0.72, 0);
@@ -1365,12 +1349,12 @@ function shuttleCart(rand: Rand, len: number, busy: boolean) {
   const c = oreCart(rand, true);
   c.g.scale.setScalar(1.25);
   const T = 9 + rand() * 4, ph = rand() * T;
-  // (parked at the ore end when this is not the hole's busy site: it bakes with the rest)
+  // (parked by the tunnel mouth when this is not the hole's busy site: it bakes with the rest)
   if (!busy) return (c.g.position.x = len / 2 - 1.4), c;
   bakeLocal(c.g);
   (ud(c.g).live = true), (c.g.name ||= "mines:shuttleCart");
   animate((t) => {
-    const u = ((t + ph) % T) / T, v = u < 0.5 ? u * 2 : 2 - u * 2, e = v * v * (3 - 2 * v);
+    const u = ((t + ph) % T) / T, e = smoothstep(u < 0.5 ? u * 2 : 2 - u * 2);
     c.g.position.x = -len / 2 + 1.4 + e * (len - 2.8);
     c.g.rotation.z = Math.sin(t * 9) * 0.01;
   });

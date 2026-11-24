@@ -47,9 +47,10 @@ export function gridOf(h: HoleIn, clearance: number, hazards = false): Grid {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (Math.hypot(cx(i) - p.c[0], cy(j) - p.c[1]) < r) shut[j * nx + i] = 1;
   }
   if (hazards) {
-    const fixed = h.zones.filter((z) => z.kind === "hazard" && !z.every);
-    for (let k = 0; k < shut.length; k++) {
-      if (!shut[k] && fixed.some((z) => inZone(shapeOf(z), cx(k % nx), cy(Math.floor(k / nx))))) shut[k] = 1;
+    for (const z of h.zones) {
+      if (z.kind !== "hazard" || z.every) continue;
+      const q = shapeOf(z), [i0, i1] = span(z.min[0], z.max[0], x0, nx), [j0, j1] = span(z.min[1], z.max[1], y0, ny);
+      for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (!shut[j * nx + i] && inZone(q, cx(i), cy(j))) shut[j * nx + i] = 1;
     }
   }
   return {

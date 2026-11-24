@@ -154,25 +154,28 @@ function barred(d: Draft, after: Draft, errs: () => Issue[]): Issue[] {
 export const gate = (d: Draft, after: Draft, o: ValidateOptions, before?: readonly Issue[]): Dropped =>
   verdict(after, barred(d, after, () => newErrors(before ?? errorsOf(d, o), after, o)));
 
-/** Why the piece may not go where it is in d (put in, or put back in place of its old self): the gate's, the piece's own errors counted too (editErrors); none, it may. */
-export function canPlace(d: Draft, piece: Piece, o: ValidateOptions, before?: readonly Issue[]): Issue[] {
-  const after = { ...d, pieces: [...d.pieces.filter((p) => p.id !== piece.id), piece] };
+/** Why the piece may not go where it is in d (put in, or put back in place of its old self): the gate's, the piece's own errors counted too (editErrors); none, it may. after: that draft, when the caller keeps it (validate's answer is kept for it). */
+export function canPlace(d: Draft, piece: Piece, o: ValidateOptions, before?: readonly Issue[], after: Draft = { ...d, pieces: [...d.pieces.filter((p) => p.id !== piece.id), piece] }): Issue[] {
   return barred(d, after, () => editErrors(d, after, piece.id, o, before));
 }
 /**
  * The checks of a drag from start (or of the armed piece's ghost over it, a
- * stroke of the paint): a piece or an end checked again only when its place
- * or shape changes (a pointer moves many times within one snapped place), a
- * green once for each shape it takes (a stroke goes back over its own), the
- * hole as it was checked once a drag.
+ * stroke of the paint): a piece or an end checked once for each place or
+ * shape it takes (a pointer moves many times within one snapped place, and a
+ * hand on a grid line goes back and forth over it), the ghost once for each
+ * entry armed too, a green once for each shape it takes (a stroke goes back
+ * over its own), the hole as it was checked once a drag.
  */
 export function dragCheck(start: Draft, o: ValidateOptions) {
-  let base: readonly Issue[] | null = null, last = "", said: Issue[] = [], green: Green | null | undefined;
-  const once = (key: string, run: () => Issue[]) => (key === last ? said : ((last = key), (said = run())));
+  let base: readonly Issue[] | null = null, green: Green | null | undefined;
+  const said = new Map<string, Issue[]>(), once = (key: string, run: () => Issue[]) => {
+    if (!said.has(key)) said.set(key, run());
+    return said.get(key)!;
+  };
   const was = () => (base ??= errorsOf(start, o));
   const greens = new Map<string, string>(), greenKey = (s: { cells: readonly V[]; open: readonly V[] }) => `${s.cells.map(String).sort().join(";")}|${s.open.map(String).sort().join(";")}`;
   return {
-    piece: (p: Piece) => once(`${p.id} ${JSON.stringify(p.geometry)} ${JSON.stringify(p.params)}`, () => canPlace(start, p, o, was())),
+    piece: (p: Piece) => once(`${p.id} ${p.entry} ${JSON.stringify(p.geometry)} ${JSON.stringify(p.params)}`, () => canPlace(start, p, o, was())),
     end: (which: "tee" | "pin", at: V) => once(`${which} ${at[0]} ${at[1]}`, () => newErrors(was(), { ...start, [which]: at }, o)),
     /** Why the green may not become s ("" it may). */
     surface(s: { cells: readonly V[]; open: readonly V[] }): string {
@@ -336,8 +339,8 @@ export function placeNear(d: Draft, e: PaletteEntry, to: V, quick: ValidateOptio
   if (roomFor(d, p)) return null;
   const put = canPlace(d, p, quick).length === 0 ? p : nearest(d, p, quick);
   if (!put) return null;
-  const why = canPlace(d, put, full);
-  return why.length ? { why: refusalOf(why[0]) } : { draft: frame({ ...d, pieces: [...d.pieces, put] }), id };
+  const next = { ...d, pieces: [...d.pieces, put] }, why = canPlace(d, put, full, undefined, next);
+  return why.length ? { why: refusalOf(why[0]) } : { draft: frame(next), id };
 }
 
 /** How far a copy goes to clear its piece: a post's width, a rail's or a bar's a unit aside, a zone's longest side. */

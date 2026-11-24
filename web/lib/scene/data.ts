@@ -125,11 +125,10 @@ interface ObjData {
   smokeAt?: THREE.Vector3;
   /** a waterfall's pool */
   pool?: { x: number; z: number; r: number };
-  /** a palm: the top of its trunk; a lighthouse: its lamp; an arching palm: its crown and its reach */
-  top?: THREE.Vector3;
+  /** a lighthouse: its lamp; an arching palm: its crown; a beach hut or a lighthouse: where a gull may stand */
   lamp?: THREE.Vector3;
   crown?: THREE.Object3D;
-  reach?: number;
+  perch?: THREE.Vector3;
 }
 /** Keys a Material may carry. */
 interface MatData {

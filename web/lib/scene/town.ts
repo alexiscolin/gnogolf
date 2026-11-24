@@ -21,10 +21,23 @@ import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
 const CANAL = { x0: -ISLAND.x - 6.5, x1: -ISLAND.x - 1.5 }; // down the left, just off the plot
+/** Whether the lane runs over the rooftops (a `roof` zone). */
+const roofed = (s: Pick<Hole, "zones">) => (s.zones || []).some((z) => z.skin === "roof");
 /** How far down this hole's town stands: a lane over the rooftops (a `roof`
  *  zone) looks down on the streets, so the square and all round it are at
  *  street level (base, edging and decor are moved down by it as a whole). */
-const sunk = (s: Pick<Hole, "zones">) => ((s.zones || []).some((z) => z.skin === "roof") ? STREET_Y - GRASS : 0);
+const sunk = (s: Pick<Hole, "zones">) => (roofed(s) ? STREET_Y - GRASS : 0);
+/** The plot: the board, out to its walls where they reach past its nominal size, as [x0, z0, x1, z1]. */
+const plot = (s: Hole) => {
+  let x0 = 0, z0 = 0, x1 = s.board.w, z1 = s.board.h;
+  for (const w of s.walls || []) for (const p of [w.a, w.b]) {
+    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
+    z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]);
+  }
+  return [x0, z0, x1, z1] as const;
+};
+/** The curb round the plot (base): its width, its height, how far out from the walls it stands (clear of the rim timbers). */
+const CURB = { w: 0.6, h: 0.55, out: 0.6 };
 const MAST_Z = -2.1; // the lantern strings' masts: between the tram's rails and the board's curb
 /** Where the lantern strings cross the board (their masts at x - 1.5). */
 const stringXs = (W: number) => { const xs: number[] = []; for (let x = W * 0.16; x < W - 1; x += Math.max(8, W / 4)) xs.push(x); return xs; };
@@ -60,7 +73,6 @@ function base(s: Hole, box: THREE.Box3) {
   const W = s.board.w, H = s.board.h;
   // far wider than the plot: in town the ground does not end at the island
   const X0 = box.min.x - 40, X1 = box.max.x + 40, Z0 = box.min.z - 40, Z1 = box.max.z + 18;
-  const roofed = (s.zones || []).some((z) => z.skin === "roof");
   const tex = cobbles().clone();
   tex.needsUpdate = true;
   tex.repeat.set((X1 - X0) / 7, (Z1 - Z0) / 7); // a cobble is about a ball across
@@ -69,7 +81,7 @@ function base(s: Hole, box: THREE.Box3) {
   // (the shape is drawn with y = -z, so turning it flat puts it face up)
   const V = (x: number, z: number) => new THREE.Vector2(x, -z);
   const sq = new THREE.Shape([V(X0, Z0), V(X0, Z1), V(X1, Z1), V(X1, Z0)]);
-  if (roofed) sq.holes.push(new THREE.Path([V(0, 0), V(W, 0), V(W, H), V(0, H)]));
+  if (roofed(s)) sq.holes.push(new THREE.Path([V(0, 0), V(W, 0), V(W, H), V(0, H)]));
   const sqGeo = new THREE.ShapeGeometry(sq);
   // UVs from the world, so the cobbles keep their size
   const uv = sqGeo.attributes.uv, pos = sqGeo.attributes.position;
@@ -110,13 +122,9 @@ function base(s: Hole, box: THREE.Box3) {
   // the plot is whatever the walls enclose, which may reach past the board's
   // nominal size: the curb and the lawn go round that, or walls would stand
   // outside the square's curb, on the cobbles
-  let x0 = 0, z0 = 0, x1 = W, z1 = H;
-  for (const w of s.walls || []) for (const p of [w.a, w.b]) {
-    x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]);
-    z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]);
-  }
+  const [x0, z0, x1, z1] = plot(s);
   const PW = x1 - x0, PH = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  if (!roofed) {
+  if (!roofed(s)) {
     const under = new THREE.Mesh(new THREE.PlaneGeometry(PW + 1.2, PH + 1.2), flat(rough.lo));
     under.rotation.x = -Math.PI / 2;
     under.position.set(cx, GRASS + 0.12, cz);
@@ -125,8 +133,7 @@ function base(s: Hole, box: THREE.Box3) {
   // the plinth the green stands on: a stone step round the board
   // — a ring round it, not a slab under it: what hangs below the green (wall
   // skirts, the rough's plants) is the board's, and its top stays below 0
-  const R = 0.6, hgt = 0.55;
-  const E = 0.6; // clear of the rim timbers' outer face
+  const { w: R, h: hgt, out: E } = CURB;
   for (const [w, d, x, z] of [
     [PW + 2 * (R + E), R, cx, z0 - E - R / 2], [PW + 2 * (R + E), R, cx, z1 + E + R / 2],
     [R, PH + 2 * E, x0 - E - R / 2, cz], [R, PH + 2 * E, x1 + E + R / 2, cz],
@@ -143,35 +150,36 @@ function base(s: Hole, box: THREE.Box3) {
 function edging(s: Hole) {
   const g = new THREE.Group();
   const rand = seeded("town-edge" + s.hole);
-  const W = s.board.w, H = s.board.h;
+  const W = s.board.w, [, z0, , z1] = plot(s);
+  const mid = CURB.out + CURB.w / 2; // the curb's middle, out from the plot
   // drain grates in the square, a step off the plinth
   for (let x = 3; x < W - 2; x += 9 + rand() * 4)
-    for (const z of [-1.3, H + 1.3]) {
+    for (const z of [z0 - mid - 0.7, z1 + mid + 0.7]) {
       const grate = drawn(box3(0.9, 0.05, 0.5), flat(T.iron));
       grate.position.set(x, GRASS + 0.08, z);
       g.add(grate);
     }
-  g.add(flowerBoxes(W, H, rand));
+  g.add(flowerBoxes(W, z0 - mid, z1 + mid, rand));
   g.position.y = sunk(s);
   return g;
 }
 
-// flower boxes sit on the curb ring round the board (see base): a few per side
-function flowerBoxes(W: number, H: number, rand: Rand) {
+// flower boxes on the curb (see base), along its back and its front: a few per side
+function flowerBoxes(W: number, back: number, front: number, rand: Rand) {
   const g = new THREE.Group();
   const box = (x: number, z: number, rot: number) => {
     const b = drawn(box3(1.2, 0.3, 0.4), flat(C.wood));
-    b.position.set(x, GRASS + 0.55 + 0.15, z);
+    b.position.set(x, GRASS + CURB.h + 0.15, z);
     b.rotation.y = rot;
     g.add(b);
     for (let i = 0; i < 3; i++) {
       const f = tflower(rand);
       f.scale.multiplyScalar(0.55);
-      f.position.set(x + Math.cos(rot) * (i - 1) * 0.35, GRASS + 0.85, z - Math.sin(rot) * (i - 1) * 0.35);
+      f.position.set(x + Math.cos(rot) * (i - 1) * 0.35, GRASS + CURB.h + 0.3, z - Math.sin(rot) * (i - 1) * 0.35);
       g.add(f);
     }
   };
-  for (let x = 5; x < W - 4; x += 11 + rand() * 3) box(x, -0.3, 0), box(x + 4, H + 0.3, 0);
+  for (let x = 5; x < W - 4; x += 11 + rand() * 3) box(x, back, 0), box(x + 4, front, 0);
   return g;
 }
 
@@ -414,7 +422,7 @@ function stall(rand: Rand, night: boolean) {
     p.position.set(-0.75 + i * 0.5, 1.42, 0.63);
     down.add(p);
   }
-  g.add(night ? look(down, "clear", "wind", "wet") : look(down, "wet")); // and shut for the night
+  g.add(night ? look(down, "clear", "wet") : look(down, "wet")); // and shut for the night
   return g;
 }
 
@@ -838,11 +846,7 @@ function decor(s: Hole) {
   const { free, reserve } = placer();
   // the board and a step round it are the lane's
   // (the walls may reach past the board's nominal size: keep clear of them too)
-  let bx0 = 0, bz0 = 0, bx1 = W, bz1 = H;
-  for (const w of s.walls || []) for (const p of [w.a, w.b]) {
-    bx0 = Math.min(bx0, p[0]); bx1 = Math.max(bx1, p[0]);
-    bz0 = Math.min(bz0, p[1]); bz1 = Math.max(bz1, p[1]);
-  }
+  const [bx0, bz0, bx1, bz1] = plot(s);
   const onBoard = (x: number, z: number, r: number) => x > bx0 - 1.9 - r && x < bx1 + 1.9 + r && z > bz0 - 1.9 - r && z < bz1 + 1.9 + r;
   const place = <T extends THREE.Object3D>(m: T, x: number, z: number, r: number, rot = 0) => {
     if (!free(x, z, r) || onBoard(x, z, r)) return null;
@@ -1214,8 +1218,7 @@ function outlineOf(z: Zone): readonly Vec2[] {
   return Array.from({ length: 72 }, (_, i): Vec2 => [cx + Math.cos((i / 72) * Math.PI * 2) * hx, cz + Math.sin((i / 72) * Math.PI * 2) * hz]);
 }
 // a flat sheet over pts, lift above the ground; tile > 0 repeats the texture
-// every tile units of the board, 0 stretches it over the zone once. over
-// pulls it forward in depth, over what it lies on
+// every tile units of the board, 0 stretches it over the zone once
 function sheet(pts: readonly Vec2[], z: Zone, t: Terrain, mat: THREE.Material, tile: number, lift: number) {
   const [x0, z0] = z.min, [x1, z1] = z.max;
   const geo = new THREE.ShapeGeometry(new THREE.Shape(pts.map(([x, zz]) => new THREE.Vector2(x, -zz))));

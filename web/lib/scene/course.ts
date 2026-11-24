@@ -380,12 +380,23 @@ export function groundMesh(s: Hole, t: T) {
   // reads as one smooth surface and not as a patchwork of triangles
   const e = 0.05;
   const gh = t.ground || t.height;
-  const up = (x: number, z: number): [number, number, number] => {
+  // (worked out once a place: a cell's two triangles list six vertices, and four cells share each corner)
+  const once = <R>(f: (x: number, z: number) => R) => {
+    const kept = new Map<number, Map<number, R>>();
+    return (x: number, z: number): R => {
+      let row = kept.get(x);
+      if (!row) kept.set(x, (row = new Map<number, R>()));
+      if (!row.has(z)) row.set(z, f(x, z));
+      return row.get(z)!;
+    };
+  };
+  const up = once((x, z): [number, number, number] => {
     const dx = (gh(x + e, z) - gh(x - e, z)) / (2 * e);
     const dz = (gh(x, z + e) - gh(x, z - e)) / (2 * e);
     const l = Math.hypot(dx, 1, dz);
     return [-dx / l, 1 / l, -dz / l];
-  };
+  });
+  const pond = once((x, z) => t.pond(x, z));
   // a pond's bank: the lane's grass, turning to earth as it goes down, dark
   // and wet at the water
   // (by the water's skin: a pond's earth, a rock pool's rock, a lagoon's
@@ -393,7 +404,7 @@ export function groundMesh(s: Hole, t: T) {
   const BANKS: Record<string, readonly [number, number]> = { water: [0x8a6a45, 0x4f4232], tidepool: [0x8d8274, 0x4d463d], lagoon: [0xd9bd88, 0x8c7552], canal: [0xa7a9a3, 0x55605f] };
   const earth = new THREE.Color(), wet = new THREE.Color(), bank = new THREE.Color();
   const banked = (color: THREE.Color, p: readonly number[]) => {
-    const w = t.pond(p[0], p[2]), dd = w ? w.k * -POOL.bed : 0; // how far down the bank
+    const w = pond(p[0], p[2]), dd = w ? w.k * -POOL.bed : 0; // how far down the bank
     if (!w || dd < 0.01) return color;
     const [e, d] = ownKey(BANKS, w.skin) || BANKS.water;
     return bank.copy(color).lerp(earth.set(e), smoothstep(dd / 0.22)).lerp(wet.set(d), smoothstep((dd - 0.25) / 0.2));
@@ -404,7 +415,7 @@ export function groundMesh(s: Hole, t: T) {
   const quad = (p: readonly (readonly number[])[], color: THREE.Color, n?: readonly number[], low?: THREE.Color) => {
     for (const k of Math.abs(p[0][1] - p[2][1]) > Math.abs(p[1][1] - p[3][1]) + 1e-4 ? [0, 1, 3, 1, 2, 3] : [0, 1, 2, 0, 2, 3]) {
       pos.push(...p[k]);
-      if (wetY) wetY.push(t.pond(p[k][0], p[k][2])?.level ?? -99);
+      if (wetY) wetY.push(pond(p[k][0], p[k][2])?.level ?? -99);
       const cc = low && (k === 1 || k === 2) ? low : n || !t.pond ? color : banked(color, p[k]);
       col.push(cc.r, cc.g, cc.b);
       nor.push(...(n || up(p[k][0], p[k][2])));
@@ -2062,6 +2073,9 @@ export function buildExtras(course: Course, ex: Extras) {
   const course0 = { timed: state.timed, ghosts: state.ghosts };
   const timed: Timed[] = (state.timed = []);
   state.ghosts = null;
+  // a ride its pieces give (the mines' lift) goes in the course's tubes, where the replay looks; the last stroke's goes
+  const tubes = (state.tubes = course.userData.tubes);
+  for (const z of tubes.keys()) if (!course.userData.state.zones.includes(z)) tubes.delete(z);
   // a world may draw a stroke's pieces itself (an avalanche, a wave): it
   // returns { group, skins }, and what it drew is left out of the rest
   const own = worldOf(course.userData.state).extras?.(ex, course.userData.state, t);

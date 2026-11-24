@@ -164,6 +164,8 @@ export interface Extras extends Versioned {
   zones: readonly Zone[];
   /** the client's own: the next strokes' extras, for a world that looks ahead (worlds.ts ahead) */
   ahead?: readonly (Extras | null)[];
+  /** the client's own: the stroke they are for, so a world that moves on from the stroke before knows which one that is */
+  stroke?: number;
 }
 
 /** One hole as Holes() lists it. */

@@ -157,9 +157,13 @@ export function passages(h: HoleIn, slack: number): Passage[] {
   }
   // each gap closed by a post at its middle: its cells within the post's reach shut (gridOf's own rule, on the same grid)
   const gaps: (Passage & { post: PostIn })[] = [];
+  // (two solids whose boxes lie further apart than need and slack, by more than float noise, have no such gap: the boxes' gap is the least theirs can be)
+  const box = of.map((s) => (s.kind === "post" ? [s.c[0] - s.r, s.c[1] - s.r, s.c[0] + s.r, s.c[1] + s.r] : [Math.min(s.a[0], s.b[0]), Math.min(s.a[1], s.b[1]), Math.max(s.a[0], s.b[0]), Math.max(s.a[1], s.b[1])]));
   for (let i = 0; i < of.length; i++) {
     for (let j = i + 1; j < of.length; j++) {
-      const [gap, mid] = gapOf(of[i], of[j]), need = of[i].keep + of[j].keep;
+      const need = of[i].keep + of[j].keep, p = box[i], q = box[j], far = need + slack + 1e-9;
+      if (q[0] - p[2] > far || p[0] - q[2] > far || q[1] - p[3] > far || p[1] - q[3] > far) continue;
+      const [gap, mid] = gapOf(of[i], of[j]);
       // (a hazard's two edges about its own inside: no way, the hazard's)
       if (!(gap > 1e-9 && gap < need + slack) || (of[i].zone && of[i].zone === of[j].zone && inZone(shapeOf(of[i].zone!), mid[0], mid[1]))) continue;
       gaps.push({ gap, need, mid, a: refs[i], b: refs[j], post: { c: mid, r: Math.max(gap / 2, CELL) } });

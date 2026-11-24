@@ -119,7 +119,8 @@ export function rayCircle(ox: number, oz: number, cx: number, cz: number, c: Vec
 export function inPoly(x: number, y: number, poly: readonly Vec2[]) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    // (read by index: destructured, a vertex costs V8 more than the test itself)
+    const a = poly[i], b = poly[j], xi = a[0], yi = a[1], xj = b[0], yj = b[1];
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;

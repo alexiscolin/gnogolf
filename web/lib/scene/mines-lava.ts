@@ -54,12 +54,12 @@ vec2 lvFlow(vec2 p) {
 `;
 
 let mat: THREE.MeshBasicMaterial | null = null;
+/** The lavaCrust of a curtain pouring down (crustBy(geo, FALLING)): its flow runs down it. */
+export const FALLING = -1;
 /**
  * The lava: one material for every lava of the mines. A geometry's lavaCrust
- * (per vertex, 0..1) is how much it has crusted over; -1 marks a curtain
- * pouring down (crustBy(geo, FALLING)): its flow runs down it.
+ * (per vertex, 0..1) is how much it has crusted over, or FALLING.
  */
-export const FALLING = -1;
 export function lavaMaterial() {
   if (mat) return mat;
   const m = share(new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 }));
@@ -99,7 +99,7 @@ varying vec3 vLw;
     bool falling = vCrust < -0.5;
     vec2 p = falling ? vec2((vLw.x + vLw.z) * 2.8, vLw.y * 0.9 + uTime * 1.8) : vLw.xz; // (a fall: finer, streaking down)
     // the flow: a slow drift, bent by a lazy swirl, and a shimmer on top
-    vec2 q = falling ? p * 0.42 + vec2(uTime * 0.045, uTime * 0.028) + 0.45 * vec2(lvN(p * 0.55 + uTime * 0.07), lvN(p * 0.55 - uTime * 0.06 + 9.0)) : lvFlow(p);
+    vec2 q = lvFlow(p);
     q += 0.04 * sin(uTime * 3.1 + p.yx * 5.0);
     vec3 pl = lvPlates(q);
     float crack = pl.y - pl.x;
@@ -114,7 +114,7 @@ varying vec3 vLw;
       c = mix(uCrustWarm, uCrust, smoothstep(0.16 - wc, 0.16 + wc, crack));
       c = mix(uEmber, c, smoothstep(0.09 - wc, 0.09 + wc, crack));
       c = mix(uHot, c, smoothstep(0.045 - wc, 0.045 + wc, crack));
-      float glint = smoothstep(0.02 + wc, 0.02 - wc, crack) * step(0.55, lvN(q * 3.0 + uTime * 0.5));
+      float glint = (1.0 - smoothstep(0.02 - wc, 0.02 + wc, crack)) * step(0.55, lvN(q * 3.0 + uTime * 0.5));
       c = mix(c, uWhite, glint);
       c *= 0.88 + 0.24 * fract(pl.z * 13.7); // (each raft its own tone: cooled more or less)
       // (its relief read: a plate's shoulder turned from the light darker, its top lit, in two toon steps)

@@ -802,7 +802,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
     const next = Promise.all(Array.from({ length: n }, (_, k) => chain.extras(g.id!, stroke + 1 + k).then(plainSkins, () => null)));
     let ex: Extras;
     try {
-      ex = plainSkins(await read);
+      ex = { ...plainSkins(await read), stroke };
       if (n) {
         const ahead = await Promise.race([next, new Promise<null>((r) => setTimeout(() => r(null), 0))]);
         if (ahead) ex = { ...ex, ahead };

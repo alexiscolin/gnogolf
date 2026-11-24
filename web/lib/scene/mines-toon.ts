@@ -1,8 +1,8 @@
-// The Crystal Mines' toon kit, shared by its piece modules (mines-pieces,
-// -machines, -zones, -pulses): the mines' ink, rock carved in strata, the
-// crystal material lit from within, halos, timber, iron and rivets. The
-// worlds' own look (materials.ts): MeshToon in three bands, ink hulls, the
-// shared grain on carved things; what never moves is merged by the bake.
+// The Crystal Mines' toon kit, shared by the world's modules: the mines' ink,
+// rock carved in strata, the crystal material lit from within, halos, timber,
+// iron and rivets. The worlds' own look (materials.ts): MeshToon in three
+// bands, ink hulls, the shared grain on carved things; what never moves is
+// merged by the bake.
 import * as THREE from "three";
 import { mergeGeometries, mergeVertices } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -30,7 +30,7 @@ export const inked = (geo: THREE.BufferGeometry, mat: THREE.Material, line: THRE
 export function solid(geo: THREE.BufferGeometry, color: THREE.ColorRepresentation, line: THREE.Material = INK_THIN) {
   const c = new THREE.Color(color);
   if (color === IRON || color === IRON_DARK) ironPaint(geo, c);
-  else paint(geo, (_x, _y, _z, o) => o.copy(c));
+  else fill(geo, c);
   return small(geo) ? new THREE.Mesh(geo, relief()) : inked(geo, relief(), line);
 }
 /** Iron as the mines paint it: a tone of its own a piece, darker at its foot, its top edges worn toward steel. */
@@ -44,8 +44,7 @@ const small = (geo: THREE.BufferGeometry) => (geo.computeBoundingSphere(), geo.b
 
 /** A part in one colour with no ink (small bits: pebbles, stripes, rollers), over the shared relief material. */
 export function tinted(geo: THREE.BufferGeometry, color: THREE.ColorRepresentation) {
-  const c = new THREE.Color(color);
-  return new THREE.Mesh(paint(geo, (_x, _y, _z, o) => o.copy(c)), relief());
+  return new THREE.Mesh(fill(geo, color), relief());
 }
 
 /**
@@ -118,6 +117,8 @@ export function paint(geo: THREE.BufferGeometry, col: (x: number, y: number, z: 
   geo.setAttribute("color", new THREE.BufferAttribute(out, 3));
   return geo;
 }
+/** One colour (times k) in every vertex of a geometry. */
+export const fill = (geo: THREE.BufferGeometry, color: THREE.ColorRepresentation, k = 1) => paint(geo, (_x, _y, _z, c) => c.set(color).multiplyScalar(k));
 
 // rock in strata: bands a hand high, each its own tone, broken by lumps; the
 // top catches the lanterns' warm light, the foot darkens into the floor
@@ -205,10 +206,8 @@ export function splay(rand: Rand, size: number, R: number, hues: readonly number
 // halo of the hole, their colours (times their strength: it adds) in their
 // vertices: merged by the bake into one draw; the Low tier keeps them (they
 // are on the board)
-let haloM: THREE.MeshBasicMaterial | null = null;
-export function haloMat() {
-  if (haloM) return haloM;
-  const m = share(new THREE.MeshBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false }));
+export const haloMat = () => once("halo", () => {
+  const m = new THREE.MeshBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, fog: false });
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = "varying float vHalo;\n" + sh.vertexShader.replace(
       "#include <project_vertex>",
@@ -221,20 +220,25 @@ export function haloMat() {
   };
   m.customProgramCacheKey = () => "mines-halo";
   md(m).hook = "mines-halo";
-  return (haloM = m);
-}
+  return m;
+});
 /** A shell of light of its own (a flash, a veil that fades: its material its own, its opacity the caller's). */
 export function glow(geo: THREE.BufferGeometry, color: number, opacity = 1) {
-  const c = new THREE.Color(color), mat = haloMat().clone();
+  const mat = haloMat().clone();
+  // clone() drops the shader hook, the rim that makes it read as light: keep it
+  // (three declares the hooks as methods; they are closures, copied as they are)
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  mat.onBeforeCompile = haloMat().onBeforeCompile;
+  // eslint-disable-next-line @typescript-eslint/unbound-method
+  mat.customProgramCacheKey = haloMat().customProgramCacheKey;
   mat.opacity = opacity;
-  const m = new THREE.Mesh(paint(geo, (_x, _y, _z, o) => o.copy(c)), mat);
+  const m = new THREE.Mesh(fill(geo, color), mat);
   m.renderOrder = 2;
   return m;
 }
 /** A halo of radius r, its colour at a strength (0..1). */
 export function halo(r: number, color: number, strength = 0.34) {
-  const c = new THREE.Color(color).multiplyScalar(strength);
-  const m = new THREE.Mesh(paint(new THREE.IcosahedronGeometry(r, 1), (_x, _y, _z, o) => o.copy(c)), haloMat());
+  const m = new THREE.Mesh(fill(new THREE.IcosahedronGeometry(r, 1), color, strength), haloMat());
   m.renderOrder = 2;
   return m;
 }
@@ -273,15 +277,15 @@ export function log(r: number, h: number, color: number = TIMBER) {
   const geo = new THREE.CylinderGeometry(r * 0.94, r, h, 8, 2).translate(0, h / 2, 0);
   paint(geo, (x, y, z, c) => c.set(color).multiplyScalar(0.72 + 0.3 * (y / h) + 0.08 * Math.sin(Math.atan2(z, x) * 5)));
   g.add(inked(geo, relief(), INK_THIN));
-  const end = new THREE.Mesh(paint(new THREE.CircleGeometry(r * 0.9, 10).rotateX(-Math.PI / 2).translate(0, h + 0.003, 0), (_x, _y, _z, c) => c.set(TIMBER_LIGHT)), relief());
+  const end = new THREE.Mesh(fill(new THREE.CircleGeometry(r * 0.9, 10).rotateX(-Math.PI / 2).translate(0, h + 0.003, 0), TIMBER_LIGHT), relief());
   g.add(end);
   return g;
 }
-/** Rivets: little iron domes at the given points (on a face whose normal is n). */
+/** Rivets: little iron domes at the given points, facing +z. */
 export function rivets(pts: readonly THREE.Vector3[], r = 0.05) {
   // (a low four-sided dome each: a rivet reads by its dot, not its roundness)
   const geos = pts.map((p) => new THREE.ConeGeometry(r, r * 0.7, 4, 1).rotateX(Math.PI / 2).translate(p.x, p.y, p.z));
-  return new THREE.Mesh(paint(mergeGeometries(geos), (_x, _y, _z, c) => c.set(IRON_DARK)), relief());
+  return new THREE.Mesh(fill(mergeGeometries(geos), IRON_DARK), relief());
 }
 /** An iron plate, worn: iron with a rust-brown edge. w × h × d, centred. */
 export function plate(w: number, h: number, d: number, color: number = IRON) {
@@ -292,13 +296,6 @@ export function plate(w: number, h: number, d: number, color: number = IRON) {
   return boxed(geo, w, h, d);
 }
 
-// ---------------------------------------------------------------- one system a hole
-//
-// Things many pieces of a hole have (bubbles in every lava, drips in every
-// pool, steam off every spring) are one live system for the whole hole, not
-// one each: the first piece that asks holds it (its root), the others only
-// add to it. (key: the hole's build, its terrain.)
-const systems = new WeakMap<object, Map<string, unknown>>();
 /**
  * A material (or any disposable) made once for the whole game, by its key: kept
  * (materials.ts share: never disposed with a course), so a piece built on every
@@ -312,6 +309,14 @@ export function once<T extends { dispose(): void }>(key: string, make: () => T):
 }
 /** The dark down a drift, a slot, a pocket: the mines' void black, unlit (one material for all of them). */
 export const darkMouth = () => once("dark mouth", () => new THREE.MeshBasicMaterial({ color: MINES.void }));
+
+// ---------------------------------------------------------------- one system a hole
+//
+// Things many pieces of a hole have (bubbles in every lava, drips in every
+// pool, steam off every spring) are one live system for the whole hole, not
+// one each: the first piece that asks holds it (its root), the others only
+// add to it. (key: the hole's build, its terrain.)
+const systems = new WeakMap<object, Map<string, unknown>>();
 export function shared<S extends { root: THREE.Object3D }>(build: object, key: string, make: () => S): { sys: S; first: boolean } {
   let m = systems.get(build);
   if (!m) systems.set(build, (m = new Map<string, unknown>()));
@@ -329,8 +334,7 @@ export function shared<S extends { root: THREE.Object3D }>(build: object, key: s
 // town's canopies' way: materials.ts fadeable), one fade a hole (shared),
 // the course calling it each frame (worlds.ts pieceFade). A still piece is
 // laid in a bucket of its neighbours (a cell of the board, 32 units), the bucket merged
-// and faded as one (two draws a bucket, not two a piece); a moving one fades
-// on its own.
+// and faded as one (two draws a bucket, not two a piece).
 type Sight = { root: THREE.Group; items: { at: THREE.Vector3; r: number; set: FadeSet }[]; buckets: Map<string, { root: THREE.Group; set: FadeSet; baked: boolean }> };
 type FadeSet = { own: Map<THREE.Material, THREE.Material>; ink: THREE.MeshBasicMaterial | null; mats: THREE.Material[] };
 const newSet = (): FadeSet => ({ own: new Map(), ink: null, mats: [] });
@@ -358,91 +362,54 @@ function sightSystem(): Sight {
   return sys;
 }
 /**
- * A piece that fades out of the camera's way (see above): r its radius round
- * at (its middle, world). A live piece (a machine, a fall) fades alone; a
- * still one goes in its cell's bucket, or its kind's for the whole hole (kind:
- * two draws for all of them; returned: add it where the piece would
- * have gone, the first time; null after). Returns the hole's fade root the
- * first time any piece is registered (add it to the course).
+ * A still piece that fades out of the camera's way (see above), in its cell's
+ * bucket: r its radius round at (its middle, world). Returns the bucket the
+ * first time it is made (add it where the piece would have gone; null after),
+ * and the hole's fade root the first time any piece is registered (add it to
+ * the course).
  */
-export function sightFade(build: object, piece: THREE.Object3D, at: THREE.Vector3, r: number, alone = false, kind = ""): { root: THREE.Object3D | null; bucket: THREE.Object3D | null } {
+export function sightFade(build: object, piece: THREE.Object3D, at: THREE.Vector3, r: number): { root: THREE.Object3D | null; bucket: THREE.Object3D | null } {
   const { sys, first } = shared(build, "sight", sightSystem);
-  let bucket: THREE.Object3D | null = null, set: FadeSet;
-  if (alone) {
-    set = newSet();
-    set.mats = ownFade(piece, 0.03, set);
-  } else {
-    const key = kind || Math.floor(at.x / 32) + ":" + Math.floor(at.z / 32);
-    let b = sys.buckets.get(key);
-    if (!b) (sys.buckets.set(key, (b = { root: new THREE.Group(), set: newSet(), baked: false })), (bucket = b.root), ud(b.root).live = true);
-    ownFade(piece, 0.03, b.set);
-    ud(piece).live = false; // (merged with its bucket)
-    b.root.add(piece);
-    set = b.set;
-  }
-  sys.items.push({ at: at.clone(), r, set });
+  let bucket: THREE.Object3D | null = null;
+  const key = Math.floor(at.x / 32) + ":" + Math.floor(at.z / 32);
+  let b = sys.buckets.get(key);
+  if (!b) (sys.buckets.set(key, (b = { root: new THREE.Group(), set: newSet(), baked: false })), (bucket = b.root), ud(b.root).live = true);
+  ownFade(piece, 0.03, b.set);
+  ud(piece).live = false; // (merged with its bucket)
+  b.root.add(piece);
+  sys.items.push({ at: at.clone(), r, set: b.set });
   return { root: first ? sys.root : null, bucket };
 }
 
 // ---------------------------------------------------------------- timber decks
 //
-// Every timber deck of the mines — a bridge, a ramp, a gantry's walkway —
-// built one way: planks laid across two stringer beams with a hair of gap
-// between them, each a little longer or shorter, grained, two nail heads at
-// each end; a threshold beam across each end; trestles under it every few
-// units down to its footing, cross-braced; a rail each side (a handrail on
-// posts, a rope on posts, or a low kerb). Its walking surface is the plane
-// through a and b (the physics' own): nothing of it stands above that plane
-// but its rails, at its sides.
+// A timber deck of the mines (the rope bridge's): planks laid across two
+// stringer beams with a hair of gap between them, each a little longer or
+// shorter, grained, two nail heads at each end; a threshold beam across each
+// end. Its walking surface is the plane through a and b (the physics' own):
+// nothing of it stands above that plane.
 
-/** A timber deck's plan: its ends (their middles, at the deck's top), its width, and its dress. */
+/** A timber deck's plan: its ends (their middles, at the deck's top) and its width. */
 export interface Deck {
   a: THREE.Vector3;
   b: THREE.Vector3;
   width: number;
-  /** its rails: a handrail on posts, a rope on posts, a low kerb, or none */
-  rail?: "hand" | "rope" | "kerb" | "none";
-  /** how far down its trestles go under a point along it (0 at a, 1 at b), or none */
-  foot?: ((u: number) => number) | null;
-  /** battens across its planks (a ramp's footholds) */
-  cleats?: boolean;
   rand: Rand;
 }
-export function deck({ a, b, width, rail = "hand", foot = null, cleats = false, rand }: Deck) {
+export function deck({ a, b, width, rand }: Deck) {
   const g = new THREE.Group(), L = a.distanceTo(b);
   if (L < 0.2) return g;
   // built along +x from a, then turned and tilted onto a→b
   const timber: THREE.BufferGeometry[] = [];
   // its boards across it, the mines' own (mines-kit planks: gaps, bevels, staggered joints, nails), their tops at 0
   g.add(planks([{ inside: (x, z) => x > 0 && x < L && Math.abs(z) < width / 2, top: () => 0, box: [0, -width / 2, L, width / 2], angle: Math.PI / 2 }], rand));
-  // cleats: battens nailed across the planks, inside its width
-  if (cleats) for (let x = 0.4; x < L - 0.3; x += 0.9) timber.push(new THREE.BoxGeometry(0.07, 0.05, width - 0.3).translate(x, 0.025, 0));
   // stringers under the planks' ends, thresholds across its ends
   // (their tops just under the planks' faces: what shows between two planks is timber at the deck's height, not a drop)
   // (shallow: a deck's end lies on the floor, its stringers under it not down into the floor)
   for (const sd of [-1, 1]) timber.push(new THREE.BoxGeometry(L, 0.08, 0.16).translate(L / 2, -0.06, sd * (width / 2 - 0.15)));
   // (thresholds: a lip over the boards' ends, their undersides over the floor a deck's end lies on, not into it)
   for (const x of [0.12, L - 0.12]) timber.push(new THREE.BoxGeometry(0.24, 0.07, width + 0.1).translate(x, 0, 0));
-  // trestles down to the footing, braced crosswise
-  if (foot) for (let x = Math.min(1.2, L / 2); x < L; x += 2.6) timber.push(...trestleParts(Math.max(0.4, foot(x / L)), width).map((q) => q.translate(x, -0.3, 0)));
-  // its rails
-  if (rail !== "none")
-    for (const sd of [-1, 1]) {
-      const z = sd * (width / 2 + 0.02);
-      if (rail === "kerb") timber.push(new THREE.BoxGeometry(L, 0.18, 0.14).translate(L / 2, 0.09, z));
-      else {
-        const H = rail === "hand" ? 0.95 : 0.8, step = rail === "hand" ? 1.5 : 1.8;
-        for (let x = 0.12; x <= L; x += step) timber.push(new THREE.BoxGeometry(0.12, H, 0.12).translate(x, H / 2 - 0.05, z));
-        if (rail === "hand") timber.push(new THREE.BoxGeometry(L, 0.1, 0.1).translate(L / 2, H, z), new THREE.BoxGeometry(L, 0.07, 0.06).translate(L / 2, H * 0.5, z));
-      }
-    }
   g.add(timbers(timber));
-  if (rail === "rope")
-    for (const sd of [-1, 1])
-      for (const h of [0.45, 0.78]) {
-        const z = sd * (width / 2 + 0.02), p = new THREE.Vector3(0, h, z), q = new THREE.Vector3(L, h, z), m = p.clone().lerp(q, 0.5).setY(h - Math.min(0.25, L * 0.03));
-        g.add(inked(paint(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p, m, q), 10, 0.035, 4), (_x, _y, _z, c) => c.set(0xc9a86a)), relief(), INK_THIN));
-      }
   // onto a→b: turned to its heading, tilted to its slope
   // (kept upright: its width level, whatever the slope)
   const d = b.clone().sub(a), flat = new THREE.Vector3(d.x, 0, d.z).normalize(), yaw = Math.atan2(-flat.z, flat.x), pitch = Math.atan2(d.y, Math.hypot(d.x, d.z));
@@ -467,9 +434,9 @@ function timbers(parts: THREE.BufferGeometry[]) {
   return inked(geo, relief(), INK_THIN);
 }
 /**
- * A braced trestle under a deck or a gantry (what deck() stands on): its top's
- * middle at `top`, its two legs down to footY, `width` across its heading
- * (radians: the way its width runs, 0 along z), its cap beam and crossed braces.
+ * A braced trestle under a deck or a gantry: its top's middle at `top`, its
+ * two legs down to footY, `width` across its heading (radians: the way its
+ * width runs, 0 along z), its cap beam and crossed braces.
  */
 export function trestle(top: THREE.Vector3, footY: number, width: number, heading = 0) {
   const g = timbers(trestleParts(Math.max(0.4, top.y - footY), width));

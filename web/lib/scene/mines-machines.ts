@@ -25,6 +25,7 @@ import { mod, smoothstep, there } from "../terrain";
 import type { Terrain } from "../terrain";
 import type { Timing, Vec2 } from "../types";
 import type { Bar } from "./worlds";
+import { own } from "../own";
 
 // ------------------------------------------------------------ the rigs
 //
@@ -77,26 +78,33 @@ const anyInPlace = (bars: readonly Bar[], tick: number) => {
  */
 function keyframes(bars: readonly Bar[], value: (b: Bar) => number, away?: number) {
   const every = Math.max(...bars.map((b) => clockOf(b).every)) || 1;
-  const at: number[] = [];
-  for (let k = 0; k < every; k++) {
-    let best: Bar | null = null, age = Infinity;
-    for (const b of bars) if (isOn(b, k)) { const a = mod(k - startOf(b), every); if (a < age) (age = a), (best = b); }
-    at.push(best ? value(best) : away ?? NaN);
-  }
+  const at = placed(bars, every, value, away);
   // (a tick with no bar: the place before it)
   const first = at.findIndex((v) => !Number.isNaN(v));
   if (first < 0) return () => 0;
   for (let k = 1; k <= every; k++) if (Number.isNaN(at[(first + k) % every])) at[(first + k) % every] = at[(first + k - 1) % every];
-  return (tick: number) => {
-    const k = mod(tick - 0.5, every), i = Math.floor(k), u = k - i;
-    const p0 = at[mod(i - 1, every)], p1 = at[i], p2 = at[(i + 1) % every], p3 = at[(i + 2) % every];
-    return 0.5 * (2 * p1 + (p2 - p0) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (3 * p1 - p0 - 3 * p2 + p3) * u * u * u);
-  };
+  return spline(at, every);
 }
+/** Each tick of the period: value(b) of the bar placed there last (the one whose window began most recently), away where none stands. */
+function placed(bars: readonly Bar[], every: number, value: (b: Bar) => number, away = NaN) {
+  const at: number[] = [];
+  for (let k = 0; k < every; k++) {
+    let best: Bar | null = null, age = Infinity;
+    for (const b of bars) if (isOn(b, k)) { const a = mod(k - startOf(b), every); if (a < age) (age = a), (best = b); }
+    at.push(best ? value(best) : away);
+  }
+  return at;
+}
+/** A smooth periodic curve through one value a tick, each reached in the middle of its tick (Catmull-Rom). */
+const spline = (at: readonly number[], every: number) => (tick: number) => {
+  const k = mod(tick - 0.5, every), i = Math.floor(k), u = k - i;
+  const p0 = at[mod(i - 1, every)], p1 = at[i], p2 = at[(i + 1) % every], p3 = at[(i + 2) % every];
+  return 0.5 * (2 * p1 + (p2 - p0) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (3 * p1 - p0 - 3 * p2 + p3) * u * u * u);
+};
 
 /** A machine piece: the first bar builds and drives the rig, every other bar an empty clocked piece. */
-function machine(bar: Bar, t: Terrain, s: Hole, key: string, build: (bars: readonly Bar[], g: THREE.Group) => (tick: number, now: number) => void) {
-  const { rig, first } = rigOf(t, s, key);
+function machine(bar: Bar, t: Terrain, s: Hole, build: (bars: readonly Bar[], g: THREE.Group) => (tick: number, now: number) => void) {
+  const { rig, first } = rigOf(t, s, bar.skin);
   rig.bars.push(bar);
   const piece = first ? rig.group : new THREE.Group();
   ud(piece).live = true;
@@ -174,7 +182,7 @@ function frame(b: Bar) {
 const SLOTS = 24;
 // (the build a machine is drawn for: the hole's, or a stroke's extras — each its own system, gone with it)
 let building: object = {};
-function strikes(_t: Terrain, g: THREE.Group, n: number, spark = true) {
+function strikes(g: THREE.Group, n: number, spark = true) {
   const { sys, first } = shared(building, "strikes", strikeSystem);
   if (first) g.add(sys.root);
   const base = sys.used;
@@ -297,8 +305,8 @@ function stampBattery(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   const s0 = along(line[0], 0, CAM, SH), s1 = along(line[line.length - 1], 0, CAM, SH), slen = s0.distanceTo(s1);
   const shaft = new THREE.Group(), turning = new THREE.Group();
   turning.add(solid(new THREE.CylinderGeometry(0.16, 0.16, slen + 1.2, 10).rotateZ(Math.PI / 2), IRON)); // (out past the frame's ends)
-  order.forEach((i) => {
-    const u = along(bent[order.indexOf(i)], 0, CAM, SH).distanceTo(s0) - slen / 2;
+  order.forEach((i, j) => {
+    const u = along(bent[j], 0, CAM, SH).distanceTo(s0) - slen / 2;
     // (a disc across the shaft, its lobe off its axis: it turns about the shaft, lifting the tappet over it)
     const cam = solid(new THREE.CylinderGeometry(0.42, 0.42, 0.22, 10, 1).scale(1, 1, 0.55).translate(0, 0, 0.22).rotateZ(Math.PI / 2), IRON_DARK);
     cam.position.set(u, 0, 0);
@@ -320,24 +328,21 @@ function stampBattery(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   });
   // the stamps: stem, tappet, boss and the shoe on the bar's footprint
   // (one stamp, drawn as many: instanced)
-  const f0 = fs[0], stamps = [0].map(() => {
-    const st = new THREE.Group();
-    const shoe = plate(f0.L * 0.96, 0.7, f0.T * 0.96, 0x6a6f7e);
-    shoe.position.y = 0.35;
-    const boss = solid(new THREE.CylinderGeometry(0.42, 0.5, 0.8, 12), IRON_DARK);
-    boss.position.y = 1.05;
-    const stem = solid(new THREE.CylinderGeometry(0.13, 0.13, TOP + 0.4, 8), 0x8b90a0);
-    stem.position.y = 1.4 + (TOP + 0.4) / 2;
-    const tappet = solid(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 12), BRASS);
-    tappet.position.y = TOP - 0.08; // (resting on its cam's lobe, over its guide)
-    st.add(shoe, boss, stem, tappet);
-    st.add(rivets([0, 1, 2, 3].map((q) => new THREE.Vector3(Math.cos(q * 1.57) * 0.42, 1.05, Math.sin(q * 1.57) * 0.42)), 0.05));
-    return st;
-  });
-  const copies = instances(stamps[0], fs.length);
+  const f0 = fs[0], st = new THREE.Group();
+  const shoe = plate(f0.L * 0.96, 0.7, f0.T * 0.96, 0x6a6f7e);
+  shoe.position.y = 0.35;
+  const boss = solid(new THREE.CylinderGeometry(0.42, 0.5, 0.8, 12), IRON_DARK);
+  boss.position.y = 1.05;
+  const stem = solid(new THREE.CylinderGeometry(0.13, 0.13, TOP + 0.4, 8), 0x8b90a0);
+  stem.position.y = 1.4 + (TOP + 0.4) / 2;
+  const tappet = solid(new THREE.CylinderGeometry(0.3, 0.3, 0.3, 12), BRASS);
+  tappet.position.y = TOP - 0.08; // (resting on its cam's lobe, over its guide)
+  st.add(shoe, boss, stem, tappet);
+  st.add(rivets([0, 1, 2, 3].map((q) => new THREE.Vector3(Math.cos(q * 1.57) * 0.42, 1.05, Math.sin(q * 1.57) * 0.42)), 0.05));
+  const copies = instances(st, fs.length);
   g.add(copies.group);
   const turn = fs.map((_, i) => new THREE.Euler(0, -bars[i].ang, 0)), at = new THREE.Vector3();
-  const fx = strikes(t, g, bars.length);
+  const fx = strikes(g, bars.length);
   const wasOn = bars.map(() => false);
   return (tick: number, now: number) => {
     bars.forEach((b, i) => {
@@ -479,15 +484,10 @@ function waterWheel(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   ud(sheet).live = true;
   g.add(sheet);
   // its turn through the bars' places: at each tick a bar stands, a paddle's blade over that bar (where the chain
-  // has it), between them and round to the next pass turning on smoothly (Catmull-Rom through the ticks' middles,
+  // has it), between them and round to the next pass turning on smoothly (through the ticks' middles,
   // the angle unwound: the next paddle comes a paddle's turn on)
   const angOf = (b: Bar) => (along ? 1 : -1) * Math.asin(Math.max(-0.95, Math.min(0.95, (along ? b.c[0] - cx : b.c[1] - cz) / (R - 0.68))));
-  const v: number[] = [];
-  for (let k = 0; k < every; k++) {
-    let best: Bar | null = null, age = Infinity;
-    for (const b of bars) if (isOn(b, k)) { const a = mod(k - startOf(b), every); if (a < age) (age = a), (best = b); }
-    v.push(best ? angOf(best) : NaN);
-  }
+  const v = placed(bars, every, angOf);
   const known = v.map((x, k) => (Number.isNaN(x) ? -1 : k)).filter((k) => k >= 0), step = (Math.PI * 2) / paddles;
   const dir = known.length > 1 && v[known[known.length - 1]] < v[known[0]] ? -1 : 1;
   // (a gap: turned on evenly from the last place to the next, the next pass a paddle's turn on)
@@ -626,7 +626,7 @@ function pickaxe(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   swing.rotation.y = -Math.atan2(dz, dx) - Math.PI / 2; // swinging along the line (its local z)
   ud(swing).live = ud(pick).live = true;
   g.add(swing);
-  const fx = strikes(t, g, 1);
+  const fx = strikes(g, 1);
   let prev = 0, dir = 0;
   return (tick: number, now: number) => {
     // (its head down at the ball's height only while a bar stands, level, over it; lifted over the ball as it
@@ -672,8 +672,7 @@ function drillHead(bars: readonly Bar[], g: THREE.Group, t: Terrain, hub?: Bar) 
   }
   const f0i = cen.findIndex((v) => !Number.isNaN(v));
   for (let k = 1; k <= every && f0i >= 0; k++) { const i = (f0i + k) % every, j = (f0i + k - 1) % every; if (Number.isNaN(cen[i])) (cen[i] = cen[j]), (ext[i] = ext[j]); }
-  const cr = (arr: number[], tick: number) => { const k = mod(tick - 0.5, every), i = Math.floor(k), u = k - i, p0 = arr[mod(i - 1, every)], p1 = arr[i], p2 = arr[(i + 1) % every], p3 = arr[(i + 2) % every]; return 0.5 * (2 * p1 + (p2 - p0) * u + (2 * p0 - 5 * p1 + 4 * p2 - p3) * u * u + (3 * p1 - p0 - 3 * p2 + p3) * u * u * u); };
-  const off = (tick: number) => (f0i < 0 ? 0 : cr(cen, tick)), len = (tick: number) => (f0i < 0 ? 1 : Math.max(0.9, ext[mod(Math.floor(tick), every)]));
+  const off = f0i < 0 ? () => 0 : spline(cen, every), len = (tick: number) => (f0i < 0 ? 1 : Math.max(0.9, ext[mod(Math.floor(tick), every)]));
   const reach = Math.max(...fs.map((f) => Math.abs(across ? f.cz - mz : f.cx - mx))) + 0.5;
   const H = Math.max(3.4, reach * 1.6), L = H - 0.05; // the hub's height; the arm's length (its tip at the floor, straight down)
   const Rw = H - 1.6; // the wheel's rim: its lowest point well over the ball
@@ -754,7 +753,7 @@ function drillHead(bars: readonly Bar[], g: THREE.Group, t: Terrain, hub?: Bar) 
   race.position.set(mx, y0 - 0.13, mz);
   race.rotation.y = across ? 0 : Math.PI / 2;
   g.add(race);
-  const fx = strikes(t, g, 1);
+  const fx = strikes(g, 1);
   let prev = 0;
   return (tick: number, now: number) => {
     const o = off(tick);
@@ -837,7 +836,7 @@ function pistons(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   // the heads and the cylinders: one mesh a material for all of them, each head slid to its place
   const heads = sliders([...units.map((u) => u.head), ...units.map((u) => u.cyl)], g), at = new THREE.Vector3();
   // steam out of each cylinder's cock as it strokes
-  const puffs = strikes(t, g, bars.length, false);
+  const puffs = strikes(g, bars.length, false);
   const was = bars.map(() => false);
   return (tick: number, now: number) => {
     units.forEach((u, i) => {
@@ -945,8 +944,8 @@ function crystalGates(bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hole)
   });
   // the Heart over the crystal floor nearest the gates (the chamber they close)
   const cx = fs.reduce((a, f) => a + f.cx, 0) / fs.length, cz = fs.reduce((a, f) => a + f.cz, 0) / fs.length;
-  const floor = s.zones.filter((q) => q.skin === "ice" || q.skin === "heart").sort((p, q) => Math.hypot((p.min[0] + p.max[0]) / 2 - cx, (p.min[1] + p.max[1]) / 2 - cz) - Math.hypot((q.min[0] + q.max[0]) / 2 - cx, (q.min[1] + q.max[1]) / 2 - cz))[0];
-  if (floor && !s.zones.some((q) => q.skin === "heart")) {
+  const floor = s.zones.filter((q) => q.skin === "ice").sort((p, q) => Math.hypot((p.min[0] + p.max[0]) / 2 - cx, (p.min[1] + p.max[1]) / 2 - cz) - Math.hypot((q.min[0] + q.max[0]) / 2 - cx, (q.min[1] + q.max[1]) / 2 - cz))[0];
+  if (floor) {
     // on its rim across from the gates (its middle is the lane, and the cup)
     const hx = (floor.min[0] + floor.max[0]) / 2, hz = (floor.min[1] + floor.max[1]) / 2, rx = (floor.max[0] - floor.min[0]) / 2, rz = (floor.max[1] - floor.min[1]) / 2;
     // (on out past the rim till all of it is off the lane and off the void: the ball never runs into it)
@@ -993,7 +992,7 @@ function tripwires(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
   }
   const wire = new THREE.Group();
   wire.add(inked(new THREE.CylinderGeometry(0.04, 0.04, 1, 6).rotateZ(Math.PI / 2), flat(0xf2c85a, { emissive: 0x8a5a10, emissiveIntensity: 0.6 }), INK_THIN));
-  const wires = instances(wire, bars.length), fs = bars.map(frame), at = new THREE.Vector3(), e3 = new THREE.Euler();
+  const wires = instances(wire, bars.length), fs = bars.map(frame), sizes = fs.map((f) => new THREE.Vector3(f.L, 1, 1)), at = new THREE.Vector3(), e3 = new THREE.Euler();
   g.add(wires.group);
   // its bells, hung from it while it is taut, lying in the groove with it when it is slack (none into the floor), and
   // its riders sliding up the posts' slots with it (unstretched: their own instances)
@@ -1010,7 +1009,7 @@ function tripwires(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
       const e = inPlace(b, tick);
       e3.set(e > 0.9 ? 0.05 * Math.sin(tick * 40) : 0, -b.ang, 0, "YXZ");
       const f = fs[i], y = t.height(f.cx, f.cz) + 0.05 + e * 0.4;
-      wires.set(i, at.set(f.cx, y, f.cz), e3, new THREE.Vector3(f.L, 1, 1));
+      wires.set(i, at.set(f.cx, y, f.cz), e3, sizes[i]);
       [-0.25, 0, 0.25].forEach((u, q) => bells.set(i * 3 + q, at.set(f.cx + f.ux * u * f.L, y - 0.02 - 0.08 * e, f.cz + f.uz * u * f.L), flat0, one));
       [-1, 1].forEach((sd, q) => riders.set(i * 2 + q, at.set(f.cx + (f.ux * sd * (f.L + 0.15)) / 2, y, f.cz + (f.uz * sd * (f.L + 0.15)) / 2), flat0, one));
     });
@@ -1040,7 +1039,7 @@ function stalactites(bars: readonly Bar[], g: THREE.Group, t: Terrain) {
     stump.position.set(f.cx, t.height(f.cx, f.cz) + VAULT + 4.7, f.cz);
     g.add(stump);
   }
-  const fx = strikes(t, g, bars.length);
+  const fx = strikes(g, bars.length);
   const was = bars.map(() => false), at = new THREE.Vector3(), e3 = new THREE.Euler(), sc = new THREE.Vector3();
   return (tick: number, now: number) => {
     bars.forEach((b, i) => {
@@ -1209,7 +1208,7 @@ function rollingBoulder(bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hol
   ud(roll).live = ud(spin).live = true;
   g.add(roll);
   const ang = keyframes(bars, (b) => b.ang);
-  const fx = strikes(t, g, 1, false);
+  const fx = strikes(g, 1, false);
   // where it is: at each bar's place through that bar's window, rolling on between them (keyframes: as the chain has it)
   const kx = keyframes(bars, (b) => b.c[0]), kz = keyframes(bars, (b) => b.c[1]);
   const last = { x: kx(0), z: kz(0) };
@@ -1225,14 +1224,10 @@ function rollingBoulder(bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hol
     // (the whole of its mouth off the lane and off the void: its middle and either end of it, across its way; on
     // along its way (a drum rolls only across its axis); none within 6: no drift)
     const RR = LB / 2 + 0.4, bad = (x: number, zz: number) => t.onGreen(x, zz) || overVoid(s, x, zz);
-    let dx = ax, dz = az, d = Infinity;
-    for (const [cx, cz] of [[ax, az]]) {
-      let e = 0.5;
-      while (e < 6 && [0, RR, -RR].some((w) => bad(a.c[0] + cx * e - cz * w, a.c[1] + cz * e + cx * w))) e += 0.25;
-      if (e < 6 && e < d) (d = e), (dx = cx), (dz = cz);
-    }
-    if (!Number.isFinite(d)) return null;
-    const p = new THREE.Vector3(a.c[0] + dx * (d + 0.2), 0, a.c[1] + dz * (d + 0.2));
+    let e = 0.5;
+    while (e < 6 && [0, RR, -RR].some((w) => bad(a.c[0] + ax * e - az * w, a.c[1] + az * e + ax * w))) e += 0.25;
+    if (e >= 6) return null;
+    const p = new THREE.Vector3(a.c[0] + ax * (e + 0.2), 0, a.c[1] + az * (e + 0.2));
     p.y = t.height(p.x, p.z);
     // (a drift as wide as the drum is long: a dark mouth under a lintel of rock, a rock either side)
     const m = new THREE.Group(), hole = new THREE.Mesh(new THREE.PlaneGeometry(LB + 0.3, 2 * R + 0.3), darkMouth());
@@ -1245,8 +1240,8 @@ function rollingBoulder(bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hol
       side.position.set(sd * (LB / 2 + 0.55), R + 0.2, 0);
       m.add(side);
     }
-    m.position.copy(p).addScaledVector(new THREE.Vector3(dx, 0, dz), 0.4);
-    m.rotation.y = Math.atan2(-dx, -dz); // (facing back along its way, to the lane)
+    m.position.copy(p).addScaledVector(new THREE.Vector3(ax, 0, az), 0.4);
+    m.rotation.y = Math.atan2(-ax, -az); // (facing back along its way, to the lane)
     g.add(m);
     return p;
   };
@@ -1278,27 +1273,22 @@ function rollingBoulder(bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hol
 
 // ------------------------------------------------------------ dispatch
 
+/** Each machine by its bars' skin, drawn once from all of them (machine). */
+const MACHINES: Record<string, (bars: readonly Bar[], g: THREE.Group, t: Terrain, s: Hole) => (tick: number, now: number) => void> = {
+  stamp: stampBattery, paddle: waterWheel, pickaxe, piston: pistons, "swing door": swingDoor, "safe door": safeDoor, boulder: rollingBoulder,
+  "cage door": cageDoors, "crystal gate": crystalGates, tripwire: tripwires, stalactite: stalactites,
+};
+
 /** A timed or pulse bar of the mines; undefined for one it does not draw. */
 export function bar(b: Bar, t: Terrain, s: Hole): THREE.Object3D | undefined {
-  switch (b.skin) {
-    case "stamp": return machine(b, t, s, "stamp", (bs, g) => stampBattery(bs, g, t));
-    case "paddle": return machine(b, t, s, "paddle", (bs, g) => waterWheel(bs, g, t));
-    case "pickaxe": return machine(b, t, s, "pickaxe", (bs, g) => pickaxe(bs, g, t));
-    case "drill": {
-      // the hub is an untimed bar: the head stands on it (the boots are the timed ones)
-      if (!b.timing) { hubs.set(s.zones, b); return new THREE.Group(); }
-      return machine(b, t, s, "drill", (bs, g) => drillHead(bs, g, t, hubs.get(s.zones)));
-    }
-    case "piston": return machine(b, t, s, "piston", (bs, g) => pistons(bs, g, t));
-    case "swing door": return machine(b, t, s, "swing door", (bs, g) => swingDoor(bs, g, t, s));
-    case "safe door": return machine(b, t, s, "safe door", (bs, g) => safeDoor(bs, g, t, s));
-    case "boulder": return b.timing ? machine(b, t, s, "boulder", (bs, g) => rollingBoulder(bs, g, t, s)) : undefined;
-    case "cage door": return machine(b, t, s, "cage door", (bs, g) => cageDoors(bs, g, t));
-    case "crystal gate": return machine(b, t, s, "crystal gate", (bs, g) => crystalGates(bs, g, t, s));
-    case "tripwire": return machine(b, t, s, "tripwire", (bs, g) => tripwires(bs, g, t));
-    case "stalactite": return machine(b, t, s, "stalactite", (bs, g) => stalactites(bs, g, t));
-    default: return undefined;
+  if (b.skin === "drill") {
+    // the hub is an untimed bar: the head stands on it (the boots are the timed ones)
+    if (!b.timing) { hubs.set(s.zones, b); return new THREE.Group(); }
+    return machine(b, t, s, (bs, g) => drillHead(bs, g, t, hubs.get(s.zones)));
   }
+  const build = own(MACHINES, b.skin);
+  if (!build || (b.skin === "boulder" && !b.timing)) return undefined;
+  return machine(b, t, s, (bs, g) => build(bs, g, t, s));
 }
 const hubs = new WeakMap<object, Bar>();
 

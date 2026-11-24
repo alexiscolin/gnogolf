@@ -9,6 +9,6 @@ import type { Hole } from "../scene/data";
 
 export function census(s: Hole): Map<string, Drawn> {
   const out = new Map<string, Drawn>();
-  buildHole(s, { census: (p, d) => out.set(keyOf(p), d) });
+  buildHole(s, { defer: true, census: (p, d) => out.set(keyOf(p), d) }); // (not merged: the merge reports nothing, and the hole is thrown away)
   return out;
 }

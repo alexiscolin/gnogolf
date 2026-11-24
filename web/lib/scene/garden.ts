@@ -14,11 +14,12 @@ import { lantern, fireflies, tree, bush, stone, flower, bigFlower, gnomelet, bro
 // here, and the seed is the hole's own name, so each course keeps its garden
 // from one visit to the next.
 
-import { seeded, lookSeed, ISLAND, GRASS, placer, tangentInto, type Rand } from "./common";
+import { seeded, hashOf, lookSeed, ISLAND, GRASS, placer, tangentInto, type Rand } from "./common";
 import { smoothstep } from "../terrain";
 import { look, weatherLooks } from "./bake";
 import { ud, type Hole, type Height } from "./data";
 import type { Rough } from "./worlds";
+import { own } from "../own";
 
 /** What a backdrop gets: the hole's random, the island's extent, the board's size and the placer. */
 interface Backdrop {
@@ -67,11 +68,9 @@ function edging(s: Hole, box: THREE.Box3) {
 // everyday backdrops by a hash of their id.
 const THEME: Record<string, string> = { hole5: "giants", hole17: "giants", hole8: "clouds", hole14: "clouds", hole19: "clouds" };
 const themeOf = (id: string) => {
-  const named = THEME[String(id).split("/").pop()!];
+  const named = own(THEME, String(id).split("/").pop()!);
   if (named) return named;
-  let h = 0;
-  for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return ["hills", "stream", "mountains"][h % 3];
+  return ["hills", "stream", "mountains"][hashOf(String(id)) % 3];
 };
 
 function hills({ rand, X0, X1, reserve, free }: Backdrop) {
@@ -280,14 +279,14 @@ function mountains({ rand, X0, X1, reserve, free }: Backdrop) {
     // edge, and clear of the board's back wall
     const r = Math.min(h * 0.55, (ISLAND.back - 1.6) / 2);
     const peak = new THREE.Group();
-    const rock = drawn(new THREE.ConeGeometry(r, h, 6), flat(t === 0.45 ? C.stone : 0x8a9a8c));
+    const rock = drawn(new THREE.ConeGeometry(r, h, 6), flat(0x8a9a8c));
     rock.position.y = h / 2;
     const snowH = h * 0.3;
     const snow = drawn(new THREE.ConeGeometry(r * 0.3 + 0.05, snowH, 6), flat(0xffffff));
     snow.position.y = h - snowH / 2 + 0.02;
     peak.add(rock, snow);
     peak.position.set(X0 + 8 + (X1 - X0 - 9) * t + (rand() - 0.5), GRASS, -ISLAND.back + 0.4 + r);
-    if (t !== 0.5 && !free(peak.position.x, peak.position.z, r * 0.85)) continue; // the house is there
+    if (t !== 0.5 && !free(peak.position.x, peak.position.z, r * 0.85)) continue; // a neighbour stands there (a narrow board)
     peak.rotation.y = t === 0.5 ? 0 : rand() * Math.PI;
     g.add(peak);
     if (t === 0.5) {
@@ -729,8 +728,7 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
   g.add(bd);
   if (ud(bd).fade) ud(g).fade = ud(bd).fade;
   // the gnome's home: one house, or on some holes a little mushroom village
-  let hh = 0;
-  for (const ch of String(s.hole)) hh = (hh * 131 + ch.charCodeAt(0)) >>> 0;
+  const hh = hashOf(String(s.hole), 131);
   if (["hills", "stream"].includes(themeOf(s.hole)) && hh % 2 === 0) {
     const caps = [C.cap, 0xf2a93b, 0x9b7fd1, 0xc98b5a, 0x5b6fb5];
     const homes: [number, number][] = [];
@@ -863,9 +861,10 @@ function decor(s: Hole, bank: Height = () => 0): THREE.Group {
   const wingColors = [C.sun, C.petal, 0xffffff];
   if (time !== "night") for (let i = 0; i < 3; i++) g.add(butterfly(rand, X0 + (X1 - X0) * (0.2 + i * 0.3), H + 2.5 - i * 5, wingColors[i]));
 
-  // a course hole's number ("garden/7", an old realm's "…/gnogolf/hole11", a version after it); a built hole (an
-  // author's g1… address, the Builder's draft) has none, nor a sign
-  const place = /^g1/.test(String(s.hole)) ? undefined : /(?:^|\/)[a-z]+\/?(\d+)$/.exec(String(s.hole).replace(/\/v\d+$/, ""))?.[1];
+  // a course hole's number: its slot's ("garden/7"; its look is keyed by its old realm, garden/10's hole11), else its
+  // id's ("…/gnogolf/hole4", "garden/7/v2"); a built hole (an author's g1… address, the Builder's draft) has none, nor a sign
+  const id = String(s.slot ?? s.hole);
+  const place = /^g1/.test(id) ? undefined : /(?:^|\/)[a-z]+\/?(\d+)$/.exec(id.replace(/\/v\d+$/, ""))?.[1];
   if (place) {
     const sign = signpost(place);
     sign.scale.setScalar(1.35);
