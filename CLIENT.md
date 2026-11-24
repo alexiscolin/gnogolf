@@ -5,8 +5,8 @@ what a shot does. The full API is in [docs/golf.md](docs/golf.md); this page
 is what a client needs of it, and the rules it must keep.
 
 A working client lives in `web/`: Next.js, a static export of plain files
-with no server side, talking to a gno node over HTTP (the
-[README](README.md#run-it) says how to run and build it, and what a build
+with no server side, talking to a gno node over HTTP (
+[docs/development.md](docs/development.md#by-hand) says how to run and build it, and what a build
 for a public host needs). Everything under `web/lib` is plain TypeScript that
 knows nothing about React (the game: `lib/engine.ts`, `lib/scene/`,
 `lib/chain.ts`); the realm's answers are typed in `lib/types.ts` and checked
