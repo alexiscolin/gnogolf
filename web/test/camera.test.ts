@@ -24,9 +24,9 @@ function mkHole(over: Partial<Fixture> = {}): Fixture {
   return { board: { w: 20, h: 10 }, walls: [], zones: [], posts: [], start: [1, 5], cup: [18, 5], ...over };
 }
 
-/** A minimal Live fixture: just the fields makeCamera actually reads (see
- *  its destructuring and E.* uses). Cast through unknown, not checked against
- *  the full Live interface — this file only exercises the camera's own math. */
+/** A minimal Live fixture: just the fields makeCamera reads (see its
+ *  destructuring and E.* uses). Cast through unknown, not checked against the
+ *  full Live interface: only the camera's own math runs here. */
 function mkCam(hole: Fixture, opt: { g?: Record<string, unknown>; ground?: (x: number, z: number) => number; screen?: () => { w: number; h: number; top: number; bottom: number; side: number } } = {}) {
   const camera = new THREE.PerspectiveCamera(30, 1, 3, 260);
   const scene = new THREE.Scene();
@@ -315,8 +315,7 @@ void test("a wall close behind the ball: the camera rises to clear the kerb inst
 void test("a post right where the camera would sit is avoided", () => {
   // straight behind the gnome (heading 0, facing +x toward the cup at [18,5]): the
   // camera wants ~7 back, on the same axis; a post at 5 back overlaps that spot but
-  // is not exactly on it (a post dead-centre on the ideal spot is a div-by-zero guard
-  // in keepClear's push, see the report)
+  // is not exactly on it (dead-centre would only meet keepClear's div-by-zero guard)
   const posts = [mkPost([5, 5], 1)];
   const hole = mkHole({ start: [10, 5], cup: [18, 5], posts });
   const cam = settle(mkCam(hole));

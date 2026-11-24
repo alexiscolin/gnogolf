@@ -8,38 +8,35 @@ import (
 	"gno.land/p/gnogolf/weblink"
 )
 
-// The collection's owner, the deployer, set at init: its only role. Every
-// check is on the immediate caller (cur.Previous().Address()), never the
-// signer, so a realm the owner calls cannot act in their name. The role
-// passes by Transfer then Accept, as golf's does. Whether the role may be
-// renounced is not decided: there is no Renounce.
+// owner is the collection's only role: the deployer, set at init. Every check
+// is on the immediate caller (cur.Previous().Address()), never the signer, so
+// a realm the owner calls cannot act in their name. The role passes by
+// Transfer then Accept. There is no Renounce.
 var (
-	owner   address // "" holds no power (the tests' setUp(""))
+	owner   address // "" holds no power
 	pending address // the address a Transfer offered the role to, "" if none
 )
 
-// The treasury is where the money goes, an address apart from the owner's
-// key: every sale, the royalty and Sweep's strays. It is the deployer at
-// deploy. The owner moves it in two steps: SetTreasury offers it, and the
-// new address takes it with AcceptTreasury, signed from that address
-// itself, so a mistyped one never receives a sale. A gnokey multisig or a
-// hardware wallet's address can hold it.
+// treasury receives every sale, the royalty and Sweep's strays. It is the
+// deployer at deploy. It moves in two steps: SetTreasury offers it, and the
+// new address takes it with AcceptTreasury, signed from that address, so a
+// mistyped one never receives a sale.
 var (
 	treasury        address
 	pendingTreasury address // the address SetTreasury offered it to, "" if none
 )
 
-// siteURL is the game's site, where a gnome's page is (<site>g/<id>/) for
-// TokenMetadata's external_url: "" until the owner sets it. The image is the
-// on-chain SVG, so nothing a wallet shows depends on it.
+// siteURL is the game's site, "" until the owner sets it. A gnome's page is
+// <site>g/<id>/, TokenMetadata's external_url. The image is the on-chain SVG,
+// so nothing a wallet shows depends on it.
 var siteURL string
 
-// testDeployer owns the collection under `gno test` (chain "dev"), which
-// deploys with no signer: testutils.TestAddress("deployer"), the tests'.
+// testDeployer owns the collection under `gno test`, which deploys with no
+// signer: testutils.TestAddress("deployer").
 const testDeployer = address("g1v3jhqmr009jhyh6lta047h6lta047h6lur0t0x")
 
-// ownerAtDeploy is the owner init sets: the deployer. A deploy with no
-// signer happens under `gno test` alone; anywhere else it is refused.
+// ownerAtDeploy returns the deployer. A deploy with no signer is refused
+// outside `gno test` (chain "dev").
 func ownerAtDeploy(deployer address, chainID string) address {
 	if deployer != "" {
 		return deployer
@@ -50,35 +47,34 @@ func ownerAtDeploy(deployer address, chainID string) address {
 	return testDeployer
 }
 
-// Owner is the collection's owner.
+// Owner returns the collection's owner.
 func Owner() address { return owner }
 
-// Pending is the address a Transfer offered the role to, "" if none.
+// Pending returns the address Transfer offered the role to, "" if none.
 func Pending() address { return pending }
 
-// Treasury is where the money goes.
+// Treasury returns the address sales are paid to.
 func Treasury() address { return treasury }
 
-// PendingTreasury is the address SetTreasury offered the treasury to, "" if
-// none.
+// PendingTreasury returns the address SetTreasury offered the treasury to, ""
+// if none.
 func PendingTreasury() address { return pendingTreasury }
 
-// SiteURL is the game's site, "" until the owner sets it.
+// SiteURL returns the game's site, "" until the owner sets it.
 func SiteURL() string { return siteURL }
 
 func isOwner(caller address) bool { return owner != "" && caller == owner }
 
-// assertOwner panics unless the caller of the crossing function whose cur
-// is rlm is the owner.
+// assertOwner panics unless rlm is the live cur of a crossing function the
+// owner called.
 func assertOwner(_ int, rlm realm) {
 	if !rlm.IsCurrent() || !isOwner(rlm.Previous().Address()) {
 		panic(errNotOwner)
 	}
 }
 
-// Transfer offers the role to another address, which takes it with Accept.
-// Offering it to the owner themselves cancels an offer. The treasury stays
-// where it is.
+// Transfer offers the role to to, which takes it with Accept. Offering it to
+// the owner cancels an offer. The treasury does not move. Owner only.
 func Transfer(cur realm, to address) {
 	assertOwner(0, cur)
 	if !to.IsValid() {
@@ -93,7 +89,7 @@ func Transfer(cur realm, to address) {
 	chain.Emit("OwnershipOffered", "owner", owner.String(), "to", to.String())
 }
 
-// Accept takes the role a Transfer offered the caller.
+// Accept takes the role Transfer offered the caller.
 func Accept(cur realm) {
 	caller := cur.Previous().Address()
 	if owner == "" || pending == "" || caller != pending {
@@ -104,10 +100,10 @@ func Accept(cur realm) {
 	chain.Emit("OwnershipTransfer", "from", from.String(), "to", owner.String())
 }
 
-// SetTreasury offers the treasury to another address, which takes it with
-// AcceptTreasury; until then the money goes where it went. Offering it to
-// the treasury in place cancels an offer. Not the realm's own address: a
-// treasury there would leave each sale in the realm. Owner only.
+// SetTreasury offers the treasury to to, which takes it with AcceptTreasury;
+// until then sales are paid where they were. Offering it to the current
+// treasury cancels an offer. The realm's own address is refused: sales would
+// stay in the realm. Owner only.
 func SetTreasury(cur realm, to address) {
 	assertOwner(0, cur)
 	if !to.IsValid() {
@@ -126,8 +122,8 @@ func SetTreasury(cur realm, to address) {
 }
 
 // AcceptTreasury takes the treasury SetTreasury offered the caller, and the
-// royalty with it: a transaction signed from that address, which proves it
-// is an account someone holds. A realm cannot take it.
+// royalty with it. It must be a direct user call, which proves someone holds
+// the address: a realm cannot take it.
 func AcceptTreasury(cur realm) {
 	caller := cur.Previous().Address()
 	if pendingTreasury == "" || caller != pendingTreasury || !cur.Previous().IsUserCall() {
@@ -141,10 +137,9 @@ func AcceptTreasury(cur realm) {
 	chain.Emit("TreasurySet", "from", from.String(), "to", treasury.String())
 }
 
-// SetSiteURL moves the game's site, which a gnome's external_url names.
-// Only the owner can. url is https://, at most 100 of letters, digits and
-// "-._~/:%", with no query or fragment (golf's play link rule,
-// p/gnogolf/weblink), and ends with "/".
+// SetSiteURL sets the game's site, which a gnome's external_url names. url
+// must pass weblink.Valid (https://, at most 100 of letters, digits and
+// "-._~/:%", no query or fragment) and end with "/". Owner only.
 func SetSiteURL(cur realm, url string) {
 	assertOwner(0, cur)
 	if !weblink.Valid(url) || !strings.HasSuffix(url, "/") {
@@ -154,9 +149,8 @@ func SetSiteURL(cur realm, url string) {
 	chain.Emit("SiteURLSet", "url", url)
 }
 
-// Sweep sends the treasury whatever ugnot the realm holds: coins sent to it
-// outside a sale, by a plain transfer or attached to any other call (a
-// sale's go on in its own call). Owner only.
+// Sweep sends the treasury the ugnot the realm holds: coins sent to it outside
+// a sale. Owner only.
 func Sweep(cur realm) {
 	assertOwner(0, cur)
 	amount := banker.NewReadonlyBanker().GetCoin(cur.Address(), payDenom)

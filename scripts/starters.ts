@@ -1,11 +1,11 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The Builder's starter holes (web/lib/builder/starters.ts): three a world,
-// made of its own pieces, none borrowed from another world (a straight
-// lane, a dogleg, the world's own signature piece), each checked by the whole pipeline, and a holing round
-// of each in every weather the world asks for (web/test/builder-starters.json,
-// found here by search through builder.wasm, replayed into a proof). Run it
-// again after a change to the palette, the checks or the physics; the unit
-// test (builder-templates.test.ts) holds what it wrote.
+// made of its own pieces (a straight lane, a dogleg, the world's signature
+// piece), each checked by the whole pipeline. It also finds a holing round
+// of each in every weather the world asks for, by search through
+// builder.wasm (web/test/builder-starters.json). Run it again after a change
+// to the palette, the checks or the physics: builder-templates.test.ts holds
+// what it wrote.
 //
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../scripts/starters.ts
 

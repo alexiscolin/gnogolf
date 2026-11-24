@@ -9,8 +9,7 @@ import (
 	"gno.land/p/nt/uassert/v0"
 )
 
-// The hub's draw is the site's (web/lib/featured.ts): the same numbers, from
-// its own code, so a day puts the same players forward on both.
+// The expected numbers come from web/lib/featured.ts's own draw.
 func TestTheHubsDrawIsTheSites(t *testing.T) {
 	const a = "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5" // gnodev's test1, and another
 	b := "g1" + strings.Repeat("q", 38)
@@ -19,9 +18,6 @@ func TestTheHubsDrawIsTheSites(t *testing.T) {
 	uassert.Equal(t, uint32(3880469319), draw(a, 1))
 }
 
-// The hub opens on how to play and records to beat, never the ranking's top
-// three; the boards come after the holes, and the fair play section says
-// where the rules stand.
 func TestTheHubPutsRecordsToBeatFirst(cur realm, t *testing.T) {
 	id := copyHole(cur, "Hub")
 	var ps []address

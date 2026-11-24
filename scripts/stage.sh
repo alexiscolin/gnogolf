@@ -16,24 +16,19 @@
 #   MAINNET=1 scripts/stage.sh nym-alexiscolin000 /tmp/stage mainnet
 #
 # MAINNET=1 leaves out v1 and v2's import_v1.gno (the migration of onyx's v1
-# records, which imports v1): mainnet starts with no v1 to read.
+# records): mainnet starts with no v1 to read.
 #
-# A realm keeps its last element, golf (v2's version suffix aside): the chain
-# takes a package only when its name is its path's last element (gnovm's
-# ValidatePkgNameMatchesPath).
+# It copies each package's files but its tests into <out>/gno.land/…, as they
+# are but for the prefix: [pr]/gnogolf/ becomes [pr]/<ns>/gnogolf/ in the
+# imports and gnomod.toml. A realm keeps its last element, golf: the chain
+# takes a package only when its name is its path's last element. The
+# subpackages (physics/build, course/author, course/fingerprint) and the hole
+# realms are not deployed.
 #
-# Copies every file of each package's directory but its tests (*_test.gno,
-# *_filetest.gno) into <out>/gno.land/…, as it is. The one change is that
-# prefix, [pr]/gnogolf/ to [pr]/<ns>/gnogolf/, wherever a path is named (the
-# imports, gnomod.toml's module). The subpackages (physics/build,
-# course/author, course/fingerprint) and the hole realms are other
-# directories, and not deployed. Then it checks that each staged package is
-# the repo's, file for file and byte for byte once the prefix is read back;
-# that no repo path is left; that each gnomod.toml names its own path; lints
-# the result with the onyx toolchain; and prints each package's size.
+# Then it checks each staged package against the repo, byte for byte once the
+# prefix is read back, lints it with the onyx toolchain and prints its size.
 #
-# GNO is the gno binary to lint with (default: the onyx toolchain's, in
-# GNO_TOOLCHAIN: see check.sh).
+# Env: GNO, the gno binary to lint with (the onyx toolchain's: see check.sh).
 set -eu
 
 ns=${1:?usage: stage.sh <ns> <out>}

@@ -1,7 +1,7 @@
-// lib/adena.ts: the Adena wallet layer. Adena itself is faked by setting
-// globalThis.window = { adena: <fake> } — adena.ts's wallet() reads exactly
-// that. Every fake call is logged (name + args) so a test can assert on what
-// was actually asked of Adena, not just on the final result.
+// lib/adena.ts: the Adena wallet layer. Adena is faked by setting
+// globalThis.window = { adena: <fake> }, which adena.ts's wallet() reads.
+// Every fake call is logged (name and args), so a test can assert on what
+// was asked of Adena, not only on the result.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RULES } from "../lib/chain.ts";
@@ -59,7 +59,7 @@ type Call = { name: string; args: unknown[] };
 
 /** A fake Adena. `script[Method]`, if given, replies for that method's call
  *  number i (0-based, thrown values reject); otherwise a plain success. Every
- *  call — including ones script doesn't cover — is pushed to `calls`. */
+ *  call, scripted or not, is pushed to `calls`. */
 function fakeAdena(script: {
   AddEstablish?: (i: number) => Res;
   GetAccount?: (i: number) => Res;
@@ -387,7 +387,7 @@ test("commitsOf: 12 shots is the most one commit holds, however light", () => {
 
 test("commitsOf: the work budget cuts sooner than maxShots for heavy (unknown-length) strokes", () => {
   // pts omitted: each stroke counts as RULES.maxPath (512), the heaviest a
-  // stroke can be — 10M + 512*1.2M = 624.4M per shot, so a third shot always
+  // stroke can be: 10M + 512*1.2M = 624.4M per shot, so a third shot always
   // pushes spent+most past the 1.4e9 budget
   assert.deepEqual(commitsOf({}, 5), [[0, 2], [2, 4], [4, 5]]);
 });

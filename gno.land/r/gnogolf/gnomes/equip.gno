@@ -8,16 +8,15 @@ import (
 	"gno.land/p/nt/grc721/v0"
 )
 
-// The gnome a player plays as. Wearing is free: a player wears their best
-// gnome (the highest tier they hold, then its lowest id) unless they put
-// another on for everyone with Equip, the one call here that costs. The
-// game reads Worn (once a visit) and WornMany (once a board page, a rival),
-// and dresses the ball from the traits; Equipped is what was put on alone.
+// Wearing is free: a player wears their best gnome (the highest tier they
+// hold, then its lowest id) unless they put another on with Equip, the one
+// call here that costs. The game reads Worn and WornMany and dresses the ball
+// from the traits.
 
 // maxPlayers bounds WornMany.
 const maxPlayers = 50
 
-// Equip wears gnome tid, which the caller must own; "" takes it off.
+// Equip puts on gnome tid, which the caller must own; "" takes it off.
 func Equip(cur realm, tid string) {
 	caller := cur.Previous().Address()
 	if tid == "" {
@@ -31,8 +30,8 @@ func Equip(cur realm, tid string) {
 	chain.Emit("Equipped", "player", caller.String(), "id", tid)
 }
 
-// Equipped is the gnome player put on with Equip, "" for none. A gnome sold
-// on since is no longer worn: ownership is checked on read.
+// Equipped returns the gnome player put on with Equip, "" for none. Ownership
+// is checked on read: a gnome sold on is no longer worn.
 //
 //	{"version":1,"player":"g1…","id":"104","name":"…","tier":"legendary","traits":"…"}
 func Equipped(player address) string {
@@ -55,16 +54,15 @@ func equippedGnome(player address) (gnome, bool) {
 	return tokenAt(parseID(tid))
 }
 
-// wornFields are what Equipped and Worn say of player's gnome g, after their
-// version.
+// wornFields are the JSON fields Equipped and Worn share.
 func wornFields(player address, g gnome) string {
 	return `"player":` + jsonq.Quote(player.String()) + `,"id":"` + itoa(g.id) + `","name":` + jsonq.Quote(g.name) +
 		`,"tier":"` + tierName(g.tier) + `","traits":` + jsonq.Quote(g.traits)
 }
 
-// Worn is the gnome player wears for everyone: the one put on with Equip
-// while they still hold it, else their best (their first row: heldKey), ""
-// for none. "equipped" says which. One row read either way.
+// Worn returns the gnome player wears: the one put on with Equip while they
+// hold it, else their best (their first row: heldKey), "" for none.
+// "equipped" says which. One row read either way.
 //
 //	{"version":1,"player":"g1…","id":"104","name":"…","tier":"legendary","traits":"…","equipped":false}
 func Worn(player address) string {
@@ -90,10 +88,10 @@ func wornRow(player address) string {
 	return wornFields(player, g) + `,"equipped":false}`
 }
 
-// WornMany is Worn for the first 50 players of a comma-separated list, those
-// who wear one: {"version":1,"rows":[<Worn's fields>, …]}. Repeats and
-// non-addresses are skipped, and count toward the 50, so the walk stays
-// short whatever the list.
+// WornMany returns Worn for the first maxPlayers of a comma-separated list,
+// those who wear one: {"version":1,"rows":[<Worn's fields>, …]}. Repeats and
+// non-addresses are skipped but count toward the bound, so the walk stays
+// short.
 func WornMany(players string) string {
 	var b strings.Builder
 	b.WriteString(`{"version":1,"rows":[`)

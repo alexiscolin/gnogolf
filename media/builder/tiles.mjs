@@ -1,14 +1,15 @@
 // @ts-check
-// The Builder palette's pictures: every look of every Builder world (its
-// palette's entries) drawn by the game's own buildHole in headless Chrome
-// (web/lib/scene/piece-showcase.ts, bundled here with a pinned esbuild: no
-// dependency added), one piece on a lane of its world from one fixed
-// three-quarter view, a small WebP each in web/public/builder/tiles/<world>/
-// (lib/builder/tiles.ts pictureOf names them; builder-tiles.test.ts holds
-// every look to have one). The holes are scripts/tileholes.ts's (builder.wasm
-// in Node). No dev server, no chain. Run it again after a change to the
-// palette or to how a piece is drawn.
+// The Builder palette's pictures: every look of every Builder world, drawn by
+// the game's own buildHole in headless Chrome (web/lib/scene/piece-showcase.ts,
+// bundled with a pinned esbuild: no dependency added), one piece on a lane of
+// its world from one fixed three-quarter view. A small WebP each, in
+// web/public/builder/tiles/<world>/ (lib/builder/tiles.ts pictureOf names
+// them; builder-tiles.test.ts holds every look to have one). The holes are
+// scripts/tileholes.ts's. No dev server, no chain. Run it again after a
+// change to the palette or to how a piece is drawn.
+//
 //   node media/builder/tiles.mjs [garden/post-rock …] [--sheet <dir>]
+//
 // --sheet also writes a contact sheet of each world's pictures (a JPEG), to look at.
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";

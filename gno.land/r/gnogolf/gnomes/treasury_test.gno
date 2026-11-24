@@ -9,9 +9,8 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// The money goes to the treasury, an address apart from the owner's key:
-// the deployer at deploy, moved in two steps, the new treasury accepting
-// from its own address, so a typo never sends a sale to a dead address.
+// The treasury moves in two steps, the new address accepting for itself, so a
+// typo never sends a sale to a dead address.
 
 var vault = testutils.TestAddress("vault")
 

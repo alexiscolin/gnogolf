@@ -13,10 +13,10 @@ import (
 	"gno.land/r/gnogolf/store"
 )
 
-// wearRunes draw a cell's wear: none, then up to wearLight, wearWorn and
-// wearGroove balls come to rest there, and past.
+// wearRunes draw a cell's wear by how many balls came to rest there: none, up
+// to wearLight, up to wearWorn, up to wearGroove, more.
 const (
-	wearRunes  = " :;x%" // pristine grass blank: a shot's dots stand out on it
+	wearRunes  = " :;x%" // blank on pristine grass, so a shot's dots stand out
 	wearLight  = 2
 	wearWorn   = 6
 	wearGroove = 14
@@ -228,9 +228,8 @@ func fairPlay() string {
 		"- **The rules and the data are apart:** the records are kept in " + md("Gnogolf's data", dataHub) + ", which takes writes from these rules alone. New rules take over three days after their code is on chain, so anyone can read them first; nothing is reset.\n\n"
 }
 
-// moved is the banner the hub, cup, author and hole pages show once these
-// rules no longer save (the data's writer is another, or saves are paused) or
-// the course has moved.
+// moved is the banner shown once these rules no longer save (store has another
+// writer, or saves are paused) or the course has moved.
 func moved() string {
 	switch w := store.Writer(); {
 	case w == "":
@@ -315,8 +314,7 @@ func bestCell(e *entry, names map[string]string) string {
 	return best
 }
 
-// weatherNote is the hole's weather now (f, the forecast of this period) and
-// how long it lasts, on a hole's own page.
+// weatherNote says the weather of forecast f and how long it lasts.
 func weatherNote(f course.Forecast) string {
 	left := PeriodSeconds - time.Now().Unix()%PeriodSeconds
 	what := "Clear"
@@ -338,8 +336,8 @@ func weatherNote(f course.Forecast) string {
 		what, left/60, pad(int(left%60), 2))
 }
 
-// importNote is the owner's power over v1's records, said where their
-// migration is deployed (import_v1.gno sets it), "" elsewhere.
+// importNote states the owner's power over v1's records. import_v1.gno sets it:
+// it is "" where the migration is not deployed.
 var importNote string
 
 // noAdmin states who can change what, the owner's own powers included.
@@ -486,9 +484,9 @@ func renderHole(e *entry, h *course.Simple, focus address) string {
 	return s + "\n_This hole is " + source(e) + " — read it before you trust it with a round._\n"
 }
 
-// roundSummary is how a player stands on the hole: their round under way, if
-// any, and their best in each mode, with where it puts them on the hole's
-// board, or why nowhere. A holed round is not kept: its best is.
+// roundSummary is how a player stands on the hole: their round under way, and
+// their best in each mode with its place on the board, or why it has none. A
+// holed round is not kept, only its best.
 func roundSummary(e *entry, p address, r *round) string {
 	who := short(p.String())
 	name := nameOf(p.String())
@@ -561,7 +559,7 @@ func renderData(e *entry) string {
 	for n := firstVersion(now); n <= now.version; n++ {
 		v := find(e.slot + "/v" + strconv.Itoa(n))
 		if v == nil {
-			continue // (one before this course's first here: imported from v1, with v1's number)
+			continue // before this course's first: imported from v1, with v1's number
 		}
 		s += "| " + md(v.id, hub+":"+v.id+"/data") + " | " + strconv.FormatInt(v.height, 10) + " | " + who(v.by.String()) + " | `" + v.sha[:16] + "…` | " + v.note + " |\n"
 	}
@@ -585,9 +583,8 @@ func board(e *entry, h *course.Simple, f *physics.Field, mine *round, now course
 		}
 		g[y] = row
 	}
-	// the walls, traced once: all drawn, and those that stay (the hole's own,
-	// untimed: WithExtras puts the stroke's after them) are what the flood
-	// fill stops at, as the 3D client fences
+	// Walls are traced once. The hole's own untimed walls also fence the flood
+	// fill, as in the 3D client: WithExtras puts the stroke's walls after them.
 	wall, fence := make([][]rune, bh), make([][]rune, bh)
 	for y := range wall {
 		wall[y], fence[y] = make([]rune, bw), make([]rune, bw)
@@ -662,9 +659,9 @@ func board(e *entry, h *course.Simple, f *physics.Field, mine *round, now course
 	return sb.String()
 }
 
-// drawZone marks the cells whose centre the zone holds, as the physics sees it
-// (physics.Zone.Contains): a polygon's row from where the centre line crosses
-// its edges, an ellipse's as the run the physics' test finds from its middle.
+// drawZone marks the cells whose centre physics.Zone.Contains holds: a
+// polygon's row from where the centre line crosses its edges, an ellipse's as a
+// run around its middle.
 func drawZone(g [][]rune, z *physics.Zone, m rune) {
 	bh := len(g)
 	if bh == 0 {
@@ -769,8 +766,8 @@ func cellAt(c float64, lo, hi int) int {
 	return x
 }
 
-// firstCell is the first x in [lo, hi) where ok turns true, hi if it never
-// does: ok is false up to some x, and true from there.
+// firstCell is the first x in [lo, hi) where ok is true, hi if none. ok must be
+// false up to some x and true from there.
 func firstCell(lo, hi int, ok func(x int) bool) int {
 	for lo < hi {
 		mid := (lo + hi) / 2

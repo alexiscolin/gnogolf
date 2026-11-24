@@ -11,9 +11,9 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// The course ranking against a reference model: plain code that keeps what
-// happened (every best, per hole and mode, and the finishes that moved a
-// standing) and derives the ranking from it the obvious way:
+// The course ranking is tested against a reference model: plain code that keeps
+// every best and every finish that moved a standing, and derives the ranking
+// the obvious way. Every read must agree with it at every step.
 //
 //   - a standing is, over the current course holes, the holes a player has a
 //     best on, the strokes of those bests, and the pars of those holes;
@@ -21,8 +21,6 @@ import (
 //     the lowest score against par (strokes - par), then the earliest height
 //     of the finish that last improved the standing, then the address;
 //   - a named player is ranked from their first finish or Claim with the name.
-//
-// Every read of the standings must say the same as the model at every step.
 
 type refBest struct {
 	strokes int
@@ -133,8 +131,8 @@ func (r *ref) finish(h *refHole, m int, p string, n int) {
 	r.seat(m, p)
 }
 
-// archive is a hole replaced by a new version of par par: its bests leave
-// the standings (the moves stay: no finish moved them).
+// archive replaces a hole by a new version of the given par: its bests leave
+// the standings, the moves stay.
 func (r *ref) archive(h *refHole, id string, par int) *refHole {
 	h.current = false
 	for m := 0; m < modes; m++ {
@@ -276,9 +274,7 @@ func holeIn(cur realm, p address, id string, m, n int) {
 	}
 }
 
-// Random runs of finishes (better, worse, tied, in both modes, at the
-// extremes: 1 and 60 strokes on par 1 to 19), names taken late and Claims,
-// community finishes and archived holes, the model checked after each step.
+// Random finishes, late names, Claims and new versions, checked at each step.
 func TestTheRankingIsTheModel(cur realm, t *testing.T) {
 	pars := []int{1, 2, 3, 5, 19}
 	for run, seed := range []uint64{7, 1234567, 99} {
@@ -406,11 +402,8 @@ func TestTheRankingIsTheModel(cur realm, t *testing.T) {
 	}
 }
 
-// The ranking's key sorts as the rule at its extremes: every hole of a full
-// course (maxCourse) at 60 strokes on par 1 (the most over par a standing
-// can be), or holed in one on par 19 (the most under), a standing past the
-// slots while republished holes drain (maxCourse+1, +2), and rows drawn at
-// random in between; its numbers keep their widths.
+// The extremes: a full course at 60 strokes on par 1, or holed in one on par
+// 19, and a standing past maxCourse while republished holes drain.
 func TestTheRankingKeySortsAsTheRule(t *testing.T) {
 	rows := []*row{
 		{player: "g1a", holes: maxCourse, strokes: 60 * maxCourse, par: maxCourse, height: 1},
@@ -459,9 +452,7 @@ func TestTheRankingKeySortsAsTheRule(t *testing.T) {
 	}
 }
 
-// The course holds at most maxCourse slots: the ranking's key has room for
-// them and for the archived versions a standing still counts while they
-// drain.
+// The ranking's key has room for maxCourse slots, and versions still draining.
 func TestTheCourseIsBounded(cur realm, t *testing.T) {
 	var fill []string
 	for i := slots.Size(); i < maxCourse; i++ {

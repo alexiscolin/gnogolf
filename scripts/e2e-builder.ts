@@ -1,17 +1,13 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The Builder end to end (scripts/e2e-builder.sh starts the chain and runs
-// this, from web/, with the env it sets): holes drafted with the Builder's
-// code, checked by its pipeline (validate, the census included), proved in
-// test mode (builder.wasm's local chain, a holing round found for each
-// weather the world asks, replayed as a save is cut), then readied and
-// billed as the Publish step does (its chain readings, publishSteps, bill,
-// gasFor) and published with the very command it prints (gnokeyPublish),
-// run with gnokey. Each publish is then read back as the game reads it
-// (Holes, HoleData, HoleState, Versions), its proofs replayed by the chain
-// (SimulateRoundIn), and a round found in the weather of the moment played
-// for real with the game's own gnokey save (gnokeyPlan). Then holes the
-// Builder refuses, published around it. Each step is a row of OUT's table,
-// and the publishes' measures a table of their own after it.
+// The Builder end to end. scripts/e2e-builder.sh starts the chain and runs
+// this from web/, with the env it sets. Holes are drafted with the Builder's
+// code, checked by its pipeline, proved in test mode (a holing round for each
+// weather the world asks), then billed and published with the very gnokey
+// command the Publish step prints. Each publish is read back as the game
+// reads it, its proofs replayed by the chain, and a round played for real
+// with the game's own gnokey save. Then holes the Builder refuses, published
+// around it. Each step is a row of OUT's table; the publishes' measures get
+// a table of their own after it.
 
 import fs from "node:fs";
 import { execFileSync } from "node:child_process";

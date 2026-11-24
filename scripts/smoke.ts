@@ -1,11 +1,10 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The end-to-end smoke test, against a local chain and dev server: every
-// read the client makes, answered by the realm and passed through the
-// client's own checks (chain.ts `checks`, which throw on any shape it does
-// not expect), then the game in a headless Chrome: a hole played and holed,
-// the finished banner and its save clock, the leaderboard read from the cups
-// screen, a player the bot check flags hidden from the boards. Exits
-// non-zero if a step fails.
+// The end-to-end smoke test, against a local chain and dev server. First
+// every read the client makes, answered by the realm and passed through the
+// client's own checks (chain.ts `checks`). Then the game in a headless
+// Chrome: a hole played and holed, the finished banner and its save clock,
+// the leaderboard from the cups screen, a flagged player hidden from the
+// boards. Exits non-zero if a step fails.
 //
 //   nice -n 20 node --experimental-strip-types scripts/smoke.ts
 //   (from web/: npm run smoke; RPC and APP override the local defaults)

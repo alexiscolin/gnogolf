@@ -1,13 +1,13 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The golden looks (data/gnomes/looks.golden.json): for every token of the
 // catalogue and the nine earned kinds, a record of what makeBall builds from
-// its traits (web/test/looks.ts). The unit tests hold every gnome to it
-// (web/test/looks.test.ts). --write takes the records again, but never
-// changes nor drops one of a released series or of an earned kind: a
-// released look is changed by a new trait format, never in place. A record
-// format that sees more (RECORD) is taken on only where the gnome still
-// draws as the file's own format recorded him. Without --write, it says what
-// differs and exits non-zero.
+// its traits (web/test/looks.ts). web/test/looks.test.ts holds every gnome to
+// it. Without --write, it says what differs and exits non-zero.
+//
+// --write takes the records again, but never changes nor drops one of a
+// released series or of an earned kind: a released look is changed by a new
+// trait format, never in place. A richer record format (RECORD) is taken on
+// only where the gnome still draws as the file's own format recorded him.
 //
 //   node --experimental-strip-types scripts/gnomelooks.ts [--write]
 //   (from web/: npm run gnomes:looks [-- --write])

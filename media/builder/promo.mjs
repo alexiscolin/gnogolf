@@ -1,18 +1,18 @@
 // @ts-check
-// The Builder's video, for social media: node media/builder/promo.mjs [--record] [--shoot [--only=a,b]] [--edit]
+// The Builder's video, for social media:
+//   node media/builder/promo.mjs [--record] [--shoot [--only=a,b]] [--edit]
 //
-// The trailer's tone (media/promo/render.mjs, v11): its music ("Dizzy Racing", CC0, 175 BPM, its last 40 s), its
-// titles (big rounded words in ink, a word in gold or red, landing on a beat), cut on the beat. The news first, on the
-// cards' paper (the cover: the first frame, whole); then play: three fun
-// holes built of the Builder's own pieces (holes.ts: checked, proved, published on the local chain under AUTHOR), filmed
-// in 3D by the trailer's own rig, each a one-stroker in its world and weather; the Avalanche's making in the Builder,
-// close up, a word each (its trap dropped and grown, snowmen by the cup, played), then the same hole in 3D; a friend
-// dared to beat it, never near the cup; mainnet soon and its surprise: the collection's gnomes on the tee, one after another; the logo, the slogan, the call on the music's last hit.
+//   --record  the Builder's take: a headless Chrome against APP (a site with the Builder on), its frames and marks in WORK
+//   --shoot   the 3D shots (media/promo/render.mjs --cut=builder --frames); --only=a,b films those again
+//   --edit    the cut, from the last take and shots
+//   none      all three
+// -> media/builder/gnogolf-builder.mp4 (1920x1080, H.264 and AAC), and its first frame as gnogolf-builder-cover.jpg.
 //
-// --record: the Builder's take (a headless Chrome against APP, a site with the Builder on; its frames and marks in
-// WORK); --shoot: the 3D shots (render.mjs --cut=builder --frames; --only=name,… some again); --edit: the cut, from
-// the last take and shots; none: all three. -> media/builder/gnogolf-builder.mp4 (1920x1080, H.264 and AAC) and its
-// first frame as gnogolf-builder-cover.jpg.
+// It has the trailer's tone (media/promo/render.mjs): its music, its titles, cut on the beat. CUT below is the
+// storyboard. The 3D shots are three holes built of the Builder's own pieces (holes.ts), published on the local
+// chain under AUTHOR and filmed by the trailer's rig.
+//
+// Before it:
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts
 //   then publish holes.json's holes (PublishMine, as AUTHOR), then
 //   APP=https://… node media/builder/promo.mjs

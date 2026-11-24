@@ -9,16 +9,14 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// copyHole is a fresh version of one course slot, for these tests alone (a
-// slot each would leave the other tests' lists less room).
+// copyHole publishes a fresh version of one shared slot: a slot per test would
+// crowd the other tests' lists.
 func copyHole(cur realm, title string) string { return publish(cur, cupHole("garden", 93, title)) }
 
 // holeRank is a player's place on a hole's board, 0 off it.
 func holeRank(id string, p address) string { return jget(HoleRank(id, "assisted", p), "rank") }
 
-// A record of the board sent again, nearly (each shot within copyAngle and
-// copyPower): kept as the player's round and ghost, never ranked, not even by a
-// later finish; their own better round ranks them, counted once.
+// A near copy has every shot within copyAngle and copyPower of a board record.
 func TestACopyIsKeptNotRanked(cur realm, t *testing.T) {
 	id := copyHole(cur, "Copied")
 	a, b, c := testutils.TestAddress("cpa"), testutils.TestAddress("cpb"), testutils.TestAddress("cpc")
@@ -69,7 +67,6 @@ func TestKeyedOrShortRoundsAreNoCopies(cur realm, t *testing.T) {
 	uassert.NotEqual(t, "0", holeRank(id2, c), "one shot: ranked")
 }
 
-// A copy never takes the place of a best of the player's own.
 func TestACopyNeverReplacesAnOwnBest(cur realm, t *testing.T) {
 	id := copyHole(cur, "Own best")
 	a, b := testutils.TestAddress("rpa"), testutils.TestAddress("rpb")
@@ -82,8 +79,7 @@ func TestACopyNeverReplacesAnOwnBest(cur realm, t *testing.T) {
 	uassert.Equal(t, "2", holeRank(id, b), "and so does its place")
 }
 
-// A copy is a copy whatever its ticks (they change nothing on a hole with no
-// timed piece), in the other mode (the same physics), and across 0°.
+// Ticks change nothing with no timed piece; both modes share the physics.
 func TestACopyIsCaughtInEitherModeAndAnyTick(cur realm, t *testing.T) {
 	id := copyHole(cur, "Either")
 	a, b, c, d := testutils.TestAddress("ema"), testutils.TestAddress("emb"), testutils.TestAddress("emc"), testutils.TestAddress("emd")

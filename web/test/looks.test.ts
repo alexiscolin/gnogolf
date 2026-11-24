@@ -1,8 +1,7 @@
-// Permanence: every token of the catalogue and the
-// nine earned kinds is drawn from its traits exactly as the golden file
-// says (data/gnomes/looks.golden.json, scripts/gnomelooks.ts). A change to
-// the drawing that moves one vertex, one colour or one texture of a gnome
-// fails here, naming him.
+// Permanence: every token of the catalogue and the nine earned kinds is drawn
+// from its traits exactly as the golden file says
+// (data/gnomes/looks.golden.json, scripts/gnomelooks.ts). A change that moves
+// one vertex, one colour or one texture of a gnome fails here, naming him.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

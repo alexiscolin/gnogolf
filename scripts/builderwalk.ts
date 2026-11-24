@@ -1,36 +1,29 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The Builder's starter path, timed: a new player in a headless Chrome
 // against a dev server with the Builder on, from /build to a proved hole on
-// the Publish form. It opens /build (the first run: the Garden's dogleg and
-// its hints, which the first drag puts away), drags a Bumper onto the
-// starter, presses Play, pastes the address the hole is proved under on the
-// start card Play opens on (before round 1), and holes each weather: a round
-// found by search through the page's own test chain (builder.wasm), each
-// shot fired as an aim would fire it, through the game's ?camlog hook, and
-// counted as one drag; a round's shots are replayed in the weathers left
-// first (one it holds in is not played), and each next weather starts on its
-// own under its title card ("Round 2 of 3: Wind"). Then it presses Publish
-// on the summary card the last one ends on. It reports the wall time and the
-// clicks, drags and fields typed in, and fails over 5 minutes or over its
-// budget (4 clicks; 2 with Adena already sharing an account with the site).
-// Without a local chain the Publish form says the chain is unread: it still
-// counts as reached.
+// the Publish form. It opens /build (the first run), drags a Bumper onto the
+// starter, presses Play, pastes the address the hole is proved under, holes
+// each weather (a round found by search through builder.wasm, each shot
+// fired through the game's ?camlog hook and counted as one drag), then
+// presses Publish. It reports the wall time, the clicks, drags and fields
+// typed in, and fails over 5 minutes or over its budget (4 clicks; 2 with
+// Adena already sharing an account with the site). Without a local chain the
+// Publish form says the chain is unread: it still counts as reached.
+//
+// At the first run it also checks that the four hints and the three steps'
+// words are in the window, on top and readable (4.5:1 at least), and that
+// the hints are gone once a piece is dragged.
 //
 //   APP=http://localhost:3471 node --experimental-strip-types scripts/builderwalk.ts
 //
-// WIDTH and HEIGHT set the window (1280x800); NOSUBTLE=1 takes crypto.subtle
-// away, as a page on plain http from another machine is. At the first run it checks
-// that the four hints and the three steps' words are each in the window, on
-// top (nothing drawn over them), and readable (4.5:1 on their ground at
-// least), and that the hints are gone once a piece is dragged.
-//
-// With SEED (a seed.env of scripts/e2e-gnomes.sh SEED=1 or try-local.sh)
-// and KEY (one of its keys, p1 by default), the hole is proved under that
-// key's address and published for real once the walk is timed: Publish in
-// Adena, the stand-in Adena signing with the key (media/gnomes/wallet.mjs),
-// until the page and the chain say it is there.
-// Against the playground over the tailnet, PAGE_RPC is the node as its site
-// names it (try-local.sh's NEXT_PUBLIC_WALLET_RPC, http://<tailnet ip>:5182).
+// Env:
+//   WIDTH, HEIGHT  the window (1280x800)
+//   NOSUBTLE=1     takes crypto.subtle away, as a page on plain http from another machine has it
+//   SEED, KEY      a seed.env (e2e-gnomes.sh SEED=1 or try-local.sh) and one of its keys (p1): the hole is
+//                  proved under that key's address and published for real once the walk is timed, a
+//                  stand-in Adena signing with the key (media/gnomes/wallet.mjs)
+//   PAGE_RPC       the node as the site names it, against the playground over the tailnet
+//                  (try-local.sh's NEXT_PUBLIC_WALLET_RPC)
 
 interface Browser {
   send: (method: string, params?: object) => Promise<unknown>;

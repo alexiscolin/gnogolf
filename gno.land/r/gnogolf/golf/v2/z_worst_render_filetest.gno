@@ -12,23 +12,15 @@ import (
 	golf "gno.land/r/gnogolf/golf/v2"
 )
 
-// The worst pages golf takes. The worst hole GG1 allows for its page (a
-// 96×96 board, 160 walls across it, 32 posts of radius 8, and 32 zones whose
-// boxes cover the whole board, 8 of them 64-point polygons) is refused, as
-// z_worst_shot_filetest's a2 is: in its dearest weather a commit would have
-// too little room for a shot. Golf takes four zigzag holes, where every row
-// of a board crosses every edge of 2 or 4 polygons, and the corner, whose
-// weather costs most, in the rain and in a storm. z_worst_play_filetest
-// publishes them all and plays a first shot on each corner in its weather
-// (the heaviest single shot is z_worst_shot_filetest's);
-// z_worst_render_filetest does the same, then renders each zigzag's page and
-// each corner's page and its player's. The difference of their gas is the
-// eight pages, about 2.28e9. A zigzag's page costs 0.54e9 drawn, with 2
-// polygons, and 0.03e9 with 4, too detailed to draw; a corner's 0.23e9, its
-// forecast drawn once. Every page stays far under the 3e9 a query may use: a
-// page decodes the hole, draws one forecast (bounded at publish, worstGas;
-// two for a round begun in the period before, whose last shot the board
-// draws in its own), at most maxBoardWork of board and one shot.
+// The worst pages golf takes: four zigzag holes, where every row of the board
+// crosses every edge of 2 or 4 polygons, and the corner, whose weather costs
+// most, in the rain and in a storm. The worst hole GG1 allows is refused at
+// publish. z_worst_play_filetest publishes them and plays a first shot on each
+// corner; z_worst_render_filetest does the same, then renders each zigzag's
+// page, each corner's and its player's. The difference of their Gas is the
+// eight pages, about 2.28e9: 0.54e9 for a zigzag drawn (2 polygons), 0.03e9 for
+// one too detailed to draw (4), 0.23e9 for a corner. Every page stays far under
+// the 3e9 a query may use.
 
 // corner is the hole whose weather costs most among those golf takes: the 8
 // bumper walls it takes in a box round the tee, and 4 thin hazard polygons
@@ -133,7 +125,7 @@ func main(cur realm) {
 }
 
 // Gas:
-// 3855755256
+// 3855755239
 
 // Output:
 // zig-rev-2 true false

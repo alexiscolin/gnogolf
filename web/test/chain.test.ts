@@ -14,7 +14,7 @@ import {
 const okReply = (data: string) => ({ result: { response: { ResponseBase: { Data: Buffer.from(data, "utf8").toString("base64") } } } });
 // an ABCI reply the VM refused: Error set, Log carries the realm's own sentence (or a Go panic)
 const refusedReply = (log: string) => ({ result: { response: { ResponseBase: { Error: {}, Log: log } } } });
-// a reply with no ResponseBase at all — the node answered, but not usefully
+// a reply with no ResponseBase at all: the node answered, but not usefully
 const noResponseReply = () => ({ result: { response: {} } });
 // a JSON-RPC-level error, distinct from a VM refusal
 const rpcErrorReply = (message: string) => ({ error: { message } });
@@ -454,7 +454,7 @@ test("a stroke read that the node never answers times out and is tagged 'down'",
   setFetch((_url, init) => new Promise((_resolve, reject) => {
     init.signal?.addEventListener("abort", () => reject(reasonOf(init.signal)));
   }));
-  // ms is small; the node hangs, so the internal timeout fires it — twice, since query() retries a "down" once
+  // ms is small; the node hangs, so the internal timeout fires it, twice: query() retries a "down" once
   await assert.rejects(chain.simulateFrom("garden/1", [0, 0], "0,1", 0, 1, 30), (e) => errorKind(e) === "down");
 });
 

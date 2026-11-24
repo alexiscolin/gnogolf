@@ -1,14 +1,14 @@
 // What the first load of every page carries (app/game.tsx, its title screen,
-// the game it always loads next and what they import, eagerly): never the
-// collection gnomes' wardrobe, which GNOMES' fourteen never use. It is loaded
-// where a collection gnome is shown (loadWardrobe, scene/gnome.ts). And none
-// of the gnome shop but its door (components/gnomes/Door.tsx): its part of
-// the game is a chunk the door fetches, an import() under the flag as the
-// build writes it, so a build with NEXT_PUBLIC_GNOMES off has no such chunk
-// at all. Nor any world but the garden: the others are chunks loadWorld
-// fetches (scene/worlds.ts). Walked here from the sources: the static
-// imports, not the type-only ones, and of the import() calls only those
-// every page makes (ALWAYS).
+// the game it always loads next, and what they import eagerly). Never:
+// - the collection gnomes' wardrobe, which GNOMES' fourteen never use: it is
+//   loaded where a collection gnome is shown (loadWardrobe, scene/gnome.ts);
+// - the gnome shop but its door (components/gnomes/Door.tsx): the rest is a
+//   chunk the door fetches, an import() under the flag, so a build with
+//   NEXT_PUBLIC_GNOMES off has no such chunk at all;
+// - any world but the garden: the others are chunks loadWorld fetches
+//   (scene/worlds.ts).
+// Walked from the sources: the static imports (not the type-only ones), and
+// of the import() calls only those every page makes (ALWAYS).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

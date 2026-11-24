@@ -1,40 +1,26 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The 3D board's budget, measured in a headless Chrome against a dev server
-// with the Builder on, and enforced: it exits non-zero past any of it.
-// - 60 fps at 1440×900 while the pointer sweeps the board (the scene drawing
-//   each frame), and 30 fps at least with the CPU four times slower
-//   (Emulation.setCPUThrottlingRate);
-// - the hole built once a checked hole: never while a piece is dragged, once
-//   after the drop (Scene.tsx, ?camlog's window.__builds), and no shader
-//   program linked for it (the old hole let go once the new one is drawn);
-//   the player's view painted once a build, from the same scene and
-//   context, never as the pointer moves or the board zooms;
-// - zoomed with the wheel (motion on), the board drawn once a frame at most;
+// with the Builder on. It prints the numbers as JSON and exits non-zero past
+// any of them:
+// - 60 fps at 1440×900 while the pointer sweeps the board, 30 fps with the
+//   CPU four times slower;
+// - the hole built once per checked hole: never while a piece is dragged,
+//   once after the drop, with no shader program linked for it; the player's
+//   view painted once a build;
+// - zoomed with the wheel, the board drawn once a frame at most;
 // - idle, the loop stopped: no frame asked for, little CPU;
-// - one WebGL context for the page, Play visited and left by T and by its
-//   button (stage.ts);
-// - Play five times in a row leaves no GL program, texture or buffer behind
-//   (the game draws with the board's own renderer, lent to it);
-// - the context lost: the 2D board until it is back, then the 3D drawn again;
-// - the player's view shown large: drawn at its own size, never a smaller
-//   picture stretched;
-// - Play over a timed piece kept moving (Moving air, selected and
-//   playing): the board's loop draws nothing on the lent canvas, so the game
-//   alone draws, at the window's own shape; its context lost meanwhile, Play
-//   says so, and says no more once it is back;
-// - round the worlds (Island, Town, Mountain, back to the Garden): each hole
-//   built once with its own world's scenery (the board and its column kept
-//   mounted: the world's pieces handed over with the draft), the player's
-//   view painted once with it;
-// - a world's module that would not load (offline): the hole left where it
-//   is, said, nothing thrown; picked again once it loads, built there;
-// - no WebGL: the 2D board, and no play (T and Play say why; the Builder
-//   never falls over).
-// It prints the numbers as JSON. Every step waits on what it is about (the
-// scene's build count and world, the "…" menu's world, the line said), each
-// with a timeout that names it, never on a guessed delay; a warm-up visit
-// first (every world, Play) so a dev server's first compiles count in no
-// measure.
+// - one WebGL context for the page, Play visited and left;
+// - Play five times in a row leaves no GL program, texture or buffer behind;
+// - the context lost: the 2D board until it is back, then the 3D again;
+// - the player's view shown large: drawn at its own size, never stretched;
+// - Play over a timed piece: the game alone draws on the lent canvas;
+// - round the worlds: each hole built once, with its own world's scenery;
+// - a world's module that will not load (offline): the hole left where it
+//   is, said, nothing thrown;
+// - no WebGL: the 2D board, and no play.
+// Every step waits on what it is about, with a timeout that names it, never
+// on a guessed delay. A warm-up visit comes first, so a dev server's first
+// compiles count in no measure.
 //
 //   APP=http://127.0.0.1:3451 node --experimental-strip-types scripts/builderbench.ts
 
@@ -130,11 +116,9 @@ const mouse = (type: string, x: number, y: number, buttons = 0) => c.send("Input
 
 const task = async () => ((await c.send("Performance.getMetrics")) as { metrics: { name: string; value: number }[] }).metrics.find((m) => m.name === "TaskDuration")!.value;
 /**
- * The page while the pointer sweeps the board for ms (the scene drawn each
- * frame): the frames it showed a second (counted in the page, over the wall
- * clock here), and the main thread's work a frame (its tasks' time over the
- * frames, ms): what bounds the frame rate whatever the harness's pacing (a
- * frame's work at most 16.7 ms is 60 frames a second, 33.3 ms is 30).
+ * Sweeps the pointer over the board for ms. Returns the frames shown a second
+ * and the main thread's work a frame (ms), which bounds the frame rate
+ * whatever the harness's pacing: 16.7 ms is 60 frames a second, 33.3 ms is 30.
  */
 async function sweep(ms: number) {
   await c.js(`(() => { window.__frames = 0; const f = () => { window.__frames++; if (!window.__stop) requestAnimationFrame(f); }; window.__stop = false; requestAnimationFrame(f); })()`);

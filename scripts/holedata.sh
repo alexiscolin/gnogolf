@@ -1,23 +1,20 @@
 #!/bin/sh
 # holedata.sh [--check]: data/holes.txt, every course hole as GG1 data, from its source.
 #
-# Runs every hole's tests (its fingerprint test also proves the hole survives
-# encoding: see fingerprint.Check), one run over them all, and keeps the line
-# each fingerprint logs, one per hole:
+# It runs every hole's tests (the fingerprint test also proves the hole
+# survives encoding: see fingerprint.Check) and keeps the line each one logs:
 #
 #   <slot> <pkgpath> <sha8> <hex>
 #
-# slot is world/order, pkgpath the realm the hole is today (what a client
-# maps old ids from), sha8 the first 4 bytes of the data's sha256, hex the
-# data. Sorted by slot, so a change to a hole is a one-line diff to review.
-# Then scripts/paritydata.sh copies it into golf's parity test.
+# slot is world/order, pkgpath the hole's realm (a client maps old ids from
+# it), sha8 the first 4 bytes of the data's sha256, hex the data. Sorted by
+# slot, so a changed hole is a one-line diff. Then scripts/paritydata.sh
+# copies it into golf's parity test.
 #
-# --check writes nothing: it fails unless data/holes.txt (what publishdata.sh
-# publishes) and golf's parity_data_test.gno are exactly what the hole realms
-# give now (check.sh runs it: a hole edited without holedata.sh never ships).
+# --check writes nothing. It fails unless data/holes.txt and golf's
+# parity_data_test.gno are what the hole realms give (check.sh runs it).
 #
-# GNO is the gno binary (default: the onyx toolchain's, in GNO_TOOLCHAIN: see
-# check.sh). The run is at low priority.
+# Env: GNO, the gno binary (the onyx toolchain's: see check.sh).
 set -eu
 
 root=$(cd "$(dirname "$0")/.." && pwd)

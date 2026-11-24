@@ -1,8 +1,8 @@
 // The gnome as makeBall builds it, checked without a GPU: the fourteen of
-// GNOMES look as they always did (a fingerprint of every vertex, colour and
-// material they are drawn with), whatever traits the collection adds; every
-// gnome of the collection holds to its tier's budget, fades as a ghost, and
-// his trail and holing run their course.
+// GNOMES keep their look (a fingerprint of every vertex, colour and material
+// they are drawn with), whatever traits the collection adds; every gnome of
+// the collection holds to its tier's budget, fades as a ghost, and his trail
+// and holing run their course.
 import "./canvas.mjs";
 import { test } from "node:test";
 import assert from "node:assert/strict";

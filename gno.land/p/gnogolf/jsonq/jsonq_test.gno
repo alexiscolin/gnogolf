@@ -6,18 +6,15 @@ import (
 	"gno.land/p/nt/uassert/v0"
 )
 
-// The quote, the backslash and every byte below 0x20 escaped, as golf/v2's
-// jstr does; plain text, accents included, as it is.
+// As golf/v2's jstr does. Plain text, accents included, goes out as it is.
 func TestAStringCannotBreakOutOfItsJSON(t *testing.T) {
 	uassert.Equal(t, `"a\"b\\c\u000a\u0001\u001f"`, Quote("a\"b\\c\n\x01\x1f"))
 	uassert.Equal(t, `"Pip Seedwell é ~"`, Quote("Pip Seedwell é ~"))
 	uassert.Equal(t, `""`, Quote(""))
 }
 
-// JSON is UTF-8: a byte that is none (a stray continuation, a truncated
-// rune, a surrogate, an overlong form) goes out as U+FFFD, as Go's
-// encoding/json writes it, so the answer stays valid JSON for every client.
-// U+2028 and U+2029, valid JSON but line ends to JavaScript, are escaped.
+// A stray continuation, a truncated rune, a surrogate or an overlong form.
+// U+2028 and U+2029, line ends to JavaScript, are escaped.
 func TestInvalidUTF8GoesOutAsTheReplacementRune(t *testing.T) {
 	uassert.Equal(t, "\"Pip \ufffd\ufffd\\\"bad\"", Quote("Pip \xff\xfe\"bad"))
 	uassert.Equal(t, "\"a\ufffd\"", Quote("a\xc3"))

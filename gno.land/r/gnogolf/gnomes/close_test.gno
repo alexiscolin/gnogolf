@@ -8,9 +8,7 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// The genesis sale's closing date is optional: the owner may set one once
-// the genesis is published, and may bring it forward, never push it back nor
-// remove it. From then on its unsold gnomes are closed for good.
+// The genesis sale's closing date: optional, forward only, never removed.
 
 func TestOnlyTheOwnerSetsTheCloseOncePublished(cur realm, t *testing.T) {
 	setUp(0, cur, deployer)
@@ -20,7 +18,7 @@ func TestOnlyTheOwnerSetsTheCloseOncePublished(cur realm, t *testing.T) {
 	testing.SetRealm(asUser(alice, nil))
 	urequire.AbortsContains(t, cur, "only the owner", func() { SetCloseAt(cross(cur), now()+closeNotice) })
 	testing.SetRealm(asUser(deployer, nil))
-	// a week's notice at least: never a close sprung on the buyers
+	// a week's notice at least
 	urequire.AbortsContains(t, cur, "7 days ahead", func() { SetCloseAt(cross(cur), now()) })
 	urequire.AbortsContains(t, cur, "7 days ahead", func() { SetCloseAt(cross(cur), now()+closeNotice-1) })
 	SetCloseAt(cross(cur), now()+closeNotice)
@@ -56,7 +54,7 @@ func TestAnEmptyOwnerCannotSetTheClose(cur realm, t *testing.T) {
 func TestTheSaleClosesAtItsDateToTheBlock(cur realm, t *testing.T) {
 	fresh(t, cur)
 	at := now() + 5 // the next block
-	closeAt = at    // (set as stored: the block's boundary here, not the notice SetCloseAt asks)
+	closeAt = at    // set directly: SetCloseAt would ask a week's notice
 	testing.SetRealm(asUser(alice, ugnot(priceOf(1))))
 	Buy(cross(cur), "1") // the block before: open
 
@@ -105,10 +103,8 @@ func TestTheCloseDateReads(t *testing.T) {
 	uassert.Equal(t, "2026-11-30 18:00 UTC", dateOf(1796061600))
 }
 
-// The genesis may sell with no closing date: the switch opens, its sale
-// opens and sells, and nothing closes it (it sells until sold out). The
-// owner may set a date later, after its start, only bringing it forward;
-// from that date its unsold gnomes are closed.
+// With no closing date the genesis sells until sold out. The owner may set a
+// date later; from that date its unsold gnomes are closed.
 func TestTheGenesisSellsWithNoCloseSet(cur realm, t *testing.T) {
 	setUp(0, cur, deployer)
 	testing.SetRealm(asUser(deployer, nil))
@@ -158,12 +154,11 @@ func TestTheGenesisSaleStartsBeforeAClose(cur realm, t *testing.T) {
 	OpenSale(cross(cur), genesisName, at-5, 0)
 }
 
-// From the other side: a close is never set, nor brought forward, to at or
-// before the start of the genesis's sale yet to open, which nobody could
-// then buy from.
+// A close is never set, nor brought forward, to at or before the start of a
+// genesis sale yet to open: nobody could buy from it.
 func TestTheCloseNeverComesBeforeTheGenesisSaleOpens(cur realm, t *testing.T) {
 	noSale(t, cur)
-	start := now() + closeNotice + 2*24*3600 // (past the notice a close asks)
+	start := now() + closeNotice + 2*24*3600 // past the notice a close asks
 	urequire.NoError(t, openSale(genesisName, start, 0))
 	testing.SetRealm(asUser(deployer, nil))
 	urequire.AbortsContains(t, cur, "gnomes: the genesis sale starts on "+dateOf(start), func() { SetCloseAt(cross(cur), start) })

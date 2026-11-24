@@ -10,10 +10,8 @@ import (
 	"gno.land/p/nt/urequire/v0"
 )
 
-// fakeRows is store's reads over trees of the test's own: under gno test
-// golf has no owner, so no slot can be published through it. The rows are
-// written by hand in golf/v2's formats (slotKey, encodeEntry, bestOf,
-// copiesOf).
+// fakeRows stands in for store: under gno test golf has no owner, so no slot
+// can be published through it. Rows are written by hand in golf/v2's formats.
 type fakeRows struct {
 	c      map[string]*bptree.BPTree
 	writer string
@@ -50,7 +48,7 @@ func (f *fakeRows) Page(name, start, end string, limit int) string {
 }
 
 // entry is a hole's row as golf/v2's encodeEntry writes it: format "1", then
-// 23 fields, each its length, ":" and itself; id, name, par first.
+// 23 length-prefixed fields; id, name, par first.
 func entry(id string, par int) string {
 	f := func(s string) string { return strconv.Itoa(len(s)) + ":" + s }
 	s := "1:1" + f(id) + f("Hole") + f(strconv.Itoa(par))
@@ -117,8 +115,7 @@ func TestTheRowsReadAsGolfWritesThem(cur realm, t *testing.T) {
 	uassert.Equal(t, 0, lowerBest(id, a))
 }
 
-// A row not in the format the proof was built against refuses: a later
-// format can refuse a mint, never prove a false one.
+// An unknown format can refuse a mint, never prove a false one.
 func TestARowNotAsGolfWritesItRefuses(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	f.set("holes", "garden/1/v1", "1:2"+"11:garden/1/v1") // format "2"
@@ -293,7 +290,7 @@ func TestAProvenKindIsMintedFreeOnce(cur realm, t *testing.T) {
 		Gnome("1000001"))
 	uassert.Equal(t, int64(2), TotalSupply())
 
-	// a relay is refused, as for every call the chain would trust OriginSend on
+	// a relay is refused, as in Buy
 	testing.SetOriginCaller(alice)
 	testing.SetRealm(testing.NewCodeRealm("gno.land/r/attacker/relay"))
 	urequire.AbortsContains(t, cur, "directly", func() { MintEarned(cross(cur), "golden") })
@@ -317,9 +314,8 @@ func TestNewRulesRefuseTheMint(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "rules changed", func() { MintEarned(cross(cur), "wizard") })
 }
 
-// New rules (store's writer moved): every proof refuses until the owner
-// accepts them, and only store's current writer can be accepted; then the
-// same player's proof passes again, and what was minted stays minted once.
+// When store's writer moves, every proof refuses until the owner accepts the
+// new rules; only store's current writer can be accepted.
 func TestTheOwnerAcceptsOnlyStoresNewRules(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	for _, id := range cupHoles(f, "garden", 18) {
@@ -351,8 +347,7 @@ func TestTheOwnerAcceptsOnlyStoresNewRules(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "already minted: wizard", func() { MintEarned(cross(cur), "wizard") })
 }
 
-// A paused store has no writer (""): there are no rules to accept, and the
-// proof stays refused through the pause and after it.
+// A paused store has no writer: nothing to accept, and the proof stays refused.
 func TestAPausedStoreHasNoRulesToAccept(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	f.writer = ""
@@ -377,9 +372,8 @@ func TestAnEarnedGnomeIsBoundToItsPlayer(cur realm, t *testing.T) {
 	Equip(cross(cur), id)
 	uassert.Equal(t, `{"version":1,"player":"`+alice.String()+`","id":"`+id+`","name":"The Miner","tier":"earned","traits":"`+earnedTraits(9)+`"}`, Equipped(alice))
 	urequire.AbortsContains(t, cur, "bound to its player", func() { Approve(cross(cur), bob, id) })
-	// (the hook's panic aborts the transfer, and on chain the whole call with
-	// the ledger's write; the harness does not revert what a recovered call
-	// wrote, so the state is not checked here)
+	// On chain the hook's panic reverts the whole call. The harness does not
+	// revert what a recovered call wrote, so the state is not checked here.
 	urequire.AbortsContains(t, cur, "bound to its player", func() { TransferFrom(cross(cur), alice, bob, id) })
 
 }
@@ -412,9 +406,8 @@ func TestABurnedKindIsMintedAgainUnderANewID(cur realm, t *testing.T) {
 	uassert.Equal(t, "1000002", MintEarned(cross(cur), "miner"), "ids are never reused")
 }
 
-// The nine kinds' traits are the designer's codec's, byte for byte (format
-// 1: tier 0 earned, the kind, every other field plain); selfcheck.ts holds
-// them to web/lib/gnomes/codec.ts.
+// The nine kinds' traits are the designer's codec's, byte for byte.
+// selfcheck.ts holds them to web/lib/gnomes/codec.ts.
 func TestEarnedTraitsAreTheCodecs(t *testing.T) {
 	uassert.Equal(t, "01000001000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff", earnedTraits(1))
 	uassert.Equal(t, "01000009000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff", earnedTraits(9))
@@ -422,16 +415,14 @@ func TestEarnedTraitsAreTheCodecs(t *testing.T) {
 	uassert.Equal(t, len(earnedKinds), len(earnedNames))
 }
 
-// Earned ids start above every id a catalogue can reach (64 series of 1,000
-// rows end at 64,000), so a later series never meets them.
+// Earned ids start above any catalogue's: 64 series of 1,000 rows end at 64,000.
 func TestEarnedIDsAreAboveEveryCatalogue(t *testing.T) {
 	uassert.True(t, firstEarned > maxSeries*maxSeriesRows)
 	uassert.Equal(t, int64(1_000_001), int64(firstEarned))
 }
 
-// Earned gnomes have their own switch, apart from the sale's, open at
-// deploy: the owner can stop MintEarned for a fault in the proof without
-// pausing the sale, and the sale's switch never stops it.
+// MintEarned has its own switch, open at deploy: the owner can stop it
+// without pausing the sale, and the sale's switch never stops it.
 func TestEarnedGnomesHaveTheirOwnSwitch(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	for _, id := range cupHoles(f, "garden", 18) {

@@ -10,8 +10,7 @@ import (
 	"gno.land/r/gnogolf/store"
 )
 
-// noSale is a fresh collection with no sale yet: no closing date (the
-// default: the genesis sells until sold out), the mint open.
+// noSale is a published collection with the mint open and no sale.
 func noSale(t *testing.T, rlm realm) {
 	published(t, rlm)
 	mintOpen = true
@@ -82,7 +81,7 @@ func TestThePlayerWindowIsForPlayers(cur realm, t *testing.T) {
 	Buy(cross(cur), itoa(nthOfTier(0, int(playerCap[0])+1)))
 }
 
-// (store is not reset between tests: each address here is this test's own)
+// store is not reset between tests: each address here is this test's own.
 func TestARecordInEitherModeCounts(cur realm, t *testing.T) {
 	assisted, pro, none := testutils.TestAddress("assisted"), testutils.TestAddress("pro"), testutils.TestAddress("none")
 	uassert.False(t, hasRecord(assisted))
@@ -94,9 +93,8 @@ func TestARecordInEitherModeCounts(cur realm, t *testing.T) {
 	uassert.False(t, hasRecord(none))
 }
 
-// A sale keeps the prices it was opened with: SetPrice moves the sales yet
-// to open, never one already announced, so nobody who bought early is
-// undercut.
+// SetPrice moves the sales yet to open, never one already opened: nobody who
+// bought early is undercut.
 func TestASaleKeepsItsPrices(cur realm, t *testing.T) {
 	noSale(t, cur)
 	winter(t)
@@ -121,10 +119,9 @@ func TestASaleKeepsItsPrices(cur realm, t *testing.T) {
 	Buy(cross(cur), "721")
 }
 
-// A sale is never changed, so a start in milliseconds (or any far one)
-// would hold every genesis close after it, thousands of years off. A sale
-// starts from a day back to a year ahead, in unix seconds: the close is
-// never held hostage, and the window's end cannot overflow.
+// A sale is never changed, so a far start (one in milliseconds, say) would
+// hold every genesis close after it. Starts are bounded: a day back to a year
+// ahead.
 func TestASaleStartsWithinADayBackAndAYearAhead(cur realm, t *testing.T) {
 	noSale(t, cur)
 	testing.SetRealm(asUser(deployer, nil))
@@ -148,10 +145,9 @@ func TestASaleStartsWithinADayBackAndAYearAhead(cur realm, t *testing.T) {
 	urequire.NoError(t, openSale("winter-2027", now()+maxSaleAhead, maxHours), "a year on")
 }
 
-// A sale yet to start, which nothing could have sold, can be withdrawn: the
-// owner's way back from a wrong start or window. Its series is free for
-// another, and the close it held is free to come forward. A sale under way
-// never is: a buyer may have counted on it.
+// A sale yet to start has sold nothing and can be withdrawn. Its series is
+// free for another, and the close it held is free to come forward. A sale
+// under way never is.
 func TestASaleYetToStartCanBeCancelled(cur realm, t *testing.T) {
 	noSale(t, cur)
 	winter(t)

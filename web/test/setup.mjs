@@ -1,7 +1,7 @@
-// Loaded before every unit test (npm test): the client's modules import each
-// other without an extension, as the bundler takes them, so ".ts" is tried,
-// and by the "@/" alias;
-// and the browser storage they touch is an in-memory stand-in.
+// Loaded before every unit test (npm test). The client's modules import each
+// other without an extension and by the "@/" alias, as the bundler takes
+// them: ".ts" is tried, "@/" resolved. The browser storage they touch is an
+// in-memory stand-in.
 import { registerHooks } from "node:module";
 
 // "@/…" is the client's alias for web/ (tsconfig paths), which Node doesn't read

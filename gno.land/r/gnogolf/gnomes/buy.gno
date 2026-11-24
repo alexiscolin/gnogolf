@@ -9,16 +9,15 @@ import (
 	"gno.land/p/nt/bptree/v0"
 )
 
-// Buy sells the caller the gnomes ids names, 1 to 5 catalogue ids
-// separated by commas ("217,301"), and returns them as given. Each must be
-// in a sale under way and unsold; the caller's caps hold for the whole
-// list. Exactly the sum of their sale prices must be sent with the call
-// (-send "<sum>ugnot"); it goes to the treasury before the call returns.
-// Any refusal reverts the call, coins included.
+// Buy sells the caller 1 to 5 catalogue gnomes, their ids separated by commas
+// ("217,301"), and returns ids. Each must be on sale and unsold, and the
+// caller's caps hold for the whole list. The call must send exactly the sum
+// of their prices (-send "<sum>ugnot"), which goes to the treasury before it
+// returns. Any refusal reverts the call, coins included.
 //
-// Only a direct user call (maketx call) is taken. That is what makes
-// OriginSend the caller's own money: a realm or a run script in between
-// could keep the coins it attached while OriginSend still reported them.
+// Only a direct user call (maketx call) is taken: a realm or a run script in
+// between could keep the coins it attached while OriginSend still reported
+// them.
 func Buy(cur realm, ids string) string {
 	if !cur.Previous().IsUserCall() {
 		panic(errNotUserCall)
@@ -29,15 +28,15 @@ func Buy(cur realm, ids string) string {
 		panic(why)
 	}
 
-	// The envelope is exactly the sum: one coin, the right denom, the right
-	// amount. Anything else would underpay or leave coins behind.
+	// Exactly one coin of the sum: anything else underpays or leaves coins
+	// behind.
 	sent := unsafe.OriginSend()
 	if len(sent) != 1 || sent[0].Denom != payDenom || sent[0].Amount != o.total {
 		panic("gnomes: wrong payment, send exactly " + itoa(o.total) + payDenom)
 	}
 
-	// The state first, then the coins: nothing below calls out but the
-	// banker, and it calls no code.
+	// State first, then coins: nothing below calls out but the banker, which
+	// runs no code.
 	for i := range tiers {
 		o.had[i] += o.count[i]
 	}
@@ -50,15 +49,14 @@ func Buy(cur realm, ids string) string {
 		chain.Emit("GnomeBought", "id", itoa(g.id), "buyer", buyer.String(),
 			"price", itoa(o.paid[i]), "treasury", treasury.String())
 	}
-	// Forwarded at once: an OriginSend banker spends this call's envelope
-	// and nothing else.
+	// An OriginSend banker spends this call's envelope and nothing else.
 	banker.NewBanker(banker.BankerTypeOriginSend, cur).
 		SendCoins(cur.Address(), treasury, chain.NewCoins(chain.NewCoin(payDenom, o.total)))
 	return ids
 }
 
-// order is a list Buy takes: its gnomes and what each costs, their sum, and
-// the counts the buyer's caps keep, as they will be once it is sold.
+// order is a list Buy takes, priced, with the buyer's cap counts as they
+// will be once it is sold.
 type order struct {
 	gnomes      []gnome
 	paid        []int64
@@ -68,10 +66,10 @@ type order struct {
 	total       int64
 }
 
-// check is Buy's every refusal but the caller's and the payment's, in Buy's
-// order: buyer's ids at time t as an order, or why not, as a code (CanBuy's
+// check runs every refusal of Buy but the caller's and the payment's, in
+// Buy's order. It returns buyer's order at time t, or a code (CanBuy's
 // "reason") and the sentence Buy panics with. It writes nothing, so Buy and
-// CanBuy ask the same question and can never answer it differently.
+// CanBuy cannot disagree.
 func check(buyer address, ids string, t int64) (o order, code, why string) {
 	if !mintOpen {
 		return o, "paused", errClosed
@@ -128,8 +126,8 @@ func check(buyer address, ids string, t int64) (o order, code, why string) {
 	return o, "", ""
 }
 
-// readIDs reads "1,2,3": 1 to maxBatch distinct decimal ids, no sign, no
-// leading zero, no space; or the sentence refusing it.
+// readIDs reads "1,2,3": 1 to maxBatch distinct ids, as parseID takes them.
+// It returns the list, or the sentence refusing it.
 func readIDs(ids string) ([]int64, string) {
 	parts := strings.Split(ids, ",")
 	if ids == "" || len(parts) > maxBatch {
@@ -151,7 +149,7 @@ func readIDs(ids string) ([]int64, string) {
 	return list, ""
 }
 
-// parseID reads a token id in decimal, no sign and no leading zero; 0 for
+// parseID reads a decimal token id with no sign and no leading zero; 0 for
 // anything else.
 func parseID(s string) int64 {
 	if len(s) == 0 || len(s) > 9 || s[0] == '0' {
@@ -167,8 +165,7 @@ func parseID(s string) int64 {
 	return n
 }
 
-// counts returns the per-tier counts tree keeps under key, as a copy to
-// change and Set back.
+// counts returns a copy of the per-tier counts tree keeps under key.
 func counts(tree *bptree.BPTree, key string) *[len(tiers)]int64 {
 	c := &[len(tiers)]int64{}
 	if v := tree.Get(key); v != nil {
@@ -177,7 +174,6 @@ func counts(tree *bptree.BPTree, key string) *[len(tiers)]int64 {
 	return c
 }
 
-// windowKey is buyer's row in inWindow for series name's sale: under the
-// series, which has one sale, not the sale's place in the list, which
-// CancelSale moves.
+// windowKey is buyer's row in inWindow for series name's sale. It is keyed
+// by series, not by the sale's index, which CancelSale moves.
 func windowKey(name string, buyer address) string { return name + " " + buyer.String() }

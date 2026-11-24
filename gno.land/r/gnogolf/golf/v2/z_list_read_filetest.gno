@@ -14,13 +14,11 @@ import (
 	golf "gno.land/r/gnogolf/golf/v2"
 )
 
-// The lists at their fullest: 130 authors, each with perAuthor holes, more
-// than Holes and the hub have room for (120). z_list_base_filetest publishes
-// them; z_list_read_filetest publishes the same, then reads Holes and renders
-// the hub. The difference of their gas is the two reads, 0.74e9 for their
-// 120 rows each, which walk no more than they list however many publish.
-// (The authors the owner hid are not walked at all, as
-// TestAHiddenHoleTakesNoPlace checks: a filetest has no owner to hide with.)
+// The lists at their fullest: 130 authors with perAuthor holes each, more than
+// Holes and the hub list (120). z_list_base_filetest publishes them;
+// z_list_read_filetest does the same, then reads Holes and renders the hub. The
+// difference of their Gas is the two reads, about 0.74e9: they walk no more
+// than they list, however many publish.
 func publishAll(cur realm) {
 	data := hex.EncodeToString([]byte(course.Encode(&course.Simple{W: 32, H: 16, World: "garden", Title: "Listed", Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(20, 8), Substeps: 14, CupRadius: 1.5,
@@ -43,4 +41,4 @@ func main(cur realm) {
 // 120 120
 
 // Gas:
-// 8341698605
+// 8341698597

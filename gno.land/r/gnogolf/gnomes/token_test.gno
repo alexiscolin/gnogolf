@@ -43,8 +43,8 @@ func TestARealmCannotMoveItsCallersGnomes(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "not token owner", func() { TransferFrom(cross(cur), alice, bob, tid) })
 }
 
-// Burn is the holder's alone; it clears what the hook cannot (the locker's
-// row, the equipped gnome), and a sold id stays sold: it is never sold again.
+// Burn is the holder's alone. It clears the locker's row and the equipped
+// gnome, and a sold id is never sold again.
 func TestABurnIsTheHoldersAndForGood(cur realm, t *testing.T) {
 	fresh(t, cur)
 	id := common()

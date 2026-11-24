@@ -1,30 +1,28 @@
 // @ts-check
-// Renders the Gnogolf trailer: node media/promo/render.mjs [--cut=name] [--only=a,b] [--stills] [--frames | --encode] [--clean] [--cups]
+// Renders the Gnogolf trailer:
+//   node media/promo/render.mjs [--cut=name] [--only=a,b] [--stills] [--frames | --encode] [--clean] [--cups]
 //
-// A cut is a shot list, shots-<cut>.json (shots.json without --cut: the first cut), rendered to
-// gnogolf-promo-<cut>.mp4 and -720p.mp4 from frames and sounds in a work folder of its own
-// (gnogolf-promo-<cut> in the system's temp):
-// --cut=v11: the trailer, opening on its poster (a shot with "cover": true, the video's first frame,
-// also kept as gnogolf-promo-v11-cover.jpg) and racing the seeded champion's ghost (CHAMPION=<its
-// address>), the duel's reads kept in paths.json ("reads") like the shots' paths;
-// --cut=v11-teaser: v11 before the launch, its poster saying "COMING VERY SOON";
-// --cut=builder --frames: the Builder video's 3D shots (shots-builder.json), cut by media/builder/promo.mjs.
-// --only=a,b: those shots again; --stills: a few frames of each as PNGs in stills-check/ (EVERY=n: one
-// every n frames); --frames: the frames and the shots' sounds only; --encode: those already captured,
-// encoded again. One command, with the dev client on the local chain (web/.env.local; read only, nothing is sent):
+// A cut is a shot list, shots-<cut>.json (shots.json without --cut), rendered to gnogolf-promo-<cut>.mp4 and
+// -720p.mp4 from frames and sounds in a work folder of its own (gnogolf-promo-<cut> in the system's temp).
+//   --cut=v11         the trailer: it opens on its poster (a shot with "cover": true, also kept as
+//                     gnogolf-promo-v11-cover.jpg) and races the seeded champion's ghost (CHAMPION=<its address>)
+//   --cut=v11-teaser  v11 before the launch, its poster saying "COMING VERY SOON"
+//   --cut=builder     with --frames: the Builder video's 3D shots, cut by media/builder/promo.mjs
+//   --only=a,b        those shots again
+//   --stills          a few frames of each shot as PNGs in stills-check/ (EVERY=n: one every n frames)
+//   --frames          the frames and the shots' sounds only
+//   --encode          the frames already captured, encoded again
+//   --clean           the title screen's background (web/public/title/bg.*): a short cut of the calmer shots,
+//                     no titles, flashes, shakes or sound, encoded small for the web
+//   --cups            the cup cards' hover clips (below)
+//
+// One command, with the dev client on the local chain (web/.env.local; read only, nothing is sent):
 //   (cd web && npx next dev -p 3316) & APP=http://localhost:3316 CHAMPION=<address> node media/promo/render.mjs --cut=v11
-// -> media/promo/gnogolf-promo-v11.mp4 and -v11-720p.mp4.
 //
-// --clean: the title screen's background instead (web/public/title/bg.*): a
-// short cut of the calmer shots, no titles, flashes, shakes or sound, encoded
-// small for the web (AV1 and VP9 webm, H.264 mp4; no poster: the page fades the film in over the sky's colour).
-//
-// One headless Chrome (its own profile, killed by PID at the end) opens the
-// running dev client (http://localhost:3300) in promo mode (web/lib/promo.ts)
-// once per shot, steps it one frame at a time and screenshots each frame; the
-// shot's own game sounds come back as a WAV. ffmpeg then lays the frames on
-// the music's beat grid and mixes the sounds under it. The chain's paths are
-// cached in paths.json, so a re-render replays the same shots.
+// One headless Chrome opens the dev client in promo mode (web/lib/promo.ts) once per shot, steps it one frame
+// at a time and screenshots each frame; the shot's own game sounds come back as a WAV. ffmpeg then lays the
+// frames on the music's beat grid and mixes the sounds under it. The chain's paths are cached in paths.json,
+// so a re-render replays the same shots.
 // Needs: Node 22+ (built-in WebSocket), Google Chrome, /opt/homebrew/bin/ffmpeg.
 
 import { execFileSync } from "node:child_process";

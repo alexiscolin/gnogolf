@@ -1,20 +1,20 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The wasm parity test: web/lib/sim/golf.wasm (scripts/wasm.sh) must answer
-// every call exactly as the realm does, byte for byte. The realm's side runs
-// in the GnoVM (gno test, the onyx toolchain), in scratch copies of the
-// packages, one per core: scripts/wasm/parity_test.gno, in golf/v2 (the rules
-// the wasm is built from: scripts/wasm.sh), publishes every hole
-// and plays it (its par plans stroke by stroke in 19 weathers, and random
-// shots anywhere, at any stroke and tick, some refused), printing each
-// call's answer's sha256; then the wasm answers the same calls, through the
-// page's own host (web/lib/sim/host.ts). The builder's builder.wasm the same
-// way (web/lib/builder/wasm.ts): PublishMine itself on each hole's data,
-// changed and not, and on holes at the work limits, its refusals word for
-// word; author.Fit and Encode byte for byte. Any difference fails.
+// The wasm parity test: web/lib/sim/golf.wasm and builder.wasm
+// (scripts/wasm.sh) must answer every call exactly as the realm does, byte
+// for byte. Any difference fails.
 //
-// The holes: the course's (data/holes.txt), their plans the solver's bests
-// (private/botcheck/hole-bests.json, kept out of the public repo: without
-// them, random shots only).
+// The realm's side runs in the GnoVM (gno test, the onyx toolchain), in
+// scratch copies of the packages, one per core. scripts/wasm/parity_test.gno
+// publishes every hole and plays it (its par plans stroke by stroke in 19
+// weathers, and random shots, some refused), printing the sha256 of each
+// call's answer. Then the wasm answers the same calls through the page's own
+// host (web/lib/sim/host.ts). For builder.wasm: PublishMine on each hole's
+// data, changed and not, and on holes at the work limits, its refusals word
+// for word; author.Fit and Encode.
+//
+// The holes are the course's (data/holes.txt). Their plans are the solver's
+// bests (private/botcheck/hole-bests.json, kept out of the public repo):
+// without them, random shots only.
 //
 //   cd web && node --experimental-strip-types --import ./test/setup.mjs ../scripts/wasmparity.ts
 //   (scripts/wasm.sh --check runs it; check.sh runs that)

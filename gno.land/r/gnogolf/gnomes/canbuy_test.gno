@@ -10,9 +10,7 @@ import (
 	"gno.land/r/gnogolf/store"
 )
 
-// CanBuy answers the mint page before any signature, from Buy's own checks:
-// it must never refuse what Buy takes, nor take what Buy refuses, and it
-// must say Buy's reason.
+// CanBuy must answer as Buy would, with Buy's reason.
 
 // windowOf opens the genesis's sale anew from start with a player window of
 // hours.

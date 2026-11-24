@@ -14,8 +14,7 @@ var (
 	heir     = testutils.TestAddress("heir")
 )
 
-// `gno test` runs init with no signer, so the owner starts "": each test sets
-// the one it plays with.
+// setOwner sets the owner, which starts "": gno test runs init with no signer.
 func setOwner(a address) { owner, pending = a, "" }
 
 func TestTheNamespaceIsGolfsOwn(t *testing.T) {
@@ -83,8 +82,7 @@ func TestRenounceIsForGood(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "only the owner", func() { Transfer(cross(cur), heir) })
 }
 
-// The owner is the immediate caller: a realm the owner calls into cannot
-// act in their name, even with the owner as the transaction's signer.
+// Even with the owner as the transaction's signer.
 func TestARealmTheOwnerCallsIsNotTheOwner(cur realm, t *testing.T) {
 	setOwner(deployer)
 	testing.SetOriginCaller(deployer)
@@ -94,8 +92,6 @@ func TestARealmTheOwnerCallsIsNotTheOwner(cur realm, t *testing.T) {
 	testing.SetOriginCaller("")
 }
 
-// The owner moves the play link, to an https:// link a page can print, and
-// nobody else can; once renounced, nobody.
 func TestTheOwnerMovesThePlayLink(cur realm, t *testing.T) {
 	was := playURL
 	setOwner(deployer)
@@ -118,8 +114,7 @@ func TestTheOwnerMovesThePlayLink(cur realm, t *testing.T) {
 	setOwner(deployer)
 }
 
-// A successor is named once, by the owner, and only adds a banner and a
-// field: every write goes on as before.
+// A successor only adds a banner and a field: every write goes on as before.
 func TestTheSuccessorIsSetOnce(cur realm, t *testing.T) {
 	id := courseHole(cur, 75)
 	setOwner(deployer)

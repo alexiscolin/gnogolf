@@ -2,36 +2,34 @@
 # importv1.sh <key>: onyx's migration, v1's course and records into golf/v2
 # (import_v1.gno), as v2's owner (<key>, a gnokey key name).
 #
-# It reads first, for free: v1's whole course in one query (every best of
-# every current hole, in both modes, and whether a shot of it is finer than
-# 0.01) and v2's in another, and works out what v2 lacks: the holes it has no
-# slot for yet, and the records it has none of, a worse one of, or only a
-# copy (near-copy rule) of. A record with a shot finer than v2 takes stays on
-# v1, and is listed. Then it sends only that: v1's drain finished if it is not
-# (v1's Drain: its course ranking then counts its current holes alone, the
-# ones that come over), each missing hole (ImportHole, a transaction each:
-# they are heavy), and the records, BATCH a transaction (ImportRecord, each
-# read from v1 in the call that writes it). A transaction is simulated first,
-# then sent asking the gas it used and a tenth more. Plain calls only (a chain
-# may keep MsgRun to a few accounts: onyx does). Run again, it sends nothing
-# that is there already: a run with nothing new sends no transaction at all.
-# Then it checks (below). The key's password is asked once. Needs jq.
+# It reads first, for free: v1's whole course and v2's, a query each, and
+# works out what v2 lacks: the holes it has no slot for, and the records it
+# has none of, a worse one of, or only a copy of. A record with a shot finer
+# than v2 takes (0.01) stays on v1, and is listed. Then it sends only that:
+#   - v1's drain, finished if it is not (Drain: v1's course ranking then
+#     counts its current holes alone, the ones that come over);
+#   - each missing hole, a transaction each: they are heavy (ImportHole);
+#   - the records, BATCH a transaction (ImportRecord).
+# A transaction is simulated first, then sent asking the gas it used and a
+# tenth more. Plain calls only: a chain may keep MsgRun to a few accounts
+# (onyx does). Run again, it sends nothing that is there already. Then it
+# checks (below). The key's password is asked once. Needs jq.
 #
-# importv1.sh -verify: only the check, reads (vm/qeval, no key): every
-# board's first 100 rows and records, and the course rankings', the same on
-# v1 and v2, a few holes a query; but where a record was left on v1 (its
-# board, and its mode's course ranking), which it tells apart.
-#
-# V1 and V2 are the realms (default gno.land/r/gnogolf/golf and
-# gno.land/r/gnogolf/golf/v2), REMOTE the node (default 127.0.0.1:26657),
-# CHAINID its chain id (default dev), GNOKEY the gnokey (default the onyx
-# toolchain's: see check.sh), BATCH the records a transaction (default 20,
-# about 25M gas each); the storage deposit is capped at MAX_DEPOSIT a call
-# (default 20000000ugnot).
+# importv1.sh -verify: the check alone, reads with no key. Every board's first
+# 100 rows and the course rankings must be the same on v1 and v2, but where a
+# record was left on v1, which it tells apart.
 #
 #   scripts/importv1.sh test1                                     a local gnodev
 #   V1=gno.land/r/nym-alexiscolin000/gnogolf/golf V2=gno.land/r/nym-alexiscolin000/gnogolf/golf/v2 \
 #     REMOTE=https://rpc.onyx.testnets.gno.land:443 CHAINID=onyx-1 scripts/importv1.sh <your-key-name>
+#
+# Env:
+#   V1, V2       the realms (gno.land/r/gnogolf/golf, gno.land/r/gnogolf/golf/v2)
+#   REMOTE       the node (127.0.0.1:26657)
+#   CHAINID      its chain id (dev)
+#   GNOKEY       the gnokey (the onyx toolchain's: see check.sh)
+#   BATCH        the records a transaction (20, about 25M gas each)
+#   MAX_DEPOSIT  a call's storage deposit cap (20000000ugnot)
 set -eu
 v1=${V1:-gno.land/r/gnogolf/golf}
 v2=${V2:-gno.land/r/gnogolf/golf/v2}

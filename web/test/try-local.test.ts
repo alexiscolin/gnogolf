@@ -1,10 +1,9 @@
 // scripts/try-local.sh's commands on a playground running, in a copy of the
 // script beside a stand-in node (its /status) and gnokey (what the realm
-// says): "rebuild" keeps the build served and the new one alone, its numbers
+// says). "rebuild" keeps the build served and the new one alone, its numbers
 // only growing; "close" writes the date in seed.env; no command goes on when
-// the chain does not answer; no command opens a sale (the seed opens the
-// genesis's, every gnome at once); a start that fails exits with a failure,
-// cleaned up.
+// the chain does not answer, and none opens a sale; a start that fails exits
+// with a failure, cleaned up.
 import { after, test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";

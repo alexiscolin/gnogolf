@@ -4,8 +4,7 @@ import type { Feel, SoundName } from "../lib/feel.ts";
 
 // lib/feel.ts only builds real sound when `window` and `AudioContext` exist
 // (see its `audio()`), and wires a few browser event listeners at import
-// time. These are the minimal fakes needed to exercise that logic — not to
-// check what the fakes "sound" like.
+// time. These are the minimal fakes that logic needs.
 const calls = { osc: 0, gain: 0, filter: 0, bufSrc: 0 };
 const oscs: { frequency: Param }[] = []; // every oscillator made, in order (a tone's pitch)
 const gains: { gain: Param }[] = []; // every gain made, in order (the rain bed's loudness)

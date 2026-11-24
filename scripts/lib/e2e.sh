@@ -1,8 +1,7 @@
 # scripts/lib/e2e.sh: what the local chain's scripts share (e2e-gnomes.sh,
-# e2e-builder.sh, try-local.sh), sourced by bash: a throwaway keybase's keys,
-# a call by gnokey, and the report's table with its steps. It reads GNOKEY,
-# KH (the keybase), PASS (its password), RPC_ADDR, CHAINID, and OUT (the
-# report) and log, which each script defines.
+# e2e-builder.sh, try-local.sh): a throwaway keybase's keys, a call by gnokey,
+# and the report's table. Sourced by bash. The caller defines GNOKEY, KH (the
+# keybase), PASS (its password), RPC_ADDR, CHAINID, OUT (the report) and log.
 
 # gnodev's well-known deploy key, the realms' owner on a local chain
 TEST1_MNEMONIC="source bonus chronic canvas draft south burst lottery vacant surface solve popular case indicate oppose farm nothing bullet exhibit title speed wink action roast"

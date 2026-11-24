@@ -8,9 +8,7 @@ import (
 	"gno.land/p/nt/uassert/v0"
 )
 
-// The picker, "My gnomes" and another player's collection read a wallet a
-// page at a time: each row carries id, tier and traits, enough to draw it
-// with no call per token. holding gives alice n gnomes (ids 1 to n).
+// holding gives alice n gnomes (ids 1 to n).
 func holding(t *testing.T, rlm realm, n int64) {
 	fresh(t, rlm)
 	for id := int64(1); id <= n; id++ {
@@ -46,9 +44,9 @@ func TestACollectionOf1_50And205ReadsInPages(cur realm, t *testing.T) {
 	}
 }
 
-// The gas of reading a whole collection of 1, 50 or 205 gnomes (three
-// pages) is the difference of each pair below, the same holding with and
-// without the reads, as `gno test -v` measures it; a query's limit is 3e9.
+// The gas of reading a whole collection is the difference of each pair below
+// (the same holding with and without the reads) under `gno test -v`. A
+// query's limit is 3e9.
 func TestLockerGasHold1(cur realm, t *testing.T)   { holding(t, cur, 1) }
 func TestLockerGasRead1(cur realm, t *testing.T)   { holding(t, cur, 1); readAll() }
 func TestLockerGasHold50(cur realm, t *testing.T)  { holding(t, cur, 50) }

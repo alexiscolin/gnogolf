@@ -1,8 +1,7 @@
-// Package build is the toolkit a hole's source is written with: the walls of
-// a box, a bar, an outline, and the curves (arcs, stadiums, keyholes, park
-// lanes) an outline follows. A hole's walls are plain physics.Wall values,
-// so nothing on chain needs it: golf plays a hole from its data (course.Encode),
-// and this package is for authoring holes and for tests.
+// Package build is the toolkit hole sources are written with: boxes, bars,
+// outlines, and the curves an outline follows. A hole's walls are plain
+// physics.Wall values and golf plays a hole from its data, so nothing on chain
+// needs this package: it is for authoring holes and for tests.
 package build
 
 import (
@@ -25,11 +24,10 @@ func Box(min, max physics.Vec2) []physics.Wall {
 
 // Bar returns the four walls of a barrier of the given thickness from a to b.
 //
-// Free-standing obstacles need it. With Radius 0 the ball is a point, and a
-// point travelling exactly along a zero-width segment never crosses it — it
-// slides straight through a blade or a bar it is perfectly aligned with. An
-// outer wall is safe as a bare physics.Segment because the ball is always on
-// one side of it; anything the ball can meet head-on is built with Bar.
+// Free-standing obstacles need it: a point ball travelling exactly along a
+// zero-width segment never crosses it, and slides straight through. An outer
+// wall is safe as a bare physics.Segment, since the ball is always on one side
+// of it.
 func Bar(a, b physics.Vec2, thickness float64, mark rune, skin string) []physics.Wall {
 	d := b.Sub(a)
 	l := d.Len()
@@ -88,9 +86,9 @@ func Skinned(ws []physics.Wall, skin string) []physics.Wall {
 }
 
 // Outline returns the walls of a closed polygon through the points, in order:
-// the outer edge of a hole that is not a rectangle — an L, a funnel, a
-// diagonal. Whatever it leaves out of the board is ground the ball never
-// reaches, and a renderer draws it as such.
+// the outer edge of a hole that is not a rectangle, such as an L or a funnel.
+// What it leaves out of the board is ground the ball never reaches, and a
+// renderer draws it as such.
 func Outline(points ...physics.Vec2) []physics.Wall {
 	out := make([]physics.Wall, 0, len(points))
 	for i := range points {
@@ -110,8 +108,8 @@ func Polyline(points ...physics.Vec2) []physics.Wall {
 }
 
 // Arc returns n+1 points on a circle around c of radius r, from angle a0 to a1
-// (radians), for an Outline: a curved bank is a polygon with enough sides.
-// Each side is a wall, so n is a gas budget — 6 to 10 reads as a curve.
+// (radians), for an Outline: a curved bank is a polygon with enough sides. Each
+// side is a wall, so n is a gas budget: 6 to 10 reads as a curve.
 func Arc(c physics.Vec2, r, a0, a1 float64, n int) []physics.Vec2 {
 	out := make([]physics.Vec2, 0, n+1)
 	for i := 0; i <= n; i++ {
@@ -146,9 +144,9 @@ func Stadium(min, max physics.Vec2, n int) []physics.Vec2 {
 	)
 }
 
-// Keyhole is a lane of the given width, rounded at its start (x0), running
-// into a round green of radius R around c: the lane's axis is c.Y. It is the
-// shape of a cup on a platform — the ball has to come down the lane to it.
+// Keyhole is a lane of the given width, rounded at its start (x0), running into
+// a round green of radius R around c. The lane's axis is c.Y. It is the shape
+// of a cup on a platform: the ball has to come down the lane to it.
 func Keyhole(x0, width float64, c physics.Vec2, R float64, n int) []physics.Vec2 {
 	h := width / 2
 	a := math.Asin(h / R)
@@ -158,13 +156,12 @@ func Keyhole(x0, width float64, c physics.Vec2, R float64, n int) []physics.Vec2
 	)
 }
 
-// Lane is the outline of a park lane: a ribbon of the given width that flows
-// through pts along a smooth curve (Catmull-Rom), with a round pad at each end
-// — the tee's and the cup's — a little wider than the lane. n is the number of
-// walls per stretch between two points on each side, so a lane through k
-// points costs about 2n(k-1) + 16 walls: n is a gas budget, 3 to 5 reads as a
-// curve. A bend tighter than half the width folds the inner side on itself:
-// keep the points far enough apart for the turns they make.
+// Lane is the outline of a park lane: a ribbon of the given width through pts
+// along a Catmull-Rom curve, with a round pad at each end, a little wider than
+// the lane, for the tee and the cup. n is the number of walls per stretch on
+// each side, so a lane through k points costs about 2n(k-1) + 16 walls: n is a
+// gas budget, and 3 to 5 reads as a curve. A bend tighter than half the width
+// folds the inner side on itself.
 func Lane(width float64, n int, pts ...physics.Vec2) []physics.Vec2 {
 	h, R := width/2, width*0.8
 	at := func(i int) physics.Vec2 {

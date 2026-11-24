@@ -11,54 +11,16 @@ import (
 	golf "gno.land/r/gnogolf/golf/v2"
 )
 
-// The heaviest shots GG1 lets anyone publish, as far as the probes found:
-// each probe is a 96×96 board at the format's limits, published, then played
-// with one Launch, in the weather its slug gets at this test's period (a2 is
-// clear, a0, a14, a23 and a24 rainy in the garden, a31 and a60 stormy on the
-// island). Rain doubles a hole's ice (its wet copy), a storm adds four
-// board-wide zones on top. Each shot is played with the work its commit has
-// left (golf's cap, MaxWork at the most), and one that reaches a cap under
-// MaxWork is refused. The Launch of each, decode, forecast and shot, measured
-// end to end in its weather:
+// The heaviest shots GG1 lets anyone publish, as far as the probes found. Each
+// probe is a 96×96 board at the format's limits, published, then played with
+// one Launch in the weather its slug gets at this test's period: a2 clear; a0,
+// a14, a23 and a24 rainy in the garden; a31 and a60 stormy on the island.
+// docs/golf.md lists the probes and the gas each Launch measured end to end:
+// all under 1.6e9, and the 2e9 Adena simulates.
 //
-//	a2       160 bumper walls across the board, the steepest hill, 31
-//	         ice zones, 8 of them 64-point circles                0.87e9
-//	a0       4 bumper walls, a board-wide hill, 8 zigzag ice
-//	         polygons (every edge across the ball) and 23 ice
-//	         zones, in the rain: refused at its cap              1.07e9
-//	a60      the 8 zigzags as hills (the ground, looked at several
-//	         times a substep) and 24 ice zones, in a storm        1.00e9
-//	a14      160 bumper walls, 8 zigzag ice polygons, a hill, in
-//	         the rain: the forecast alone 0.54e9 to 0.63e9,
-//	         refused at its cap                                   1.03e9
-//	a23      38 timed bars, each pushing the ball out as it comes
-//	         back, 8 zigzag ice polygons, in the rain (refused
-//	         at its cap in some periods' rain)                    0.72e9
-//	a31      30 loop mouths rolled across, a storm's gusts        0.87e9
-//	a24      15 tunnels and 8 zigzag ice polygons, in the rain    1.04e9
-//	endcap   160 short walls stacked beside a ball of radius 1,
-//	         a hill holding it there: each test takes the end
-//	         cap's two square roots                               0.57e9
-//	face     the same above their faces: both caps hit, four
-//	         roots a wall                                         1.00e9
-//	posts    32 posts stacked, four walls round them              0.31e9
-//	corner   160 bumper walls and 32 posts caged in a corner, 8
-//	         thin hazard polygons along the far edge, in the rain:
-//	         the forecast alone 1.1e9 (every puddle try tests every
-//	         wall and edge), then the shot refused, no room left  1.19e9
-//	corner   the same in the dry                                  0.77e9
-//	cage     160 bumper walls round a board of ice: a commit of
-//	         11 taps and a full shot, refused at the full shot's
-//	         cap ("commit the first 11"): its 11 taps, then the
-//	         full shot alone                                      0.80e9
-//
-// All are under 1.6e9, and the 2e9 Adena simulates. A hole's dearest weather
-// is bounded at publish (golf's worstGas: a commit's first shot has
-// minShotWork in any weather), so all but a60, a31 and posts are refused
-// there, as the output says: each forecast tests their walls and polygon
-// edges on every puddle try. The refused ones' measures are what the shot cap
-// alone would hold; the heaviest a published hole can do is what a60, a31 and
-// posts do.
+// A hole's dearest weather is bounded at publish (worstGas), so all but a60,
+// a31 and posts are refused there, as the output says. The heaviest a published
+// hole can do is what those three do.
 
 type spec struct {
 	slug, world, walls string

@@ -1,66 +1,35 @@
 #!/bin/sh
-# wasm.sh [--check]: the aim preview's physics for the browser,
-# web/lib/sim/golf.wasm, built from the deployed .gno sources themselves: no
-# fork to maintain. The page runs it in a worker (web/lib/sim/), checks its
-# sources against the realm's first, and checks every answer the chain gives
-# it against its own (web/lib/engine/aim.ts).
+# wasm.sh [--check]: the browser's physics, built from the deployed .gno
+# sources themselves, so there is no fork to maintain:
+#   web/lib/sim/golf.wasm     the aim preview, which every player loads
+#   web/lib/sim/builder.wasm  the same, plus PublishMine's checks and author.Fit (-tags builder)
+# --check rebuilds into a scratch folder, fails if a committed .wasm is not
+# that build, then runs the parity test (scripts/wasmparity.ts).
 #
-# And web/lib/sim/builder.wasm, the hole builder's (web/lib/builder/wasm.ts):
-# the same, plus PublishMine's checks and author.Fit (Check and Fit,
-# scripts/wasm/r/gnogolf/golf/local_builder.go), built with -tags builder
-# from a second extraction with more roots, so none of them reaches
-# golf.wasm, which every player loads.
+# The .gno files are copied as .go into a Go module named gno.land
+# (scripts/wasm/go.mod), so their import paths stay what they are:
+#   p/gnogolf/physics, course   every file but the tests (course/author and physics/build too, for the builder)
+#   p/nt/ufmt/v0                the onyx toolchain's, copied the same way
+#   r/gnogolf/golf              the declarations the roots reach, extracted from the realm (scripts/wasm/extract);
+#                               local.go and local_builder.go, hand-written, give the realm's storage and clock
+#   gnovm/math                  the GnoVM's own math (gnovm/stdlibs/math), which the copies import in place of "math"
+# The generated files are not kept (.gitignore). Each .wasm is, and embeds the
+# sha256 of every deployed .gno file it was built from (sources()): the page
+# reads the deployed files back and compares before it trusts a preview.
 #
-# The Go sources are the .gno files, as they are, in a Go module named
-# gno.land (scripts/wasm/go.mod), so their import paths stay what they are:
-#   - p/gnogolf/physics and p/gnogolf/course (and, for builder.wasm, the
-#     authoring kits course/author and physics/build): every file but the
-#     tests, copied (.gno to .go);
-#   - p/nt/ufmt/v0: the onyx toolchain's, copied the same way (golf's
-#     refusals print with it);
-#   - r/gnogolf/golf/v2 (realm, below): the declarations SimulateFrom and
-#     simulateRound reach (golf.go; for builder.wasm, golf_builder.go adds
-#     those of PublishMine's checks: decodeData's work bounds, validSlug,
-#     cleanName, cleanText, linkish), extracted whole from the realm's files
-#     (scripts/wasm/extract), into the module's r/gnogolf/golf, with the
-#     realm's storage (a hole's data by its id, readHole) and its clock
-#     (Period) given by scripts/wasm/r/gnogolf/golf/local.go, the one
-#     hand-written file of the package for golf.wasm, which adds Load and
-#     Round (local_builder.go, the builder's);
-#   - math: the GnoVM's own (gnovm/stdlibs/math of the onyx toolchain's
-#     GNOROOT: Go's pure-Go files, and native.go for the four bit casts it
-#     injects), as gnovm/math: the one change to the copied files is their
-#     import "math", which names it.
-# The generated files are not kept (.gitignore); golf.wasm and builder.wasm
-# are, and each embeds the sha256 of every deployed .gno file it was built
-# from (sources()): the page reads the deployed files back and compares
-# before it trusts a preview.
+# Same numbers as the chain's: the GnoVM computes float64 in software,
+# correctly rounded as IEEE 754 says, and so are WebAssembly's f64 operations,
+# with no fused multiply-add. The math functions are the GnoVM's own source,
+# not TinyGo's (which calls a C libm). The parity test is the proof.
 #
-# The same numbers as the chain's. The GnoVM computes every float64 operation
-# in software (gnovm/pkg/gnolang/internal/softfloat), correctly rounded as
-# IEEE 754 says: the node's CPU plays no part. WebAssembly's f64 add, sub,
-# mul, div, sqrt, min, max, conversions, floor, ceil and trunc are IEEE 754's
-# correctly rounded operations too, and it has no fused multiply-add
-# (WebAssembly 1.0 has none; TinyGo asks LLVM for no contraction and no
-# relaxed SIMD): nothing is fused or kept in a wider precision. The math
-# functions (Sqrt, Sin, Cos, Atan2, Mod, Round, Abs, Signbit, Float64bits…)
-# are the GnoVM's very source, not TinyGo's (which calls a C libm for Sin, Cos
-# and Atan2, and LLVM's intrinsics for others). strconv is Go's on both sides,
-# and what it prints is fixed by its spec (shortest, or correctly rounded).
-# The proof is the parity test, scripts/wasmparity.ts, which --check runs.
+# TinyGo, not Go's own wasm port: 84 KB gzipped against 700. Reproducible:
+# TinyGo and its Go are pinned (TINYGO_VERSION, GOTOOLCHAIN), with no debug
+# information.
 #
-# TinyGo, not Go's own wasm port: 84 KB gzipped against 700 (Go's runtime
-# alone is 570). -scheduler none and the wasip1 target: no JS glue but two
-# imports (fd_write, random_get), and no goroutine machinery.
-#
-# Reproducible: TinyGo and its Go are pinned (TINYGO_VERSION, GOTOOLCHAIN),
-# no debug information. --check rebuilds into a scratch folder, fails if the
-# committed golf.wasm is not that build, then runs the parity test.
-#
-# GNO is the onyx gno binary (default: the toolchain's, in GNO_TOOLCHAIN: see
-# check.sh), for its GNOROOT; TINYGO the tinygo binary (default: in PATH, else
-# tinygo-0.42.0/bin/tinygo beside the toolchain's folder), which finds
-# binaryen's wasm-opt in PATH or WASMOPT.
+# Env:
+#   GNO      the onyx gno binary, for its GNOROOT (the toolchain's: see check.sh)
+#   TINYGO   the tinygo binary (in PATH, else tinygo-0.42.0/bin/tinygo beside the toolchain's folder)
+#   WASMOPT  binaryen's wasm-opt, when not in PATH
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 here=$root/scripts/wasm

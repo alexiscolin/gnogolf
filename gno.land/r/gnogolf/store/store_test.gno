@@ -31,8 +31,8 @@ func fresh() {
 	}
 }
 
-// (testing.SetRealm acts on the frame that calls it: each test calls it in
-// its own body, never through a helper.)
+// testing.SetRealm acts on the frame that calls it: each test calls it in its
+// own body, never through a helper.
 
 // skip moves block time on by at least seconds (a block is 5 seconds).
 func skip(seconds int64) { testing.SkipHeights(seconds/5 + 1) }
@@ -44,7 +44,7 @@ func TestTheFirstWriterIsTheRulesBesideStore(t *testing.T) {
 
 func TestOnlyTheWriterWrites(cur realm, t *testing.T) {
 	fresh()
-	testing.SetRealm(testing.NewUserRealm(boss)) // (the owner too: the rules write, nobody else)
+	testing.SetRealm(testing.NewUserRealm(boss)) // the owner too: only the rules write
 	urequire.AbortsContains(t, cur, "only gno.land/r/gnogolf/golf/v2", func() { Set(cross(cur), "bests", "k", "v") })
 	testing.SetRealm(testing.NewCodeRealm("gno.land/r/attacker/golf"))
 	urequire.AbortsContains(t, cur, "only gno.land/r/gnogolf/golf/v2", func() { Set(cross(cur), "bests", "k", "v") })

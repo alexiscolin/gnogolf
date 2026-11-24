@@ -39,8 +39,8 @@ func TestTokenMetadataIsTheRowsAsAWalletReadsIt(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(md, `"external_url":"https://golf.example.org/g/`+earnedKinds[0]+`/"`), md)
 }
 
-// The site's address is the owner's to move, under golf's play link rule
-// (p/gnogolf/weblink), and ends with "/": a gnome's page is <site>g/<id>/.
+// The owner sets the site, held to golf's play link rule (p/gnogolf/weblink)
+// and a final "/".
 func TestTheOwnerMovesTheSite(cur realm, t *testing.T) {
 	fresh(t, cur)
 	uassert.Equal(t, "", SiteURL(), "none at deploy")

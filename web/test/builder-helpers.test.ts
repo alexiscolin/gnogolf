@@ -1,9 +1,8 @@
 // One home each for what the Builder and the game share, so copies cannot
-// drift (the header and the phone's list once kept 7 characters of an
-// address, the share card 8): the takedown list's read (lib/takedown.ts
-// loadTakedown), an address shortened (lib/chain.ts shortAddr), a
-// world's name (card.ts cap, rules.ts worldName), a file saved (share.ts saveFile), the
-// name's and the note's lengths (draft.ts MAX_TITLE, MAX_NOTE).
+// drift: the takedown list's read (lib/takedown.ts loadTakedown), an address
+// shortened (lib/chain.ts shortAddr), a world's name (card.ts cap, rules.ts
+// worldName), a file saved (share.ts saveFile), the name's and the note's
+// lengths (draft.ts MAX_TITLE, MAX_NOTE).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

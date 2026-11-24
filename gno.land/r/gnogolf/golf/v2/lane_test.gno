@@ -45,8 +45,7 @@ func inLane(h *course.Simple, p physics.Vec2) bool {
 	return in
 }
 
-// No shot leaves the lane through an acute corner's tip, the gap between the
-// square caps of its two walls.
+// The tip of an acute corner is the gap between its two walls' square caps.
 func TestNoShotLeavesThroughATip(t *testing.T) {
 	for _, c := range []struct {
 		realm        string
@@ -68,8 +67,7 @@ func TestNoShotLeavesThroughATip(t *testing.T) {
 	}
 }
 
-// No move cuts through a free wall end from afar, diagonally in at its
-// missing end face: one substep on the hole's walls.
+// One substep, aimed diagonally at a wall's missing end face.
 func TestNoMoveCutsAFreeEnd(t *testing.T) {
 	for _, c := range []struct {
 		realm      string
@@ -91,9 +89,7 @@ func TestNoMoveCutsAFreeEnd(t *testing.T) {
 	}
 }
 
-// A piece that comes back between strokes pushes a resting ball out, never
-// across one of the hole's own walls: mountain9's bars alternate every
-// stroke, and hole2's mole pops up by an inner corner.
+// mountain9's bars alternate; hole2's mole pops up by an inner corner.
 func TestAPieceNeverPushesTheBallThroughAWall(t *testing.T) {
 	for _, c := range []struct {
 		realm  string
@@ -118,9 +114,8 @@ func TestAPieceNeverPushesTheBallThroughAWall(t *testing.T) {
 	}
 }
 
-// A ball that comes to rest off the board is brought back to where the shot
-// started, and the stroke counts: played, previewed and replayed alike. A
-// hole with no walls lets every long shot out.
+// It returns to where the shot started and the stroke counts: played, previewed
+// and replayed alike.
 func TestABallOffTheBoardComesBack(cur realm, t *testing.T) {
 	leaky := flatHole("Leaky")
 	leaky.Course.Walls, leaky.Course.Friction = nil, 0.97
@@ -142,10 +137,8 @@ func TestABallOffTheBoardComesBack(cur realm, t *testing.T) {
 	}
 }
 
-// Two ground slopes never lie over the same spot at the same tick on any
-// course hole: the ground under a ball is one hill (the first listed, as
-// physics has it), and no hole leans on that rule. hole20's two seesaw tilts
-// share their ground, never their ticks.
+// The ground under a ball is one hill, the first listed. hole20's two seesaw
+// tilts share ground, never ticks.
 func TestNoTwoHillsOverlap(t *testing.T) {
 	for _, d := range courseData {
 		h := courseHoleData(t, d[1])
@@ -180,11 +173,8 @@ func TestNoTwoHillsOverlap(t *testing.T) {
 	}
 }
 
-// No course hole has dry ground a ball can reach off its board: from the
-// tee, over every spot the ball fits (clear of the walls that stay and the
-// posts), through tunnels and loops, stopping at water, every spot reached
-// is on the board. Outside a lane's rails is out of reach; around a lane
-// with none (the islands, the rooftops), a hazard.
+// A flood from the tee over every spot the ball fits, through tunnels and loops
+// and stopping at water, stays on the board.
 func TestNoDryGroundOffTheBoard(t *testing.T) {
 	const c = 0.5
 	for _, d := range courseData {
@@ -261,9 +251,8 @@ func TestNoDryGroundOffTheBoard(t *testing.T) {
 	}
 }
 
-// The text board blanks what no ball can reach as the 3D client does, fenced
-// by the walls that stay: The Mill's three tunnel mouths, between its timed
-// sail and its wall, are drawn with their exits.
+// The Mill's three tunnel mouths, between its timed sail and its wall, stay
+// drawn with their exits.
 func TestTheBoardKeepsWhatATimedWallCrosses(t *testing.T) {
 	h := courseHoleData(t, "gno.land/r/gnogolf/hole4")
 	b := board(newEntry("garden/4/v1", h.Title, h.Par(), h.World, h.Order), h, h.Field(), nil, course.Forecast{})
@@ -274,8 +263,6 @@ func TestTheBoardKeepsWhatATimedWallCrosses(t *testing.T) {
 	}
 }
 
-// The text board draws every course hole's zones on the cells whose centre
-// each holds, as the physics sees it (physics.Zone.Contains).
 func TestTheBoardDrawsZonesAsThePhysicsHoldsThem(t *testing.T) {
 	for _, d := range courseData {
 		h := courseHoleData(t, d[1])
@@ -297,10 +284,8 @@ func TestTheBoardDrawsZonesAsThePhysicsHoldsThem(t *testing.T) {
 	}
 }
 
-// island/5's sea leaves dry ground behind the end of its right-hand rocks
-// (x above 40.5, y up to 13.6): the rocks' end is 0.5 short of the water's
-// edge. No shot from the beach near that end reaches it: round the rocks'
-// end is the sea.
+// island/5 has dry ground behind the end of its right-hand rocks (x above 40.5,
+// y up to 13.6), which stop 0.5 short of the water's edge.
 func TestNothingGetsBehindIsland5sRocks(t *testing.T) {
 	h := courseHoleData(t, "gno.land/r/gnogolf/island5")
 	sea := h.Course.Zones[0]
@@ -318,10 +303,8 @@ func TestNothingGetsBehindIsland5sRocks(t *testing.T) {
 	}
 }
 
-// The record is text ("%.4f"), and a replay reads it back: a shot at -0, or
-// one that rounds to it (-0.00001, -359.99996), plays, records and replays as
-// the 0 it is. If a VM or ufmt change ever printed or parsed -0 otherwise,
-// old rounds would replay differently: this says so.
+// Shots are recorded as "%.4f" text. If a VM or ufmt change printed or parsed
+// -0 differently, old rounds would replay differently.
 func TestMinusZeroRecordsAndReplays(cur realm, t *testing.T) {
 	id := mine(cur, "zero", flatHole("Zero"))
 	var rests []string

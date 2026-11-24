@@ -28,8 +28,7 @@ func setContext(f func(ctx *testing.Context)) func() {
 	return func() { testing.SetContext(was) }
 }
 
-// The integer jnum prints the bytes of "%.3f", ties, signs and giants
-// included.
+// The integer jnum prints the bytes of "%.3f": ties, signs and giants included.
 func TestJnumIsPercentThreeF(t *testing.T) {
 	vals := []float64{0, math.Copysign(0, -1), -0.0004, -0.0005, 0.0005, 0.0015, 0.0025, 1.0005, 2.675, -2.675,
 		0.1, 0.2, 0.3, 1e-9, -1e-9, 999.9995, 12345.6785, 1e11, 1.5e12, -3e15, 4503599627370497, 8.000000000000002}
@@ -54,8 +53,7 @@ func TestJnumIsPercentThreeF(t *testing.T) {
 	uassert.Equal(t, "0", jnum(math.Inf(-1)))
 }
 
-// A round stores its shots, not its path; Round replays the last stroke's
-// path; Reset frees the round.
+// Round replays the last stroke's path; Reset frees the round.
 func TestRoundsStoreShotsNotPaths(cur realm, t *testing.T) {
 	id := register(cur, "nopaths")
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -71,9 +69,7 @@ func TestRoundsStoreShotsNotPaths(cur realm, t *testing.T) {
 	uassert.Equal(t, "null", Round(id, player), "Reset drops the round")
 }
 
-// A commit is bounded by its work, not a count of shots: past the budget
-// it is refused before the shot that would overrun it, with the number that
-// fit, and the preview refuses it the same way. A light hole takes all 12.
+// The refusal comes before the shot that would overrun, and says how many fit.
 func TestACommitIsBoundedByWork(cur realm, t *testing.T) {
 	id := dryMine(cur, "heavy", heavyHole(), course.Clear) // the forecast counts: in the dry
 	shots := strings.Repeat(heavyShot+";", 12)
@@ -98,9 +94,7 @@ func TestACommitIsBoundedByWork(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(SimulateRound(light, strings.TrimSuffix(strings.Repeat("180,0.2;", maxShots), ";")), `"strokes":12`), "a light hole takes a full commit")
 }
 
-// SimulateFrom from the exact ball a stroke left is the next stroke as
-// PlayRoundAt plays it — on a timed hole too, where the stroke number
-// matters, and in the weather of the period given.
+// From the exact ball a stroke left, on a timed hole and in any weather too.
 func TestSimulateFromIsTheNextStroke(cur realm, t *testing.T) {
 	id := mine(cur, "timedfrom", timedHole())
 	shots := []string{"0,3", "0,3", "10,2"}
@@ -145,8 +139,7 @@ func TestSimulateFromIsTheNextStroke(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "on the board", func() { SimulateFrom(wid, math.NaN(), 8, "0,4", 0, Period()) })
 }
 
-// The power is quantized before it is checked, so a record always
-// replays; the angle is recorded as played, even at -360.
+// Power is quantized before the check; the angle is recorded as played.
 func TestWhatPassesIsWhatReplays(cur realm, t *testing.T) {
 	id := register(cur, "quantized")
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -170,9 +163,7 @@ func TestWhatPassesIsWhatReplays(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(SimulateRound(id, r.shots), `"rest":`+jexact(r.ball())+"}"))
 }
 
-// Retiring a hole takes its players out of the standings a batch at a
-// time; a player not yet reached who improves on the archived hole is
-// counted right; a standing with no hole left stays, at 0, unranked.
+// A standing with no hole left stays, at 0, unranked.
 func TestRetireDrainsInBatches(cur realm, t *testing.T) {
 	old := courseHole(cur, 41)
 	e := mustHole(old)
@@ -186,10 +177,10 @@ func TestRetireDrainsInBatches(cur realm, t *testing.T) {
 	}
 	// archive it by hand, then drain one player
 	e.next, e.out = "garden/41/v9", &draining{}
-	saveEntry(e) // (kept in store: a version read back is decoded afresh)
+	saveEntry(e) // saved: a version read back is decoded afresh
 	setArchiving(append(archiving(), old))
 	drain(1)
-	e = mustHole(old) // (as store has it now)
+	e = mustHole(old) // as store has it now
 	first, rest := e.out.from[assisted], 0
 	for _, p := range ps {
 		if rowFor(assisted, p.String()).holes > 0 {
@@ -223,8 +214,7 @@ func TestRetireDrainsInBatches(cur realm, t *testing.T) {
 	uassert.True(t, ghostHoles(old, "assisted", late), "and its ghost replays on the archived version")
 }
 
-// A player whose only course hole is replaced leaves the top ten: no
-// 0-hole rows.
+// A player whose only course hole is replaced leaves the top ten.
 func TestNoZeroHoleRows(cur realm, t *testing.T) {
 	solo := testutils.TestAddress("solo")
 	giveName(cur, solo, "solo")
@@ -251,8 +241,7 @@ func TestNoZeroHoleRows(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(Render(old), "> Archived: [Solo again](/r/gnogolf/golf/v2:island/48/v2)"), "an archived hole says what took its place")
 }
 
-// Every best and standing can be read out a page at a time; a round under
-// way, by its player.
+// Bests and standings a page at a time; a round under way, by its player.
 func TestPagedReads(cur realm, t *testing.T) {
 	id := courseHole(cur, 51)
 	var ps []string
@@ -285,8 +274,7 @@ func TestPagedReads(cur realm, t *testing.T) {
 	uassert.Equal(t, strings.Count(all, `"player"`), strings.Count(all, `,"height":`), "each standing with its tie-break")
 }
 
-// A round in progress is held to its weather on every stroke: once that
-// weather and the next are over, it must be Reset.
+// Stale once its weather's period and the next are over.
 func TestAStaleRoundMustBeReset(cur realm, t *testing.T) {
 	id := register(cur, "stale")
 	testing.SetRealm(testing.NewUserRealm(player))
@@ -339,12 +327,9 @@ func dryMine(cur realm, prefix string, h *course.Simple, kind string) string {
 	}
 }
 
-// A commit is held to its budget whatever its shots: eleven taps, then a
-// full shot that would bounce on to MaxWork. The heaviest shot so far is a
-// tap, so a cut on that alone would let it through; the full shot is played
-// with the room left as its cap, reaches it, and the commit is refused with
-// the eleven that fit. Played first in the next commit, the full shot has
-// the whole budget, and plays out.
+// Eleven taps, then a full shot that would bounce on to MaxWork: a cut based on
+// the heaviest shot so far, a tap, would let it through. The full shot gets the
+// room left as its cap.
 func TestACommitNeverPassesItsBudget(cur realm, t *testing.T) {
 	id := dryMine(cur, "cage", iceCage(), course.Clear)
 	taps, full := strings.Repeat("0,0.01;", 11), "135,10"
@@ -377,11 +362,8 @@ func TestACommitNeverPassesItsBudget(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "commit the first 11, then the rest", func() { w.next(h) })
 }
 
-// A hole's dearest weather is bounded at publish: a hole where, every puddle
-// try testing all its walls and polygon edges, a commit's first shot would
-// have less than minShotWork is refused; with one wall fewer it is taken,
-// and in the rain or a storm its first shot has that room: a tap plays, and a
-// full shot that would bounce on past it is refused before anything is kept.
+// A hole is refused when a first shot would have less than minShotWork, every
+// puddle try testing all its walls and edges. One wall fewer passes.
 func TestTheDearestWeatherIsBoundedAtPublish(cur realm, t *testing.T) {
 	n := 0 // the most walls golf takes on corner
 	for n < course.MaxWalls && worstGas(corner(n+1, "garden"), len(course.Encode(corner(n+1, "garden")))) <= workBudget {
@@ -440,8 +422,7 @@ const (
 	heavyFit  = 7
 )
 
-// PlayRound goes on with a round in the round's own weather, across the
-// turn of the period, as PlayRoundAt and Launch do.
+// Across the turn of the period, as PlayRoundAt and Launch do.
 func TestPlayRoundKeepsItsRoundsPeriod(cur realm, t *testing.T) {
 	id := courseHole(cur, 81)
 	p := testutils.TestAddress("turn")
@@ -456,8 +437,7 @@ func TestPlayRoundKeepsItsRoundsPeriod(cur realm, t *testing.T) {
 	uassert.Equal(t, was, roundIn(id, p).period, "in the weather it started in")
 }
 
-// The previews refuse the stale periods the writes refuse; SimulateFrom
-// still replays an old round's stroke.
+// SimulateFrom still replays an old round's stroke.
 func TestThePreviewsRefuseAStalePeriod(cur realm, t *testing.T) {
 	id := courseHole(cur, 82)
 	stale := Period() - 2
@@ -480,8 +460,7 @@ func TestVersionsEchoesNothing(t *testing.T) {
 	uassert.Equal(t, `{"version":1,"slot":"","versions":[]}`, Versions("g1\xff\"/x"))
 }
 
-// Only a finish on a course hole drains the course's archived holes, a few
-// at a time; a standing it empties stays, at 0.
+// A few at a time; a standing the drain empties stays, at 0.
 func TestOnlyCourseFinishesDrain(cur realm, t *testing.T) {
 	drain(drainMax) // whatever the other tests left
 	old := courseHole(cur, 83)
@@ -494,12 +473,12 @@ func TestOnlyCourseFinishesDrain(cur realm, t *testing.T) {
 		PlayRoundAt(cross(cur), old, "0,1", Period())
 	}
 	e.next, e.out = "garden/83/v9", &draining{}
-	saveEntry(e) // (kept in store: a version read back is decoded afresh)
+	saveEntry(e) // saved: a version read back is decoded afresh
 	setArchiving(append(archiving(), old))
 	id := register(cur, "nodrain")
 	testing.SetRealm(testing.NewUserRealm(stranger))
 	PlayRoundAt(cross(cur), id, holeShot, Period())
-	e = mustHole(old) // (as store has it now)
+	e = mustHole(old) // as store has it now
 	uassert.True(t, e.out.from[assisted] == "" && !e.out.done[assisted], "a community finish drains nothing")
 	testing.SetRealm(testing.NewUserRealm(stranger))
 	PlayRoundAt(cross(cur), courseHole(cur, 84), "0,1", Period())
@@ -514,10 +493,8 @@ func TestOnlyCourseFinishesDrain(cur realm, t *testing.T) {
 	}
 }
 
-// The hole's record is its board's top: a best made before a name takes it at
-// Claim, and a tie goes to the first to make it, on the record, the board, the
-// hole's page and the course ranking alike, whatever the addresses: a copy of
-// a best's public shots ranks after it.
+// A tie goes to the first to make it, whatever the addresses: a copy of a
+// best's public shots ranks after it.
 func TestTheFirstThereKeepsTheTop(cur realm, t *testing.T) {
 	id := courseHole(cur, 92)
 	early, late := testutils.TestAddress("tfearly"), testutils.TestAddress("tflate")
@@ -550,8 +527,7 @@ func TestTheFirstThereKeepsTheTop(cur realm, t *testing.T) {
 	uassert.True(t, strings.Index(all, early.String()) < strings.Index(all, copier.String()), all)
 }
 
-// The wear is marked where the round's ball rests: one that leaves a hole
-// with no walls is back where it was played from, and so is its mark.
+// A ball that leaves the board rests where it was played from, mark included.
 func TestWearIsWhereTheBallRests(cur realm, t *testing.T) {
 	h := flatHole("Open")
 	h.Course.Walls = nil
@@ -565,8 +541,7 @@ func TestWearIsWhereTheBallRests(cur realm, t *testing.T) {
 	uassert.Equal(t, 1, sumWear(mustHole(id)))
 }
 
-// A text board's key says which way a slope takes the ball (moving air
-// pushes it), each way of a mark once.
+// The key says which way a slope takes the ball, each way of a mark once.
 func TestLegendSlopeWay(t *testing.T) {
 	f := &physics.Field{Zones: []physics.Zone{
 		{Kind: physics.Slope, Vec: physics.V(0, 0.1), Mark: '^', Skin: "hill"},
@@ -580,8 +555,7 @@ func TestLegendSlopeWay(t *testing.T) {
 	urequire.Equal(t, " · `^` hill (slope), falls toward 90° · `^` hill (slope), falls toward 180° · `~` draft (slope), pushes toward 0°", s)
 }
 
-// The key names the marks its board shows only, and a tunnel past the ninth,
-// which the board does not number, by its own mark.
+// A tunnel past the ninth, which the board does not number, has its own mark.
 func TestTheKeyNamesWhatTheBoardShows(cur realm, t *testing.T) {
 	e := mustHole(mine(cur, "keyed", flatHole("Keyed")))
 	h := flatHole("Keyed")
@@ -614,9 +588,7 @@ func rankOf(mode string, p address) int {
 	return n
 }
 
-// The course ranks by holes, then by the score against par: a hole at par
-// counts the same on a par 5 as on a par 2, so two players level there rank
-// by who got there first, whatever their strokes and addresses.
+// Players level against par rank by who got there first, whatever the strokes.
 func TestAHoleAtParCountsTheSameWhateverItsPar(cur realm, t *testing.T) {
 	five, two := parHole(cur, 1, 5), parHole(cur, 2, 2)
 	first, then := testutils.TestAddress("vpfirst"), testutils.TestAddress("vpthen")
@@ -637,8 +609,7 @@ func TestAHoleAtParCountsTheSameWhateverItsPar(cur realm, t *testing.T) {
 	uassert.True(t, strings.Contains(all, `{"player":"`+first.String()+`","name":"vpfirst","holes":1,"strokes":5,"par":5}`), all)
 }
 
-// More holes beat a better score against par; among as many holes, the
-// better score ranks first, and an improvement moves the strokes, not the par.
+// Among as many holes, the better score against par ranks first.
 func TestMoreHolesBeatABetterScore(cur realm, t *testing.T) {
 	x, y := parHole(cur, 3, 3), parHole(cur, 4, 3)
 	many, good := testutils.TestAddress("vpmany"), testutils.TestAddress("vpgood")
@@ -662,8 +633,7 @@ func TestMoreHolesBeatABetterScore(cur realm, t *testing.T) {
 	uassert.True(t, rankOf("assisted", other) < rankOf("assisted", many), "even before +1")
 }
 
-// An archived hole leaves a standing with its own par: its strokes and par
-// come out, and what is left ranks by the holes still current.
+// Its strokes and par come out; what is left ranks by the holes still current.
 func TestTheDrainTakesAnArchivedHolesParOut(cur realm, t *testing.T) {
 	five, two := parHole(cur, 5, 5), parHole(cur, 6, 2)
 	p := testutils.TestAddress("vpdrain")
@@ -683,9 +653,7 @@ func TestTheDrainTakesAnArchivedHolesParOut(cur realm, t *testing.T) {
 	uassert.True(t, ranks[assisted].Has(rankKey(r)) && !ranks[assisted].Has(was), "ranked by what is left, once")
 }
 
-// A tie on holes and score goes to whoever got there first: the standing
-// that last moved earlier, a worse or level replay moving nothing; in the
-// same block, the lower address.
+// The earlier last move wins; in the same block, the lower address.
 func TestATieGoesToWhoGotThereFirst(cur realm, t *testing.T) {
 	x, y := parHole(cur, 7, 3), parHole(cur, 8, 3)
 	a, b := testutils.TestAddress("tiea"), testutils.TestAddress("tieb")

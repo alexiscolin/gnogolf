@@ -10,11 +10,9 @@ import (
 	"gno.land/p/nt/grc721/v0"
 )
 
-// TokenURI returns the image of a minted gnome as an on-chain SVG, a data
-// URI a wallet puts in an <img>. It is drawn on every read, nothing is
-// stored per token: the gnome the game draws from its traits, as its
-// thumbnail shows him (three-quarters, on his tier's plinth), from the
-// traced art of art.gno.
+// TokenURI returns a minted gnome's image: an on-chain SVG as a data URI, for
+// a wallet's <img>. It is drawn on every read from the gnome's traits and
+// art.gno; nothing is stored per token. An error when tid is not minted.
 func TokenURI(tid string) (string, error) {
 	if _, err := token.OwnerOf(grc721.TokenID(tid)); err != nil {
 		return "", errors.New(errNoGnome)
@@ -26,22 +24,20 @@ func TokenURI(tid string) (string, error) {
 	return portrait(g), nil
 }
 
-// portrait is gnome g drawn, as a data URI: TokenURI's for a minted gnome,
-// and its page's for any.
+// portrait returns gnome g drawn, as a data URI.
 func portrait(g gnome) string {
 	return svgDataPrefix + base64.StdEncoding.EncodeToString([]byte(drawGnome(g)))
 }
 
 const svgDataPrefix = "data:image/svg+xml;base64,"
 
-// A token's traits as format 1 writes them: a byte a field in hex, the
-// format first. Read as the client reads them (web/lib/gnomes/codec.ts): a
-// code past its table, a colour past the palette, a field the string is too
-// short for, all plain; bytes past the fields ignored; another format, or
-// not hex, the plain gnome (the Classic). Nothing a row holds can make it
-// panic.
+// A token's traits are format 1: a byte a field, in hex, the format first.
+// They are read as the client reads them (web/lib/gnomes/codec.ts): a code
+// past its table, a colour past the palette or a missing field is plain;
+// extra bytes are ignored; another format, or bad hex, is the plain gnome
+// (the Classic). Nothing a row holds can make the reader panic.
 
-// The fields' bytes.
+// Field offsets, in bytes.
 const (
 	fTier       = 2
 	fKind       = 3
@@ -68,7 +64,7 @@ const (
 	lookBytes   = 29
 )
 
-// The materials svg.gno reads apart (vocab MATERIALS' codes).
+// Materials drawn apart (vocab MATERIALS' codes).
 const (
 	matNeon = 3
 	matLava = 10
@@ -80,8 +76,8 @@ const noColour = 255
 // ink is the game's ink (materials.ts C.ink): his line, his shadow.
 const ink = "144134"
 
-// look is a token's traits read: its codes, 0 (the plain) for what it lacks,
-// noColour for a colour it lacks.
+// look is a token's traits decoded: 0 (plain) for a code it lacks, noColour
+// for a colour.
 type look [lookBytes]byte
 
 // plainLook is the Classic: every code plain, every colour unset.
@@ -94,8 +90,8 @@ func plainLook() look {
 	return l
 }
 
-// readLook reads traits; an earned gnome's are his kind, and his look the
-// game's own (artEarned).
+// readLook decodes traits. An earned gnome's look is the game's own for his
+// kind (artEarned).
 func readLook(traits string) look {
 	l := plainLook()
 	b, ok := hexBytes(traits)
@@ -110,7 +106,7 @@ func readLook(traits string) look {
 	for i := 0; i < len(b) && i < lookBytes; i++ {
 		l[i] = b[i]
 	}
-	// a code past its table is the plain one (the cone, the full beard…)
+	// a code past its table is the plain one
 	for _, t := range []struct{ f, n int }{{fHat, artHatsN}, {fBeard, artBeardsN}, {fPattern, artPatternsN},
 		{fPiece, artPiecesN}, {fMaterial, artMaterialsN}, {fTrail, artTrailsN}, {fProp, artPropsN}} {
 		if int(l[t.f]) >= t.n {
@@ -161,9 +157,9 @@ func isDark(c byte) bool { return int(c) < len(artDark) && artDark[c] == '1' }
 //     "~" and digits after it, its opacity's decimals (~5: 0.5);
 //   - path: SVG path data in the viewBox's units.
 //
-// Art starting with ^, * or % moves with the hat (artShiftTop, Pom,
-// Lamp: "dx,dy,dk" a hat, its move and its depth key's); one of
-// artMaterials starting with ! is the body in its stead.
+// Art starting with ^, * or % moves with the hat (artShiftTop, artShiftPom,
+// artShiftLamp: per hat "dx,dy,dk", the move and the depth key's shift). A
+// material starting with ! replaces the body.
 
 // shape is a shape to paint: its depth key, its art, how it is moved.
 type shape struct {
@@ -179,7 +175,7 @@ func (s byKey) Len() int           { return len(s) }
 func (s byKey) Less(i, j int) bool { return s[i].key < s[j].key }
 func (s byKey) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 
-// shapesOf appends art line's shapes, moved for hat when the line says so.
+// shapesOf appends line's shapes to out, moved with hat when the line says so.
 func shapesOf(out []shape, line string, hat byte) []shape {
 	shift, dk := "", 0
 	if line != "" {
@@ -216,7 +212,7 @@ func shapesOf(out []shape, line string, hat byte) []shape {
 		}
 		key := hi<<4 | lo
 		if key += dk; dk != 0 && key < 2 {
-			key = 2 // (moved, still over the body)
+			key = 2 // moved, still over the body
 		}
 		out = append(out, shape{key: key, art: s[2:], shift: shift})
 	}
