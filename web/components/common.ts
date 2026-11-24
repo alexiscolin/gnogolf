@@ -8,6 +8,7 @@ import { costOf } from "@/lib/adena";
 import { isAddress, isHoleId, RULES } from "@/lib/chain";
 import { minesOrder, sight } from "@/lib/scene/data";
 import type { NameRefusal, ShareSrc } from "@/lib/analytics";
+import { counted } from "@/lib/words";
 
 /** The gnome's head as the logo draws it (a 200 box; app/icon.svg keeps its
  *  own copy): its face, beard, hat and brim. */
@@ -18,9 +19,7 @@ export const GNOME = {
   brim: { x: 26, y: 90, width: 148, height: 20, rx: 10 },
 } as const;
 
-/** The error's own sentence, or the value said as it is. */
-export const messageOf = (e: unknown) => String((e && typeof e === "object" && "message" in e && e.message) || e);
-
+export { messageOf, plural } from "@/lib/words";
 export { shortAddr } from "@/lib/chain";
 
 /** A new query for a link of the game's: a page pointed at another chain
@@ -135,9 +134,6 @@ export function useFlash<T>(ms: number, none: T) {
   return [v, setV] as const;
 }
 
-/** "stroke" or "strokes", as n says (the word alone, where the number is set apart). */
-export const plural = (word: string, n: number) => word + (n === 1 ? "" : "s");
-const counted = (word: string) => (n: number) => `${n} ${plural(word, n)}`;
 /** "1 stroke", "3 strokes"; "1 hole", "6 holes"; "1 ghost", "4 ghosts". */
 export const strokesWord = counted("stroke"), holesWord = counted("hole"), ghostsWord = counted("ghost");
 /** A score against par in words: "level par", else vsPar's +3, −2. */

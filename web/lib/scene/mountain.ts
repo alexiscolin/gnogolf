@@ -2627,4 +2627,4 @@ function piece(kind: "post" | "wall" | "zone", item: Post | Bar | Zone, t: Terra
 // (a piece's own fade gathered with the canopy's: the serac's tower)
 const pieceFade = true;
 
-export { base, edging, berms, decor, rough, kerb, green, edgeInk, extras, piece, skins, pieceFade, liftPlan, liftChairs };
+export { base, edging, berms, decor, rough, kerb, green, edgeInk, extras, piece, skins, pieceFade };

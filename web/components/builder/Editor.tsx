@@ -446,56 +446,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   // the first run's hints: gone at the first drag (a piece taken from the palette, one carried on the board, the paint taken up)
   useEffect(() => void (hints && (tool || binShown) && onHinted()), [hints, tool, binShown, onHinted]);
   return (
-    <main className={`bench tint--${draft.world}`}>
-      <Header title={draft.title} address={{ slug: draft.slug, fixed: !!draft.proofs.length }} world={draft.world} worlds={WORLDS} step="edit"
-        steps={{ edit: { locked: "", done: false }, play: { locked: playOff === CHECKING ? "" : playOff, done: proved }, publish: { locked: shut, done: false } }}
-        action={proved ? { text: "Publish", onClick: publish } : { text: "Play", key: "T", off: playOff, onClick: play }}
-        meter={meterFace(clean, est, shape)} lineOn={lineOn} onLine={guess || lineOn ? () => setLineOn((on) => !on) : undefined} bump={parBump}
-        history={{ undo: () => (session.undo(), refresh()), redo: () => (session.redo(), refresh()), canUndo: session.canUndo(), canRedo: session.canRedo() }}
-        onTitle={(t) => (session.edit((k) => frame(retitle(k, t, others))), refresh(), addressKept(t))} onWorld={world} onStep={(s) => (s === "play" ? play() : s === "publish" && proved && publish())} onBack={onBack} onHelp={() => setAgain(true)}
-        onRoll={() => (sound("blip"), session.edit((k) => frame(retitle(k, suggestName(k.world, seed, dice), others))), setDice((n) => n + 1), refresh())} />
-      {palette && quick && full ? (
-        <>
-          <Palette world={draft.world} palette={palette} armed={armed} off={off} bin={binShown} onArm={arm} chosen={looks} paint={{ mode: paint, off: paintOff, onMode: toPaint }} />
-          <div className="centre">
-            {/* the proofs an edit dropped, an undo away (the edit undone, they are the hole's again) */}
-            {toast && !sameShape(kept, toast.back) && (
-              <p className="btoast" role="status">{toast.text}
-                <Button size="s" type="button" onClick={() => (undoTo(toast.back), setToast(null))}>Undo</Button>
-              </p>
-            )}
-            {opened && errors.length > 0 && <p className="bbroken" role="status">{opened}</p>}
-            <Board draft={draft} quick={quick} full={full} selected={selected} armed={armed} step={fine ? 0.25 : 0.5} bad={bad} pan={pan} frameAsk={frameAsk}
-              onSelect={setSelected} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onBin={(id) => tryEdit(removePiece(draft, id), "")} onCarry={setBinShown} onDisarm={disarm} said={said} show={show} look={look} scene={{ state: checked?.state ?? null, of: checked?.of ?? null, paused: !blinking, keep: blinking && piece?.clock.k === "substep", eye }}
-              keys={keysLine} onLanded={() => void (landed.current = "next")} roll={roll}
-              paint={{ mode: paint, green, onPaint: paintTo }}
-              ball={{
-                played: shotsShown, trail: trailed, last: shots.at(-1) ?? null, aimed: aim ? shotsPlayed.at(-1) ?? null : null,
-                line: lineOn && guess && est?.of === shape && draft === kept ? { path: guess.path, heat: guess.heat } : null,
-                onAim: setAim, onShot: (q) => (sound("putt"), setAim(null), setShots((s) => [...s, q].slice(-SHOTS_KEPT))),
-              }} />
-            <Checks broken={brokenLine({ errors: errors.length, proved, rounds: rounds && key?.of === shape && rounds.key === key.key ? rounds : null })} gauges={[...pieceGauges(draft), ...(v?.hole && v.cost && v.hex ? gauges(v.hole, v.cost, v.hex.length / 2) : [])]}
-              issues={v?.issues ?? []} busy={!fresh} onShow={(id) => (setSelected(id), setShow((s) => ({ id, n: (s?.n ?? 0) + 1 })))} onFix={fix} />
-          </div>
-          {/* the right side: the player's view on top, still; the piece's settings under it, scrolling in themselves */}
-          <div className="bside">
-            {gl && <div className="col col--still"><PlayerView eye={eye} large={large} onLarge={setLarge} /></div>}
-            <aside className="col" aria-label="The selected piece">
-              <h2 className="col__head">Piece settings</h2>
-              {/* painting with no piece selected: how the paint goes, in its place */}
-              {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
-                onChoose={(tile, id) => setChosen({ world: draft.world, looks: { ...looks, [tile]: id } })} />}
-            </aside>
-          </div>
-        </>
-      ) : (
-        unloaded ? (
-          <div className="bench__wait" role="alert">
-            <p>The {draft.world}&apos;s pieces could not load: check the connection.</p>
-            <Button type="button" onClick={() => setTries((n) => n + 1)}>Try again</Button>
-          </div>
-        ) : <p className="bench__wait" aria-busy="true">Loading the {draft.world}&apos;s pieces…</p>
-      )}
+    <>
       {playing && (
         <div className={`tbench tbench--play tint--${draft.world}`}>
           {/* (a new game once the address is given: its rounds the author's from then on) */}
@@ -506,7 +457,59 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
             onRound={(r) => (setTried(r), setTrail(roundOf(host, kept, r)))} onLeave={() => setPlaying(null)} onPublish={() => (setPlaying(null), publish())} />
         </div>
       )}
-      {(hints || again) && <Hints world={draft.world} glossary={again && palette ? { world: draft.world, palette } : null} onDone={() => (setAgain(false), onHinted())} />}
-    </main>
+      {/* under Play, out of Tab's and a reader's reach (Play beside it, not in it: inert takes all it holds) */}
+      <main className={`bench tint--${draft.world}`} inert={!!playing}>
+        <Header title={draft.title} address={{ slug: draft.slug, fixed: !!draft.proofs.length }} world={draft.world} worlds={WORLDS} step="edit"
+          steps={{ edit: { locked: "", done: false }, play: { locked: playOff === CHECKING ? "" : playOff, done: proved }, publish: { locked: shut, done: false } }}
+          action={proved ? { text: "Publish", onClick: publish } : { text: "Play", key: "T", off: playOff, onClick: play }}
+          meter={meterFace(clean, est, shape)} lineOn={lineOn} onLine={guess || lineOn ? () => setLineOn((on) => !on) : undefined} bump={parBump}
+          history={{ undo: () => (session.undo(), refresh()), redo: () => (session.redo(), refresh()), canUndo: session.canUndo(), canRedo: session.canRedo() }}
+          onTitle={(t) => (session.edit((k) => frame(retitle(k, t, others))), refresh(), addressKept(t))} onWorld={world} onStep={(s) => (s === "play" ? play() : s === "publish" && proved && publish())} onBack={onBack} onHelp={() => setAgain(true)}
+          onRoll={() => (sound("blip"), session.edit((k) => frame(retitle(k, suggestName(k.world, seed, dice), others))), setDice((n) => n + 1), refresh())} />
+        {palette && quick && full ? (
+          <>
+            <Palette world={draft.world} palette={palette} armed={armed} off={off} bin={binShown} onArm={arm} chosen={looks} paint={{ mode: paint, off: paintOff, onMode: toPaint }} />
+            <div className="centre">
+              {/* the proofs an edit dropped, an undo away (the edit undone, they are the hole's again) */}
+              {toast && !sameShape(kept, toast.back) && (
+                <p className="btoast" role="status">{toast.text}
+                  <Button size="s" type="button" onClick={() => (undoTo(toast.back), setToast(null))}>Undo</Button>
+                </p>
+              )}
+              {opened && errors.length > 0 && <p className="bbroken" role="status">{opened}</p>}
+              <Board draft={draft} quick={quick} full={full} selected={selected} armed={armed} step={fine ? 0.25 : 0.5} bad={bad} pan={pan} frameAsk={frameAsk}
+                onSelect={setSelected} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onBin={(id) => tryEdit(removePiece(draft, id), "")} onCarry={setBinShown} onDisarm={disarm} said={said} show={show} look={look} scene={{ state: checked?.state ?? null, of: checked?.of ?? null, paused: !blinking, keep: blinking && piece?.clock.k === "substep", eye }}
+                keys={keysLine} onLanded={() => void (landed.current = "next")} roll={roll}
+                paint={{ mode: paint, green, onPaint: paintTo }}
+                ball={{
+                  played: shotsShown, trail: trailed, last: shots.at(-1) ?? null, aimed: aim ? shotsPlayed.at(-1) ?? null : null,
+                  line: lineOn && guess && est?.of === shape && draft === kept ? { path: guess.path, heat: guess.heat } : null,
+                  onAim: setAim, onShot: (q) => (sound("putt"), setAim(null), setShots((s) => [...s, q].slice(-SHOTS_KEPT))),
+                }} />
+              <Checks broken={brokenLine({ errors: errors.length, proved, rounds: rounds && key?.of === shape && rounds.key === key.key ? rounds : null })} gauges={[...pieceGauges(draft), ...(v?.hole && v.cost && v.hex ? gauges(v.hole, v.cost, v.hex.length / 2) : [])]}
+                issues={v?.issues ?? []} busy={!fresh} onShow={(id) => (setSelected(id), setShow((s) => ({ id, n: (s?.n ?? 0) + 1 })))} onFix={fix} />
+            </div>
+            {/* the right side: the player's view on top, still; the piece's settings under it, scrolling in themselves */}
+            <div className="bside">
+              {gl && <div className="col col--still"><PlayerView eye={eye} large={large} onLarge={setLarge} /></div>}
+              <aside className="col" aria-label="The selected piece">
+                <h2 className="col__head">Piece settings</h2>
+                {/* painting with no piece selected: how the paint goes, in its place */}
+                {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
+                  onChoose={(tile, id) => setChosen({ world: draft.world, looks: { ...looks, [tile]: id } })} />}
+              </aside>
+            </div>
+          </>
+        ) : (
+          unloaded ? (
+            <div className="bench__wait" role="alert">
+              <p>The {draft.world}&apos;s pieces could not load: check the connection.</p>
+              <Button type="button" onClick={() => setTries((n) => n + 1)}>Try again</Button>
+            </div>
+          ) : <p className="bench__wait" aria-busy="true">Loading the {draft.world}&apos;s pieces…</p>
+        )}
+        {(hints || again) && <Hints world={draft.world} glossary={again && palette ? { world: draft.world, palette } : null} onDone={() => (setAgain(false), onHinted())} />}
+      </main>
+    </>
   );
 }

@@ -291,7 +291,7 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   // the deflector: a buffer beam with its rails, across the platter where the bar is
   const defl = new THREE.Group();
   // (as long as its bar: a collider, drawn where the chain has it)
-  const bw = now || bars[0], BL = bw.L, shift = 0;
+  const bw = now || bars[0], BL = bw.L;
   const beamM = beam(BL, 0.55, bw.T * 0.9, 0xb8433a);
   beamM.position.y = 0.32;
   const stripe = tinted(new THREE.BoxGeometry(BL * 0.98, 0.08, bw.T * 0.92).translate(0, 0.5, 0), 0xf1d24a);
@@ -301,12 +301,12 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
   turn.add(defl);
   turn.position.set(cx, y0 + 0.02, cz);
   g.add(turn);
-  const set = (a: number, o: readonly [number, number]) => {
+  const set = (a: number, x: number, z: number) => {
     turn.rotation.y = -a;
-    defl.position.set(o[0] + shift, 0, o[1]);
+    defl.position.set(x, 0, z);
   };
-  const to = now || bars[0], from = was || to;
-  set(from.ang, off(from));
+  const to = now || bars[0], from = was || to, [x0, z0] = off(from), [x1, z1] = off(to);
+  set(from.ang, x0, z0);
   if (from.key !== to.key) {
     // (live only while it turns: standing still, it merges with the stroke's pieces)
     bakeLocal(plat), bakeLocal(defl);
@@ -317,7 +317,7 @@ function turntable(bars: readonly PBar[], now: PBar | undefined, was: PBar | und
     let rang = false;
     animate((tt) => {
       const k = smoothstep((tt - t0 - 0.2) / 1.4);
-      set(from.ang + d * k, [off(from)[0] + (off(to)[0] - off(from)[0]) * k, off(from)[1] + (off(to)[1] - off(from)[1]) * k]);
+      set(from.ang + d * k, x0 + (x1 - x0) * k, z0 + (z1 - z0) * k);
       if (!rang && k > 0) (rang = true), sound("rumble", 0.2);
     });
   }

@@ -8,6 +8,7 @@
 /* the tiers: one colour and one shape each (the shape reads in grey too); never --chain's blue */
 :root {
   --tier-common: #e8dfcc; --tier-rare: #7cc8f0; --tier-epic: #c6a4f5; --tier-legendary: #ffd75e;
+  --portrait-bg: #f6ead2; /* the ground a gnome's portrait sits on: his tile, a face, an album's slot */
 }
 /* (every gap, padding and margin of the shop's pieces on the game's spacing scale: globals.css --sp-*) */
 .shop, .gsheet { font-variant-numeric: tabular-nums; }
@@ -21,7 +22,7 @@
 .tier--earned { --tier-bg: var(--green-light); }
 
 /* a gnome's tile: his thumbnail on his tier's stage, framed in his tier's rim */
-.gtile { position: relative; display: block; aspect-ratio: 1; border-radius: 18px; border: var(--edge-bold); background: #f6ead2; overflow: hidden; }
+.gtile { position: relative; display: block; aspect-ratio: 1; border-radius: 18px; border: var(--edge-bold); background: var(--portrait-bg); overflow: hidden; }
 .gtile img { display: block; width: 100%; height: 100%; object-fit: contain; opacity: 0; transition: opacity .2s; }
 .gtile img.on { opacity: 1; } /* (shown once decoded, faded in: parts.tsx Tile) */
 @media (prefers-reduced-motion: reduce) { .gtile img { transition: none; } }
@@ -84,7 +85,7 @@ body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-r
 .wcard { justify-self: center; width: min(880px, 100%); display: grid; grid-template-columns: 64px minmax(0, auto) minmax(200px, 1fr); grid-template-rows: 22px 40px 22px; grid-template-areas: "legend title chip" "legend count fw" "legend who fw"; align-items: center; gap: 0 var(--sp-5); padding: var(--sp-4) var(--sp-5); color: var(--ink); font-style: normal; text-align: left; }
 .wcard__legend { grid-area: legend; align-self: center; width: 64px; height: 64px; border: var(--edge-bold); border-radius: 50%; overflow: hidden; background: var(--gold-grad); box-shadow: 0 0 0 2px var(--gold); }
 .wcard__legend img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.25) translateY(4%); }
-.wcard__title { grid-area: title; min-width: 0; font-size: 13px; font-weight: 800; letter-spacing: .06em; line-height: 22px; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wcard__title { grid-area: title; min-width: 0; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* (a small caps label: .eyebrow's) */
 .wcard__count { grid-area: count; min-width: 0; font-size: 16px; font-weight: 600; line-height: 40px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wcard__big { font-size: 34px; font-weight: 800; line-height: 1; vertical-align: -3px; }
 .wcard__who { grid-area: who; min-width: 0; font-size: 14px; font-weight: 600; line-height: 22px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -185,9 +186,7 @@ body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-r
 @media (max-width: 600px) { .gshelf { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-4); } }
 /* a card: a column as tall as its row (the row's cards one height), its name, its tier over its fact, its Buy at its foot */
 .gshelf > li { display: flex; }
-.gcard { display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; min-width: 0; padding: var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); box-shadow: var(--shadow-btn); color: inherit; font: inherit; text-align: left; cursor: pointer; transition: transform var(--t-pop) var(--spring); }
-.gcard:hover { transform: translateY(-3px); }
-@media (prefers-reduced-motion: reduce) { .gcard:hover { transform: none; } }
+.gcard { display: flex; flex-direction: column; gap: var(--sp-2); width: 100%; min-width: 0; padding: var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); box-shadow: var(--shadow-btn); color: inherit; font: inherit; text-align: left; } /* (its lift, press and ring: a card that is a button, title.css) */
 /* the name on two lines at most, his number right after it (its room kept: two lines whatever the name, the blank
    card's too) */
 .gcard__name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; min-height: 2.3em; margin: 0 4px; font-size: 15px; font-weight: 700; line-height: 1.15; overflow: hidden; overflow-wrap: anywhere; }
@@ -201,6 +200,9 @@ body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-r
 .gcard--mine { background: var(--ink); color: var(--paper); }
 .gcard--mine .gcard__name small { color: rgba(var(--paper-rgb), .8); }
 .gcard--never { background: transparent; border-style: dashed; border-color: rgba(var(--ink-rgb), .35); box-shadow: none; }
+/* (never made: it lifts and sinks without a drop, its ring alone in focus) */
+.gcard--never:is(:hover, :active) { box-shadow: none; }
+.gcard--never:focus-visible { box-shadow: var(--ring-shadow); }
 .gcard--skel { pointer-events: none; }
 .gcard--skel .gtile { background: rgba(var(--ink-rgb), .06); }
 .gshelf__more { justify-self: center; }
@@ -317,7 +319,7 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 .owned__line { margin: 0; font-size: 13px; font-weight: 600; color: var(--ink); text-align: center; }
 .owned__row { display: flex; gap: var(--sp-2); max-width: 100%; padding: var(--sp-1) var(--sp-2); overflow-x: auto; overscroll-behavior: contain; scrollbar-width: none; border: 2px solid var(--gold); border-radius: var(--pill); background: rgba(var(--paper-rgb), .7); }
 .owned__row::-webkit-scrollbar { display: none; }
-.owned__face { flex: none; width: 44px; height: 44px; padding: 0; border: var(--edge); border-radius: 50%; overflow: hidden; background: #f6ead2; cursor: pointer; }
+.owned__face { flex: none; width: 44px; height: 44px; padding: 0; border: var(--edge); border-radius: 50%; overflow: hidden; background: var(--portrait-bg); cursor: pointer; }
 .owned__face img { width: 100%; height: 100%; object-fit: cover; }
 .owned__face[aria-pressed="true"] { padding: 3px; background: var(--gold); } /* (the game's "on": gold inside its edge; a ring outside is focus alone) */
 .owned__face[aria-pressed="true"] img { border-radius: 50%; }
@@ -333,7 +335,7 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 .gcollect__all { align-self: center; font-size: 13px; }
 /* a stack of thumbnails: one size, one frame (the ink's edge round a ring of the tier's colour), on one ground */
 .gcollect__faces { flex: none; display: flex; }
-.gcollect__faces .gtile { --rim: var(--tier-common); width: 32px; border: 2px solid var(--ink); border-radius: 10px; background: #f6ead2; }
+.gcollect__faces .gtile { --rim: var(--tier-common); width: 32px; border: 2px solid var(--ink); border-radius: 10px; background: var(--portrait-bg); }
 .gcollect__faces .gtile::before { box-shadow: inset 0 0 0 2px var(--rim); }
 .gcollect__faces .gtile--rare { --rim: var(--tier-rare); } .gcollect__faces .gtile--epic { --rim: var(--tier-epic); } .gcollect__faces .gtile--legendary { --rim: var(--tier-legendary); }
 .gcollect__faces .gtile + .gtile { margin-left: -8px; }
@@ -344,9 +346,7 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
   .gcollect__faces .gtile:nth-child(n + 4) { display: none; }
   .gcollect__text { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
-.gcollect--door { color: inherit; font: inherit; cursor: pointer; transition: transform var(--t-pop) var(--spring); }
-.gcollect--door:hover { transform: translateY(-2px); }
-@media (prefers-reduced-motion: reduce) { .gcollect--door:hover { transform: none; } }
+.gcollect--door { color: inherit; font: inherit; } /* (its lift, press and ring: a card that is a button, title.css) */
 .gcollect__go { flex: none; pointer-events: none; }
 /* the finish card's one line, at its foot */
 .gpromo__line { margin: 12px 0 0; text-align: center; font-size: 14px; }

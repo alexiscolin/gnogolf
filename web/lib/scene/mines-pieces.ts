@@ -16,7 +16,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { flat, relief } from "./materials";
 import { animate, state } from "./state";
-import { seeded, GRASS, type Rand } from "./common";
+import { seeded, onGround, GRASS, type Rand } from "./common";
 import { ud, type Hole } from "./data";
 import { MINES, lit } from "./mines-kit";
 import { once, GOLD, GOLD_DARK, goldMat, INK_THIN, inked, facets, knobbly, lumps, vnoise, paint, strata, boulder, gem, form, splay, glow, halo, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, beam, log, rivets, plate, TIMBER, solid, tinted } from "./mines-toon";
@@ -348,9 +348,8 @@ function wall(bar: Bar, t: Terrain, s: Hole) {
   // (not one lying wholly in an untimed hazard: no ball reaches it, it would stand over the drop; but one along a
   // deck laid over it, a rope bridge's side, stands: the ball rolls by it on the deck)
   const cover = (x: number, z: number) => s.zones.some((q) => (q.kind === "surface" || q.kind === "tunnel" || q.skin === "rope bridge") && inZone(q, x, z));
-  const inHazard = (x: number, z: number) => s.zones.some((q) => q.kind === "hazard" && !q.every && q.skin !== "void" && inZone(q, x, z));
   const beside = (w: { a: Vec2; b: Vec2 }, u: number) => { const L = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]) || 1, nx = -(w.b[1] - w.a[1]) / L, nz = (w.b[0] - w.a[0]) / L, x = w.a[0] + (w.b[0] - w.a[0]) * u, z = w.a[1] + (w.b[1] - w.a[1]) * u; return cover(x + nx * 0.25, z + nz * 0.25) || cover(x - nx * 0.25, z - nz * 0.25); };
-  const ws = (bar.walls.length === 4 ? longSides(bar) : bar.walls).filter((w) => ![0.1, 0.5, 0.9].every((u) => inHazard(w.a[0] + (w.b[0] - w.a[0]) * u, w.a[1] + (w.b[1] - w.a[1]) * u) && !beside(w, u)));
+  const ws = (bar.walls.length === 4 ? longSides(bar) : bar.walls).filter((w) => ![0.1, 0.5, 0.9].every((u) => zones.inHazard(s, w.a[0] + (w.b[0] - w.a[0]) * u, w.a[1] + (w.b[1] - w.a[1]) * u) && !beside(w, u)));
   // (all of its line: a wall is a collider, drawn where the chain has it, over a drop too; only what it carries
   // behind it keeps off a drop: a rock face's body, its chips, a crystal wall's clusters)
   for (const w of ws) g.add(make(frameOf(w.a, w.b, t)));
@@ -622,7 +621,7 @@ function frozenColumn(r: number, rand: Rand) {
 /** A post as drawn (never faded out of the camera's way: a collider the player aims past; the camera keeps clear of it). */
 function post(p: Post, t: Terrain, s: Hole) {
   const [x, z] = p.c, r = p.r, rand = seeded("mp" + s.hole + x + "," + z);
-  const at = <O extends THREE.Object3D>(o: O) => ((o.position.set(x, t.height(x, z), z)), o);
+  const at = <O extends THREE.Object3D>(o: O) => onGround(o, x, z, t);
   switch (p.skin) {
     case "stalagmite": return at(stalagmite(r, rand));
     case "prop": return at(prop(r, rand)); // (a collider: whole, at its physics size, over a drop too)

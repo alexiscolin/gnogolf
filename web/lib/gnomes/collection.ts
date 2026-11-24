@@ -98,7 +98,7 @@ export function album(gnomes: readonly Gnome[], earned: Served["earned"], owned:
   const ids = new Set<number>(), kinds = new Set<string>(), byId = new Map(gnomes.map((g) => [g.id, g]));
   let unknown = 0;
   for (const o of owned) {
-    const id = Number(o.id), kind = id > 1_000_000 ? earned.find((e) => e.traits === o.traits) : undefined;
+    const id = Number(o.id), kind = o.tier === "earned" ? earned.find((e) => e.traits === o.traits) : undefined;
     if (kind) kinds.add(kind.unlock);
     else if (byId.has(id)) ids.add(id);
     else unknown++;

@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { ADENA_URL, FAUCET, NETWORK, OTHER_URL } from "@/lib/network";
-import { Sheet } from "@/components/ui";
+import { BackIcon, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import { REALM_PATH, RULES as LIMITS, pkgsPath, storePath } from "@/lib/chain";
 import { sound } from "@/lib/feel";
@@ -65,7 +65,7 @@ export const InfoIcon = () => (
 /** A screen's back button: an inked arrow in the top-left corner. */
 export const BackButton = ({ label, onClick }: { label: string; onClick?: () => void }) => (
   <CornerButton side="back" label={label} onClick={onClick}>
-    <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    <BackIcon />
   </CornerButton>
 );
 /** A screen's about button: an inked (i) in the top-right corner. */
@@ -113,12 +113,13 @@ export function FrontScreen({ className, tint = "garden", inner = "", back, onBa
   );
 }
 
-/** A front screen's head: the pill, the outlined title (an h2: the page's h1 is its name, off screen), what stands under them (dare). */
+/** A front screen's head: the pill, the outlined title (an h2: the page's h1 is its name, off screen; focused as its
+ *  screen arrives, Golf.tsx), what stands under them (dare). */
 export function FrontHead({ eyebrow, title, dare }: { eyebrow?: string; title: ReactNode; dare?: ReactNode }) {
   return (
     <div className="front__head">
       {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-      <h2 className="worlds__title">{title}</h2>
+      <h2 className="worlds__title" tabIndex={-1}>{title}</h2>
       {dare}
     </div>
   );

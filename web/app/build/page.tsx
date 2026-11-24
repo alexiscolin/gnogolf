@@ -1,7 +1,6 @@
-// /build: the hole Builder (docs/specs/hole-builder.md),
-// behind NEXT_PUBLIC_BUILDER. A static shell: the page decides in the
-// browser between the editor (a computer) and the phone's one screen, and
-// imports only the one it shows (gate.tsx).
+// /build: the hole Builder, behind NEXT_PUBLIC_BUILDER. A static shell: the
+// page decides in the browser between the editor (a computer) and the
+// phone's one screen, and imports only the one it shows (gate.tsx).
 import type { Metadata } from "next";
 import Gate from "@/app/build/gate";
 

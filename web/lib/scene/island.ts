@@ -993,7 +993,9 @@ function kite(rand: Rand, color: number, stake: THREE.Vector3) {
   fly.add(flier);
   g.add(fly);
   bakeLocal(g); // the stake and its string: a mesh per material, the flier left live
-  const pos = flier.geometry.attributes.position as THREE.BufferAttribute, ph = rand() * 6, spine: [number, number][] = [];
+  const pos = flier.geometry.attributes.position as THREE.BufferAttribute, ph = rand() * 6;
+  // the tail's spine, a point a row: its height set here, its sway each frame
+  const spine = Array.from({ length: N + 1 }, (_, j): [number, number] => [0, bottom.y - (j / N) * LEN]);
   animate((t) => {
     const w = windNow(), k = 1 + Math.min(w.length() * 15, 1);
     // the whole kite flutters about its knot, leaning a little downwind
@@ -1001,7 +1003,7 @@ function kite(rand: Rand, color: number, stake: THREE.Vector3) {
     // the tail waves, more at its end, and streams downwind
     for (let j = 0; j <= N; j++) {
       const u = j / N;
-      spine[j] = [Math.sin(t * 2.6 * k - u * 5 + ph) * 0.22 * u + Math.max(-0.08, Math.min(0.08, w.x)) * 9 * u * u, bottom.y - u * LEN];
+      spine[j][0] = Math.sin(t * 2.6 * k - u * 5 + ph) * 0.22 * u + Math.max(-0.08, Math.min(0.08, w.x)) * 9 * u * u;
     }
     // PlaneGeometry: two vertices a row, from the top (the kite) down
     for (let i = 0; i <= 2 * N + 1; i++) pos.setXYZ(v0 + i, spine[i >> 1][0] + (i % 2 ? W : -W), spine[i >> 1][1], 0);

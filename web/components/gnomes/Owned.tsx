@@ -40,7 +40,7 @@ export default function Owned({ chain, me, held, worn, playing, onPick, region, 
   const [shown, setShown] = useState<{ id: string; name: string; home: string } | null>(null); // the one just shown to everyone: share him
   const [error, setError] = useState("");
   // (an earned gnome is one of the picker's own: the row is the bought ones)
-  const bought = held.filter((g) => Number(g.id) < 1_000_001);
+  const bought = held.filter((g) => g.tier !== "earned");
   if (!bought.length) return null;
   const said = seen({ worn, playing, name });
   const id = playing.startsWith("t") ? Number(playing.slice(1)) : NaN;

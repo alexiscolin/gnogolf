@@ -14,7 +14,7 @@
 // and the census, the proofs replayed in their strokes, the par (publish.ts
 // holeHolds, publishSteps).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { shortAddr, useCopied } from "@/components/common";
+import { messageOf, shortAddr, useCopied } from "@/components/common";
 import { Button, InfoTip } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 import Share from "@/components/Share";
@@ -24,6 +24,7 @@ import { explain } from "@/lib/builder/explain";
 import { endpoints, playLink } from "@/lib/builder/holes";
 import { bill, finalHex, gasFor, gnokeyPublish, holeHolds, parLine, publishSteps, type Readings } from "@/lib/builder/publish";
 import { census } from "@/lib/builder/drawn";
+import { reducedMotion } from "@/lib/device";
 import { loadPalette } from "@/lib/builder/palette";
 import { builderScore, proofKey, provedAt, shaOf } from "@/lib/builder/proof";
 import { holeId, holeRow, slugOf, versionOf } from "@/lib/builder/testmode";
@@ -117,7 +118,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
         if (stale) return;
         setReadings((r) => ({ ...r, hole }));
         setSha(s);
-      }, (e: unknown) => !stale && setReadings((r) => ({ ...r, hole: e instanceof Error ? e.message : String(e) })));
+      }, (e: unknown) => !stale && setReadings((r) => ({ ...r, hole: messageOf(e) })));
     }, 300);
     return () => ((stale = true), clearTimeout(t));
   }, [hex, key, proved, draft, host, name]);
@@ -145,7 +146,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
       await land();
     } catch (e) {
       setSent("");
-      setWhy(e instanceof Error ? e.message : String(e));
+      setWhy(messageOf(e));
     }
   };
   const command = gnokeyPublish({ realm: chain.realm, slug: draft.slug, hex, note, gas, price: prices.gas, deposit, chainId, rpc, author });
@@ -185,7 +186,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
   // no Adena: the footer's way to gnokey, its section (above it, in the form's scroll) opened and brought into view
   const toGnokey = () => {
     const d = gnokey.current;
-    if (d) (d.open = true, d.scrollIntoView({ block: "nearest", behavior: "smooth" }), d.querySelector("summary")?.focus({ preventScroll: true }));
+    if (d) (d.open = true, d.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" }), d.querySelector("summary")?.focus({ preventScroll: true }));
   };
   return (
     <main className="pub">
@@ -241,7 +242,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
                 <p className="pub__small">Run it where gnokey holds the key of {author}: the hole was proved under that address.</p>
                 <pre>{command}</pre>
                 <div className="pub__row">
-                  <Button onClick={() => void copy(command)}>{copied ? "Copied" : "Copy the command"}</Button>
+                  <Button onClick={() => void copy(command)}><span aria-live="polite">{copied ? "Copied" : "Copy the command"}</span></Button>
                   <Button onClick={() => void land()} disabled={!!sent}>I ran it</Button>
                 </div>
               </>

@@ -2,7 +2,7 @@
    The breakpoints (a custom property cannot sit in @media), here and in title.css:
      width   2120 (min), 1784 (min), 1600, 1440, 1280, 1100, 1050, 900, 760, 720 (min), 700,
              600 (the phone), 520, 480, 400, 370, 360, 340
-     height  880 (min), 820 (a 13" laptop), 760, 720, 640
+     height  880 (min), 820 (a 13" laptop), 760, 720, 640, 480 (a phone on its side)
      shape   aspect-ratio 1/1 (wide vs upright), pointer: coarse, reduced motion */
 /* Fredoka (SIL OFL 1.1, public/fonts/OFL.txt), its Latin set, every weight
    in one variable file, served from this host: no visitor goes to a font CDN */
@@ -257,8 +257,9 @@ html, body {
 }
 
 /* a small caps label (a HUD card's, a hole card's "Their best", a figure's
-   in the menu and a cup's standings, the share's, a sheet's section's) */
-.eyebrow, .ghost__label, .me__stats span, .cup__sum dt, .share__label, .friends__manage h4 {
+   in the menu and a cup's standings, the share's, a sheet's section's, a
+   board's records', the sale card's title) */
+.eyebrow, .ghost__label, .me__stats span, .cup__sum dt, .share__label, .friends__manage h4, .featured__h, .wcard__title {
   display: block;
   font-size: 11px;
   font-weight: 600;
@@ -510,6 +511,13 @@ html, body {
 .btn--ghost {
   background: var(--paper);
   color: var(--ink);
+}
+
+/* the call to action: gold, inked, on its shadow (Button's "gold": the title's
+   start and the picker's pick, .btn--cta; a duel's Race, title.css .rival__go:
+   the picks', the hole cards', a friend's, a board row's) */
+.btn--gold, .rival__go {
+  background: var(--gold-grad); color: var(--ink); border: var(--edge-bold);
 }
 
 /* a toolbar's: the Builder's header, its test card, the shop's bar */
@@ -784,7 +792,7 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
   color: var(--paper);
 }
 
-.note {
+.note, .board__said, .bholes__why, .tmode__why, .pub__bad {
   margin: 4px 0 0;
   padding: 8px 12px;
   border-radius: 12px;
@@ -800,7 +808,8 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
   font-weight: 600;
 }
 
-/* a done thing and a failed one: the paper, an inked border in their colour */
+/* a done thing and a failed one: the paper, an inked border in their colour
+   (the Builder's refusals too: on its board, its start, Play and Publish) */
 .note--good {
   background: var(--paper);
   border: 2px solid var(--green);
@@ -813,7 +822,7 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
   font-weight: 800;
 }
 
-.note--bad {
+.note--bad, .board__said, .bholes__why, .tmode__why, .pub__bad {
   background: var(--paper);
   border: 2px solid var(--hat-ink);
   color: var(--hat-ink);
@@ -1917,8 +1926,8 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .friends__manage { margin-top: 28px; padding-top: 18px; border-top: var(--rule); }
 .friends__manage h4 { margin: 0 0 10px; } /* (a small caps label: .eyebrow's) */
 .friends__add { display: flex; gap: 10px; margin: 0 0 12px; }
-/* a text field: the friend to add, the gnokey key's name */
-.friends__add input, .gnokey__key, .feedback__text { min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: var(--edge); font: inherit; font-size: 14px; background: var(--white); color: var(--ink); }
+/* a text field: the friend to add, the gnokey key's name, the Builder's addresses, Publish's name and line */
+.friends__add input, .gnokey__key, .feedback__text, .bholes__hole input, .tmode__addr input, .pub__field > input, .pub__field textarea { min-width: 0; min-height: 48px; padding: 0 12px; border-radius: 12px; border: var(--edge); font: inherit; font-size: 14px; background: var(--white); color: var(--ink); }
 /* the ring drawn as the field's own border: an outline beside the ink border reads as two frames */
 .friends__add input:focus-visible, .gnokey__key:focus-visible, .feedback__text:focus-visible, .nameform__field:focus-within, .gsearch:focus-within,
 :is(.bhead__name, .bholes__hole, .tmode__addr, .pub__field) :is(input, textarea):focus-visible { outline: none; border-color: var(--ink); box-shadow: var(--ring-shadow); }
@@ -2036,7 +2045,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .lb__mine { list-style: none; margin: 10px 0 0; padding: 10px 0 0; border-top: var(--rule); }
 /* a board's records put forward (featured.ts): the cups' stickers, three across, over the rows; each says why it is there */
 .featured { margin: 4px 0 14px; }
-.featured__h { margin: 0 0 10px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.featured__h { margin: 0 0 10px; } /* (a small caps label: .eyebrow's) */
 .lb .featured__row { overflow: visible; max-height: none; padding: 8px 0 4px; mask-image: none; animation: none; gap: 12px; } /* (not the rows' scrolling list) */
 .lb .featured__row > li { padding: 0; border: 0; background: none; }
 /* in a sheet: the phone's card at any width, face over name, the name a size down */
@@ -2408,7 +2417,7 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
    buttons, and of the network banner at the end */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) {
   .screen.worlds { place-items: start center; align-content: start; padding: 0; }
-  .worlds__in { padding: 96px 16px 72px; } /* (the frame's gutter, in from its line; a screen that fits its window: its own, title.css .front--fit) */
+  .worlds__in { padding: 96px 16px 72px; } /* (16: in from a phone's frame, on a wider one's line: the modes' cards keep off it, title.css; a screen that fits its window: its own, title.css .front--fit) */
   .front--fit .worlds__in { padding-inline: 0; }
   .worlds--v2 .worlds__in { width: 100%; }
 }
@@ -2416,13 +2425,13 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
 @media (max-width: 1100px) and (min-aspect-ratio: 1/1) { .screen--title .title__facts { display: none; } }
 /* a finger's targets, 44px (the picker's aim switch: title.css) */
 @media (pointer: coarse) {
-  .seg button, .details summary, .unnamed summary, .resets__menu .btn, .lb__race, :not(p, span, small) > .linkish, .lb--full > .real__fine > .linkish, .podium__links > .linkish { min-height: 44px; }
+  .seg button, .details summary, .unnamed summary, .resets__menu .btn, .lb__race, :not(p, span, small) > .linkish, .lb--full > .real__fine > .linkish, :is(.podium__links, .rival__links) > .linkish { min-height: 44px; }
   .lb__flagged a { display: inline-block; padding: 12px 4px; margin: -12px -4px; } /* (its "Tell us": a finger's tap round the word) */
   /* what stays small to the eye takes the tap round it: the clip's download,
-     the share icons (8px apart), the aim's (i) (its line's, not the switch's above) */
-  .clip__save::before, .share__icon::before, :is(.screen--pick, .rival, .boards) .aimset__info::before { content: ""; position: absolute; inset: -7px; }
+     the share icons (8px apart), the aim's (i) (its line's, not its switch's) */
+  .clip__save::before, .share__icon::before, :is(.screen--pick, .rival, .boards, .drawer) .aimset__info::before { content: ""; position: absolute; inset: -7px; }
   .share__icon::before { inset: -3px; }
-  :is(.screen--pick, .rival, .boards) .aimset__info { position: relative; }
+  :is(.screen--pick, .rival, .boards, .drawer) .aimset__info { position: relative; }
   .screen--pick .aimset__info::before { inset: -6px -13px -20px; }
   .rival .aimset__info::before { inset: -6px -14px -22px; } /* (clear of the field above) */
 }

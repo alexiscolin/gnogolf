@@ -62,7 +62,7 @@ function Panel({ summary, open, onOpen, txs, when = "", paste, note, done, hold,
         </ol>
         {!hide && <pre className="mono gnokey__code">{all}</pre>}
         <div className="gnokey__row">
-          <Button variant="primary" className="gnokey__copy" disabled={!ready || !!hold || hide} onClick={copy}>{copied ? "Copied" : hold || "Copy"}</Button>
+          <Button variant="primary" className="gnokey__copy" disabled={!ready || !!hold || hide} onClick={copy}><span aria-live="polite">{copied ? "Copied" : hold || "Copy"}</span></Button>
           <span className="real__fine">{note || (ready ? done(out) : "Type your key name first.")}</span>
         </div>
         {children}

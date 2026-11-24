@@ -186,7 +186,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
   group.add(rain);
   const drops = Array.from({ length: RAIN }, () => ({ x: 0, y: 0, z: 0, v: 0 }));
   // in the cave the water drips from the vault at its own spots (drip), not everywhere
-  let drip: MutVec2[] = [];
+  let drip: MutVec2[] = [], lands: MutVec2[] = []; // (lands: those over the lane)
   const fall = () => (now && now.snow ? 1.2 + Math.random() : cave ? CAVE.drop[0] + Math.random() * CAVE.drop[1] : 16 + Math.random() * 6);
   const seed = (d: (typeof drops)[number], top: boolean) => {
     const at = cave && drip.length ? drip[Math.floor(Math.random() * drip.length)] : null;
@@ -463,6 +463,7 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
         const x = area.x + Math.random() * area.w, z = area.z + Math.random() * area.d, side = onGreen(x, z) ? "on" : "off";
         if (room[side] > 0) (room[side]--, drip.push([x, z]));
       }
+      lands = cave ? drip.filter(([a, b]) => onLane(a, b)) : [];
       drops.forEach((d) => seed(d, false));
       placeWeather();
       wet = 0;
@@ -606,7 +607,6 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
             sp.t = 0;
             let x = 0, z = 0;
             // (in the cave where a drip lands on the lane)
-            const lands = cave ? drip.filter(([a, b]) => onLane(a, b)) : [];
             if (lands.length) [x, z] = lands[Math.floor(Math.random() * lands.length)];
             else for (let k = 0; k < 6 && !onLane(x, z); k++) (x = Math.random() * W), (z = Math.random() * H);
             sp.m.position.set(x, 0.04, z);
@@ -688,7 +688,6 @@ export function makeWeather(scene: THREE.Scene, { onFlash = () => {}, camera = n
       puddleMat.dispose();
       trailMesh.geometry.dispose();
       trailMesh.material.dispose();
-      bitGeo.dispose();
     },
   };
 }

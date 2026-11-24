@@ -14,12 +14,11 @@ import { loadFriends, saveFriends, addFriend, nameFriends } from "@/lib/friends"
 import { registerName, claimRounds, gnokeyName, gnokeyClaim, type SendError } from "@/lib/adena";
 import { GnokeyTx } from "@/components/Gnokey";
 import { failure, track, trackError } from "@/lib/analytics";
-import { Button, InfoTip, Segmented, Sheet, VsPar } from "@/components/ui";
+import { Button, Frame, InfoTip, Segmented, Sheet, VsPar } from "@/components/ui";
 import Share from "@/components/Share";
 import { messageOf, shortAddr, holeLink, dareLink, parHere, HONEST, nameHint, nameRefusal, strokesWord, holesWord, AIMS, AIM_NAMES, useCopied, GNOME, byStanding, standingVs, RANKED_BY } from "@/components/common";
 import { vsPar, type SkyKind } from "@/lib/card";
 import { SkyIcon } from "@/components/Weather";
-import { Frame } from "@/components/Worlds";
 import { gnomeById } from "@/lib/scene";
 import { rivalSkin, type Skin } from "@/lib/scene/gnome";
 import { SHOP, onWear, wearVersion } from "@/lib/gnomes/door";
@@ -223,7 +222,7 @@ function Friends({ s, chain, me, mode = "pro", inHole = true, onConnect, onRace 
         <input value={adding} onChange={(e) => setAdding(e.target.value)} placeholder="Add a friend: address or gno.land name" aria-label="Add a friend by address or gno.land name" />
         <Button variant="secondary" type="submit">Add</Button>
       </form>
-      {note && <p className="note note--warn">{note}</p>}
+      {note && <p className="note note--warn" role="alert">{note}</p>}
       {friends.length > 0 && (
         <ul className="friends__list">
           {friends.map((f) => (
@@ -239,7 +238,7 @@ function Friends({ s, chain, me, mode = "pro", inHole = true, onConnect, onRace 
           className="linkish friends__invite"
           onClick={() => void copy(invite)}
         >
-          {copied ? "Copied: they race your ghost, and you join their friends" : "Copy my dare link"}
+          <span aria-live="polite">{copied ? "Copied: they race your ghost, and you join their friends" : "Copy my dare link"}</span>
         </button>
       )}
       </section>
@@ -277,7 +276,7 @@ export function Boards({ s, chain, me, onClose, goTo, mode: mine = "pro", inHole
           <Segmented className="seg--s" label="Aim mode" value={mode} onChange={setMode} options={AIMS} />
           <InfoTip label="About these boards" note={<>{HONEST} Ranked: players with a gno.land name{!(me && myName) && ", taken when you save"}.</>} />
         </div>
-        <Segmented className="boards__tabs" full role="tablist" label="Board" value={tab} onChange={setTab} options={[...(friendsFirst ? [["friends", "Friends"] as const] : []), ...(inHole ? [["hole", "This hole"] as const] : []), ["course", "The course"] as const, ...(friendsFirst ? [] : [["friends", "Friends"] as const])]} />
+        <Segmented className="boards__tabs" full label="Board" value={tab} onChange={setTab} options={[...(friendsFirst ? [["friends", "Friends"] as const] : []), ...(inHole ? [["hole", "This hole"] as const] : []), ["course", "The course"] as const, ...(friendsFirst ? [] : [["friends", "Friends"] as const])]} />
         {tab === "course" && inHole && onRace && <p className="real__fine boards__legend">Race here: this hole · Their holes: pick one.</p>}
         {tab !== "friends" && me && myName && chain && <ClaimRounds chain={chain} me={me} mode={mode} onDone={() => setClaimed((n) => n + 1)} />}
         {tab === "hole" && newer && (
@@ -329,7 +328,7 @@ function Unnamed({ kind, chain, id, mode, me, count }: { kind: "hole" | "course"
     <details className="unnamed late" onToggle={(e) => { const o = (e.target as HTMLDetailsElement).open; setOpen(o); if (o && !rows) load(""); }}>
       <summary>Also finished, no name{count ? ` (${count})` : ""}</summary>
       {open && !rows && !err && <p className="lb__empty">Reading the chain…</p>}
-      {err && <p className="note note--bad">The chain did not answer. <button className="linkish" onClick={() => load(rows ? after : "")}>Try again</button></p>}
+      {err && <p className="note note--bad" role="alert">The chain did not answer. <button className="linkish" onClick={() => load(rows ? after : "")}>Try again</button></p>}
       {rows && rows.length === 0 && !after && !err && <p className="lb__empty">Nobody without a name here.</p>}
       {rows && rows.length > 0 && (
         <ul>
@@ -585,7 +584,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
       <h3>
         {title} <small>{sub}</small>
       </h3>
-      {err && <p className="note note--bad">The chain did not answer. <button className="linkish" onClick={() => (setErr(false), rows ? loadMore() : void add(0).catch(() => setErr(true)))}>Try again</button></p>}
+      {err && <p className="note note--bad" role="alert">The chain did not answer. <button className="linkish" onClick={() => (setErr(false), rows ? loadMore() : void add(0).catch(() => setErr(true)))}>Try again</button></p>}
       {/* (the course's board is never a few rows: its cards' place held while it is read) */}
       {(featured || (own && kind === "course" && !rows && !err)) && (
         <section className="featured" aria-label="Records to beat today">
@@ -918,7 +917,7 @@ function ClaimRounds({ chain, me, mode, onDone }: { chain: Chain; me: string; mo
     <div className="note note--warn">
       {holes} saved hole{holes === 1 ? " is" : "s are"} not ranked yet: the name came after them.{" "}
       <Button variant="secondary" disabled={state === "busy"} onClick={() => void go()}>{state === "busy" ? "Adena…" : "Rank them"}</Button>
-      {state && state !== "busy" && <small className="nameform__err"> {state}</small>}
+      {state && state !== "busy" && <small className="nameform__err" role="alert"> {state}</small>}
       <ClaimGnokey chain={chain} summary="Rank them with gnokey instead" onSent={() => (setAsked((n) => n + 1), onDone())} />
     </div>
   );

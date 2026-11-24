@@ -325,7 +325,7 @@ function Retry({ onRetry }: { onRetry: () => void }) {
   useEffect(() => {
     if (left <= 0) again.current();
   }, [left]);
-  return <p className="banner__retry" aria-live="polite">Trying again in {Math.max(0, left)} s…</p>;
+  return <p className="banner__retry">Trying again in {Math.max(0, left)} s…</p>;
 }
 
 /** A word over the course for a moment. Taken away by a timer, not by its animation: with reduced motion there is none.
@@ -1414,6 +1414,15 @@ export default function Golf() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [cupsScreen]);
+  // a screen in another's place (the button pressed went with the old one): the focus on its title, so a reader says
+  // where it is and Tab goes on from there; not as the page opens, nor when something kept the focus
+  const screenWas = useRef(screen);
+  useEffect(() => {
+    if (screenWas.current === screen) return;
+    screenWas.current = screen;
+    if (document.activeElement && document.activeElement !== document.body) return;
+    document.querySelector<HTMLElement>(".screen :is(.worlds__title, .pick__name)")?.focus({ preventScroll: true });
+  }, [screen]);
 
   // the new hole is on screen, built and its shaders ready: open the curtain
   // a hole that would not load or draw: the curtain goes, so its banner (Try again, Pick a hole) is seen
@@ -1714,7 +1723,7 @@ export default function Golf() {
                 {assisted}
               </button>
             ) : (
-              <div className="card card--score">
+              <div className="card card--score" aria-live="polite" aria-atomic="true">
                 <span className="eyebrow">Strokes</span>
                 <strong>{s.strokes}</strong>
                 <span className="card__par">par {parHere(s)}{last ? ` · last ${last}` : ""}</span>
@@ -2252,20 +2261,21 @@ function RecordState({ record, account, s, chain, named = "" }: { record: Rec; a
       See your best on gno.land ↗
     </a>
   );
+  // (one <p> whatever the state, kept by React from one to the next: a reader hears each as it comes)
   switch (record.at) {
     case "signing":
-      return record.of === undefined ? null : <p className="note">This round is saved in {record.of} transactions: one shot list is more than one transaction can replay here. Adena asks {record.of} times.</p>;
+      return record.of === undefined ? null : <p className="note" role="status">This round is saved in {record.of} transactions: one shot list is more than one transaction can replay here. Adena asks {record.of} times.</p>;
     case "checking":
-      return <p className="note">Sent. Reading it back from the chain…</p>;
+      return <p className="note" role="status">Sent. Reading it back from the chain…</p>;
     case "refused":
-      return record.stale ? null : <p className="note note--bad">{record.error}</p>;
+      return record.stale ? null : <p className="note note--bad" role="alert">{record.error}</p>;
     case "unsure":
-      return <p className="note note--bad">{record.error} {best}</p>;
+      return <p className="note note--bad" role="alert">{record.error} {best}</p>;
   }
   if (record.stays)
-    return <p className="note">Played on-chain, but your best here ({strokesWord(record.stays)}) stays: the chain keeps a best until a round beats it. {best}</p>;
+    return <p className="note" role="status">Played on-chain, but your best here ({strokesWord(record.stays)}) stays: the chain keeps a best until a round beats it. {best}</p>;
   return (
-    <p className="note note--good">
+    <p className="note note--good" role="status">
       Saved on-chain{named ? <> as <b>{named}</b>: you&apos;re on the boards</> : ""}. Your link now dares friends to race it. {best}
     </p>
   );
@@ -2323,7 +2333,7 @@ function GetGnot({ address, href, label = "" }: { address: string; href: string;
     <span className="getgnot">
       {href && <><a href={href} target="_blank" rel="noopener noreferrer">{label}</a>{" · "}</>}
       <button className="linkish" onClick={() => void copy(address)}>
-        {copied ? "Copied ✓" : "Copy my address"}
+        <span aria-live="polite">{copied ? "Copied ✓" : "Copy my address"}</span>
       </button>
     </span>
   );
@@ -2444,13 +2454,13 @@ function RealPlay({ from, account, wallet, onConnect, onClose, onSave, rpc, chai
           </li>
         </ol>
 
-        {wallet.error && <p className="note note--bad">{wallet.error}</p>}
+        {wallet.error && <p className="note note--bad" role="alert">{wallet.error}</p>}
         {wallet.note && !account && <p className="note">{wallet.note}</p>}
 
         {!installed ? (
           phone ? (
             <>
-              <Button variant="primary" className="btn--wide" onClick={() => void sendOn()}>{sent ? "Link copied: open it on your computer" : "Play it on my computer"}</Button>
+              <Button variant="primary" className="btn--wide" onClick={() => void sendOn()}><span aria-live="polite">{sent ? "Link copied: open it on your computer" : "Play it on my computer"}</span></Button>
               <p className="real__fine">This round stays on this phone: play the hole there to save it.</p>
             </>
           ) : (
@@ -2468,7 +2478,7 @@ function RealPlay({ from, account, wallet, onConnect, onClose, onSave, rpc, chai
           // the button does the step at hand: GNOT first, then the round waiting, else back to the game
           now === 2 && local ? (
             <Button variant="primary" className="btn--wide" disabled={!fundCmd(account.address, chainName, rpc || "")} onClick={() => void navigator.clipboard.writeText(fundCmd(account.address, chainName, rpc || "")).then(() => setSent(true), () => {})}>
-              {sent ? "Copied: run it in a terminal ✓" : "Copy the gnokey command"}
+              <span aria-live="polite">{sent ? "Copied: run it in a terminal ✓" : "Copy the gnokey command"}</span>
             </Button>
           ) : now === 2 ? (
             <a className={buttonClass({ variant: "primary" }, "btn--wide")} href={main ? GNOT_URL : FAUCET} target="_blank" rel="noopener noreferrer">{main ? "Get GNOT ↗" : "Get free test GNOT ↗"}</a>
@@ -2532,7 +2542,7 @@ function Picker({ world, gnome, onChange, onPick, unlocked, chosen, onPlayAs, on
       <div className="pick">
         <span className="eyebrow">{hole ? <>{hole}<span className="pick__ask"> · pick your gnome</span></> : "Pick your gnome"}</span>
         {dare && (typeof dare === "string" ? <p className="dare">{dare}</p> : dare)}
-        <h2 className="pick__name">{skin.name}</h2>
+        <h2 className="pick__name" tabIndex={-1}>{skin.name}</h2>
         <div className="pick__stage">
           <button className="round" aria-label="Previous gnome" onClick={() => step(-1)}>‹</button>
           {/* the tile: the gnome's own renderer (its canvas mount) and his dots along its foot */}

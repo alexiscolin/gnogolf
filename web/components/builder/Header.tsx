@@ -3,7 +3,7 @@
 // The Builder's one header (the GUI spec's B1): Back (the draft is kept),
 // the hole's name in place (its address follows
 // it, shown on Publish), the three steps (Build, Play, Publish), and on the
-// right the difficulty chip (a click shows the meter's line on the board),
+// right the difficulty meter (a click shows its line on the board),
 // the history and the mode's one action, the way on (Play, in Build; once
 // every weather is sunk, Publish: Play then its step, T still). A step done or
 // open is a link back to it; a locked one says why; Publish, once open, is
@@ -14,7 +14,7 @@ import { worldName } from "@/lib/builder/rules";
 import { MAX_TITLE } from "@/lib/builder/draft";
 import { CHECKING, shortWhy } from "@/lib/builder/editor";
 import type { Level } from "@/lib/builder/difficulty";
-import { Button, Dice, InfoTip } from "@/components/ui";
+import { BackIcon, Button, Dice, InfoTip } from "@/components/ui";
 import { buttonClass } from "@/components/button";
 
 export type Step = "edit" | "play" | "publish";
@@ -25,8 +25,8 @@ export interface StepState {
   done: boolean;
 }
 
-/** The difficulty meter's chip: its level (null: none yet, or the hole has errors) and word, the meter's words in full, and whether it is measuring again. */
-export interface MeterChip {
+/** The difficulty meter's face: its level (null: none yet, or the hole has errors) and word, the meter's words in full, and whether it is measuring again. */
+export interface MeterFace {
   level: Level | null;
   word: string;
   title: string;
@@ -34,18 +34,18 @@ export interface MeterChip {
 }
 
 /**
- * The meter beside the big button: a chip of four pips and a word, its width kept (nothing moves as it changes); a guess,
+ * The meter beside the big button: a button of four pips and a word, its width kept (nothing moves as it changes); a guess,
  * never a gate. Pressed, the meter's best line on the board (off: none measured yet); bump: a change of par just said
  * ("par 3 → 4"), the pips springing once.
  */
-function Meter({ m, on, onLine, bump }: { m: MeterChip; on: boolean; onLine?: () => void; bump?: string }) {
+function Meter({ m, on, onLine, bump }: { m: MeterFace; on: boolean; onLine?: () => void; bump?: string }) {
   return (
     <span className="bhead__meter">
-      <button type="button" className={`chip chip--m meter meter--${m.level ?? "none"}${bump ? " meter--bump" : ""}`} title={`${m.title}${onLine ? (on ? " Click: hide its line." : " Click: show its line on the board.") : ""}`}
+      <Button size="m" type="button" className={`meter meter--${m.level ?? "none"}${bump ? " meter--bump" : ""}`} title={`${m.title}${onLine ? (on ? " Click: hide its line." : " Click: show its line on the board.") : ""}`}
         aria-label={m.title} aria-busy={m.busy} aria-pressed={on} disabled={!onLine && !on} onClick={onLine}>
         <i aria-hidden="true">{[0, 1, 2, 3].map((k) => <b key={k} className={m.level != null && k <= m.level ? "on" : undefined} />)}</i>
         <span aria-hidden="true">{m.word}</span>
-      </button>
+      </Button>
       {/* (kept in the page when empty: a live region only speaks of what changes in it) */}
       <span role="status">{bump && <em key={bump} className="meter__delta">{bump}</em>}</span>
     </span>
@@ -94,10 +94,10 @@ export default function Header({ title, address, world, worlds = [], step, steps
   action: { text: string; key?: string; off?: string; onClick: () => void } | null;
   history: { undo: () => void; redo: () => void; canUndo: boolean; canRedo: boolean } | null;
   /** the difficulty meter, in Build: none elsewhere; its line on the board (lineOn), shown and hidden by a click (onLine: none measured yet) */
-  meter?: MeterChip;
+  meter?: MeterFace;
   lineOn?: boolean;
   onLine?: () => void;
-  /** a change of par the meter just found ("par 3 → 4"), said a moment under the chip */
+  /** a change of par the meter just found ("par 3 → 4"), said a moment under it */
   bump?: string;
   /** the hints again, and the world's pieces (Hints), on the editor: none elsewhere */
   onHelp?: () => void;
@@ -115,7 +115,7 @@ export default function Header({ title, address, world, worlds = [], step, steps
       <div className="bhead__start">
         {/* (from Publish, a step back: Build; from Build, the holes) */}
         <Button variant="icon" size="m" type="button" aria-label={step === "publish" ? "Back to Build" : "Back to your holes (the draft is kept)"} title={step === "publish" ? "Back to Build" : "Back to your holes"} onClick={onBack}>
-          <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <BackIcon />
         </Button>
         <span className="bhead__name">
           <input value={title} maxLength={MAX_TITLE} placeholder="Name your hole" aria-label="The hole's name" onChange={(e) => onTitle(e.target.value)}
@@ -144,7 +144,7 @@ export default function Header({ title, address, world, worlds = [], step, steps
         })}
       </ol>
       <div className="bhead__end">
-        {/* one slot of its own width (nothing moves): why the big button waits, in a few words, else the difficulty chip;
+        {/* one slot of its own width (nothing moves): why the big button waits, in a few words, else the difficulty meter;
             a check under way keeps what was there */}
         {(action || meter) && (
           <span className="bhead__slot">

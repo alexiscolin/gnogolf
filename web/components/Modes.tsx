@@ -154,9 +154,9 @@ export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, o
           <input value={typed} onChange={(e) => (setTyped(e.target.value), setNote(""))} placeholder="A friend: nym-… or g1…" aria-label="Your friend's gno.land name or address" />
           <Button variant="gold" className="rival__go" type="submit" disabled={!typed.trim()}>Race</Button>
         </form>
-        {note && <p className="note note--warn">{note}</p>}
+        {note && <p className="note note--warn" role="alert">{note}</p>}
       </section>
-      {picks && picks.retry && <p className="note note--bad">The chain did not answer. <button className="linkish" onClick={picks.retry}>Try again</button></p>}
+      {picks && picks.retry && <p className="note note--bad" role="alert">The chain did not answer. <button className="linkish" onClick={picks.retry}>Try again</button></p>}
       <ul className="rival__picks">
         {PICKS.map((p, i) => (
           <li key={p.kind}><Pick {...p} first={i} row={picks && picks.rows[i]} reading={!picks} failed={!!(picks && picks.retry)} chain={chain} me={me} gnome={gnome} holes={holes} mode={mode} onPick={onPick} onConnect={p.kind === "self" ? onConnect : undefined} /></li>

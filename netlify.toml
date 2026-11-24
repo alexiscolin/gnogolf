@@ -11,6 +11,10 @@
 #   NEXT_PUBLIC_WEB       its gnoweb, for "read its code" links,
 #                         e.g. https://onyx.testnets.gno.land
 #   NEXT_PUBLIC_NETWORK   testnet or mainnet: the faucet link, the title's tag
+#   NEXT_PUBLIC_FAUCET    optional: where a testnet's players get free GNOT
+#                         (default https://faucet.gno.land)
+#   NEXT_PUBLIC_GNOT_URL  optional: where mainnet's players get GNOT (default
+#                         the faucet above)
 #   NEXT_PUBLIC_OTHER_URL the other deployment, linked from the About sheet
 #   NEXT_PUBLIC_COMMUNITY optional: 1 lists the community's holes with the cups
 #                         (off until the builder is out)
@@ -47,10 +51,14 @@
   NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
 
-# The game's own address for a cup's hole (?cup=garden&hole=4) served as that
-# hole's page (app/h: its title, description and link card), the address and
-# its query kept: a copied link previews the hole, not the site. A cup alone
-# (?cup=garden), its cup's page. A hole past a cup's holes has no page: 404.
+# The game's own address for a cup's hole served as that hole's page (app/h:
+# its title, description and link card), the address and its query kept: a
+# copied link previews the hole, not the site. Netlify takes a rule with a
+# query only for a request with exactly its keys, hence a rule for each
+# address the game writes: a link's ?cup=garden&hole=4, and the address
+# bar's &gnome= in play, a dare's &by=, a picker's &screen=pick. A cup alone
+# (?cup=garden, and &gnome= on its first hole's picker), its cup's page. A
+# hole past a cup's holes has no page: 404.
 [[redirects]]
   from = "/"
   to = "/h/:cup-:hole/"
@@ -60,10 +68,45 @@
 
 [[redirects]]
   from = "/"
+  to = "/h/:cup-:hole/"
+  status = 200
+  force = true
+  query = { cup = ":cup", hole = ":hole", gnome = ":gnome" }
+
+[[redirects]]
+  from = "/"
+  to = "/h/:cup-:hole/"
+  status = 200
+  force = true
+  query = { cup = ":cup", hole = ":hole", gnome = ":gnome", by = ":by" }
+
+[[redirects]]
+  from = "/"
+  to = "/h/:cup-:hole/"
+  status = 200
+  force = true
+  query = { cup = ":cup", hole = ":hole", screen = ":screen", gnome = ":gnome" }
+
+[[redirects]]
+  from = "/"
+  to = "/h/:cup-:hole/"
+  status = 200
+  force = true
+  query = { cup = ":cup", hole = ":hole", screen = ":screen", gnome = ":gnome", by = ":by" }
+
+[[redirects]]
+  from = "/"
   to = "/h/:cup/"
   status = 200
   force = true
   query = { cup = ":cup" }
+
+[[redirects]]
+  from = "/"
+  to = "/h/:cup/"
+  status = 200
+  force = true
+  query = { cup = ":cup", gnome = ":gnome" }
 
 # The gnome shop's region gate (web/lib/gnomes/geo.ts, ADR-007 "Where the shop
 # opens"): not offered in mainland China nor under the comprehensive

@@ -18,7 +18,7 @@ import { animate } from "./state";
 import { seeded, GRASS, placer, shown, type Rand } from "./common";
 import { ud, md, type Hole, type Height } from "./data";
 import type { Bar, Skins } from "./worlds";
-import { VOID_ROWS, VOID_BANDS, VOID_FLOOR, voidEdges } from "./course";
+import { VOID_ROWS, VOID_BANDS, VOID_FLOOR, voidEdges, voidRow, onBoardEdge } from "./course";
 import { gnomeIn } from "./gnome";
 import { terrain, mod, boxOf, inZone, inSea, smoothstep, cupRadius, segDist, CELL, type Terrain } from "../terrain";
 import { MINES, minesOrder, darkGallery, crystalMat, HUES, planks, drawnGround, lantern, lanternsLit, GLASS, DEAD_GLASS, chamferField } from "./mines-kit";
@@ -33,7 +33,7 @@ import { board, ladder, wood, WINDOW, newHoleBoards } from "./mines-decor";
 import * as pieces from "./mines-pieces";
 import * as rides from "./mines-rides";
 import { signs, pulseSigns } from "./mines-signs";
-import type { Extras, MutVec2, Post, Vec2, Wall, Zone } from "../types";
+import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
 // ------------------------------------------------------------ the cave
@@ -418,10 +418,7 @@ function floorMesh(cv: Cave) {
     let nxv = ez / l, nzv = -ex / l;
     const mx = (P[0] + Q[0]) / 2, mz = (P[2] + Q[2]) / 2;
     if (drop(mx + nxv * 0.3, mz + nzv * 0.3) > drop(mx - nxv * 0.3, mz - nzv * 0.3)) (nxv = -nxv), (nzv = -nzv); // toward the drop
-    const row = (v: number[], k: number) => {
-      const [dy, out] = VOID_ROWS[k], jag = k && k < VOID_ROWS.length - 1 ? 0.12 * Math.sin(v[0] * 1.9 + v[2] * 1.3 + k * 2.1) : 0;
-      return [v[0] + nxv * (out + jag), k === VOID_ROWS.length - 1 ? VOID_FLOOR - 0.4 : v[1] + dy, v[2] + nzv * (out + jag)];
-    };
+    const row = (v: number[], k: number) => voidRow(v, k, nxv, nzv, 0.12);
     for (let k = 0; k + 1 < VOID_ROWS.length; k++) {
       const a0 = row(P, k), a1 = row(P, k + 1), b1 = row(Q, k + 1), b0 = row(Q, k);
       band.set(VOID_BANDS[k]);
@@ -943,10 +940,9 @@ function overDrop(cv: Cave, o: THREE.Object3D) {
  */
 function lostRails(cv: Cave) {
   const s = cv.s, parts: THREE.BufferGeometry[] = [], outside = (s.zones || []).some((q) => q.outside && q.kind === "hazard");
-  const onEdge = (w: Wall) => ([0, 1] as const).some((k) => [w.a[k], w.b[k]].every((v) => Math.abs(v) < 0.01 || Math.abs(v - (k ? s.board.h : s.board.w)) < 0.01) && Math.abs(w.a[k] - w.b[k]) < 0.01);
   for (const w of s.walls || []) {
     // (a plain one course.ts leaves undrawn; a rock face or a rail guard, whose piece stands only where it has room: the rail at its foot all along, inside the rock where the rock stands)
-    if (w.every || !(w.skin ? w.skin === "rockface" || w.skin === "railguard" : inSea(w, s.zones) || (outside && onEdge(w)))) continue;
+    if (w.every || !(w.skin ? w.skin === "rockface" || w.skin === "railguard" : inSea(w, s.zones) || (outside && onBoardEdge(w, s.board)))) continue;
     const L = Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]);
     if (L < 0.2) continue;
     const ux = (w.b[0] - w.a[0]) / L, uz = (w.b[1] - w.a[1]) / L, ang = Math.atan2(uz, ux);
@@ -2133,7 +2129,11 @@ function motes(cv: Cave, rand: Rand) {
   (ud(pts).live = true), (pts.name ||= "mines:motes");
   g.add(pts);
   animate((t) => {
-    m.forEach((d, i) => pos.set([d.l.x + Math.cos(d.a + t * d.s) * d.r, d.l.y + d.y + Math.sin(t * d.s * 2 + d.a) * 0.2, d.l.z + Math.sin(d.a + t * d.s) * d.r], i * 3));
+    m.forEach((d, i) => {
+      pos[i * 3] = d.l.x + Math.cos(d.a + t * d.s) * d.r;
+      pos[i * 3 + 1] = d.l.y + d.y + Math.sin(t * d.s * 2 + d.a) * 0.2;
+      pos[i * 3 + 2] = d.l.z + Math.sin(d.a + t * d.s) * d.r;
+    });
     pts.geometry.attributes.position.needsUpdate = true;
   });
   return g;

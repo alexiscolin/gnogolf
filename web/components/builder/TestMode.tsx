@@ -33,7 +33,7 @@
 // is said so.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button, Dialog } from "@/components/ui";
-import { useFlash } from "@/components/common";
+import { messageOf, useFlash } from "@/components/common";
 import { CamButton } from "@/components/CamButton";
 import Weather, { SkyIcon } from "@/components/Weather";
 import { connect, hasAdena } from "@/lib/adena";
@@ -126,7 +126,7 @@ function AddressLine({ start, title, head, line, note, onAddress, children }: { 
       const { rpc } = endpoints(window.location.search);
       onAddress((await connect({ rpc })).address);
     } catch (e) {
-      setWhy(e instanceof Error ? e.message : String(e));
+      setWhy(messageOf(e));
     }
   };
   return (
@@ -393,7 +393,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
       },
     }));
     if (camlog()) window.__g = g; // (the rigs' hook, as the game's: ?camlog in a dev or test build only)
-    void g.start(id).then(() => ((since.current = performance.now()), g.play(true)), (e: unknown) => setNote(e instanceof Error ? e.message : String(e)));
+    void g.start(id).then(() => ((since.current = performance.now()), g.play(true)), (e: unknown) => setNote(messageOf(e)));
     return () => {
       if (window.__g === g) delete window.__g;
       game.current = null;

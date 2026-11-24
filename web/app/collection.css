@@ -2,7 +2,7 @@
    name (components/gnomes/Rank, on the game's own screens: small, inline,
    within the line's height, so a row never moves when it lands) and their
    album (components/gnomes/Album, in the shop: its rows and silhouettes). On
-   the game's tokens (globals.css), the album's rims the shop's tiers
+   the game's tokens (globals.css), the album's rims and ground the shop's
    (gnomes.css); the metals are the places' own. */
 
 /* the rank: its shape on its metal, a pill no taller than the name's line */
@@ -37,7 +37,7 @@
 .galbum__track { grid-area: track; height: 8px; border-radius: var(--pill); background: rgba(var(--ink-rgb), .08); overflow: hidden; }
 .galbum__track > i { display: block; height: 100%; background: var(--green-light); }
 .galbum__slots { list-style: none; margin: var(--sp-2) 0 var(--sp-3); padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: var(--sp-2); }
-.galbum__slot { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 1.5px solid var(--ink); border-radius: 10px; background: #f6ead2; overflow: hidden; cursor: pointer; }
+.galbum__slot { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 1.5px solid var(--ink); border-radius: 10px; background: var(--portrait-bg); overflow: hidden; cursor: pointer; }
 .galbum__slot img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .galbum__slot--rare { box-shadow: inset 0 0 0 3px var(--tier-rare); }
 .galbum__slot--epic { box-shadow: inset 0 0 0 3px var(--tier-epic); }

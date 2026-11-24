@@ -16,6 +16,7 @@ import { buttonClass } from "@/components/button";
 import { GnokeyTx } from "@/components/Gnokey";
 import { messageOf } from "@/components/common";
 import { ADENA_URL, GNOT_URL } from "@/lib/network";
+import { reducedMotion } from "@/lib/device";
 import { hasAdena, onOurNode, resultOf, PRICE, type SendError } from "@/lib/adena";
 import { sendGnome, gnokeyGnome, gnomeCall, GNOME_TX } from "@/lib/gnomes/tx";
 import { BYTE_PRICE, errorKind, wait, type Chain } from "@/lib/chain";
@@ -80,7 +81,7 @@ export default function GnomeSheet({ g, shop, chain, c, account, region, now, wa
   // the order button pressed before both boxes: the first one left, brought into view and focused (never ticked for them)
   const toBox = () => {
     const el = (!ticks.a ? boxA : boxB).current;
-    if (el) (el.scrollIntoView({ block: "center", behavior: "smooth" }), el.focus({ preventScroll: true }));
+    if (el) (el.scrollIntoView({ block: "center", behavior: reducedMotion() ? "auto" : "smooth" }), el.focus({ preventScroll: true }));
   };
   // the bill's figures: read with the gnome (his price's chain costs) and again when the order is reviewed (the balance)
   const [costs, setCosts] = useState<{ price: number; storage: number; balance: number | null; chainId: string | null; ours: boolean | null } | null>(null);

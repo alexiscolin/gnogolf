@@ -1,6 +1,6 @@
-// The shop's words the law asks for, as the copy draft writes them
-// (the legal pack's draft shop copy, a draft for lawyer review; its
-// Japanese is the reference, this is its English): the final confirmation
+// The shop's words the law asks for, as the copy draft writes them (a draft
+// for lawyer review, kept out of the repo; its Japanese is the reference,
+// this is its English): the final confirmation
 // before the wallet opens (最終確認画面: every term, two separate boxes never
 // pre-ticked, a button that names the obligation to pay), the receipt, the
 // trust strip. The seller is the build's (NEXT_PUBLIC_SELLER_*,

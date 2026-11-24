@@ -7,7 +7,7 @@
 // behind and to the right, as in the garden, so the lane is never hidden.
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js"; // the skyline
-import { C, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
+import { C, T, flat, drawn, rbox, texOf, ink, lanternGlow, grows, share, ownFade, fadeLoop, type FadeItem, onTop, motion, carved } from "./materials";
 import { bakeLocal, look, weatherLooks } from "./bake";
 import { animate } from "./state";
 import { timeOf } from "./camera";
@@ -20,12 +20,6 @@ import { STREET_Y } from "./pieces";
 import type { Extras, MutVec2, Post, Vec2, Zone } from "../types";
 import { own } from "../own";
 
-export const T = {
-  cobble: 0xcdbb9f, cobbleDark: 0xa99578, curb: 0xe2d6c0, quay: 0xa89c8a,
-  wall: 0xf6ead3, wallWarm: 0xf1d9b8, roofFar: 0xe2c9c4, roofFarCap: 0xd4b3b5,
-  caps: [C.cap, 0xf2a93b, 0x9b7fd1, 0xc98b5a, 0x5b6fb5],
-  lampLit: 0xffd98a, lampOff: 0xe9e2cf, iron: 0x3d4a45, awningA: C.cap, awningB: C.cream,
-};
 const CANAL = { x0: -ISLAND.x - 6.5, x1: -ISLAND.x - 1.5 }; // down the left, just off the plot
 /** How far down this hole's town stands: a lane over the rooftops (a `roof`
  *  zone) looks down on the streets, so the square and all round it are at

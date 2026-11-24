@@ -15,6 +15,7 @@ import { bakeLocal, instances } from "./bake";
 import { gnomelet } from "./props";
 import { ud } from "./data";
 import type { Rand } from "./common";
+import { smoothstep } from "../terrain";
 import { MINES, crystalCluster, crystalMat, shard, HUES, planks, cartMouth } from "./mines-kit";
 import { crustBy, FALLING } from "./mines-lava";
 import { boulder, knobbly, paint, strata, facets, inked, gem, form, type Form, INK_THIN, TIMBER, TIMBER_DARK, TIMBER_LIGHT, IRON, IRON_DARK, RUST } from "./mines-toon";
@@ -553,8 +554,8 @@ export function canary() {
   g.add(bird);
   animate((t) => {
     // (a hop from one perch to the other and back: eased, an arc, never a snap)
-    const u = t % 3, e = (x: number) => { const v = Math.min(1, Math.max(0, x)); return v * v * (3 - 2 * v); };
-    const k = e((u - 1.35) / 0.3) * (1 - e((u - 2.7) / 0.3)), arc = Math.sin(Math.PI * Math.min(1, Math.max(0, (u - 1.35) / 0.3))) + Math.sin(Math.PI * Math.min(1, Math.max(0, (u - 2.7) / 0.3)));
+    const u = t % 3;
+    const k = smoothstep((u - 1.35) / 0.3) * (1 - smoothstep((u - 2.7) / 0.3)), arc = Math.sin(Math.PI * Math.min(1, Math.max(0, (u - 1.35) / 0.3))) + Math.sin(Math.PI * Math.min(1, Math.max(0, (u - 2.7) / 0.3)));
     bird.position.set(0.45 - 0.1 * k, 1.45 - 0.2 * k + 0.15 * arc + 0.01 * Math.abs(Math.sin(t * 9)), 0);
     bird.rotation.y = 0.6 - 2.8 * k;
   });

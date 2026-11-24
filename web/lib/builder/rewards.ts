@@ -14,6 +14,7 @@ import { listHoles } from "./holes";
 import type { Proof } from "./proof";
 import { required } from "./rules";
 import type { HoleRow, Saved } from "../types";
+import { counted } from "../words";
 
 /** What savedOn read: the rounds, and the holes with more than one read takes. */
 export interface SavedOn {
@@ -80,19 +81,19 @@ export function statsOf(row: Pick<HoleRow, "id" | "plays">, saved: SavedOn, auth
   };
 }
 
-const n = (k: number, w: string) => `${k} ${w}${k === 1 ? "" : "s"}`;
+const playsWord = counted("play"), playersWord = counted("player");
 
 /** A hole's players and plays in words: "3 players · 12 plays". */
 export function statsLine(s: HoleStats): string {
-  if (!s.players) return s.plays ? `${n(s.plays, "play")} · no round saved yet` : "Nobody has played it yet";
-  return `${s.players}${s.more ? "+" : ""} ${s.players === 1 && !s.more ? "player" : "players"} · ${n(s.plays, "play")}`;
+  if (!s.players) return s.plays ? `${playsWord(s.plays)} · no round saved yet` : "Nobody has played it yet";
+  return `${s.players}${s.more ? "+" : ""} ${s.players === 1 && !s.more ? "player" : "players"} · ${playsWord(s.plays)}`;
 }
 
 /** Its best against the author's: "Best 2 · yours 4 · 2 players beat you"; "" with no round saved. */
 export function versusLine(s: HoleStats): string {
   if (!s.best) return "";
   if (!s.mine) return `Best ${s.best} · none of yours saved`;
-  return `Best ${s.best} · yours ${s.mine} · ${s.beat ? `${n(s.beat, "player")} beat you` : "nobody beat you yet"}`;
+  return `Best ${s.best} · yours ${s.mine} · ${s.beat ? `${playersWord(s.beat)} beat you` : "nobody beat you yet"}`;
 }
 
 /** The weathers a hole asks (proof.ts required) that rounds saved by other players hole it in, in that order. */

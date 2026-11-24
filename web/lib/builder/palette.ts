@@ -13,14 +13,11 @@
 import { POSTS, BARS, MOUTHS } from "../scene/pieces";
 import { DRAWN as COURSE_DRAWN } from "../scene/course";
 import { DRAWN as ZONES_DRAWN } from "../scene/zones";
-import { WORLD_NAMES, loadWorld, worldOf, type Kind, type Skins } from "../scene/worlds";
+import { loadWorld, worldOf, type Kind, type Skins } from "../scene/worlds";
 import { FIELD, notABuilderWorld } from "./rules";
-import { BINDINGS, KIND, type Binding, type Clock, type Range, type Shape } from "./bindings";
+import { BINDINGS, KIND, type Binding, type Clock, type Range } from "./bindings";
 
-export type { Kind };
-export type { Binding, Clock, Range, Shape };
-export { BINDINGS };
-export { WORLD_NAMES };
+export type { Clock, Range };
 /** Which of the scene's drawings draws it. */
 export type Draw = "POSTS" | "BARS" | "MOUTHS" | "course" | "zones" | "world";
 export interface PaletteEntry extends Binding {

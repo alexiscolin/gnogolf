@@ -55,7 +55,7 @@ function edgeDist(x: number, z: number, pts: readonly Vec2[]) {
 }
 /** The void round the lane (the world's): nothing of a zone is laid out over it. */
 const voids = (s: Hole) => s.zones.filter((q) => q.skin === "void");
-export const overVoid = (s: Hole, x: number, z: number) => voids(s).some((v) => inZone(v, x, z));
+export const overVoid = (s: Hole, x: number, z: number) => s.zones.some((q) => q.skin === "void" && inZone(q, x, z));
 /** A point over the void, onto the lane's edge there (the void's outline); null if not over it. */
 const offVoid = (s: Hole) => (x: number, z: number): MutVec2 | null => {
   const v = voids(s).find((q) => inZone(q, x, z));
@@ -1047,7 +1047,7 @@ function conveyor(z: Zone, t: Terrain, s: Hole) {
   const g = new THREE.Group(), A = axes(z), ok = (x: number, zz: number) => t.onGreen(x, zz) && !overVoid(s, x, zz);
   const { mesh } = patch(z, t, s, (_x, _zz, _d, c) => c.set(0x34303e));
   g.add(mesh);
-  const at = (a: number, b: number): THREE.Vector3 => { const x = A.cx + A.ux * a + A.nx * b, zz = A.cz + A.uz * a + A.nz * b; return new THREE.Vector3(x, t.height(x, zz), zz); };
+  const at = (a: number, b: number, out = new THREE.Vector3()) => { const x = A.cx + A.ux * a + A.nx * b, zz = A.cz + A.uz * a + A.nz * b; return out.set(x, t.height(x, zz), zz); };
   // (all of it flush with the belt, its ribs a hair over it: the ball rolls over the whole of it)
   // the side frames: iron channel along each edge
   const frame: THREE.BufferGeometry[] = [];
@@ -1110,9 +1110,9 @@ function conveyor(z: Zone, t: Terrain, s: Hole) {
   const M = new THREE.Matrix4(), Q = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), -Math.atan2(A.uz, A.ux)), S = new THREE.Vector3(1, 1, 1), P = new THREE.Vector3();
   animate((tt) => {
     for (let k = 0; k < N; k++) {
-      const a = A.a0 + mod((k * L) / N + tt * speed, L), p = at(a, 0);
+      const a = A.a0 + mod((k * L) / N + tt * speed, L), p = at(a, 0, P);
       const vis = ok(p.x, p.z);
-      cleats.setMatrixAt(k, M.compose(P.set(p.x, p.y + 0.045, p.z), Q, vis ? S : P.clone().set(0, 0, 0)));
+      cleats.setMatrixAt(k, M.compose(p.setY(p.y + 0.045), Q, vis ? S : NONE));
     }
     cleats.instanceMatrix.needsUpdate = true;
   });

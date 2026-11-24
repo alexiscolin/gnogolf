@@ -67,7 +67,7 @@ export default function PhoneBuilder() {
       <div className="worlds__in bphone__in">
         <FrontHead eyebrow="The Builder" title="For a computer" />
         <p className="bphone__lead">Drawing a hole takes a mouse and a keyboard. Playing them works right here.</p>
-        <Button variant="primary" className="btn--wide" onClick={() => void copy(window.location.href)}>{copied ? "Copied: open it on your computer" : "Copy the link for my computer"}</Button>
+        <Button variant="primary" className="btn--wide" onClick={() => void copy(window.location.href)}><span aria-live="polite">{copied ? "Copied: open it on your computer" : "Copy the link for my computer"}</span></Button>
         {mine.length > 0 && (
           <section className="bphone__list" aria-label="Your holes">
             <h3 className="h-section">Your holes</h3>

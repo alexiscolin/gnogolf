@@ -104,12 +104,6 @@
    gnome's (flat: they only show), the gnome shop's sale (gnomes.css .wcard) */
 .world__info, .screen--title .title__facts li, .front .aimset--compact, .worlds--v2 .community, .newgnome, .wcard { background: var(--paper); border: var(--edge); border-radius: var(--r-card); }
 .world__info, .wcard { box-shadow: var(--shadow-btn); }
-/* the call to action: gold, inked, on its shadow (Button's "gold": the title's
-   start and the picker's pick, globals.css .btn--cta; a duel's Race: the
-   picks', the hole cards', a friend's, a board row's) */
-.btn--gold, .rival__go {
-  background: var(--gold-grad); color: var(--ink); border: var(--edge-bold);
-}
 /* the picker's pick, a size under the title's start */
 .front .btn--play { font-size: clamp(18px, 2vw, 22px); padding: 12px 34px; }
 
@@ -211,6 +205,8 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 @media (max-height: 720px) {
   .screen--title .title__facts { display: none; }
 }
+/* a phone on its side: the logo smaller, Tap to start inside the frame (upright, the rule under it) */
+@media (max-height: 480px) { .screen--title .title__art { width: 46vh; } }
 /* upright: the logo smaller */
 @media (max-aspect-ratio: 1/1) {
   .screen--title .title__art { width: min(94vw, 42vh); }
@@ -397,6 +393,10 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   .modes__list--four .mode { aspect-ratio: auto; min-height: 124px; }
   .modes__list--four .mode__name { font-size: 28px; }
 }
+/* where the screen scrolls from its top (globals.css, its column 16 in): the cards off the frame's line (its 16 and 3);
+   a phone's frame is 8 in, the 16 clears it */
+@media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) { .modes__list { width: min(100% - 24px, var(--front-w)); } }
+@media (max-width: 600px) { .modes__list { width: 100%; } }
 /* the game chosen, big, beside Back: its panel's colour, inked (over the screens, under the sheets) */
 .modetag {
   position: fixed; top: 34px; left: 96px; z-index: var(--z-screen); padding: 2px 16px 6px; border: var(--edge-bold); border-radius: var(--pill);
@@ -526,11 +526,12 @@ li.me > .sticker { background: var(--ink); color: var(--paper); }
 .sticker__face { grid-row: 1 / 3; width: 54px; height: 54px; }
 .sticker__who { align-self: end; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-name); font-weight: 700; }
 .sticker__sub { align-self: start; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; opacity: .75; } /* (one line, as its name: a card never grows) */
-/* a sticker or a hole card that is a button: it lifts under the pointer, sinks pressed, rings in focus */
-button.sticker, .ghost { cursor: pointer; transition: transform var(--t-pop) var(--spring), box-shadow .2s; }
-button.sticker:hover, .ghost:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 3px var(--glow), 0 8px 0 var(--ink); }
-button.sticker:active, .ghost:active { transform: translateY(var(--press)); box-shadow: 0 1px 0 var(--ink); }
-button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: var(--ring-shadow), var(--shadow-btn); }
+/* a card that is a button (a sticker, a hole card, a gnome's card, the collection's door, a Builder starter): it lifts
+   under the pointer, sinks pressed, rings in focus */
+button.sticker, .ghost, .gcard, .gcollect--door, .bholes__start { cursor: pointer; transition: transform var(--t-pop) var(--spring), box-shadow .2s; }
+button.sticker:hover, .ghost:hover, .gcard:hover, .gcollect--door:hover, .bholes__start:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 0 0 3px var(--glow), 0 8px 0 var(--ink); }
+button.sticker:active, .ghost:active, .gcard:active, .gcollect--door:active, .bholes__start:active { transform: translateY(var(--press)); box-shadow: 0 1px 0 var(--ink); }
+button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcollect--door:focus-visible, .bholes__start:focus-visible { outline: none; box-shadow: var(--ring-shadow), var(--shadow-btn); }
 /* a place nobody holds yet, a hole card still read: drawn blank, dashed */
 :is(.sticker, .ghost).podium__ghost { border-style: dashed; border-color: rgba(var(--ink-rgb), .25); background: transparent; box-shadow: none; pointer-events: none; }
 .podium__ghost .rival__map { opacity: .45; }
@@ -641,7 +642,7 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
 }
 /* (the motion itself: the global switch, globals.css; the card still, not grown) */
 @media (prefers-reduced-motion: reduce) {
-  .worlds--v2 .world:hover:not([disabled]), .worlds--v2 .world:focus-visible, .mode:hover:not([disabled]), .mode:focus-visible, button.sticker:hover, .ghost:hover { transform: none; }
+  .worlds--v2 .world:hover:not([disabled]), .worlds--v2 .world:focus-visible, .mode:hover:not([disabled]), .mode:focus-visible, button.sticker:hover, .ghost:hover, .gcard:hover, .gcollect--door:hover, .bholes__start:hover { transform: none; }
 }
 
 /* ------------------------------------------------------------ the picker */
@@ -700,6 +701,9 @@ button.sticker:focus-visible, .ghost:focus-visible { outline: none; box-shadow: 
 .screen--pick .pick__tile {
   position: relative; display: grid; grid-template-rows: 1fr auto; width: var(--pick-w); height: calc(var(--pick-w) * 1.12);
 }
+/* a short window's tile (a dare or the collection above it) never under the plain one's on a phone on its side (36vh:
+   140px), so its dots stay on its foot, not over the gnome (a phone's own sizes, its dots smaller: above) */
+@media (min-width: 601px) { .screen--pick .pick__tile { width: max(var(--pick-w), 140px); height: calc(max(var(--pick-w), 140px) * 1.12); } }
 .screen--pick .pick__tile > .pick__canvas { width: 100%; height: 100%; min-height: 0; }
 /* locked: the gnome greyed as he always was (the filter on his canvas's
    mount, not on the tile), and what earns him on an ink band across him */

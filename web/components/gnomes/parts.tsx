@@ -11,13 +11,13 @@ import { buttonClass } from "@/components/button";
 import { useCopied } from "@/components/common";
 import { retryIn } from "@/lib/retry";
 import { siteURL } from "@/lib/site";
-import { shareOrCopy } from "@/components/Share";
+import { shareOrCopy, STROKE } from "@/components/Share";
 import type { Listed } from "@/lib/gnomes/catalogue";
 import type { Look, Portraits } from "@/lib/gnomes/onchain";
 import { gnot, tierName, utcDate, localDate, type SaleCard, type TierShare } from "@/lib/gnomes/shop";
 
-// a tier's shape, read in grey too: a disc, a diamond, a gem, a crown; a leaf for an earned one
-const SHAPE: Record<string, ReactNode> = {
+/** A tier's shape, read in grey too: a disc, a diamond, a gem, a crown; a leaf for an earned one (a collector's rank and the album draw them too). */
+export const SHAPE: Record<string, ReactNode> = {
   common: <circle cx="8" cy="8" r="5" />,
   rare: <path d="M8 2 14 8 8 14 2 8z" />,
   epic: <path d="M4 3h8l3 4-7 7-7-7z" />,
@@ -229,7 +229,7 @@ export function ShareOne({ text, link, label = "Share" }: { text: string; link: 
   const go = () => shareOrCopy(text, siteURL(link), copy);
   return (
     <Button size="s" type="button" className="gshare" onClick={go} aria-label={copied ? "Link copied" : label}>
-      <svg viewBox="0 0 24 24" aria-hidden="true">{copied ? <path d="M5 12l5 5 9-10" /> : <path d="M12 3v12M7 8l5-5 5 5M5 13v6h14v-6" />}</svg>
+      <svg viewBox="0 0 24 24" aria-hidden="true">{copied ? <path d={STROKE.copied} /> : <path d={STROKE.share} />}</svg>
       <span aria-live="polite">{copied ? "Copied" : label}</span>
     </Button>
   );

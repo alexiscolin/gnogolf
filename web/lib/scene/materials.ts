@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { reducedMotion } from "../device";
+import { smoothstep } from "../terrain";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { GRASS } from "./common";
 import { ud, md, type Height, type WaterMask } from "./data";
@@ -42,6 +43,14 @@ export const C = {
   burrow: 0x144134,
   ink: 0x144134,
   wear: 0x226c57,
+};
+
+// Mushroom Town's colours, kept here so the roofs (pieces.ts) use them without loading town.ts
+export const T = {
+  cobble: 0xcdbb9f, cobbleDark: 0xa99578, curb: 0xe2d6c0, quay: 0xa89c8a,
+  wall: 0xf6ead3, wallWarm: 0xf1d9b8, roofFar: 0xe2c9c4, roofFarCap: 0xd4b3b5,
+  caps: [C.cap, 0xf2a93b, 0x9b7fd1, 0xc98b5a, 0x5b6fb5],
+  lampLit: 0xffd98a, lampOff: 0xe9e2cf, iron: 0x3d4a45, awningA: C.cap, awningB: C.cream,
 };
 
 // Things made once and used by every hole (a module-level material, texture
@@ -330,9 +339,8 @@ const shallowC = new THREE.Color(), deepC = new THREE.Color(), foamC = new THREE
  *  of water (0 where it laps the bank: foam), into c. */
 export function waterTone(c: THREE.Color, skin: string, d: number, depth: number) {
   const [a, b] = own(WATERS, skin) || WATERS.water;
-  return c.copy(shallowC.set(a)).lerp(deepC.set(b), smoothstep01((d - 0.3) / 2.2)).lerp(foamC, 0.6 * (1 - smoothstep01(depth / 0.1)));
+  return c.copy(shallowC.set(a)).lerp(deepC.set(b), smoothstep((d - 0.3) / 2.2)).lerp(foamC, 0.6 * (1 - smoothstep(depth / 0.1)));
 }
-const smoothstep01 = (x: number) => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
 let waterM: THREE.MeshBasicMaterial | null = null;
 /** The shared water material (vertex colours from waterTone). */
 export function waterMat() {

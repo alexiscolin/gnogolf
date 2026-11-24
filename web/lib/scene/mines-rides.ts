@@ -164,6 +164,12 @@ function portal(D: number, Wd: number, HP: number, rand: Rand, { foot = true, si
   return grp;
 }
 
+/** Where a ball rolls on hole s: on the green and in no hazard that is always there (a timed one comes and goes). */
+function laneOf(s: Hole, t: Terrain) {
+  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every);
+  return (x: number, z: number) => t.onGreen(x, z) && !holes.some((q) => inZone(q, x, z));
+}
+
 /**
  * A portal (as portal() draws it) with its mouth at (x, z) opening to heading
  * a, fitted where it stands: as deep, as wide and as thick in the rock as asked
@@ -172,8 +178,7 @@ function portal(D: number, Wd: number, HP: number, rand: Rand, { foot = true, si
  * thinner in the rock, its depth and width kept).
  */
 function mouthAt(s: Hole, t: Terrain, x: number, z: number, a: number, D: number, Wd: number, HP: number, rand: Rand, { foot = true, own = null as Zone | null, y = t.height(x, z), fixed = false } = {}) {
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), c = Math.cos(a), sn = Math.sin(a);
-  const lane = (px: number, pz: number) => t.onGreen(px, pz) && !holes.some((q) => inZone(q, px, pz));
+  const lane = laneOf(s, t), c = Math.cos(a), sn = Math.sin(a);
   const near = (px: number, pz: number) => { for (let i = 0; i < 8; i++) for (const r of [1, 2]) if (lane(px + Math.cos(i * 0.785) * r, pz + Math.sin(i * 0.785) * r)) return true; return false; };
   const taken = (px: number, pz: number) => !(own && inZone(own, px, pz)) && t.onGreen(px, pz) && (lane(px, pz) || near(px, pz));
   // (the footprint set `back` into the rock: its legs and cheeks on the lane itself count first, then near it)
@@ -393,7 +398,7 @@ function clockOf(z: Zone) {
  * tee, the cup) breaking a tie. Its body runs the other way, into the rock.
  */
 function openTo(s: Hole, t: Terrain, x: number, z: number, prefer: readonly number[]) {
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), lane = (a: number, b: number) => t.onGreen(a, b) && !holes.some((q) => inZone(q, a, b));
+  const lane = laneOf(s, t);
   let best = 0, score = -1;
   for (let i = 0; i < 32; i++) {
     const a = (i / 32) * Math.PI * 2, c = Math.cos(a), sn = Math.sin(a);
@@ -850,8 +855,8 @@ function aditPair(z: Zone, t: Terrain, s: Hole) {
   const a = openTo(s, t, cx, cz, s.start), da = headV(a), [ox, oz] = z.vec, oy = t.height(ox, oz), b = openTo(s, t, ox, oz, s.cup), db = headV(b);
   g.add(mouthAt(s, t, cx - da.x * 1.6, cz - da.z * 1.6, a, 2.4, 2.3, 2.1, rand, { foot: false, own: z, y }).piece);
   // the adit's boarded landing: planks over the lane where the chain takes the ball in (the zone), running into the mouth
-  const { hx, hz } = boxOf(z), holes = s.zones.filter((q) => q.kind === "hazard" && !q.every);
-  g.add(planks([{ inside: (px, pz) => inZone(z, px, pz) && t.onGreen(px, pz) && !holes.some((q) => inZone(q, px, pz)), top: (px, pz) => drawnGround(t, px, pz) + 0.08, box: [cx - hx, cz - hz, cx + hx, cz + hz], angle: a }], wood));
+  const { hx, hz } = boxOf(z), lane = laneOf(s, t);
+  g.add(planks([{ inside: (px, pz) => inZone(z, px, pz) && lane(px, pz), top: (px, pz) => drawnGround(t, px, pz) + 0.08, box: [cx - hx, cz - hz, cx + hx, cz + hz], angle: a }], wood));
   // where it comes out: a timbered mouth against the rock, or in open lane a hatch in the floor
   const open = inOpen(s, t, ox, oz), ex = open ? exitOf(s, t, ox, oz, rand) : null;
   if (ex) g.add(ex.piece);
@@ -898,11 +903,11 @@ function trough(L: number, fall: number, W = 1.3, rand: Rand = wood) {
 
 /** Whether (x, z) stands in open lane (lane all round it within 2.6): an exit there comes up out of the floor, not out of a wall. */
 function inOpen(s: Hole, t: Terrain, x: number, z: number) {
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every);
+  const lane = laneOf(s, t);
   let n = 0;
   for (let i = 0; i < 16; i++) {
     const a = (i / 16) * Math.PI * 2, px = x + Math.cos(a) * 2.6, pz = z + Math.sin(a) * 2.6;
-    if (t.onGreen(px, pz) && !holes.some((q) => inZone(q, px, pz))) n++;
+    if (lane(px, pz)) n++;
   }
   return n >= 13;
 }
@@ -1170,7 +1175,7 @@ function cartRide(z: Zone, t: Terrain, s: Hole) {
   // the track's heading: down the incline the berths stand on, else along the berths
   const hill = s.zones.find((q) => q.kind === "slope" && inZone(q, cx, cz));
   const ref = hill ? Math.atan2(hill.vec[1], hill.vec[0]) : 0, u = headV(ref), sd = new THREE.Vector3(-u.z, 0, u.x);
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), lane = (x: number, zz: number) => t.onGreen(x, zz) && !holes.some((q) => inZone(q, x, zz));
+  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), lane = laneOf(s, t);
   const along = (p: THREE.Vector3) => p.x * u.x + p.z * u.z;
   const berths = all.map((q) => { const b = boxOf(q); return new THREE.Vector3(b.cx, t.height(b.cx, b.cz), b.cz); });
   const W0 = berths.reduce((m, p) => (along(p) < along(m) ? p : m), berths[0]);
@@ -1386,7 +1391,7 @@ function cableCar(z: Zone, t: Terrain, s: Hole) {
   const A = new THREE.Vector3(cx, y, cz), B = new THREE.Vector3(ox, oy, oz).addScaledVector(dir, -1.4), HANG = 3.3, CS = 1.45, TOP = (HANG + 0.2) * CS;
   const span = A.distanceTo(B), sag = Math.min(4, span * 0.05);
   const cable = (u: number, out: THREE.Vector3) => out.lerpVectors(A, B, u).setY(A.y + (B.y - A.y) * u + TOP - sag * 4 * u * (1 - u));
-  const holes = s.zones.filter((q) => q.kind === "hazard" && !q.every), onLedge = (x: number, zz: number) => t.onGreen(x, zz) && !holes.some((q) => inZone(q, x, zz));
+  const onLedge = laneOf(s, t);
   // the gantries
   const gantry = (at: THREE.Vector3, sign: number) => {
     const grp = new THREE.Group();

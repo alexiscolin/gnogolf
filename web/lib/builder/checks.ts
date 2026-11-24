@@ -1,10 +1,10 @@
 // The builder's own checks of a hole: what the chain does not check and a
-// player would meet (the design's L1). The chain takes a cup inside a wall;
+// player would meet. The chain takes a cup inside a wall;
 // these do not. Each issue names its rule (E2…), its piece and the place,
 // and is an error (no test mode, no publish) or a warning (a gauge nearing
 // its limit). checkHole reads a hole as fit gives it (decode's pieces, in
 // GG1's order); the draft's checks (pipeline.ts) add what only the draft
-// knows. Rules and thresholds: docs/specs/hole-builder.md.
+// knows.
 import { inZone, segDist } from "../terrain";
 import type { PieceRef } from "../scene/census";
 import { RULES } from "../chain";

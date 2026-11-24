@@ -8,6 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Medal } from "@/components/Badges";
 import { Button } from "@/components/ui";
+import { messageOf } from "@/components/common";
 import { connect, hasAdena, PRICE, recordRound } from "@/lib/adena";
 import { landed, RULES, type Chain } from "@/lib/chain";
 import { replayed, type Proof } from "@/lib/builder/proof";
@@ -67,7 +68,7 @@ export function SaveTestRound({ chain, proofs, id, world, author, onSaved }: { c
       if (await landed(async () => !!(await chain.bestsOf([id], author).catch(() => null))?.get(id)?.assisted, () => live.current)) return (setS({ at: "done" }), onSaved());
       setS({ at: "failed", why: "The chain does not show it yet. If you signed, give it a minute and look again." });
     } catch (e) {
-      setS({ at: "failed", why: e instanceof Error ? e.message : String(e) });
+      setS({ at: "failed", why: messageOf(e) });
     }
   };
   if (s.at === "done") return <p className="bsave bsave--done" role="status">Saved: your test round is the record to beat.</p>;

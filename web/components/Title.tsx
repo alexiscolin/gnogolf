@@ -21,10 +21,6 @@ declare global {
     __title?: TitleScene;
     __titleFilm?: Film | null;
   }
-  interface Navigator {
-    // the Network Information API (Chromium): not in the DOM types
-    connection?: { saveData?: boolean; effectiveType?: string };
-  }
 }
 
 // What the gnomes are up to while the game loads, cup by cup. Silly on
@@ -479,7 +475,7 @@ export default function Title({ onStart, onAbout, loading = false, world: given,
         <div className="title__go">
           <Loader loading={loading} onDone={done} world={world} />
           {ready && (
-            <Button variant="gold" className="btn--play btn--cta btn--pop btn--start" aria-label="Play" onClick={(e) => (e.stopPropagation(), start())}>
+            <Button variant="gold" className="btn--play btn--cta btn--pop btn--start" onClick={(e) => (e.stopPropagation(), start())}>
               <span className="hint--mouse">Click to start</span>
               <span className="hint--touch">Tap to start</span>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12 H18 M13 6 L19 12 L13 18" /></svg>

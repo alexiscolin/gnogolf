@@ -25,6 +25,8 @@ const GLYPH: Record<string, string> = {
   WhatsApp: "M12 2.5a9.4 9.4 0 0 0-8.1 14.2L2.5 21.5l4.9-1.3A9.4 9.4 0 1 0 12 2.5zm0 17.1c-1.4 0-2.8-.4-4-1.1l-.3-.2-2.9.8.8-2.8-.2-.3a7.7 7.7 0 1 1 6.6 3.6zm4.2-5.7c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1l-.7.9c-.1.2-.3.2-.5.1a6.3 6.3 0 0 1-3.1-2.7c-.2-.4.2-.4.7-1.2.1-.2 0-.3 0-.4l-.7-1.7c-.2-.4-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.6 2.6 0 0 0-.8 1.9 4.5 4.5 0 0 0 1 2.4 10.3 10.3 0 0 0 4 3.5c1.5.6 2 .7 2.8.6.4-.1 1.4-.6 1.6-1.1.2-.5.2-1 .1-1.1l-.5-.3z",
   Bluesky: "M6.3 4.4C8.6 6.1 11 9.6 12 11.5c1-1.9 3.4-5.4 5.7-7.1 1.6-1.2 4.3-2.2 4.3.9 0 .6-.4 5.2-.6 5.9-.7 2.6-3.3 3.2-5.6 2.8 4 .7 5 3 2.8 5.2-4.2 4.3-6-1.1-6.5-2.5l-.1-.3-.1.3c-.5 1.4-2.3 6.8-6.5 2.5-2.2-2.2-1.2-4.5 2.8-5.2-2.3.4-4.9-.2-5.6-2.8C2.4 10.5 2 5.9 2 5.3c0-3.1 2.7-2.1 4.3-.9z",
 };
+/** Stroked glyphs, 24×24 (the shop's one share button draws them too): a link copied, the phone's share sheet. */
+export const STROKE = { copied: "M5 12l5 5 9-10", share: "M12 3v12M7 8l5-5 5 5M5 13v6h14v-6" };
 
 interface ShareProps {
   text: string;
@@ -90,12 +92,13 @@ export default function Share({ text, snapshot, link = "", clip = null, label = 
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d={GLYPH[name]} /></svg>
         </a>
       ))}
-      <button className="share__icon share__icon--copy" aria-label={copied ? "Link copied" : "Copy the link"} title={copied ? "Copied" : "Copy link"} onClick={() => void copy()}>
-        <svg viewBox="0 0 24 24" aria-hidden="true" className="share__stroke">{copied ? <path d="M5 12l5 5 9-10" /> : <path d="M9 15l6-6M10.5 6.5l1.8-1.8a4 4 0 0 1 5.7 5.7l-1.8 1.8M13.5 17.5l-1.8 1.8a4 4 0 0 1-5.7-5.7l1.8-1.8" />}</svg>
+      <button className="share__icon share__icon--copy" title={copied ? "Copied" : "Copy link"} onClick={() => void copy()}>
+        <span className="sr-only" aria-live="polite">{copied ? "Link copied" : "Copy the link"}</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true" className="share__stroke">{copied ? <path d={STROKE.copied} /> : <path d="M9 15l6-6M10.5 6.5l1.8-1.8a4 4 0 0 1 5.7 5.7l-1.8 1.8M13.5 17.5l-1.8 1.8a4 4 0 0 1-5.7-5.7l1.8-1.8" />}</svg>
       </button>
       {(phone || sheetClip) && (
         <button className="share__icon share__icon--more" aria-label={clip ? "Share the clip" : "More ways to share"} title={clip ? "Share the clip, the file joined" : "More"} onClick={() => void sheet()}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="share__stroke"><path d="M12 3v12M7 8l5-5 5 5M5 13v6h14v-6" /></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="share__stroke"><path d={STROKE.share} /></svg>
         </button>
       )}
     </span>

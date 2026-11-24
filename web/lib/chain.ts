@@ -763,8 +763,8 @@ export interface Kept { strokes: number; height: number; period: number; shots: 
 /** One of a player's records (progressOf): the hole's version, slot, world and par; the mode, strokes,
  *  the block it was saved at and its weather's period; whether it holds the hole's record in that mode. */
 export interface ChainBest { id: string; slot: string; world: string; par: number; mode: Mode; strokes: number; height: number; period: number; top: boolean }
-// a kept best's shots: "angle,power,tick" (%.4f, %.4f, %d) joined by ";", 1 to 60
-const SHOTS = /^-?\d{1,3}\.\d{4},\d{1,2}\.\d{4},-?\d{1,4}(;-?\d{1,3}\.\d{4},\d{1,2}\.\d{4},-?\d{1,4}){0,59}$/;
+// a kept best's shots: "angle,power,tick" (%.4f, %.4f, %d) joined by ";"
+const SHOTS = /^-?\d{1,3}\.\d{4},\d{1,2}\.\d{4},-?\d{1,4}(;-?\d{1,3}\.\d{4},\d{1,2}\.\d{4},-?\d{1,4})*$/;
 /** recordsOf's lines, "<player> <strokes> <height> <period> <shots>", each field as the realm writes it
  *  (golf.gno bestOf), a best's shots as many as its strokes; any other line dropped. */
 function keptLines(out: string): [string, Kept][] {

@@ -7,12 +7,11 @@
 // then the fallbacks, on purpose, for a hole of another world that uses that
 // skin (a skin is a free string: a community hole may).
 import * as THREE from "three";
-import { C, flat, drawn, rbox, texOf, share } from "./materials";
+import { C, T, flat, drawn, rbox, texOf, share } from "./materials";
 import { house, smoke } from "./props";
 import { inZone, CELL } from "../terrain";
 import { seeded } from "./common";
 import { timeOf } from "./camera";
-import { T } from "./town";
 import { ud, type Hole, type Height } from "./data";
 import type { Post, Vec2, Zone } from "../types";
 import { own } from "../own";

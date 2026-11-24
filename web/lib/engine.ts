@@ -37,6 +37,7 @@ import { simHole, simReady, simStroke } from "./sim";
 import { NO_TAKEN, takedownOf, takenDown } from "./takedown";
 import { communityOf, NOT_BUILDER, playable, refused } from "./community";
 import { authorOf } from "./builder/holes";
+import { messageOf } from "./words";
 import type { Extras, Ghost, HoleRow, Mode, Post, Stroke, Wall, Zone } from "./types";
 import { md, ud, type Course, type Gnome, type Hole } from "./scene/data";
 import { isDrawn } from "./scene/materials";
@@ -78,8 +79,6 @@ export interface GameOptions {
   onHoled?: (r: { id: string; strokes: number; shots: readonly string[] }) => void;
 }
 
-/** A thrown value's message, for the HUD. */
-const errText = (e: unknown) => String((e instanceof Error && e.message) || e);
 const camOf = (m: string): CamMode => (m === "far" || m === "third" ? m : "classic");
 const gfxOf = (m: string): GfxMode => (m === "high" || m === "low" ? m : "auto");
 
@@ -220,7 +219,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   // an error the HUD shows, of a kind
   const fail = (err: unknown, kind: ErrorKind) => {
     trackError(kind, err, { hole: g.id });
-    g.error = errText(err);
+    g.error = messageOf(err);
     g.errorKind = kind;
     void publish();
   };
@@ -1144,6 +1143,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
   // Keyboard: ←/→ turn the aim, ↑/↓ set the power, Space or Enter shoots,
   // Escape drops the aim. The same preview and the same fire() as the mouse.
   canvas.tabIndex = -1; // until the course is shown (cover)
+  canvas.setAttribute("role", "application"); // (a screen reader passes it the arrows and Space instead of reading with them)
   canvas.setAttribute("aria-label", "Course. Arrow keys aim and set the power, Space shoots.");
   const onKey = (ev: KeyboardEvent) => {
     if (g.flying || g.done || !g.s) return;
@@ -1231,7 +1231,7 @@ export function createGame(canvas: HTMLCanvasElement, { rpc, web, chain: given, 
       await shoot(angleDeg, power, round);
     } catch (err) {
       console.warn("gnogolf: a shot failed", err);
-      if (round === g.round) (g.error = errText(err)), (g.errorKind = "shot");
+      if (round === g.round) (g.error = messageOf(err)), (g.errorKind = "shot");
     } finally {
       if (round === g.round) {
         dragging = g.aiming = g.flying = false;

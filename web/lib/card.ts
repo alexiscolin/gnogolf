@@ -4,6 +4,7 @@
 import type { HoleRow } from "./types";
 import type { ChainBest } from "./chain";
 import { skyOf } from "./sky";
+import { counted } from "./words";
 
 /** A hole as the card reads it: a row of Holes(), or as much of one as is known. */
 type CardHole = Pick<HoleRow, "id"> & Partial<Pick<HoleRow, "slot" | "par" | "world">>;
@@ -282,8 +283,7 @@ export const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** What a restore from the chain brought back, in one sentence: its holes,
  *  its badges, the gnomes they unlocked by name. */
 export function backFromChain({ holes, badges, gnomes }: { holes: number; badges: number; gnomes: readonly string[] }) {
-  const n = (k: number, w: string) => `${k} ${w}${k === 1 ? "" : "s"}`;
-  const what = [holes && n(holes, "hole"), badges && n(badges, "badge"), ...gnomes.map((g) => `${theName(g)} gnome`)].filter(Boolean);
+  const what = [holes && counted("hole")(holes), badges && counted("badge")(badges), ...gnomes.map((g) => `${theName(g)} gnome`)].filter(Boolean);
   return `Back from the chain: ${what.join(", ").replace(/, ([^,]*)$/, " and $1")}.`;
 }
 

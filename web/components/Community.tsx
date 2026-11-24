@@ -161,7 +161,7 @@ export default function Community({ community, chain, onPlay }: {
       <ul className="community__cards">
         {listed.map((h) => <li key={h.id}>{card(h)}</li>)}
       </ul>
-      {unread && !page.judging && <p className="note note--bad">Some holes did not load. <button className="linkish" onClick={retry}>Try again</button></p>}
+      {unread && !page.judging && <p className="note note--bad" role="alert">Some holes did not load. <button className="linkish" onClick={retry}>Try again</button></p>}
       {page.judging ? (
         <p className="community__judging" aria-live="polite">Checking the holes against the Builder rules…</p>
       ) : rating ? (

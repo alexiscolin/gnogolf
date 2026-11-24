@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { HoleRow } from "@/lib/types";
 import { CUPS, CUP_NAMES, vsPar, type Cup, type CupTotal, type cupTotals } from "@/lib/card";
 import { sound } from "@/lib/feel";
 import { stillsOnly } from "@/lib/prefs";
 import { CLIP, Green, canHover, cupStill, stillsReady, warmClips } from "@/components/Title";
 import { FrontScreen } from "@/components/About";
-import { Button, VsPar } from "@/components/ui";
+import { Button, Frame, VsPar } from "@/components/ui";
 import { plural } from "@/components/common";
 import type { Chain } from "@/lib/chain";
 import Community from "@/components/Community";
@@ -27,23 +27,6 @@ const TAGS: Record<Cup, string> = {
 export const WORLDS: readonly { id: Cup; name: string; tag: string }[] = CUPS.map((id) => ({ id, name: CUP_NAMES[id], tag: TAGS[id] }));
 /** A cup by its id: the garden's when it is none of them. */
 export const worldOf = (id: string | null | undefined) => WORLDS.find((w) => w.id === id) || WORLDS[0];
-
-/** A round inked window, its scene clipped to it (an id of its own, so two
- *  on a screen never share a clip): a cup's emblem, a hole's map, a gnome's face. */
-export function Frame({ className, children }: { className?: string; children?: ReactNode }) {
-  const clip = useId();
-  return (
-    <svg viewBox="0 0 120 120" className={className} aria-hidden="true">
-      <defs>
-        <clipPath id={clip}>
-          <circle cx="60" cy="60" r="56" />
-        </clipPath>
-      </defs>
-      <g clipPath={`url(#${clip})`}>{children}</g>
-      <circle cx="60" cy="60" r="56" className="w__ring" />
-    </svg>
-  );
-}
 
 export function Emblem({ id }: { id: string }) {
   // each a little scene in the game's own inked, flat style
@@ -253,9 +236,10 @@ export default function Worlds({ counts = {}, stats, current, onPick, onBack, on
     setWipe(null);
     setResets(false);
   };
-  // the reset menu, in the corner row beside About
+  // the reset menu, in the corner row beside About; Escape in it closes it, focus back on its button (not the
+  // screen's Escape, which goes back a screen)
   const resetMenu = (played.length > 0 || onRestore) && (
-    <div className="resets">
+    <div className="resets" onKeyDown={(e) => resets && e.key === "Escape" && (e.stopPropagation(), setResets(false), e.currentTarget.querySelector("button")?.focus())}>
       <button className="round round--pill" aria-label="Scores" aria-expanded={resets} onClick={() => (sound("blip"), setResets((o) => !o), setWipe(null))}>
         Scores ▾
       </button>

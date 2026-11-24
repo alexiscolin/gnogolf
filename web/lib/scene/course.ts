@@ -14,7 +14,7 @@ import { WEATHER_SKINS } from "./weather";
 import { POSTS, BARS, roofs, SLAB } from "./pieces";
 import { zoneDetail, waterMask, pondWater } from "./zones";
 import { ud, withData, type Course, type CourseData, type CourseTerrain as T, type Fade, type Height, type Hole, type Tick, type Timed } from "./data";
-import type { Extras, MutVec2, Post, Timing, Vec2, Wall, Wear, Zone } from "../types";
+import type { Board, Extras, MutVec2, Post, Timing, Vec2, Wall, Wear, Zone } from "../types";
 import { own as ownKey } from "../own";
 
 // the tunnels whose mouth is a real hole in the lane (drawn by their world): its shape
@@ -328,6 +328,11 @@ export const VOID_ROWS: readonly (readonly [number, number])[] = [[0, 0], [-0.14
  *  foot tucks a little under it. */
 export const VOID_FLOOR = -3.2;
 export const VOID_BANDS = [0x625a80, 0x4f4668, 0x604d40, 0x453c5e, 0x4a3b33, 0x3a3150, 0x2c2640, 0x1c182c];
+/** Row k of the void's cut face under the lane's edge at v: out along (nx, nz), jagged up to jag by where it is. */
+export function voidRow(v: readonly number[], k: number, nx: number, nz: number, jag: number) {
+  const [dy, out] = VOID_ROWS[k], wob = k && k < VOID_ROWS.length - 1 ? jag * Math.sin(v[0] * 1.9 + v[2] * 1.3 + k * 2.1) : 0;
+  return [v[0] + nx * (out + wob), k === VOID_ROWS.length - 1 ? VOID_FLOOR - 0.4 : v[1] + dy, v[2] + nz * (out + wob)];
+}
 
 /** The nearest point of a lane's edge over the void, on any of its zones'
  *  outlines (voidEdges). */
@@ -559,10 +564,7 @@ export function groundMesh(s: Hole, t: T) {
   // going into the dark
   const band = new THREE.Color(), bandLow = new THREE.Color();
   const voidFace = (p: readonly number[], q: readonly number[], n: readonly number[]) => {
-    const row = (v: readonly number[], k: number) => {
-      const [dy, out] = VOID_ROWS[k], jag = k && k < VOID_ROWS.length - 1 ? 0.07 * Math.sin(v[0] * 1.9 + v[2] * 1.3 + k * 2.1) : 0;
-      return [v[0] + n[0] * (out + jag), k === VOID_ROWS.length - 1 ? VOID_FLOOR - 0.4 : v[1] + dy, v[2] + n[2] * (out + jag)];
-    };
+    const row = (v: readonly number[], k: number) => voidRow(v, k, n[0], n[2], 0.07);
     for (let k = 0; k + 1 < VOID_ROWS.length; k++)
       quad([row(p, k), row(p, k + 1), row(q, k + 1), row(q, k)], band.set(VOID_BANDS[k]), n, bandLow.set(VOID_BANDS[k + 1]));
   };
@@ -1609,6 +1611,10 @@ function unreached(walls: readonly Wall[], zones: readonly Zone[]) {
   return out;
 }
 
+/** Whether wall w runs along an edge of the board. */
+export const onBoardEdge = (w: Pick<Wall, "a" | "b">, board: Board) =>
+  ([0, 1] as const).some((k) => [w.a[k], w.b[k]].every((v) => Math.abs(v) < 0.01 || Math.abs(v - (k ? board.h : board.w)) < 0.01) && Math.abs(w.a[k] - w.b[k]) < 0.01);
+
 /**
  * Walls as the eye expects them. build.Bar makes a free-standing barrier out
  * of four segments; drawn one by one they look like two rails, so four closed
@@ -1680,12 +1686,9 @@ function wallPieces(s: Hole, t: T, timing?: Timing) {
     for (const w of parts) {
     const len = segLen(w);
     if (len < 1e-6) continue;
-    // a hole with no rails (all sea or rooftops round the lane) is only
-    // fenced at the board's edge: a low rope on posts, not a timber
-    const onEdge = (k: 0 | 1) => [w.a[k], w.b[k]].every((v) => Math.abs(v) < 0.01 || Math.abs(v - (k ? s.board.h : s.board.w)) < 0.01) && Math.abs(w.a[k] - w.b[k]) < 0.01;
     // round a lane over the sea or the rooftops the board's own edge can't be
     // reached (the ball is in the water first): no rail out in the water
-    if (!w.skin && (onEdge(0) || onEdge(1)) && s.zones.some((q) => q.outside && q.kind === "hazard")) { report(whole, { by: "hidden", why: "sea" }); continue; }
+    if (!w.skin && onBoardEdge(w, s.board) && s.zones.some((q) => q.outside && q.kind === "hazard")) { report(whole, { by: "hidden", why: "sea" }); continue; }
     report(whole, whole.skin ? { by: "fallback" } : { by: "kerb" }); // a rail; a skin nothing draws on its own, the plain timber
     const ang = Math.atan2(w.b[1] - w.a[1], w.b[0] - w.a[0]);
     const nx = -Math.sin(ang), nz = Math.cos(ang);

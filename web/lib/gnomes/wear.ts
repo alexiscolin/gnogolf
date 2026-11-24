@@ -4,19 +4,17 @@
 // rival at a time for the others (WornMany); the ball's ghost, the boards'
 // faces and the clip dress them in it (gnome.ts knowGnome, wears). The player
 // plays any gnome they hold, or a free one, picked in this browser per
-// account: nothing on chain. Equip only shows everyone another than the best.
+// account (door.ts pickOf): nothing on chain. Equip only shows everyone
+// another than the best.
 import { GNOMES, knowGnome, wears, loadWardrobe, type Skin } from "../scene/gnome";
 import { skinOfTraits } from "./skin";
 import { isAddress } from "../chain";
-import type { Worn } from "./shop";
+import { MAX_PLAYERS, type Worn } from "./shop";
 import { told } from "./door";
 
 type Token = Pick<Worn, "id" | "name" | "traits">;
 /** A token's skin: under "t<id>" (as the catalogue's), an earned kind as the game's own gnome. */
 export const tokenSkin = (t: Token, line = "") => skinOfTraits(t.traits, { id: `t${t.id}`, name: t.name, line });
-
-// (the signal of what players wear, and the player's pick, are the shop's door's: the game's first load reads them)
-export { onWear, wearVersion, pick, pickOf } from "./door";
 
 /** These tokens' gnomes known to the game (its wardrobe fetched first): their skins, in order. */
 export async function know(tokens: readonly Token[]): Promise<Skin[]> {
@@ -57,7 +55,7 @@ export function seen({ worn, playing, name }: { worn: Worn | null; playing: stri
 }
 
 // What a page's faces ask, batched: every player asked in the same moment
-// goes into one read (WornMany: 50 a read), and a player is asked once a
+// goes into one read (WornMany: MAX_PLAYERS a read), and a player is asked once a
 // visit; a read that fails is asked again the next time.
 const asked = new Map<string, Promise<void>>();
 let batch: { players: string[]; done: Promise<void> } | null = null;
@@ -66,7 +64,7 @@ export function askWorn(read: (players: readonly string[]) => Promise<ReadonlyMa
   if (!isAddress(player)) return Promise.resolve();
   const had = asked.get(player);
   if (had) return had;
-  if (!batch || batch.players.length >= 50) {
+  if (!batch || batch.players.length >= MAX_PLAYERS) {
     const b: { players: string[]; done: Promise<void> } = { players: [], done: Promise.resolve() };
     b.done = Promise.resolve().then(async () => {
       if (batch === b) batch = null;
