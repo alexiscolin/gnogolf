@@ -235,9 +235,10 @@ void test("a clamp and a drag move stay quick on a busy board (the walk: 4 strid
   for (let k = 0; k < 4; k++) check.piece(movePiece(p, [40 + k * 0.25, 40]));
   const move = (performance.now() - t0) / 4;
   // (about 250 ms and 30 ms alone, a few times that with the whole suite running beside it; 5.6 s and 200 ms alone
-  // when every probe searched for traps)
-  assert.ok(clamp < 2500, `clamp ${clamp.toFixed(0)} ms`);
-  assert.ok(move < 400, `a drag move ${move.toFixed(0)} ms`);
+  // when every probe searched for traps; a CI runner is a few times slower again)
+  const room = process.env.CI ? 4 : 1;
+  assert.ok(clamp < 2500 * room, `clamp ${clamp.toFixed(0)} ms`);
+  assert.ok(move < 400 * room, `a drag move ${move.toFixed(0)} ms`);
 });
 
 void test("the full way names a chain of tunnels as the quick one does (the step into it); no slope blamed for a cup cut off by a wall", () => {
