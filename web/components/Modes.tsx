@@ -1,7 +1,7 @@
 "use client";
 
 // The first choice, before the cups: play alone, race a player's ghost, or
-// build a hole (the Builder, once out: onBuild). A duel asks whom to race on a
+// build a hole (the Builder: onBuild). A duel asks whom to race on a
 // screen of its own (Rival), then on which of the holes they have a best on
 // (Ghosts), in place of the cups. Panels of their own, a kart game's modes.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";

@@ -28,11 +28,13 @@ a wallet. [The pitch, in one page](docs/pitch.md).
   ([docs/leaderboards.md](docs/leaderboards.md)).
 - **Dares.** A saved round gives you a link: whoever opens it races your
   ghost.
+- **Build a hole, own it.** The Builder, at `/build` on a computer: draw a
+  hole, hole it in every weather that moves the ball, publish it under your
+  name. It joins the community's holes beside the cups, with its own board.
 - **Gnomes and badges** to unlock as you play.
 
-Still behind a switch, and in this repo: the **Builder** (draw a hole, hole
-it in every weather that moves the ball, publish it, own it) and the **gnome
-collection** (720 gnomes to buy, and nine to earn).
+Still behind a switch, and in this repo: the **gnome collection** (720 gnomes
+to buy, and nine to earn), which comes with mainnet.
 
 ## How it works
 
@@ -179,8 +181,8 @@ you do.
 ## Writing a hole
 
 A hole is geometry: a `course.Simple`, encoded as data and published with
-`golf.PublishMine(slug, hexData, note)` once the owner opens publishing
-(closed at launch, until the Builder). It becomes a community hole: playable,
+`golf.PublishMine(slug, hexData, note)` while the owner keeps publishing
+open (it is, on onyx). It becomes a community hole: playable,
 with a board of its own, in no cup and not in the rankings.
 
 ```go
