@@ -24,7 +24,7 @@ export const kicks = (skin: string) => KICKS.some((k) => skin.includes(k));
 export const MAX_BOUNCE = 0.75;
 /** physics.MinRamp: the gentlest hill (|Vec|) that launches a ball off its crest. */
 export const MIN_RAMP = 0.12;
-/** physics.MaxMove: a zone a fast ball cannot step over is at least this deep along its way. */
+/** physics.MaxMove: the longest move at a substep's starting speed (a push or a bumper's kick inside it lengthens the moves after). */
 export const MAX_MOVE = 1.5;
 /** course.Decode: a hole's par (Strokes) is at most this. */
 export const MAX_PAR = 19;

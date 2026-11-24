@@ -111,8 +111,6 @@ func TestRoundBallKeepsItsRadiusFromWalls(t *testing.T) {
 	}
 }
 
-// A fast ball does not jump over a narrow zone: a substep is walked in short
-// moves, and the water in the middle of a 10-unit stride still catches it.
 func TestRoundZoneHasNoCorners(t *testing.T) {
 	z := physics.Zone{Min: physics.V(0, 0), Max: physics.V(10, 4), Round: true}
 	if !z.Contains(physics.V(5, 2)) || z.Contains(physics.V(0.3, 0.3)) {
@@ -120,6 +118,8 @@ func TestRoundZoneHasNoCorners(t *testing.T) {
 	}
 }
 
+// A fast ball does not jump over a narrow zone: a substep is walked in short
+// moves, and the water in the middle of a 10-unit stride still catches it.
 func TestFastBallMeetsANarrowZone(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(40, 10)),
@@ -144,14 +144,15 @@ func TestBallInACornerStaysIn(t *testing.T) {
 	}
 }
 
-// Two lively bumpers facing each other cannot speed a ball up without end.
+// Two lively bumpers facing each other cannot speed a ball up without end: a
+// kick holds it to SpeedCap, in the substep of the hit too.
 func TestBumpersCannotPumpForever(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(32, 16)),
-		Posts:    []physics.Post{{Circle: physics.Circle{C: physics.V(9, 4), R: 1.4}, Bounce: 1.3}, {Circle: physics.Circle{C: physics.V(9, 12), R: 1.4}, Bounce: 1.3}},
+		Posts:    []physics.Post{{Circle: physics.Circle{C: physics.V(4, 8), R: 1.4}, Bounce: 1.3, Skin: "bumper"}, {Circle: physics.Circle{C: physics.V(28, 8), R: 1.4}, Bounce: 1.3, Skin: "bumper"}},
 		Friction: 0.95, Bounce: 1, Radius: 0.5,
 	}
-	sh := f.Step(physics.V(9, 7), physics.V(0, -8), 30)
+	sh := f.Step(physics.V(26, 8), physics.V(8, 0), 30)
 	for i := 1; i < len(sh.Path); i++ {
 		if d := sh.Path[i].Sub(sh.Path[i-1]).Len(); d > physics.SpeedCap+1e-6 {
 			t.Fatalf("a substep of %v is faster than the cap", d)
@@ -587,6 +588,18 @@ func TestABallAtRestUnderATimedHazardMeetsIt(t *testing.T) {
 	}
 }
 
+// A ball at rest in a timed tunnel's mouth (a blowhole) is taken, whenever in
+// its period the stroke happened to end.
+func TestABallAtRestInATimedTunnelIsTaken(t *testing.T) {
+	blowhole := physics.Zone{Kind: physics.Tunnel, Min: physics.V(20, 0), Max: physics.V(30, 10), Vec: physics.V(50, 5), Every: 12, On: 4, Phase: 5}
+	f := &physics.Field{Walls: Box(physics.V(0, 0), physics.V(60, 10)), Zones: []physics.Zone{blowhole}, Friction: 0.86, Radius: 0.5}
+	for tick := 0; tick < 12; tick++ {
+		if s := physics.WithTick(f, tick).Step(physics.V(24, 5), physics.Vec2{}, 1); s.Rest() != physics.V(50, 5) || len(s.Path) != 2 {
+			t.Fatalf("tick %d: a ball at rest in the blowhole was not taken: %v", tick, s.Path)
+		}
+	}
+}
+
 // A timed bar that comes back on the ball pushes it out: a wall never stands
 // on the ball.
 func TestATimedBarArrivingOnTheBallPushesItOut(t *testing.T) {
@@ -773,6 +786,45 @@ func TestAFlightOutlivesTheStroke(t *testing.T) {
 	}
 	if s.Rest().X < 24 {
 		t.Fatalf("the flight was cut short, at %v", s.Rest())
+	}
+}
+
+// A landing is a contact with the ground: the speed along loses
+// LandFriction·(1+GroundBounce)·vz, and a rebound above HopSpeed flies on at
+// what is left.
+func TestALandingBrakesAndHops(t *testing.T) {
+	const g = 0.5
+	s := steep(g).Step(physics.V(9, 0), physics.V(6.2, 0), 60)
+	k := -1
+	for i, a := range s.Air {
+		if a {
+			k = i
+			break
+		}
+	}
+	if k < 0 || !s.Air[k+1] {
+		t.Fatalf("no flight of two substeps: %v", s.Air)
+	}
+	v := s.Path[k+1].Sub(s.Path[k]).X // in the air: its speed, unchanged
+	sin := g / physics.G
+	vz := v * sin / math.Sqrt(1-sin*sin)
+	want := v - physics.LandFriction*(1+physics.GroundBounce)*vz
+	for i := k + 2; i < len(s.Path); i++ {
+		if d := s.Path[i].Sub(s.Path[i-1]).X; s.Air[i] && math.Abs(d-want) < 1e-9 {
+			return
+		}
+	}
+	t.Fatalf("no hop at %v after landing at %v: path %v, air %v", want, v, s.Path, s.Air)
+}
+
+// A hill no steeper than MinRamp is a lawn's undulation: a fast ball rolls
+// over its crest, where one a hair steeper flies.
+func TestAGentleHillLaunchesNothing(t *testing.T) {
+	if s := steep(physics.MinRamp).Step(physics.V(9, 0), physics.V(6, 0), 60); flew(s) {
+		t.Fatalf("a %v hill launched the ball: %v", physics.MinRamp, s.Air)
+	}
+	if s := steep(physics.MinRamp+0.01).Step(physics.V(9, 0), physics.V(6, 0), 60); !flew(s) {
+		t.Fatalf("a %v hill did not launch the ball", physics.MinRamp+0.01)
 	}
 }
 
