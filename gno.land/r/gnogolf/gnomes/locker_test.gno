@@ -46,15 +46,9 @@ func TestACollectionOf1_50And205ReadsInPages(cur realm, t *testing.T) {
 	}
 }
 
-// The gas of reading a whole collection, as the difference of each pair
-// below (the same holding, with and without the reads), measured with
-// `gno test -v` on the onyx toolchain; a query's limit is 3e9:
-//
-//	1 gnome:    TestLockerGasRead1   less TestLockerGasHold1
-//	50 gnomes:  TestLockerGasRead50  less TestLockerGasHold50
-//	205 gnomes: TestLockerGasRead205 less TestLockerGasHold205 (three pages)
-//
-// The figures are in ADR-007.
+// The gas of reading a whole collection of 1, 50 or 205 gnomes (three
+// pages) is the difference of each pair below, the same holding with and
+// without the reads, as `gno test -v` measures it; a query's limit is 3e9.
 func TestLockerGasHold1(cur realm, t *testing.T)   { holding(t, cur, 1) }
 func TestLockerGasRead1(cur realm, t *testing.T)   { holding(t, cur, 1); readAll() }
 func TestLockerGasHold50(cur realm, t *testing.T)  { holding(t, cur, 50) }

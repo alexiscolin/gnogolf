@@ -31,8 +31,8 @@ func Equip(cur realm, tid string) {
 	chain.Emit("Equipped", "player", caller.String(), "id", tid)
 }
 
-// Equipped is the gnome player wears, "" for none. A gnome sold on since is
-// no longer worn: ownership is checked on read.
+// Equipped is the gnome player put on with Equip, "" for none. A gnome sold
+// on since is no longer worn: ownership is checked on read.
 //
 //	{"version":1,"player":"g1…","id":"104","name":"…","tier":"legendary","traits":"…"}
 func Equipped(player address) string {

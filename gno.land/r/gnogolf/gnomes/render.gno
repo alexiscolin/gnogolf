@@ -20,6 +20,7 @@ var (
 	hub  = strings.TrimPrefix(self, "gno.land")
 )
 
+// Render is the page gnoweb shows at path, "Not found" for any other.
 func Render(path string) string {
 	switch {
 	case path == "":

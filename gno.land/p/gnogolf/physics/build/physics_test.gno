@@ -145,7 +145,7 @@ func TestBallInACornerStaysIn(t *testing.T) {
 }
 
 // Two lively bumpers facing each other cannot speed a ball up without end: a
-// kick holds it to SpeedCap, in the substep of the hit too.
+// kick is held to SpeedCap, in the substep of the hit too.
 func TestBumpersCannotPumpForever(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(32, 16)),
@@ -171,7 +171,7 @@ func TestNoBounceAddsSpeed(t *testing.T) {
 		}
 		for _, a := range []float64{0, 0.2, 0.5, 1.2, 2.5, 3.1} {
 			v0 := physics.FromPolar(a, 3)
-			start := physics.V(20, 10).Sub(physics.FromPolar(a, 6)) // aimed at the bumper
+			start := physics.V(20, 10).Sub(physics.FromPolar(a, 6)) // aimed at the post
 			sh := f.Step(start, v0, 40)
 			top := v0.Len() + 1e-6
 			for i := 1; i < len(sh.Path); i++ {
@@ -183,7 +183,7 @@ func TestNoBounceAddsSpeed(t *testing.T) {
 	}
 }
 
-// A ball that stops inside the water is sent back now, not on the next stroke.
+// A ball that stops in the water goes back at once, not on the next stroke.
 func TestBallThatStopsInWaterIsResolved(t *testing.T) {
 	f := &physics.Field{
 		Walls:    Box(physics.V(0, 0), physics.V(32, 16)),
@@ -688,7 +688,7 @@ func TestOnlyTheCrestLaunches(t *testing.T) {
 	if sh := f.Step(physics.V(15, 16), physics.V(2, 3), 30); flew(sh) {
 		t.Fatalf("a ball leaving the ramp by its side took off")
 	}
-	// fast, but mostly across: its speed up the ramp is under JumpSpeed
+	// fast, but mostly across: its speed up the ramp is too low to take off
 	if sh := f.Step(physics.V(17, 8), physics.V(1.2, 5), 30); flew(sh) {
 		t.Fatalf("a ball crossing the ramp on a slant took off")
 	}
@@ -887,9 +887,8 @@ func crossed(ws []physics.Wall, path []physics.Vec2) int {
 	return -1
 }
 
-// A ball aimed at the tip of an acute corner meets the tip: the square caps
-// of the two walls left a gap in front of it, and a ball in the gap went
-// through the solid.
+// A ball aimed at the tip of an acute corner meets the tip: it never slips
+// between the two walls' ends into the solid.
 func TestAnAcuteTipIsSolid(t *testing.T) {
 	for _, deg := range []float64{45, 60, 63, 75, 85} {
 		half := deg / 2 * math.Pi / 180
@@ -912,8 +911,7 @@ func TestAnAcuteTipIsSolid(t *testing.T) {
 	}
 }
 
-// A ball coming diagonally at a free wall end from afar meets the end: the
-// square cap had no end face to stop it.
+// A ball coming diagonally at a free wall end from afar meets its round cap.
 func TestAFreeEndCannotBeCutFromAfar(t *testing.T) {
 	ws := []physics.Wall{{Seg: physics.Segment{physics.V(0, 0), physics.V(5, 0)}}}
 	f := &physics.Field{Walls: ws, Friction: 0.9, Bounce: 0.8, Radius: 0.5}

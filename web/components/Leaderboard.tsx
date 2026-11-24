@@ -360,11 +360,10 @@ export type Placed = StrokesRow & { holes?: number; par?: number; at: number };
  * The rival screen's three quick picks, flagged players left out as on the
  * boards: today's rival (featured.ts: never the first three, drawn by the day),
  * a player at the player's level (next to their place; the board's middle
- * without one), and one at random, drawn again on each visit. null while read;
- * a pick nobody fills, null.
+ * without one) and yourself (null while no one is connected); and a surprise
+ * drawn again on each visit (the board's Surprise me). null while read; a pick
+ * nobody fills, null; a board that could not be read: retry, to read it again.
  */
-// the three picks (today's rival, your level, yourself: null while no one is connected),
-// and a surprise (the board's Surprise me); a board that could not be read: retry, to read it again
 export function useRivalPicks(chain: Chain | null, me: string | null | undefined, mode: Mode) {
   const [picks, setPicks] = useState<{ rows: readonly (Placed | null)[]; surprise: Placed | null; retry?: () => void } | null>(null);
   const [tick, setTick] = useState(0);
@@ -393,6 +392,13 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
   return picks;
 }
 
+/** The weather a record was played in, beside its strokes: none for a calm sky (the bar every record is read against). */
+function SkyMark({ kind, mine }: { kind: SkyKind | undefined; mine: boolean }) {
+  if (!kind) return null;
+  const said = `Played in ${kind === "wind" ? "the wind" : skyWord(kind)}`;
+  return <span className="lb__sky" role="img" aria-label={said} title={said}><SkyIcon sky={kind} mine={mine} /></span>;
+}
+
 /**
  * A whole board, the hole's or the course's, read a page at a time as it is
  * scrolled: a page is O(page) on the chain however deep. Every row links to
@@ -401,17 +407,10 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
  */
 // max: its first rows only, and nothing else (the rival's stickers: the whole board is a link away)
 // onRace: a hole's rows, and the course's with a best on the hole played; onGhosts: the course's others (all of them off a hole)
-/** The weather a record was played in, beside its strokes: none for a calm sky (the bar every record is read against). */
-function SkyMark({ kind, mine }: { kind: SkyKind | undefined; mine: boolean }) {
-  if (!kind) return null;
-  const said = `Played in ${kind === "wind" ? "the wind" : skyWord(kind)}`;
-  return <span className="lb__sky" role="img" aria-label={said} title={said}><SkyIcon sky={kind} mine={mine} /></span>;
-}
-
 export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace, onGhosts, row, max, gnome }: BoardProps & { kind: "hole" | "course"; onGhosts?: (player: string) => void; /** a row drawn otherwise (the rival's stickers) */ row?: (r: Placed) => ReactNode; max?: number }) {
   const PAGE = 20, TOP = 5;
   const id = s.id || "";
-  const [loaded, setRows] = useState<readonly Placed[] | null>(null);
+  const [loaded, setLoaded] = useState<readonly Placed[] | null>(null);
   const [head, setHead] = useState<{ par: number; holes: number; players: number; finished?: number } | null>(null);
   const [next, setNext] = useState(0); // the next page's offset, 0 at the end
   const [err, setErr] = useState(false); // a page the chain did not give
@@ -447,9 +446,8 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
   const add = (offset: number) =>
     read(offset).then(async ({ b, head: h }) => {
       const players = b.rows.map((r) => r.player);
-      // (the rows never wait for it: a page of forecasts takes the node a second or two)
-      // a hole's records, one read for the page (the rows never wait for it): their skies,
-      // worked out from their periods (lib/sky.ts)
+      // a hole's records, one read for the page: their skies, worked out from their periods (lib/sky.ts);
+      // the rows never wait for it (a page of forecasts takes the node a second or two)
       if (kind === "hole")
         void chain!.recordsOf(id, mode, players).then((kept) => {
           if (alive.current && kept.size) setInfo((was) => new Map([...was, ...[...kept].map(([p, r]): [string, { height: number; sky: SkyKind }] => [p, { height: r.height, sky: skyOf(id, s.world || "garden", r.period) }])]));
@@ -459,7 +457,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
       if (got.length) setHere((was) => new Set([...was, ...got]));
       primeNames(chain!, b.rows);
       setHead(h);
-      setRows((r) => {
+      setLoaded((r) => {
         const had = offset ? r || [] : [];
         // a place is the rows shown before it: the chain's offsets also count
         // names deleted since, skipped in their page. A row already shown (the
@@ -750,7 +748,7 @@ interface Gain { pass: readonly string[]; best: boolean; sky: SkyKind; beat?: Ri
 type Rival = { player: string; name: string; strokes: number };
 const NO_GAIN: Gain = { pass: [], best: false, sky: "" };
 
-/** The chain's own name registrar on gnoweb (onyx, mainnet and a local gno: v0; pearl had v1), the words alone till it is read. */
+/** The chain's own name registrar on gnoweb (reg: chain.nameReg's), the words alone until it is read. */
 const NameLink = ({ chain, reg, children }: { chain: Chain; reg: string; children: ReactNode }) =>
   reg ? (
     <a href={chain.web + "/" + reg.replace(/^(gno\.land)?\//, "")} target="_blank" rel="noopener noreferrer">
@@ -960,7 +958,7 @@ export function useWho(chain: Chain | null, addr: string, me?: string | null) {
 /** A ranked player as the boards show them (useWho), their address under their name in full. */
 function Who({ chain, addr, me, link, title = "See this round on gno.land" }: { chain: Chain | null; addr: string; me?: string | null; link?: string; title?: string }) {
   const { label, name } = useWho(chain, addr, me);
-  // (their collector rank after the name, on its line: ADR-011)
+  // (their collector rank after the name, on its line)
   const body = name || addr === me ? (
     <span className="who">
       <span className="who__line"><span className="who__name">{label}</span><Collector chain={chain} player={addr} /></span>

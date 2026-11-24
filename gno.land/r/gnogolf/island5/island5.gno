@@ -2,8 +2,8 @@
 // sea side. The whole beach leans toward the water, so a rolling ball
 // drifts downhill and the line to the cup is aimed high and let break. A
 // band of wet sand above the waterline catches a drifting ball before the
-// sea; a log of driftwood, washed up against the dunes,
-// shuts the high line: round its end, the beach takes the ball away.
+// sea; a log of driftwood, washed up against the dunes, shuts the high line:
+// round its end, the beach takes the ball away.
 package island5
 
 import (

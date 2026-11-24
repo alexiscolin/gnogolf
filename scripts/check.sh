@@ -1,18 +1,17 @@
 #!/bin/sh
 # check.sh [--smoke]: everything that must pass before a commit or a deploy,
 # the quick checks first. The client's types (its tests', the scripts' and
-# media's too), lint, the realm sync check, the gnome catalogue and looks; then
-# the Gno packages' tests with the onyx toolchain (their gas and storage
-# goldens included), the course holes' fingerprints, and the deployed packages
+# media's too), lint, the realm sync check, the gnome catalogue and looks;
+# then the Gno packages' tests with the onyx toolchain (their gas and storage
+# goldens included), the course holes' fingerprints, the deployed packages
 # staged as addpkg takes them (stage.sh: at the deploy's paths, the repo's
 # files byte for byte, linted), the gnomes' portrait art (art.gno, as the
-# client's gnome traces it; headless Chrome), and the aim preview's wasm (wasm.sh --check:
-# the build of these sources, bit for bit, and the realm's answers on the
-# whole course, byte for byte; TinyGo and binaryen's wasm-opt needed); then the
-# unit tests with their coverage floor, and with --smoke the
-# end-to-end run against a local chain and dev server (see the README). Stops
-# at the first failure.
-# This is also what a CI would run.
+# client's gnome traces it; headless Chrome), and the aim preview's wasm
+# (wasm.sh --check: the build of these sources, bit for bit, and the realm's
+# answers on the whole course, byte for byte; TinyGo and binaryen's wasm-opt
+# needed); then the unit tests with their coverage floor, and with --smoke
+# the end-to-end run against a local chain and dev server. Stops at the
+# first failure. This is also what a CI would run.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 
@@ -28,11 +27,10 @@ echo "== the gnome catalogue: data/gnomes.json as data/gnomes/ makes it, every r
 echo "== the realm's rows: each series' as the catalogue makes them, each row's tier its traits'" && npm run -s gnomes:rows -- --check
 echo "== the gnomes' golden looks: every one drawn as it was" && npm run -s gnomes:looks
 
-# The onyx toolchain (the README, "Run it"): GNO_TOOLCHAIN is the
-# folder of the gno, gnokey and gnodev built from a gno checkout at the tag
-# chain/onyx, each finding its GNOROOT (that checkout) by itself; GNO is the
-# gno binary alone. Without it the check fails: SKIP_GNO=1 checks the client
-# alone, and says so.
+# The onyx toolchain: GNO_TOOLCHAIN is the folder of the gno, gnokey and
+# gnodev built from a gno checkout at the tag chain/onyx, each finding its
+# GNOROOT (that checkout) by itself; GNO is the gno binary alone. Without it
+# the check fails: SKIP_GNO=1 checks the client alone, and says so.
 toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 GNO=${GNO:-$toolchain/gno}
 skipped=""

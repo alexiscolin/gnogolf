@@ -1,7 +1,7 @@
 // @ts-check
-// The gnomes' link cards (ADR-003; GUI spec A8, "A gnome"): one 1200×630
-// JPEG per gnome of data/gnomes.json in web/public/og/g/<id>.jpg, the og:image
-// of his page /g/<id>/, and the gallery's, web/public/og/g.jpg. Each is a page
+// The gnomes' link cards: one 1200×630 JPEG per gnome of data/gnomes.json in
+// web/public/og/g/<id>.jpg, the og:image of his page /g/<id>/, and the
+// gallery's, web/public/og/g.jpg. Each is a page
 // of HTML laid out in the repo's headless Chrome and screenshotted, as
 // media/og/og.mjs makes the holes': his tile (his thumbnail, media/gnomes/thumbs,
 // on his tier's stage), his tier, name, line and world, the game's word and his

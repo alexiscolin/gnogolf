@@ -1,9 +1,9 @@
 "use client";
 
-// The first choice, before the cups: play alone, race a player's ghost
-// (ADR-004), or build a hole (the Builder, once out: onBuild). A duel asks whom to race on a screen
-// of its own (Rival), then on which of the holes they have a best on (Ghosts),
-// in place of the cups. Panels of their own, a kart game's modes.
+// The first choice, before the cups: play alone, race a player's ghost, or
+// build a hole (the Builder, once out: onBuild). A duel asks whom to race on a
+// screen of its own (Rival), then on which of the holes they have a best on
+// (Ghosts), in place of the cups. Panels of their own, a kart game's modes.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Emblem, WORLDS } from "@/components/Worlds";
 import { HoleMap, NoMap } from "@/components/HoleMap";
@@ -70,9 +70,9 @@ function useHot() {
 const Stage = ({ skin, act, playing, className = "mode__stage", children }: { skin: Skin; act: Act; playing: boolean; className?: string; children?: ReactNode }) =>
   <span ref={useGnomeStage<HTMLSpanElement>(skin, { act, playing })} className={className}>{children}</span>;
 
+const STRIPES = 8;
 /** A market stall, inked, in the shop panel's colours (behind its gnome: what says "a shop"): its striped awning,
  *  every stripe and scallop painted, on two posts. */
-const STRIPES = 8;
 const Awning = () => {
   const top = (k: number) => 14 + k * (92 / STRIPES), low = (k: number) => 4 + k * (112 / STRIPES); // (the awning widens downward)
   const w = 112 / STRIPES, scallop = (k: number) => `M${low(k)} 30a${w / 2} ${w / 2.2} 0 0 0 ${w} 0z`;

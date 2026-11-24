@@ -1,36 +1,14 @@
 "use client";
 
-// Play (the GUI spec's B3; the hole-builder design's "Test mode and par"),
-// over the editor: the game itself (lib/engine, as the page plays a hole) on
-// the draft's hole, served by builder.wasm at one clock (localchain.ts), in
-// one period of each weather that moves the ball. With the author's address
-// known, every round is a try at the next weather not holed: when the ball
-// drops, the round is replayed as its save would be cut (proof.ts replay):
-// that, not the live play, is the proof. The hole's id is fixed first (the
-// author's address, the slug, the next version): its weather hangs on it.
-// It opens on the first weather not holed (the others holed already, their
-// rounds replayed by the editor: carry.ts), named by a title card a moment
-// ("Round 1 of 3: Clear"); each one holed, its shots are replayed in the
-// weathers left (carry.ts holdsToo: one it holes in is proved by that
-// replay, not played), its chip stamped and the next starts on its own
-// under its title card; a chip pressed plays that weather next. The last
-// ends on one card, the game's hole-finished card, with each weather's
-// strokes and time and Publish (testmode.ts summary); a round that does not
-// count gets that card with why (finished). Without an address, it is asked
-// once on the start card as Play opens (Adena's, or one pasted), or put by
-// for a try: a round in calm weather under an id of its own (TRY_HOLE), the
-// address asked once it is holed, then replayed under the author's id in each
-// weather (carry.ts holdsIn), proved in each it holes in (tried): practice
-// counts. Its HUD is the game's own
-// (Golf.tsx): the strokes card with the par and the time in play, the
-// weather card, the weathers to hole beside them. In play R or Backspace
-// plays again from the tee, V swaps the overview camera, Escape goes back
-// to Build. With it, the hole's address is checked before round 1: one
-// another hole of the author's holds already (one this draft did not come
-// from: testmode.ts cameFrom), or one Publish could not use (taken down,
-// refused), is changed on the start card first (the next free one a click
-// away), its rounds under the old one said not to count; a real new version
-// is said so.
+// Play, over the editor: the game itself (lib/engine) on the draft's hole,
+// served by builder.wasm at one clock (localchain.ts), in one period of each
+// weather that moves the ball. With the author's address known, each round
+// is a try at the next weather not holed; once the ball drops, the round is
+// replayed as its save would be cut (proof.ts replay), and that replay, not
+// the live play, is the proof. The hole's id (address, slug, next version)
+// is settled before round 1, since its weather hangs on it. With no address
+// yet, a practice round in calm weather counts once the address is given,
+// replayed under the author's id in each weather. Its HUD is the game's own.
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Button, Dialog } from "@/components/ui";
 import { messageOf, useFlash } from "@/components/common";
@@ -191,7 +169,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
   /** proof.ts proofKey of the draft */
   proofKey: string;
   author: string | null;
-  /** the author's id: the alias's next version as the editor read it (testmode.ts nextId; read: false, unread: v1); null
+  /** the author's id: the alias's next version as the editor read it (testmode.ts nextHoleId; read: false, unread: v1); null
    *  while it is read */
   next: { id: string; read: boolean } | null;
   /** the difficulty meter's par (0: none): shown, as a guess, until the rounds set it */
@@ -367,7 +345,7 @@ export default function TestMode({ host, draft, hex, proofKey, author, next, gue
     if (!id || !now || !canvas) return;
     if (now.period < 0) return setNote(`No ${weatherName(now.kind).toLowerCase()} came in the last ${FIND_DAYS} days of this hole's weather: it cannot be proved in it.`);
     const renderer = stageRenderer();
-    if (!renderer) return setNote(NO_GL); // (the Editor turns Test off then: a page opened on it still says why)
+    if (!renderer) return setNote(NO_GL); // (the Editor turns Play off then: opened anyway, it still says why)
     const { rpc, web } = endpoints(window.location.search);
     const local = makeLocalChain(host, holeRow(id, draft), hex, now.period);
     const g = (game.current = createGame(canvas, {

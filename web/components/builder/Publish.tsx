@@ -1,18 +1,11 @@
 "use client";
 
-// The publish step (the GUI spec's B4; the hole-builder design's "The
-// publish flow"): the hole as players will see it (in 3D, Preview.tsx), and the form (its right column): its name
-// (typed here as in the header) and its note as the chain will keep
-// them (builder.wasm's check, PublishMine's own cleaning, its link check
-// live), its address, the permanence said before anything else, the total
-// on the button and the bill under "What publishing costs" before any signature, then
-// Adena (or the gnokey command behind a tap), and the chain read until it
-// names the new version; published, the author's own score is the hole's
-// "Beat the builder" line (proof.ts builderScore). Before it opens, the chain is read (publishing open,
-// the Builder's checks the realm's own, no successor, the alias's versions)
-// and the hole judged once more as it will be published: the Builder's rules
-// and the census, the proofs replayed in their strokes, the par (publish.ts
-// holeHolds, publishSteps).
+// The publish step: the hole as players will see it (Preview.tsx) and the
+// form: its name and note as the chain will keep them, its address, the
+// permanence said before anything else, the bill before any signature, then
+// Adena (or the gnokey command behind a tap) and the chain read until it
+// names the new version. The chain is read first, and the hole judged once
+// more as it will be published (publish.ts holeHolds, publishSteps).
 import { useEffect, useMemo, useRef, useState } from "react";
 import { messageOf, shortAddr, useCopied } from "@/components/common";
 import { Button, InfoTip } from "@/components/ui";
@@ -36,14 +29,14 @@ import type { BuilderHost, Cost } from "@/lib/builder/wasm";
 import type { Hole } from "@/lib/scene/data";
 import Preview from "./Preview";
 import { beatLine, cardLines, holeShare, saveFile as download, shareCard } from "./share";
-import { MAX_NOTE } from "@/lib/builder/draft";
+import { MAX_NOTE, MAX_TITLE } from "@/lib/builder/draft";
 import { worldName } from "@/lib/builder/rules";
 
 export default function Publish({ host, draft, author, next, onDraft, onRetest, onReaddress, onBuild, onDone }: {
   host: BuilderHost;
   draft: Draft;
   author: string;
-  /** the id the editor found it proved under (testmode.ts nextId: the alias's next version as it read it) */
+  /** the id the editor found it proved under (testmode.ts nextHoleId: the alias's next version as it read it) */
   next: string;
   /** the name or the note changed: kept in the draft (neither moves a ball) */
   onDraft: (d: Draft) => void;
@@ -201,7 +194,7 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
           <label className="pub__field">
             <span className="h-sub">Name</span>
             <small>{name !== draft.title ? `Kept as: ${name || "–"}` : "Shown on the course and in the holes' lists."}</small>
-            <input value={draft.title} maxLength={40} placeholder="Name your hole" aria-invalid={step.at === "name"} disabled={!!sent} onChange={(e) => onDraft({ ...draft, title: e.target.value })} />
+            <input value={draft.title} maxLength={MAX_TITLE} placeholder="Name your hole" aria-invalid={step.at === "name"} disabled={!!sent} onChange={(e) => onDraft({ ...draft, title: e.target.value })} />
           </label>
           {/* what is read, not typed: its world, the par explained by the rounds that proved it, its address */}
           <div className="pub__field">

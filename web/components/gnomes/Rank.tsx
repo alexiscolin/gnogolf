@@ -1,6 +1,6 @@
 "use client";
 
-// A player's collector rank, beside their name wherever they appear (ADR-011):
+// A player's collector rank, beside their name wherever they appear:
 // the boards' rows and cards, a duel's ghost, the rivals, the picker, a
 // player's gnomes. Worked out from what they hold (lib/gnomes/collection.ts:
 // one page a player, kept for the visit), drawn once known, inline after the

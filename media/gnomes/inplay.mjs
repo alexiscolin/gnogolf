@@ -155,7 +155,7 @@ for (const g of todo) {
         for (let i = 0; i < 200; i++) {
           await sleep(60);
           const p = await b.ev(`window.__g.pullState()`);
-          // mid-roll: as soon as his trail is down behind him (a gnome without one: half a second in)
+          // once he has rolled, a stop without his holing ends the wait
           if (p && p.flying) rolled = true;
           if (await b.ev(`window.__g.fx().holing`)) {
             await sleep(250);
@@ -173,7 +173,7 @@ for (const g of todo) {
       }
     }
     if (h.ghost && g.traits) {
-      // his ghost, a rival's, on the tee beside the Classic... the player plays this gnome too: the ghost is the one to look at
+      // his ghost, a rival's, on the tee beside the player's Classic: the ghost is the one to look at
       await b.send("Page.navigate", { url: `${APP}/?play&camlog&rpc=${encodeURIComponent(RPC)}&hole=${h.slot}&weather=${h.weather}&rivaltraits=${g.traits}` });
       if (await until(`!!(window.__g && window.__g.holeNow() && document.querySelector('.cam-btn'))`, 160)) {
         await sleep(1500);

@@ -19,7 +19,7 @@ import (
 // unnamed one-stroke finishes store the total below: each finish its best,
 // with the shots that set it (about 50 bytes, for Ghost), its standing, and
 // not its round, which is not kept once holed. The two finishes store 1,625
-// bytes with the wear they leave (v1: 1,976, with a 512-byte wear grid).
+// bytes with the wear they leave.
 func main(cur realm) {
 	h := &course.Simple{W: 32, H: 16, World: "garden", Title: "Finished", Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(4, 8), Substeps: 14, CupRadius: 1.2, Shelter: 0.01,

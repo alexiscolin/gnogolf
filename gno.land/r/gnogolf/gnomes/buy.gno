@@ -11,10 +11,10 @@ import (
 
 // Buy sells the caller the gnomes ids names, 1 to 5 catalogue ids
 // separated by commas ("217,301"), and returns them as given. Each must be
-// in a sale under way and unsold; the caller's caps hold for the whole list. Exactly the sum of
-// their sale prices must be sent with the call (-send "<sum>ugnot"); it
-// goes to the treasury before the call returns. Any refusal reverts the call,
-// coins included.
+// in a sale under way and unsold; the caller's caps hold for the whole
+// list. Exactly the sum of their sale prices must be sent with the call
+// (-send "<sum>ugnot"); it goes to the treasury before the call returns.
+// Any refusal reverts the call, coins included.
 //
 // Only a direct user call (maketx call) is taken. That is what makes
 // OriginSend the caller's own money: a realm or a run script in between
@@ -151,7 +151,8 @@ func readIDs(ids string) ([]int64, string) {
 	return list, ""
 }
 
-// parseID reads a catalogue id in decimal, 0 for anything else.
+// parseID reads a token id in decimal, no sign and no leading zero; 0 for
+// anything else.
 func parseID(s string) int64 {
 	if len(s) == 0 || len(s) > 9 || s[0] == '0' {
 		return 0

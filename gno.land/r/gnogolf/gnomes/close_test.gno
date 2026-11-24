@@ -105,11 +105,10 @@ func TestTheCloseDateReads(t *testing.T) {
 	uassert.Equal(t, "2026-11-30 18:00 UTC", dateOf(1796061600))
 }
 
-// The genesis may sell with no closing date: the sale opens, the genesis's
-// sale opens and sells, and nothing closes it (it sells until sold out).
-// The owner may set a date later, after its start, only bringing it
-// forward; from that date its unsold gnomes are closed. Once one is set, the
-// genesis's sale does not start at or after it, which nobody could buy from.
+// The genesis may sell with no closing date: the switch opens, its sale
+// opens and sells, and nothing closes it (it sells until sold out). The
+// owner may set a date later, after its start, only bringing it forward;
+// from that date its unsold gnomes are closed.
 func TestTheGenesisSellsWithNoCloseSet(cur realm, t *testing.T) {
 	setUp(0, cur, deployer)
 	testing.SetRealm(asUser(deployer, nil))

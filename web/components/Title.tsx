@@ -124,21 +124,20 @@ export function Green({ p, world = "garden", holed = false, thick = false }: { p
   );
 }
 
-// the cups' clips, the best first: AV1, then VP9 (640x480), then H.264 (480x360): each ~150 KB, 10.5 s, 24 fps
+/** The cups' clips, the best first: AV1, then VP9 (640x480), then H.264 (480x360): each ~150 KB, 10.5 s, 24 fps. */
 export const CLIP = [
   ["av1.webm", 'video/webm; codecs="av01.0.04M.08"'],
   ["vp9.webm", 'video/webm; codecs="vp9"'],
   ["mp4", 'video/mp4; codecs="avc1.640028"'],
 ];
 
-// (kept: decoded images stay decoded)
 export const cupStill = (id: string) => `title/cup-${id}.webp`;
-const stills: HTMLImageElement[] = [];
+const stills: HTMLImageElement[] = []; // (kept: decoded images stay decoded)
 export const canHover = () => typeof matchMedia === "function" && matchMedia("(hover: hover) and (pointer: fine)").matches;
 export const stillsReady = () => Promise.all(stills.map((im) => im.decode().catch(() => {})));
 
-/** Fetched while the title loads, so the cups screen opens whole. */
 let warmed = false;
+/** The cups' stills and clips, fetched while the title loads, so the cups screen opens whole. */
 export function warmClips() {
   if (warmed) return;
   warmed = true;

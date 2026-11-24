@@ -127,8 +127,8 @@ var (
 	heart   = lake
 	landN   = physics.V(73, 24.5) // the north-east landing, where the drift comes down
 	landS   = physics.V(48, 70.5) // the south landing, at the rim path's end
-	// Act I, the drift: up the lake's west shore and along its north shore to
-	// the north-east landing
+	// the drift: up the lake's west shore and along its north shore to the
+	// north-east landing
 	drift  = spline(2, physics.V(9, 62.5), physics.V(6.5, 48), physics.V(10, 30), physics.V(20, 14.5), physics.V(38, 11.5), physics.V(55, 13.5), physics.V(66, 16.5), physics.V(71, 20.5))
 	driftW = widths(2, 2, 2, 2, 2, 2, 2, 2.2, 2.4)
 )

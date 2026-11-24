@@ -19,11 +19,11 @@ var (
 )
 
 // The treasury is where the money goes, an address apart from the owner's
-// key: every sale, the royalty and Sweep's strays. It
-// is the deployer at deploy. The owner moves it in two steps: SetTreasury
-// offers it, and the new address takes it with AcceptTreasury, signed from
-// that address itself, so a mistyped one never receives a sale. A gnokey
-// multisig or a hardware wallet's address can hold it (ADR-007).
+// key: every sale, the royalty and Sweep's strays. It is the deployer at
+// deploy. The owner moves it in two steps: SetTreasury offers it, and the
+// new address takes it with AcceptTreasury, signed from that address
+// itself, so a mistyped one never receives a sale. A gnokey multisig or a
+// hardware wallet's address can hold it.
 var (
 	treasury        address
 	pendingTreasury address // the address SetTreasury offered it to, "" if none

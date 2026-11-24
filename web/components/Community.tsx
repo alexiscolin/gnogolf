@@ -1,18 +1,16 @@
 "use client";
 
-// The community's holes on the cups screen:
-// anyone's holes, playable outside the cups, in no cup and on no ranking.
-// Each is a card: its map from above (HoleMap's SVG, no WebGL), name, author,
-// world, par and players (addresses with a round saved on it, never its
-// author), in the order asked: newest (the chain's order), most played, or
-// hardest (the Builder's meter, worked out in this browser, in its worker,
-// for the page shown only, each version once). A hole of the day above them,
-// the same for everyone all day (lib/community.ts dayRows and dayHole: the
-// realm's DayCandidates from the UTC day's point in alias order, those
-// published before the day began, no server). On a computer, "Remix" opens a hole in the Builder as a new draft,
-// its maker credited (the Builder never loads on a phone). Every hole listed,
-// the day's too, is first judged by the Builder's own rules (verdictOf), and
-// none the site took down is ever in the list (communityOf).
+// The community's holes on the cups screen: anyone's holes, playable outside
+// the cups, in no cup and on no ranking. Each is a card: its map from above
+// (HoleMap's SVG, no WebGL), name, author, world, par and players (addresses
+// with a round saved on it, never its author), in the order asked: newest (the
+// chain's order), most played, or hardest (the Builder's meter, worked out in
+// this browser, in its worker, for the page shown only, each version once). A
+// hole of the day above them, the same for everyone all day with no server
+// (lib/community.ts dayRows, dayHole). On a computer, "Remix" opens a hole in
+// the Builder as a new draft, its maker credited. Every hole listed, the day's
+// too, is first judged by the Builder's own rules (verdictOf), and none the
+// site took down is ever in the list (communityOf).
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DayRow, HoleRow } from "@/lib/types";
 import { sound } from "@/lib/feel";
@@ -217,7 +215,7 @@ function useLevels(chain: Pick<Chain, "holeData" | "chainId" | "genesis" | "real
         let level = await keptLevel(chain, id);
         if (level == null) {
           const { makeMeter } = await import("@/lib/builder/meter");
-          if (!live) return; // (a list gone meanwhile stopped its meter already: none made after)
+          if (!live) return; // (a meter made after the list's cleanup would never be stopped)
           const m = (meter.current ??= makeMeter(() => {}));
           level = await chain.holeData(id).then((hex) => m.rate(hex), () => null);
           if (level != null) void keepLevel(chain, id, level);

@@ -1,6 +1,6 @@
 "use client";
 
-// A player's album (ADR-011), in My gnomes and on a player's gnomes: how
+// A player's album, in My gnomes and on a player's gnomes: how
 // much of each world, each tier and each archetype's set they hold, a row
 // each, opening on its slots (a held gnome's face, a silhouette for each one
 // missing). Folded to one line under their team, opened by a tap: the

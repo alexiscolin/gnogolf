@@ -1,9 +1,8 @@
-/* The collection as status (ADR-011): a player's collector rank beside their
-   name (components/gnomes/Rank, on the game's own screens: small, inline,
-   within the line's height, so a row never moves when it lands) and their
-   album (components/gnomes/Album, in the shop: its rows and silhouettes). On
-   the game's tokens (globals.css), the album's rims and ground the shop's
-   (gnomes.css); the metals are the places' own. */
+/* The collection as status: a player's collector rank beside their name
+   (components/gnomes/Rank, on the game's own screens: small, inline, within
+   the line's height, so a row never moves when it lands) and their album
+   (components/gnomes/Album, in the shop only: its tier colours and portrait
+   ground are gnomes.css's). */
 
 /* the rank: its shape on its metal, a pill no taller than the name's line */
 .crank { display: inline-flex; flex: none; align-items: center; gap: 3px; height: 16px; margin-left: 6px; padding: 0 6px 0 3px; vertical-align: -2px; border: 1.5px solid var(--ink); border-radius: var(--pill); background: var(--bronze); color: var(--ink); font-size: 10px; font-weight: 800; line-height: 1; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; }

@@ -6,18 +6,19 @@ import (
 )
 
 // The catalogue: every gnome that can be minted, published by the owner a
-// series at a time (ADR-007). The genesis comes first, as the config says;
-// a later drop is one more AddSeries, of any size, with no new code. A
-// series is never changed once published: its gnomes may be owned.
+// series at a time. The genesis comes first, as the config says; a later
+// drop is one more AddSeries, of any size, with no new code. A series is
+// never changed once published: its gnomes may be owned.
 //
 // A series is its rows as published, one gnome per line,
 //
 //	id|tier|name|traits
 //
 // ids following on from the last series with no gap, tier one of the
-// config's, traits the designer's compact encoding (version-prefixed, opaque
-// here: the client reads it). The rows are kept as one string, read in place
-// (rows.gno): as structs they would cost several times the deposit.
+// config's, traits the designer's compact encoding (version-prefixed, read
+// by the portrait and the client). The rows are kept as one string, read
+// in place (rows.gno): as structs they would cost several times the
+// deposit.
 type series struct {
 	name        string
 	first, last int64  // the ids of its first and last rows

@@ -12,15 +12,15 @@ import (
 	gnomes "gno.land/r/gnogolf/gnomes"
 )
 
-// What a first buy stores, which its buyer pays: z_storage_genesis, then one
-// common bought (that file is this one but the Buy), the bytes below less that file's: 3,850 bytes, 0.39 GNOT
-// of deposit (with grc721/enumerable it was 10,465), the sold bitmap's first
-// write among them. Most of it is the ledger's own two rows for a new
-// holder, its owner and its balance. Its gas less z_storage_genesis's is
-// the buy's, 7.3M: a sale writes nothing beside the catalogue's rows,
-// so it never rewrites them.
-// The -send envelope lands on the realm called, as on chain: the test names
-// gnomes its payee.
+// What a first buy stores, which its buyer pays: this file is
+// z_storage_genesis and one common bought, so the bytes below less that
+// file's are the buy's: 3,850 bytes, 0.39 GNOT of deposit (10,465 with
+// grc721/enumerable), the sold bitmap's first write among them. Most of it
+// is the ledger's own two rows for a new holder, its owner and its balance.
+// Its gas less z_storage_genesis's is the buy's, 7.3M: a sale writes nothing
+// beside the catalogue's rows, so it never rewrites them. The -send
+// envelope lands on the realm called, as on chain: the test names gnomes its
+// payee.
 func main(cur realm) {
 	testing.SetRealm(testing.NewUserRealm(gnomes.Owner()))
 	gnomes.AddSeries(cross(cur), "genesis", genesis())

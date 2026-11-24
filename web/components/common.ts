@@ -228,7 +228,7 @@ export function courseCount(counts: Readonly<Record<string, number>>) {
 export const countWord = (n: number) => ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten"][n] || String(n);
 
 // What each hole of the Crystal Mines is about, said once on its first visit
-// (ADR-005 Risks: too many clocks to read): its signature, in one line.
+// (too many clocks to read otherwise): its signature, in one line.
 const MINES_HINTS = [
   "The cage waits a quarter of the time: catch it, or take the man-way down.",
   `A dark gallery: your lamp sees ${sight(false, true)} units ahead. The crystals sing and kick.`,

@@ -301,7 +301,7 @@ func TestAStaleRoundMustBeReset(cur realm, t *testing.T) {
 	Launch(cross(cur), id, 0, 1)
 }
 
-// iceCage is 36 bumper walls (40 in v1, whose commit kept nothing in store) round a board of ice, which 8 flat 64-point
+// iceCage is 36 bumper walls round a board of ice, which 8 flat 64-point
 // polygons cover (every step tests them): a tap stays put, a full shot
 // bounces on until its work runs out.
 func iceCage() *course.Simple {
@@ -340,11 +340,11 @@ func dryMine(cur realm, prefix string, h *course.Simple, kind string) string {
 }
 
 // A commit is held to its budget whatever its shots: eleven taps, then a
-// full shot that would bounce on to MaxWork. The heaviest shot so far was a
-// tap, so the old cut let it through, and the commit went past its budget;
-// now the full shot is played with the room left as its cap, reaches it,
-// and the commit is refused with the eleven that fit. Played first in the
-// next commit, the full shot has the whole budget, and plays out.
+// full shot that would bounce on to MaxWork. The heaviest shot so far is a
+// tap, so a cut on that alone would let it through; the full shot is played
+// with the room left as its cap, reaches it, and the commit is refused with
+// the eleven that fit. Played first in the next commit, the full shot has
+// the whole budget, and plays out.
 func TestACommitNeverPassesItsBudget(cur realm, t *testing.T) {
 	id := dryMine(cur, "cage", iceCage(), course.Clear)
 	taps, full := strings.Repeat("0,0.01;", 11), "135,10"
@@ -441,7 +441,7 @@ const (
 )
 
 // PlayRound goes on with a round in the round's own weather, across the
-// turn of the period, as PlayRoundAt and Launch do (final bug hunt, 1).
+// turn of the period, as PlayRoundAt and Launch do.
 func TestPlayRoundKeepsItsRoundsPeriod(cur realm, t *testing.T) {
 	id := courseHole(cur, 81)
 	p := testutils.TestAddress("turn")
@@ -456,8 +456,8 @@ func TestPlayRoundKeepsItsRoundsPeriod(cur realm, t *testing.T) {
 	uassert.Equal(t, was, roundIn(id, p).period, "in the weather it started in")
 }
 
-// The previews refuse the stale periods the writes refuse (final bug hunt,
-// 2); SimulateFrom still replays an old round's stroke.
+// The previews refuse the stale periods the writes refuse; SimulateFrom
+// still replays an old round's stroke.
 func TestThePreviewsRefuseAStalePeriod(cur realm, t *testing.T) {
 	id := courseHole(cur, 82)
 	stale := Period() - 2
@@ -475,8 +475,7 @@ func TestThePreviewsRefuseAStalePeriod(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "has not come yet", func() { SimulateRoundIn(id, "0,1", Period()+1) })
 }
 
-// Versions answers for its own alias only, never with the caller's bytes
-// (final bug hunt, 3).
+// Versions answers for its own alias only, never with the caller's bytes.
 func TestVersionsEchoesNothing(t *testing.T) {
 	uassert.Equal(t, `{"version":1,"slot":"","versions":[]}`, Versions("g1\xff\"/x"))
 }

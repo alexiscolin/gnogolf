@@ -8,8 +8,8 @@
 # And web/lib/sim/builder.wasm, the hole builder's (web/lib/builder/wasm.ts):
 # the same, plus PublishMine's checks and author.Fit (Check and Fit,
 # scripts/wasm/r/gnogolf/golf/local_builder.go), built with -tags builder
-# from a second extraction with more roots, so golf.wasm, which every player
-# loads, stays byte for byte what it was.
+# from a second extraction with more roots, so none of them reaches
+# golf.wasm, which every player loads.
 #
 # The Go sources are the .gno files, as they are, in a Go module named
 # gno.land (scripts/wasm/go.mod), so their import paths stay what they are:
@@ -156,7 +156,7 @@ build() { # build <name> <tag> <the realm's files>
 }
 build golf "" "$golf"
 build builder builder "$builder"
-# builder.wasm's budget (ADR-006)
+# builder.wasm's budget
 if [ "$size" -gt 300000 ] || [ "$gz" -gt 130000 ]; then
 	echo "wasm.sh: builder.wasm is over 300 KB, or 130 KB gzipped" >&2
 	exit 1

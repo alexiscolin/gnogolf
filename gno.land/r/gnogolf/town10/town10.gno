@@ -1,8 +1,8 @@
 // Package town10 is a swing bridge over the canal. It is down on one stroke
 // and swung open on the next: down, the ball rolls over; open, the canal is
-// water across the whole street and sends you back to the start. Watch it
-// before you shoot: it is open for the tee shot, so lay up short and cross
-// on the next.
+// water across the whole street and sends you back where you played from.
+// Watch it before you shoot: it is open for the tee shot, so lay up short and
+// cross on the next.
 package town10
 
 import (

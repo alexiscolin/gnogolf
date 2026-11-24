@@ -1,21 +1,20 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The Builder's starter path, timed (the GUI spec's B6): a new player in a
-// headless Chrome against a dev server with the Builder on, from /build to a
-// proved hole on the Publish form. It opens /build (the first run: the
-// Garden's dogleg and its hints, which the first drag puts away), drags a
-// Bumper onto the starter, presses Play, pastes the address the hole is
-// proved under on the start card Play opens on (before round 1), holes each
-// weather (a round's shots replayed in the weathers left first: one it holds
-// in is not played), each round
-// found as scripts/starters.ts finds one, through the page's own test chain,
-// builder.wasm; each shot fired as an aim would fire it, through the game's
-// ?camlog hook, and counted as one drag; each next weather starting on its
-// own under its title card, "Round 2 of 3: Wind"), and presses Publish on the summary card the
-// last one ends on. It reports the wall time and the clicks, drags and
-// fields typed in, and fails over 5 minutes or over B6's budget (4 clicks
-// since Play and Hole it are one: 5 before; 2 with Adena already sharing
-// an account with the site). Without a local chain the Publish form says
-// the chain is unread: it still counts as reached (B6).
+// The Builder's starter path, timed: a new player in a headless Chrome
+// against a dev server with the Builder on, from /build to a proved hole on
+// the Publish form. It opens /build (the first run: the Garden's dogleg and
+// its hints, which the first drag puts away), drags a Bumper onto the
+// starter, presses Play, pastes the address the hole is proved under on the
+// start card Play opens on (before round 1), and holes each weather: a round
+// found by search through the page's own test chain (builder.wasm), each
+// shot fired as an aim would fire it, through the game's ?camlog hook, and
+// counted as one drag; a round's shots are replayed in the weathers left
+// first (one it holds in is not played), and each next weather starts on its
+// own under its title card ("Round 2 of 3: Wind"). Then it presses Publish
+// on the summary card the last one ends on. It reports the wall time and the
+// clicks, drags and fields typed in, and fails over 5 minutes or over its
+// budget (4 clicks; 2 with Adena already sharing an account with the site).
+// Without a local chain the Publish form says the chain is unread: it still
+// counts as reached.
 //
 //   APP=http://localhost:3471 node --experimental-strip-types scripts/builderwalk.ts
 //
@@ -54,7 +53,7 @@ const stand = SEED
   : null;
 const env = stand ? stand.seedEnv(SEED) : null;
 const LIMIT_MS = 5 * 60_000;
-/** B6's budget for the starter path: Play, the address the hole is proved under (pasted: its field shown, then used), Publish. */
+/** The starter path's budget: Play, the address the hole is proved under (pasted: its field shown, then used), Publish. */
 const BUDGET = { clicks: 4, typed: 1 };
 const AUTHOR = env ? env[KEY] : "g1" + "q".repeat(38);
 

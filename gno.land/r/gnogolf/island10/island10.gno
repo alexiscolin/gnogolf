@@ -1,7 +1,8 @@
 // Package island10 is a boardwalk over the lagoon with two planks missing:
 // one on the near half of the walk, one on the far half of the last stretch.
-// A gap is the lagoon, and the lagoon sends you back to the start; thread the
-// sound boards between them, and round the crab asleep where the walk turns.
+// A gap is the lagoon, and the lagoon sends you back where you played from;
+// thread the sound boards between them, and round the crab asleep where the
+// walk turns.
 package island10
 
 import (

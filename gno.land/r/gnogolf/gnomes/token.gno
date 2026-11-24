@@ -11,6 +11,8 @@ import (
 // cur.Previous() with the ledger's checks: a caller moves their own gnomes
 // and the ones they were approved for, nothing else.
 
+// TransferFrom moves tid from from to to, for its holder or an operator they
+// approved; an earned gnome refuses to move (holdings.gno).
 func TransferFrom(cur realm, from, to address, tid string) {
 	if err := teller.TransferFrom(0, cur, from, to, grc721.TokenID(tid)); err != nil {
 		panic(err)
@@ -36,20 +38,32 @@ func SetApprovalForAll(cur realm, operator address, approved bool) {
 	}
 }
 
-func Name() string                          { return token.GetName() }
-func Symbol() string                        { return token.GetSymbol() }
-func OwnerOf(tid string) (address, error)   { return token.OwnerOf(grc721.TokenID(tid)) }
-func BalanceOf(addr address) (int64, error) { return token.BalanceOf(addr) }
-func TotalSupply() int64                    { return token.TotalSupply() }
+// Name is the collection's name (tokenName).
+func Name() string { return token.GetName() }
 
+// Symbol is the collection's ticker (tokenSymbol).
+func Symbol() string { return token.GetSymbol() }
+
+// OwnerOf is who holds tid; an error when nobody does.
+func OwnerOf(tid string) (address, error) { return token.OwnerOf(grc721.TokenID(tid)) }
+
+// BalanceOf is how many gnomes addr holds.
+func BalanceOf(addr address) (int64, error) { return token.BalanceOf(addr) }
+
+// TotalSupply is how many gnomes exist: those minted, less those burned.
+func TotalSupply() int64 { return token.TotalSupply() }
+
+// GetApproved is the address Approve let move tid; an error when there is none.
 func GetApproved(tid string) (address, error) { return token.GetApproved(grc721.TokenID(tid)) }
 
+// IsApprovedForAll reports whether operator may move every gnome of owner's.
 func IsApprovedForAll(owner, operator address) bool {
 	return token.IsApprovedForAll(owner, operator)
 }
 
-// TokenOfOwnerByIndex is owner's i-th token, best first as the locker lists them, from its
-// index (there is no TokenByIndex: no list of every token is kept).
+// TokenOfOwnerByIndex is owner's i-th token, best first as the locker lists
+// them, from its index (there is no TokenByIndex: no list of every token is
+// kept).
 func TokenOfOwnerByIndex(owner address, i int64) (string, error) {
 	if i >= 0 {
 		if ids, _ := heldPage(owner, i, 1); len(ids) == 1 {

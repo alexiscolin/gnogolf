@@ -33,7 +33,7 @@ const cat = JSON.parse(fs.readFileSync(path.join(DESIGNS, "data/gnomes.json"), "
 const EARNED = 1_000_000; // an earned kind k is shown as id EARNED + k
 const TRAIT = 2_000_000; // the n-th trait value alone, as id TRAIT + n
 
-// each value of each drawn field, alone on the Classic (format 1: docs/gnomes/design.md)
+// each value of each drawn field alone on the Classic: his traits with that field's byte set
 const vocab = cat.vocab;
 const CLASSIC = "01010100000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff";
 const withByte = (/** @type {string} */ t, /** @type {number} */ f, /** @type {number} */ v) => t.slice(0, 2 * f) + v.toString(16).padStart(2, "0") + t.slice(2 * f + 2);

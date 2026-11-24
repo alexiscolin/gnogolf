@@ -43,8 +43,6 @@ func TestXMLEscape(t *testing.T) {
 	uassert.Equal(t, "a &amp; &lt;b&gt; &quot;c&quot; &#39;d&#39;", xmlEscape(`a & <b> "c" 'd'`))
 }
 
-// ---------------------------------------------------------------- reading
-
 // classic is the plain look written out: every code plain, every colour unset.
 const classic = "01010100000000ffff00ffff00ff00000000ff00ff00ff00ff00ff00ff"
 
@@ -78,8 +76,9 @@ func with(traits string, f int, v byte) string {
 	return traits[:2*f] + string(hexDigits[v>>4]) + string(hexDigits[v&0xf]) + traits[2*f+2:]
 }
 
-// The tables have a line for each code of the client's vocab (web/lib/gnomes/
-// vocab.ts, props.ts): the counts are the Genesis' tables, which only grow.
+// The tables have a line for each code of the client's vocab
+// (web/lib/gnomes/vocab.ts, props.ts): the counts are the Genesis' tables,
+// which only grow.
 func TestTheArtCoversTheVocab(t *testing.T) {
 	for _, c := range []struct {
 		name   string
@@ -152,8 +151,6 @@ func TestAMaterialStandsInForTheBody(t *testing.T) {
 	}
 }
 
-// ---------------------------------------------------------------- goldens
-
 // samples are gnomes of the Genesis (data/gnomes.json): an earned one and
 // one of each tier, the first Common of each archetype, the dearest picture
 // of the 729 to draw (Figurehead Fen), a pattern, and the materials drawn
@@ -188,7 +185,7 @@ var samples = []struct {
 }
 
 // maxSVG is what a portrait may weigh: the 729 of the Genesis and the
-// earned are 1.9 to 5.6 KB (media/gnomes/portrait/likeness.mjs measures them all).
+// earned are 1.9 to 5.6 KB.
 const maxSVG = 6 * 1024
 
 func TestPortraitGoldens(t *testing.T) {

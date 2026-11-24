@@ -14,29 +14,25 @@ import (
 
 // The worst pages golf takes. The worst hole GG1 allows for its page (a
 // 96×96 board, 160 walls across it, 32 posts of radius 8, and 32 zones whose
-// boxes cover the whole board, 8 of them 64-point polygons) is refused now,
-// as z_worst_shot_filetest's a2 is: in its dearest weather a commit would
-// have too little room for a shot. Golf takes four zigzag holes, where every
-// row of a board crosses every edge of 2 or 4 polygons, and the corner, whose
+// boxes cover the whole board, 8 of them 64-point polygons) is refused, as
+// z_worst_shot_filetest's a2 is: in its dearest weather a commit would have
+// too little room for a shot. Golf takes four zigzag holes, where every row
+// of a board crosses every edge of 2 or 4 polygons, and the corner, whose
 // weather costs most, in the rain and in a storm. z_worst_play_filetest
 // publishes them all and plays a first shot on each corner in its weather
 // (the heaviest single shot is z_worst_shot_filetest's);
 // z_worst_render_filetest does the same, then renders each zigzag's page and
 // each corner's page and its player's. The difference of their gas is the
-// eight pages, about 2.28e9 (v1: 2.34e9, with 12-wall corners). A zigzag's page costs 0.54e9 drawn, with 2
+// eight pages, about 2.28e9. A zigzag's page costs 0.54e9 drawn, with 2
 // polygons, and 0.03e9 with 4, too detailed to draw; a corner's 0.23e9, its
 // forecast drawn once. Every page stays far under the 3e9 a query may use: a
 // page decodes the hole, draws one forecast (bounded at publish, worstGas;
 // two for a round begun in the period before, whose last shot the board
-// draws in its own), at most maxBoardWork of board and one shot. (Before a
-// polygon's row cost only its edges and cells, the reversed zigzag of 2 cost
-// 3.7e9 to draw.)
+// draws in its own), at most maxBoardWork of board and one shot.
 
-// corner is the hole whose weather costs most among those golf takes: the
-// 8 bumper walls it takes (TestTheDearestWeatherIsBoundedAtPublish; 12 in v1,
-// whose commit kept nothing in store) in a
-// box round the tee, and 4 thin hazard polygons along the far edge, so that
-// every puddle try tests every wall and edge.
+// corner is the hole whose weather costs most among those golf takes: the 8
+// bumper walls it takes in a box round the tee, and 4 thin hazard polygons
+// along the far edge, so that every puddle try tests every wall and edge.
 func corner(world string) *course.Simple {
 	var ws []physics.Wall
 	for len(ws) < 8 {
@@ -127,7 +123,7 @@ func main(cur realm) {
 }
 
 // Gas:
-// 1574537853
+// 1574537849
 
 // Output:
 // g15cnntx0j5e7j0ff5r4t970wmx47lynkv5magnu/garden0/v1 g15cnntx0j5e7j0ff5r4t970wmx47lynkv5magnu/island3/v1

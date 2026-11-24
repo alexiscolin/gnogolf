@@ -1,8 +1,6 @@
-// A published hole shared from the Builder: as the game shares
-// (components/Share.tsx), its link the game's own (components/common.ts
-// holeLink: a community hole by its id), and its card is the 3D preview
-// with its name, world, par and author over it, and the author's own score
-// to beat (proof.ts builderScore).
+// A published hole shared from the Builder, as the game shares one: the
+// game's own link, and a card of the 3D preview with the hole's name, its
+// byline and the author's score to beat under it.
 import { holeLink, strokesWord } from "@/components/common";
 import { FONT, GREEN, INK, PAPER } from "@/lib/brand";
 import { MAX_TITLE } from "@/lib/builder/draft";
@@ -23,7 +21,7 @@ export const beatLine = (strokes: number) => (strokes ? `Beat the builder: ${str
 /** What the game's Share (components/Share.tsx) sends for a published hole: its words (a dare, with the author's score), and its link (Share puts it on the site's address). */
 export const holeShare = (name: string, id: string, strokes = 0) => ({ text: `${name}, a mini-golf hole on gno.land${strokes ? `. ${beatLine(strokes)}` : ""}`, link: holeLink({ id, place: 0 }, "", "", "hole") });
 
-/** The card's three lines: the name (cut at 40 with an ellipsis), its byline (holeByline), and the author's score to beat (else where it was built). */
+/** The card's three lines: the name (cut to MAX_TITLE with an ellipsis), its byline, and the author's score to beat (else where it was built). */
 export function cardLines({ name, world, par, author, strokes = 0 }: { name: string; world: string; par: number; author: string; strokes?: number }): [string, string, string] {
   const n = [...name];
   return [n.length > MAX_TITLE ? `${n.slice(0, MAX_TITLE - 1).join("")}…` : name, holeByline({ author, world, par }), strokes ? `${beatLine(strokes)} · on gno.land` : "Built on gno.land"];

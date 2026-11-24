@@ -120,6 +120,7 @@ const CloseX = () => (
 export const BackIcon = () => (
   <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
 );
+/** A sheet's X: in its top-right corner, or where it is put (inline). */
 export function SheetClose({ onClose, inline = false }: { onClose: () => void; inline?: boolean }) {
   return (
     <button className={"round round--icon round--small" + (inline ? "" : " sheet__close")} aria-label="Close" onClick={onClose}>
@@ -206,7 +207,7 @@ interface SheetProps {
 export function Sheet({ label, onClose, className = "", role = "dialog", children }: SheetProps) {
   const id = useId();
   const ref = useDialog<HTMLDivElement>(onClose);
-  // where the press began: one begun in the sheet and let go over the dim (a text selected by dragging) clicks the dim too, and is no tap on it
+  // a press begun in the sheet and let go over the dim (a text selected by dragging) clicks the dim too: not a tap on it
   const inside = useRef(false);
   return (
     <div className="sheet" onPointerDown={(e) => (inside.current = e.target !== e.currentTarget)} onClick={() => !inside.current && onClose()}>

@@ -4,8 +4,8 @@
 // scripts/starters.ts checks a starter (validate, the canonical bytes) and a
 // holing round of each in every weather its world asks for (proved: a
 // replay). Writes media/builder/holes.json: each draft with its proofs and
-// its bytes, for promo.mjs to publish and film (the one-strokers it films are
-// found by render.mjs, in the chain's weather then).
+// its bytes, for promo.mjs to publish and film (render.mjs finds each
+// one-stroker as it films, in the chain's weather).
 //
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts [name]
 

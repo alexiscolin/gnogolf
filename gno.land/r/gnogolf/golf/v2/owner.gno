@@ -23,7 +23,7 @@ var (
 	self           = unsafe.CurrentRealm().PkgPath()
 	hub            = strings.TrimPrefix(self, "gno.land")
 	officialPrefix = self[:strings.LastIndex(self, "/golf/")+1]               // the namespace's realms, as "…/" (these rules are …/golf/v2)
-	dataHub        = strings.TrimPrefix(officialPrefix, "gno.land") + "store" // where the records are kept (kv.gno), on gnoweb
+	dataHub        = strings.TrimPrefix(officialPrefix, "gno.land") + "store" // where the records are kept, as gnoweb links it
 )
 
 // playURL is the 3D client every page links to (SetPlayURL moves it).

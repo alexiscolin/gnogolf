@@ -34,14 +34,12 @@ func portrait(g gnome) string {
 
 const svgDataPrefix = "data:image/svg+xml;base64,"
 
-// ---------------------------------------------------------------- the look
-//
-// A token's traits as format 1 writes them (docs/gnomes/design.md, "The
-// trait encoding"): a byte a field in hex, the format first. Read as the
-// client reads them (web/lib/gnomes/codec.ts): a code past its table, a
-// colour past the palette, a field the string is too short for, all plain;
-// bytes past the fields ignored; another format, or not hex, the plain gnome
-// (the Classic). Nothing a row holds can make it panic.
+// A token's traits as format 1 writes them: a byte a field in hex, the
+// format first. Read as the client reads them (web/lib/gnomes/codec.ts): a
+// code past its table, a colour past the palette, a field the string is too
+// short for, all plain; bytes past the fields ignored; another format, or
+// not hex, the plain gnome (the Classic). Nothing a row holds can make it
+// panic.
 
 // The fields' bytes.
 const (
@@ -149,8 +147,6 @@ func colourOf(c byte) string {
 // isDark reports whether palette colour c is too dark for ink eyes.
 func isDark(c byte) bool { return int(c) < len(artDark) && artDark[c] == '1' }
 
-// ---------------------------------------------------------------- shapes
-//
 // A trait's art is shapes split by "|", each "<key><kind><colour>:<path>":
 //
 //   - key, two hex digits, its depth: shapes are painted by key, nearest
@@ -235,8 +231,6 @@ func fieldOf(s string, i int) string {
 	}
 	return f[i]
 }
-
-// ---------------------------------------------------------------- drawing
 
 // drawGnome draws gnome g: his tier's ground and plinth, his trail behind
 // him, then every shape of his look, far to near.

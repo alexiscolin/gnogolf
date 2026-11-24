@@ -6,7 +6,7 @@
 // to declare. Nothing is rewritten: a declaration is printed as the file
 // has it. It prints the files it took something from, one a line.
 //
-// scripts/wasm.sh runs it on the golf realm: see there.
+// scripts/wasm.sh runs it on the golf realm.
 package main
 
 import (

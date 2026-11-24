@@ -70,7 +70,6 @@ async function shot(b, name) {
 /** Clicks the first element matching a selector whose text has words. @param {any} b @param {string} sel @param {string} words */
 const click = (b, sel, words = "") => b.js(`(() => { const el = [...document.querySelectorAll(${JSON.stringify(sel)})].find((e) => e.textContent.includes(${JSON.stringify(words)})); if (!el) return false; el.click(); return true; })()`);
 
-// ------------------------------------------------------------------ the flows
 const cards = ".gshelf .gcard:not(.gcard--skel)";
 
 // the gallery, every width, as a player with no record (p0): the sale in its players' window
@@ -137,7 +136,7 @@ for (const width of [390, 1280]) {
   say(!(await b.ev(`document.querySelector(".gsheet h2")?.textContent.includes("Sign in")`)), "nothing sent while a box is unticked");
   await shot(b, "review-1280");
   await tick(b);
-  /** @type {NonNullable<typeof w>} */ (w).next("cancel");
+  w?.next("cancel");
   await click(b, ".gsheet button", "Order with obligation to pay");
   say(await until(b, w, `document.querySelector(".gsheet .note")?.textContent.includes("Cancelled in Adena")`), "cancelled in Adena: nothing was sent, said");
   await shot(b, "review-cancelled-1280");
@@ -186,7 +185,7 @@ for (const width of [390, 1280]) {
   await until(b, w, `document.querySelector(".gsheet .review")`);
   await sleep(500);
   await tick(b);
-  /** @type {NonNullable<typeof w>} */ (w).next("maybe");
+  w?.next("maybe");
   await click(b, ".gsheet button", "Order with obligation to pay");
   say(await until(b, w, `document.querySelector(".gsheet .note")?.textContent.includes("Don't buy again")`), "unsure: don't buy again, said");
   await shot(b, "unsure-1280");
@@ -228,7 +227,7 @@ for (const width of [390, 1280]) {
     say(!!(await b.ev(`document.querySelector(".owned__line")?.textContent.includes("You play")`)), "a tap plays him, free: You play … · everyone sees …");
     await shot(b, "picker-picked-1280");
     await click(b, ".owned__line button", "Show to everyone");
-    for (let i = 0; i < 60 && JSON.parse((await qg(`Worn(address("${env.p1}"))`)) || "{}").id !== "73"; i++) (await /** @type {NonNullable<typeof w>} */ (w).pump(), await sleep(500));
+    for (let i = 0; i < 60 && JSON.parse((await qg(`Worn(address("${env.p1}"))`)) || "{}").id !== "73"; i++) (await w?.pump(), await sleep(500));
     say(JSON.parse((await qg(`Worn(address("${env.p1}"))`)) || "{}").id === "73", "Show to everyone: Equip signed, Worn(p1) is #73");
     await until(b, w, `document.querySelector(".owned__line")?.textContent.startsWith("Everyone sees")`, 20e3);
     say(!!(await b.ev(`document.querySelector(".owned .share")?.textContent.includes("Your rivals will see")`)), "shown to everyone: the game's share row, \"Your rivals will see …\"");
@@ -239,7 +238,7 @@ for (const width of [390, 1280]) {
 // the title: the live scene's watcher by the cup wears the player's gnome (p1 wears #73 for everyone by now)
 {
   const { b, w } = await open("p1", 1280);
-  // headless Chrome asks for less motion, and the title then shows its still (as render.mjs notes)
+  // headless Chrome asks for less motion, and the title then shows its still
   await b.send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "no-preference" }] });
   await b.send("Page.navigate", { url: `${APP}/?camlog` });
   const live = await until(b, w, "window.__title", 60e3);

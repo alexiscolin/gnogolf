@@ -143,7 +143,7 @@ for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   assert.deepEqual(await c.js<object>(footprint(METER)), unpressed, `${at}: the difficulty meter's box changes as it comes on`);
   assert.equal(await c.js(gold(METER)), true, `${at}: the difficulty meter on, not gold`);
   assert.deepEqual(await c.js<string[]>(misaligned([rows[0]])), [], `${at}: the header out of line with the meter on`);
-  // the palette: every piece one row on one grid (as tall, as wide, one left edge; the green's two tools over them, side by side), a piece's looks under it, no badge, no popover
+  // the palette: every piece one row on one grid (as tall, as wide, one left edge; the green's two tools over them, side by side), no look under it, no badge, no popover
   const rowsOf = await c.js<{ l: number; w: number; h: number }[]>(`[...document.querySelectorAll(".palette .ptile > .piece:not(.piece--tool)")].filter((e) => e.checkVisibility()).map((e) => { const r = e.getBoundingClientRect(); return { l: r.left, w: r.width, h: r.height }; })`);
   for (const r of rowsOf) assert.ok(Math.abs(r.l - rowsOf[0].l) < 0.5 && Math.abs(r.w - rowsOf[0].w) < 0.5 && Math.abs(r.h - rowsOf[0].h) < 0.5, `${at}: a palette row off the others' grid (${JSON.stringify(r)} against ${JSON.stringify(rowsOf[0])})`);
   assert.equal(await c.js(`document.querySelectorAll(".palette .look, .palette .ptile__looks, .palette [aria-haspopup]").length`), 0, `${at}: a look left in the palette (the Inspector's now)`);
@@ -204,7 +204,7 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   assert.deepEqual(await c.js<object>(footprint(".bholes__worlds .on")), tab, `${at}: a world tab's box changes as it is chosen`);
   await c.js(`document.querySelector(".bholes__worlds button").click()`);
   await sleep(300);
-  // scrolled to its foot, nothing under the network chip (the game's, bottom left: none on this page today)
+  // scrolled to its foot, nothing under the network chip (the game's, bottom left), should the page show one
   assert.deepEqual(await c.js<string[]>(underChip()), [], `${at}: a control under the network chip`);
   // its head the game's (a front screen's pill and outlined title)
   assert.deepEqual(await c.js(`[...document.querySelectorAll(".bholes__sign .front__head > *")].map((e) => e.tagName + " " + e.className + " " + e.textContent)`), ["SPAN eyebrow The Builder", "H2 worlds__title Hard hats on!"], `${at}: the head is not a front screen's`);
@@ -269,7 +269,7 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   c.kill();
 }
 
-// the board in 3D (WebGL: the game's scene under the overlay); without WebGL, the 2D board as it was, every piece drawn
+// the board in 3D (WebGL: the game's scene under the overlay); without WebGL, the 2D board, every piece drawn
 {
   const c = await editor(1280, 800);
   assert.ok(await c.ev<boolean>(`!!document.querySelector(".board--3d .board__scene canvas")`), "the board in 3D");
@@ -571,10 +571,10 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   console.log("keys: ok");
   c.kill();
 }
-// what a player meets: the "?" panel leaves the focus where Tab put it while the editor draws
-// again; the ball by the tee pressed zoomed out is the ball's, never the tee's; the Inspector's "drag it" is marked seen
-// when it shows (a piece selected), not as its column mounts, and the keys line stays for the visit (an editor opened
-// again); a drop's ghost ball never runs for a change made after it
+// the "?" panel leaves the focus where Tab put it while the editor draws again; the ball by the tee pressed zoomed
+// out is the ball's, never the tee's; the Inspector's "drag it" is marked seen when it shows (a piece selected), not
+// as its column mounts, and the keys line stays for the visit (an editor opened again); a drop's ghost ball never runs
+// for a change made after it
 {
   const c = await editor(1280, 800);
   const press = async (key: string, code: string) => {

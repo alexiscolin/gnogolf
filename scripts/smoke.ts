@@ -1,10 +1,11 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The end-to-end smoke test, against a local chain and dev server (see the
-// README): every read the client makes, answered by the realm and passed
-// through the client's own checks (chain.ts `checks`, which throw on any
-// shape it does not expect), then the game in a headless Chrome: a hole
-// played and holed, the finished banner and its save clock, the leaderboard
-// read from the cups screen. Exits non-zero on the first failure.
+// The end-to-end smoke test, against a local chain and dev server: every
+// read the client makes, answered by the realm and passed through the
+// client's own checks (chain.ts `checks`, which throw on any shape it does
+// not expect), then the game in a headless Chrome: a hole played and holed,
+// the finished banner and its save clock, the leaderboard read from the cups
+// screen, a player the bot check flags hidden from the boards. Exits
+// non-zero if a step fails.
 //
 //   nice -n 20 node --experimental-strip-types scripts/smoke.ts
 //   (from web/: npm run smoke; RPC and APP override the local defaults)
@@ -52,7 +53,7 @@ if (!(await chainUp())) {
 }
 const chain = makeChain({ rpc: RPC });
 
-// ---------------------------------------------------------------- the reads
+// the reads
 let hole = "", player = "", period = 0;
 await step("Holes: the course is published", async () => {
   const list = await chain.holes(true);
@@ -110,7 +111,7 @@ await step("names: registrar, a check, a batch", async () => {
   return reg;
 });
 
-// ---------------------------------------------------------------- the game
+// the game
 const b = await launch({ width: 1100, height: 700 });
 /** polls a page expression until it is truthy, or gives up: its last value */
 async function until<T>(expr: string, tries = 80, ms = 250): Promise<T> {

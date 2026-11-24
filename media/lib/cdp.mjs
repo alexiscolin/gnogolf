@@ -1,6 +1,6 @@
 // @ts-check
-// Chrome over the DevTools protocol, for the media scripts (camera/*.mjs,
-// promo/render.mjs): one headless Chrome with a profile of its own, niced,
+// Chrome over the DevTools protocol, for the media scripts and the headless
+// checks in scripts/: one headless Chrome with a profile of its own, niced,
 // its port read from the profile (DevToolsActivePort: no clash with another
 // Chrome), killed by PID. Node 22+ (the built-in WebSocket).
 //
@@ -19,9 +19,9 @@ export const RPC = process.env.RPC || "http://127.0.0.1:26657";
 export const REALM = process.env.REALM || process.env.NEXT_PUBLIC_REALM || "gno.land/r/gnogolf/golf/v2";
 export const sleep = (/** @type {number} */ ms) => new Promise((r) => setTimeout(r, ms));
 
-// The course's holes are data in slots now ("garden/17"): a hole the scripts
-// name as its old realm ("hole19", "town1") is its slot, from data/holes.txt
-// (lines "<slot> <pkgpath> <sha8> <hex>"). A slot or a version id is kept.
+// A hole's slot ("garden/17") from the name its realm ends in ("hole19",
+// "town1"), as data/holes.txt pairs them (lines "<slot> <pkgpath> <sha8>
+// <hex>"); a slot or a version id is returned as it is.
 /** @type {Record<string, string> | null} */
 let slots = null;
 /** @param {string} name */

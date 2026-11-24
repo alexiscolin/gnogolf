@@ -177,8 +177,8 @@ func (r *lcg) shot() string {
 // calls it, on every hole of wasmHoles and wasmMutations changes of its
 // data, with slugs and notes it refuses, and on holes past GG1's bounds or
 // at the work limits (wpLimits, in every shard); and author.Fit then Encode
-// on each hole at the course's margin. Each answer is printed whole: the refusal, or
-// "ok" and what builder.wasm's check says of the hole.
+// on each hole at the course's margin. Each answer is printed whole: the
+// refusal, or "ok" and what builder.wasm's check says of the hole.
 func TestBuilderParity(cur realm, t *testing.T) {
 	setOwner(deployer)
 	testing.SetRealm(testing.NewUserRealm(deployer))

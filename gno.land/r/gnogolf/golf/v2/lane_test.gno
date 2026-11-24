@@ -45,8 +45,8 @@ func inLane(h *course.Simple, p physics.Vec2) bool {
 	return in
 }
 
-// Shots that used to leave the lane through an acute corner's tip: the gap
-// between the square caps of its two walls.
+// No shot leaves the lane through an acute corner's tip, the gap between the
+// square caps of its two walls.
 func TestNoShotLeavesThroughATip(t *testing.T) {
 	for _, c := range []struct {
 		realm        string
@@ -68,8 +68,8 @@ func TestNoShotLeavesThroughATip(t *testing.T) {
 	}
 }
 
-// Moves that used to cut through a free wall end from afar, diagonally in at
-// its missing end face: one substep on the hole's walls.
+// No move cuts through a free wall end from afar, diagonally in at its
+// missing end face: one substep on the hole's walls.
 func TestNoMoveCutsAFreeEnd(t *testing.T) {
 	for _, c := range []struct {
 		realm      string
@@ -92,8 +92,8 @@ func TestNoMoveCutsAFreeEnd(t *testing.T) {
 }
 
 // A piece that comes back between strokes pushes a resting ball out, never
-// across one of the hole's own walls: mountain9's bars alternate
-// every stroke, and hole2's mole pops up by an inner corner.
+// across one of the hole's own walls: mountain9's bars alternate every
+// stroke, and hole2's mole pops up by an inner corner.
 func TestAPieceNeverPushesTheBallThroughAWall(t *testing.T) {
 	for _, c := range []struct {
 		realm  string

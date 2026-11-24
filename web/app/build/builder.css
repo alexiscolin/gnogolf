@@ -1,10 +1,6 @@
-/* The Builder on a computer (components/builder: the GUI spec's B1, B2, B5),
-   over the game's tokens (globals.css) and its front screens (title.css):
-   the front's paper and ink at a tool's density, flat info panels,
-   pressable things on their drop. The window never scrolls and never
-   scrolls sideways: the palette, the right column and the issues scroll in
-   themselves (no chaining); the board takes the wheel, the pinch and the
-   drag (touch-action: none). */
+/* The Builder on a computer (components/builder), on the game's tokens (globals.css) and front screens (title.css) at
+   a tool's density. The window never scrolls, not even sideways: the palette, the right column and the issues scroll
+   in themselves (no chaining), and the board takes the wheel, the pinch and the drag. */
 
 :root { --board: #4f8a6b; } /* the board's ground round its green (the glossary's pieces on it too) */
 .bench, .pbench { --col-w: 292px; position: fixed; inset: 0; display: grid; padding: var(--sp-4) max(var(--sp-4), env(safe-area-inset-right)) var(--sp-4) max(var(--sp-4), env(safe-area-inset-left)); overflow: hidden; overscroll-behavior: none; font-family: var(--font); color: var(--ink); background: radial-gradient(circle, rgba(var(--ink-rgb), .08) 1.6px, transparent 2px) 0 0 / 14px 14px, var(--s0); }
@@ -17,7 +13,7 @@
 /* the note has a band of its own under the screen it is said on: it covers no control */
 :is(.bench, .tbench, .pbench):has(+ .bench__unkept) { padding-bottom: 64px; }
 
-/* ------------------------------------------------------------ the header: the hole, the three steps, the one action */
+/* the header: the hole, the three steps, the one action */
 /* three zones, the steps in the middle of the window: the hole on the left, the history and the action on the right
    (never narrower than they are: a narrow window takes the room from the hole's name, the steps then off centre) */
 .bhead { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr); align-items: center; gap: var(--sp-4); min-width: 0; }
@@ -45,7 +41,7 @@
 .bhead__more[open] > summary svg { transform: rotate(180deg); }
 .bhead__menu { left: 0; right: auto; z-index: 6; min-width: 160px; }
 
-/* the steps: Edit, Test, Publish; done green, the current gold, the next open or locked with its reason */
+/* the steps: Build, Play, Publish; done green, the current gold, the next open or locked with its reason */
 .stepper { justify-self: center; display: flex; align-items: center; gap: var(--sp-1); height: 40px; margin: 0; padding: 2px; list-style: none; border: var(--edge); border-radius: var(--pill); background: var(--paper); }
 .step button { display: inline-flex; align-items: center; gap: var(--sp-2); height: 32px; padding: 0 var(--sp-4) 0 var(--sp-1); border: 0; border-radius: var(--pill); background: none; font: inherit; font-size: 15px; font-weight: 700; color: var(--ink); white-space: nowrap; cursor: pointer; }
 .step .tip { display: flex; align-items: center; line-height: 1; } /* (a locked step: InfoTip, its why under it) */
@@ -65,7 +61,7 @@
 /* a narrower window: every step keeps its word (the three steps are the Builder's map), the pill tighter */
 @media (max-width: 1180px) { .step button { gap: 6px; padding-right: var(--sp-2); font-size: 14px; } .step + .step::before { width: 8px; margin-right: 4px; } }
 
-/* ------------------------------------------------------------ a column: a paper panel that scrolls in itself */
+/* a column: a paper panel that scrolls in itself */
 .col { min-height: 0; overflow: auto; overscroll-behavior: contain; display: grid; align-content: start; gap: var(--sp-4); padding: var(--sp-4); border: var(--edge); border-radius: var(--r-card); background: var(--paper); }
 .col hr { border: 0; border-top: var(--rule); margin: 0; width: 100%; }
 /* the right side: the player's view on top, its own panel that never scrolls; the piece's settings under it, the rest of the height */
@@ -131,7 +127,7 @@
 .palette__bin { position: sticky; bottom: 0; z-index: 1; margin-top: auto; padding: var(--sp-3); border: 2px dashed rgba(var(--ink-rgb), .35); border-radius: 12px; background: var(--paper); box-shadow: 0 0 0 var(--sp-4) var(--paper); text-align: center; font-size: 14px; font-weight: 700; color: var(--ink-soft); }
 .palette__bin::before { content: "🗑 "; }
 
-/* ------------------------------------------------------------ the centre: the board, its checks docked under it */
+/* the centre: the board, its checks docked under it */
 .centre { position: relative; min-height: 0; min-width: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: var(--sp-3); }
 .board { position: relative; min-height: 0; border: var(--edge-bold); border-radius: var(--r-card); background: var(--board); overflow: hidden; touch-action: none; overscroll-behavior: contain; cursor: default; user-select: none; }
 .board--no { cursor: not-allowed; }
@@ -201,7 +197,7 @@ button.issue__why:hover { text-decoration-style: solid; }
 .issue--warn { background: #fff7e2; border: 2px solid #e0a44a; color: var(--ink); }
 .issue--warn::before { content: "?"; background: var(--sunny); color: var(--ink); }
 
-/* ------------------------------------------------------------ the right: the 3D, then the selected piece */
+/* the right: the 3D, then the selected piece */
 .preview { position: relative; flex: none; aspect-ratio: 16 / 10; border: var(--edge); border-radius: 14px; background: var(--fairway); overflow: hidden; }
 .preview:not(.preview--off) { cursor: grab; touch-action: none; }
 .preview:active { cursor: grabbing; }
@@ -227,7 +223,7 @@ button.issue__why:hover { text-decoration-style: solid; }
 /* no 3D here: the preview's box kept (nothing shifts), its sentence ink on paper */
 .preview.preview--off { display: grid; place-items: center; margin: 0; padding: var(--sp-4); background: var(--paper); border-style: dashed; color: var(--ink); font-size: 15px; line-height: 1.4; text-align: center; }
 
-/* ------------------------------------------------------------ your holes (the computer's start, B7): the workshop, a new hole, the drafts */
+/* your holes (the computer's start): the workshop, a new hole, the drafts */
 /* the screen's column, centred, as wide as the menu's cards; compact enough that the starters stand above the fold of a laptop */
 .screen.bholes { padding-top: clamp(28px, 6vh, 64px); }
 /* a window too narrow for the column beside the corner's Back: the column starts under it */
@@ -243,7 +239,6 @@ button.issue__why:hover { text-decoration-style: solid; }
   --blueprint: linear-gradient(rgba(255, 255, 255, .13) 1.5px, transparent 1.5px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(255, 255, 255, .13) 1.5px, transparent 1.5px) 0 0 / 24px 24px,
     linear-gradient(rgba(255, 255, 255, .06) 1px, transparent 1px) 0 0 / 6px 6px, linear-gradient(90deg, rgba(255, 255, 255, .06) 1px, transparent 1px) 0 0 / 6px 6px, #2f6db3;
 }
-/* its padding the same on every side: the steps never touch its edges */
 .bholes__sign {
   position: relative; display: grid; grid-template-columns: 148px minmax(0, 1fr); align-items: center; gap: var(--sp-5);
   margin-top: 28px; padding: var(--sp-4) var(--sp-5); border: var(--edge-bold); border-radius: var(--r-panel); color: var(--paper);
@@ -343,7 +338,7 @@ button.issue__why:hover { text-decoration-style: solid; }
 .bholes__hole input { flex: 1; font-family: var(--mono); } /* (a text field: globals.css) */
 .bholes__why { margin: 0; } /* (the game's bad note: globals.css) */
 
-/* ------------------------------------------------------------ Play (B3): the game over the editor, the weathers over it */
+/* Play: the game over the editor, the weathers over it */
 .tbench { position: fixed; inset: 0; overflow: hidden; font-family: var(--font); color: var(--ink); }
 .tmode { position: absolute; inset: 0; }
 /* its HUD: the game's own (globals.css .hud, .card, .card--score, .card--weather), held in the frame */
@@ -415,7 +410,7 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .tmode__addr input { width: 26ch; font-family: var(--mono); } /* (a text field: globals.css) */
 @media (prefers-reduced-motion: reduce) { .tmode__strip { transition: none; } }
 
-/* ------------------------------------------------------------ publish (B4): the hole as players will see it, the form beside it */
+/* publish: the hole as players will see it, the form beside it */
 .pbench { grid-template-rows: 44px minmax(0, 1fr); gap: var(--sp-5); }
 /* the editor's frame: the hole where the board is, down to the column's foot; the form the editor's right column */
 .pub { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) var(--col-w); grid-template-rows: minmax(0, 1fr); gap: var(--sp-4); }
@@ -424,7 +419,7 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .pub__doneform p { margin: 0; font-size: 15px; }
 .pub__doneform .btn { margin: 0; }
 .pub__hole { position: relative; display: grid; min-width: 0; min-height: 0; }
-/* the 3D the board's frame and height (its own 16:10 no more) */
+/* the 3D in the board's frame, at its height (not the preview's 16:10) */
 .pub__hole .preview { width: 100%; height: 100%; min-height: 240px; aspect-ratio: auto; border: var(--edge-bold); border-radius: var(--r-card); }
 /* published: the hole's card on the 3D, at its foot (a label, as its "3D · in sync" at its top) */
 .pub__card { position: absolute; left: var(--sp-3); bottom: var(--sp-3); z-index: 1; display: grid; gap: 2px; max-width: calc(100% - 2 * var(--sp-3)); padding: var(--sp-2) var(--sp-3); border: var(--info-edge); border-radius: 12px; background: rgba(var(--paper-rgb), .95); pointer-events: none; }
@@ -532,11 +527,10 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 
 /* the keys at the board's foot */
 .board__keys { position: absolute; left: var(--sp-3); bottom: var(--sp-3); max-width: calc(100% - 2 * var(--sp-3)); margin: 0; padding: 4px var(--sp-2); border-radius: 10px; background: rgba(var(--paper-rgb), .92); font-size: 13px; font-weight: 700; color: var(--ink); pointer-events: none; }
-/* an entry whole on its line, its separator after it: a line never starts with one */
 .board__keys { white-space: nowrap; } /* (one line: the few keys most used; ? shows them all) */
 .board__keys > span { white-space: nowrap; }
 .board__keys > span:not(:last-child)::after { content: "\00a0·"; }
-/* the green's paint (Board's, B; its tools the palette's): the green faint, each side of its outline a line to drag or
+/* the green's paint (Board's, key B; its tools the palette's): the green faint, each side of its outline a line to drag or
    click (open: dashed; hovered and locked: it stays as it is, dimmed, no gold), the stroke one ghost (green where it may go, red where not), its walls drawn */
 .board--paint .board__map { cursor: crosshair; }
 .board__cells { fill: rgba(255, 255, 255, .1); }
@@ -570,7 +564,7 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .board__roll { fill: rgba(255, 255, 255, .85); stroke: var(--gold); stroke-width: 2px; vector-effect: non-scaling-stroke; animation: broll 1.2s ease-out both; }
 @keyframes broll { 80% { opacity: 1; } to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .board__roll { display: none; } }
-/* Play, over the editor kept open after it (over it at 1, under the unkept note's 2) */
+/* Play over the editor, which stays open after it in the page: 1 lifts it over, the unkept note's 2 stays on top */
 .tbench--play { z-index: 1; background: var(--paper); }
 .tmode__small { margin: 0; font-size: 14px; color: var(--ink-soft); }
 .tmode__small a { color: var(--green); font-weight: 700; }

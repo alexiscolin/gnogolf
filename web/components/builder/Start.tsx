@@ -1,14 +1,10 @@
 "use client";
 
-// The Builder's start on a computer (the GUI spec's B7, "Your holes"): the
-// workshop (the game's Miner in his hard hat over a blueprint, what the
-// Builder is for in a line: the editor's steps say the rest), a new hole in a
-// world (its tab, its starters as cards that show the hole and say in a line
-// what it is), the drafts this browser keeps as cards (the whole card opens
-// one; its weathers ticked as holed), the author's holes on the chain with
-// who played them and the Builder's badges (Rewards.tsx), and a file or a
-// published hole opened. A new player never lands here first: the first run
-// opens the Garden's dogleg (templates.ts firstRun).
+// The Builder's start on a computer, "Your holes": the workshop's sign, a new
+// hole from a world's starters, the drafts this browser keeps (the whole card
+// opens one), the author's holes on the chain with who played them and the
+// Builder's badges, and a file or a published hole opened. A new player never
+// lands here first: the first run opens the Garden's dogleg.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton, FrontHead } from "@/components/About";
@@ -40,10 +36,8 @@ const WORLDS = Object.keys(FIELD);
 /** A draft file's most: a draft of every limit at once is far under it. */
 const MAX_FILE = 1 << 20;
 
-/** A draft saved as a file (exportDraft), named after it. */
 const download = (d: Draft) => saveFile(new Blob([exportDraft(d)], { type: "application/json" }), draftFile(d));
 
-/** The drafts kept in this browser; a new hole in a world, a file opened, a published hole opened for its next version. */
 export default function Start({ host, author, drafts, said = "", onOpen, onAdd, onDelete }: {
   host: BuilderHost;
   author: string | null;
@@ -63,7 +57,6 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
   const [wipe, setWipe] = useState<string | null>(null); // the draft asked to be deleted, before the sheet's yes
   const file = useRef<HTMLInputElement>(null);
   const router = useRouter(); // (the game's menu without a reload: the app's own navigation)
-  // each starter's map
   const starts = useMemo(() => startsIn(world).map((s) => ({ ...s, map: draftMap(s.draft) })), [world]);
   const keys = useKeys(drafts, host);
   const { chain, keep } = useMemo(() => {

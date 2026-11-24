@@ -75,9 +75,9 @@ func TestGnomesOfIsTheLocker(cur realm, t *testing.T) {
 	uassert.Equal(t, `{"version":1,"owner":"`+bob.String()+`","total":1,"next":-1,"rows":[`+lockerRow(id)+`]}`, GnomesOf(bob, 0))
 }
 
-// The locker pages a wallet best first (a tier's rows in id order), 100 rows a page, "next" the
-// following page's offset or -1: a holder of many cannot make a read
-// unbounded.
+// The locker pages a wallet best first (a tier's rows in id order), 100
+// rows a page, "next" the following page's offset or -1: a holder of many
+// cannot make a read unbounded.
 func TestGnomesOfPagesAWallet(cur realm, t *testing.T) {
 	fresh(t, cur)
 	// 205 Commons: one tier, so their rows come in id order (best first is worn_test's)

@@ -47,22 +47,18 @@ const WORK = path.join(os.tmpdir(), `gnogolf-promo${SUFFIX}`);
 // the clean cut's shots, in order: flyovers and rolls, ending on the garden's slow, bright orbit
 const CLEAN_SHOTS = ["snow", "sandcastles", "market", "cold", "mill", "frozen", "jump", "plazaP", "marketW", "tube", "logo"];
 
-// The music: "Dizzy Racing" by Zane Little Music (CC0), 175 BPM. The cut
-// starts on a phrase at 104.53 s and its last hit lands on the end card.
+// The music: "Dizzy Racing" by Zane Little Music (CC0), 175 BPM.
 const BEAT = 60 / 175; // s
-// the track's last hit lands at 134.53 s, on its beat grid: the cut starts as many beats before it as the video is long
+// its last hit, at 134.53 s on its beat grid, lands on the end card: the cut starts as many beats before it as the video is long
 const MUSIC = path.join(HERE, "music", "dizzy_racing.flac"), MUSIC_END = 134.53;
 const F = (beat) => Math.round(beat * BEAT * FPS); // a beat's frame
 
-// --------------------------------------------------------------- the shots
-//
-// beats: where the shot sits on the music. cam: see aim() in web/lib/promo.ts.
-// fire: shots played (deg, power, at s of shot time; negative = before the cut).
-// pre: seconds run before the first captured frame.
-
-// swap: a shot cut into slices, one gnome each (a page load per slice), the
-// camera and the titles running on through them. url: the end card's address,
+// A shot: beats, where it sits on the music; cam, see aim() in web/lib/promo.ts; fire, the
+// strokes played (deg, power, at s of shot time; negative = before the cut); pre, seconds run
+// before the first captured frame; swap, the shot cut into slices, one gnome each (a page load
+// per slice), the camera and the titles running on through them; url, the end card's address,
 // left out while it is empty.
+
 // clean: the picked shots laid end to end, every overlay and camera jolt left out
 const cleanOf = (all) => {
   let at = 0;
@@ -91,9 +87,8 @@ const ALL_GNOMES = ["classic", "sage", "ginger", "moustache", "gardener", "wizar
 
 const LAST = Math.max(...SHOTS.map((s) => s.beats[1]));
 // rewind: the music goes back that many beats as the shot starts (a phrase played again), so a
-// cut longer than another keeps the other's music under its shots (v7: v4's, its duel on the
-// 24 beats before the Builder's again; v8: from the duel's last cut, a downbeat), and still ends
-// on the last hit: [music s, length s] each
+// longer cut keeps a shorter one's music under its shots and still ends on the last hit;
+// PARTS are the music's stretches, [music s, length s] each
 const REWINDS = SHOTS.filter((s) => s.rewind && !s.t0).map((s) => [s.beats[0], s.rewind]);
 const LEN = F(LAST) / FPS, MUSIC_AT = +(MUSIC_END - (LAST - REWINDS.reduce((a, [, r]) => a + r, 0)) * BEAT).toFixed(3);
 const PARTS = [];
@@ -102,8 +97,6 @@ for (let k = 0, b0 = 0, m = MUSIC_AT; k <= REWINDS.length; k++) {
   PARTS.push([+m.toFixed(3), +((b - b0) * BEAT).toFixed(3)]);
   (m += (b - b0 - r) * BEAT), (b0 = b);
 }
-
-// ------------------------------------------------------------------ chrome
 
 async function chrome() {
   const [w, h] = CLEAN ? [1280, 720] : [1920, 1080];
@@ -115,8 +108,6 @@ async function chrome() {
   await send("Page.addScriptToEvaluateOnNewDocument", { source: `{const W=window.WebSocket;window.WebSocket=function(u,p){return /hmr/.test(String(u))?{readyState:0,send(){},close(){},addEventListener(){},removeEventListener(){}}:new W(u,p)};Object.assign(window.WebSocket,{CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3});}` });
   return { send, js, kill };
 }
-
-// ------------------------------------------------------------------ render
 
 const pathsFile = path.join(HERE, "paths.json");
 const paths = fs.existsSync(pathsFile) ? JSON.parse(fs.readFileSync(pathsFile, "utf8")) : {};
@@ -146,10 +137,9 @@ async function shoot(c, s, i, out) {
   }
   await c.js(`document.fonts.load("700 100px Fredoka").then(() => document.fonts.ready)`);
   await sleep(1200); // the world's pieces settle in
-  // ace: the shot's first stroke a one-stroker found now, in the weather the chain plays (a community hole's is the
-  // chain's, not the shot's): every way within 45 degrees of the tee's line to the cup and every power, the longest ride
-  // that holes (the most to watch), kept in paths.json with the others, it and its path under the shot's name (a hole
-  // filmed twice: the chain's weather may have turned in between)
+  // ace: the first stroke a one-stroker found now, in the weather the chain plays (a community hole's, not the
+  // shot's): within 45 degrees of the tee's line to the cup, every power, the longest ride that holes (the most to
+  // watch). Kept in paths.json under the shot's name: a hole filmed twice may be in another weather by then.
   if (s.ace && s.fire?.[0]) {
     const k = `${s.hole}|ace|${s.name}`;
     paths[k] ??= await c.js(`(async () => {
@@ -178,7 +168,7 @@ async function shoot(c, s, i, out) {
   }
   // dropAt: the shot is timed so the ball drops in the cup at that second of the shot
   // eventAt: a moment inside the shot (a splash, a bounce) lands at that second; fire[0].eventT is
-  // how long after the putt it comes (from the trap search), plus what frame-stepping adds (~16%)
+  // how long after the putt it comes, plus what frame-stepping adds (~16%)
   if (s.eventAt != null && s.fire && s.fire[0] && s.fire[0].eventT != null) s.fire[0].at = s.eventAt - s.fire[0].eventT * 1.16;
   else if ((s.dropAt != null || s.eventAt != null) && s.fire && s.fire[0]) {
     const pts = cache[`${s.fire[0].deg},${s.fire[0].power}`].path;
@@ -238,8 +228,6 @@ async function shoot(c, s, i, out) {
   console.log(`shot ${i} ${s.name}: ${frames} frames`);
 }
 
-// ------------------------------------------------------------- the cups
-//
 // Each cup card plays a clip on hover: four of its holes (cups.json), each
 // an orbit a third of the way round, closing in a little from above, drawn
 // by the title's own scene at golden hour on the card's sky (web/lib/scene/
@@ -329,11 +317,9 @@ try {
 }
 if (STILLS || process.argv.includes("--frames")) process.exit(0); // --frames: the frames (and the shots' sounds) only, for another cut to lay out (media/builder/promo.mjs)
 
-// ------------------------------------------------------------ encode: clean
-//
-// 24 fps, no audio track, each file under ~520 KB (below the site's gzipped
-// JS; the browser takes one). A very light denoise first, so the toon flats
-// code clean, without blocks. AV1: 1280x720, constant quality at the
+// The clean cut's files: 24 fps, no audio track, each under ~520 KB (below the
+// site's gzipped JS; the browser takes one). A very light denoise first, so the
+// toon flats code clean, without blocks. AV1: 1280x720, constant quality at the
 // slowest preset worth it, visual tuning, no film grain (the grain's noise
 // shows on the flats). VP9: 1280x720, two passes. H.264 holds up better at
 // 960x540 for the same bytes (two passes, animation tuning).
@@ -355,12 +341,10 @@ if (CLEAN) {
   process.exit(0);
 }
 
-// ------------------------------------------------------------------ encode
-
 const sfx = SHOTS.map((s, i) => [i, path.join(WORK, `sfx-${i}.wav`), s.f0 / FPS]).filter(([, f]) => fs.existsSync(f));
-// (each part of the music but the first comes in X s early, cross-faded at equal power over the
-// last quarter of the beat before its splice: the splice's downbeat is the new part's own, whole
-// (a whole beat's doubled both bars and swelled the level 2 dB; a linear one dipped it 3 to 4 dB))
+// each part of the music but the first comes in X s early, cross-faded at equal power over the last
+// quarter-beat before its splice, so the splice's downbeat is the new part's own, whole (a whole
+// beat's fade doubled both bars and swelled the level 2 dB; a linear one dipped it 3 to 4 dB)
 const X = BEAT / 4, N = PARTS.length;
 const inputs = ["-framerate", String(FPS), "-i", path.join(out, "%05d.jpg")];
 for (const [k, [at, len]] of PARTS.entries()) inputs.push("-ss", String(k ? at - X : at), "-t", String(k === N - 1 ? LEN : k ? len + X : len), "-i", MUSIC);

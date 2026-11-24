@@ -34,7 +34,7 @@ function check(name: string, f: () => void) {
   }
 }
 
-// ---------------------------------------------------------------- the realm
+// the realm
 const realmDir = new URL("../gno.land/r/gnogolf/golf/v2/", import.meta.url); // the rules the site plays
 const realm = (f: string) => fs.readFileSync(new URL(f, realmDir), "utf8");
 const golf = realm("golf.gno"), weather = realm("weather.gno");
@@ -172,11 +172,11 @@ check("weather.gno period", () => {
   assert.ok(has(weather, "if period != now && period != now-1 {"), "playablePeriod: the periods a round saves in changed");
 });
 
-// ---------------------------------------------------------------- the gnomes realm
-// Every count is written once (ADR-007): the catalogue's data
-// (data/gnomes/series.json) and the realm's config.gno say the same supply,
-// prices and caps, every tier's (a Legendary is sold at a fixed price too);
-// the earned gnomes are UNLOCKS' and GNOMES'.
+// the gnomes realm
+// Every count is written once: the catalogue's data (data/gnomes/series.json)
+// and the realm's config.gno say the same supply, prices and caps, every
+// tier's (a Legendary is sold at a fixed price too); the earned gnomes are
+// UNLOCKS' and GNOMES'.
 const gnomesDir = new URL("../gno.land/r/gnogolf/gnomes/", import.meta.url);
 const gnomes = (f: string) => fs.readFileSync(new URL(f, gnomesDir), "utf8");
 /** A Go array literal of numbers, `name = [len(tiers)]int64{1, 2, 3}`, as numbers. */

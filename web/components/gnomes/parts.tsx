@@ -1,10 +1,9 @@
 "use client";
 
-// The shop's small pieces, one of each (the GUI spec's "Shared pieces"): a
-// tier's chip, a gnome's tile (his 3D portrait, or the chain's; an earned
-// one's leaf), his card in a grid (and a Legendary's to come, to look at), the
-// switch between the two looks, the closing date, the one share button. On
-// the game's own tokens (app/gnomes.css).
+// The shop's small pieces, one of each: a tier's chip, a gnome's tile (his 3D
+// portrait, or the chain's; an earned one's leaf), his card in a grid (and a
+// Legendary's to come, to look at), the switch between the two looks, the
+// closing date, the one share button. On the game's own tokens (app/gnomes.css).
 import { useEffect, useRef, useState, type CSSProperties, type FocusEvent, type KeyboardEvent, type ReactNode } from "react";
 import { Button, Chip, Segmented } from "@/components/ui";
 import { buttonClass } from "@/components/button";

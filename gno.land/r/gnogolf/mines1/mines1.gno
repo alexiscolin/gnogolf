@@ -15,14 +15,14 @@ import (
 
 var v = physics.V
 
-// tee is where every hazard sends a ball back to (the convention: unused).
+// tee is the hole's tee, and every hazard's Vec (which no rule reads).
 var tee = v(4, 4)
 
 // laneW and laneE are the ground, west and east of x = 36, each the Outside
 // polygon of its own void zone: the tee's round deck and the narrow gantry
-// out from it, the man-way, the gangways and their
-// landing, the gallery with the pit bottom over it, the stope and the ledge.
-// The rest of the board is the dark of the pit.
+// out from it, the man-way, the gangways and their landing, the gallery with
+// the pit bottom over it, the stope and the ledge. The rest of the board is
+// the dark of the pit.
 var laneW = []physics.Vec2{
 	v(5.91, 0.62), v(5, 0.5), v(4.09, 0.62), v(3.25, 0.97), v(2.53, 1.53), v(1.97, 2.25), v(1.62, 3.09),
 	v(1.5, 4), v(1.62, 4.91), v(1.97, 5.75), v(2.53, 6.47), v(3.25, 7.03), v(4.09, 7.38), v(5, 7.5),

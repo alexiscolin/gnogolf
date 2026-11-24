@@ -81,8 +81,6 @@ func atof(s string) float64 {
 	return x
 }
 
-// --- a version of a hole -------------------------------------------------------
-
 func encodeEntry(e *entry) string {
 	out := []string{"", "", "", "", ""} // never archived: no drain
 	if e.out != nil {
@@ -104,8 +102,6 @@ func decodeEntry(s string) *entry {
 	return e
 }
 
-// --- a round under way ---------------------------------------------------------
-
 func encodeRound(r *round) string {
 	return join(ftoa(r.bx), ftoa(r.by), ftoa(r.fx), ftoa(r.fy), itoa(r.strokes), i64(r.period), r.shots, itoa(r.mode))
 }
@@ -114,8 +110,6 @@ func decodeRound(s string) *round {
 	f := fields(s, "round", 8)
 	return &round{bx: atof(f[0]), by: atof(f[1]), fx: atof(f[2]), fy: atof(f[3]), strokes: atoi(f[4]), period: atoi64(f[5]), shots: f[6], mode: atoi(f[7])}
 }
-
-// --- a course standing ---------------------------------------------------------
 
 func encodeRow(r *row) string {
 	return join(r.player, itoa(r.holes), itoa(r.strokes), itoa(r.par), i64(r.height))

@@ -38,8 +38,7 @@ var (
 	soldTier  [len(tiers)]int64 // sold per tier, every series
 	sold      []byte            // a bit per catalogue id, bit id-1 set once sold, for good (a burn does not clear it)
 
-	// bptrees, which pack many rows a node: an avl node was measured at
-	// about 2 KB of deposit a row (z_storage_buy)
+	// bptrees, which pack many rows a node: avl costs about 2 KB of deposit a row
 	bought   *bptree.BPTree // buyer -> [len(tiers)]int64, for the lifetime cap
 	inWindow *bptree.BPTree // "<series> <buyer>" -> [len(tiers)]int64, for the player cap
 	equipped *bptree.BPTree // player -> token id
@@ -47,10 +46,11 @@ var (
 
 func init(cur realm) { setUp(0, cur, ownerAtDeploy(unsafe.OriginCaller(), runtime.ChainID())) }
 
-// setUp starts the collection empty, the catalogue unpublished, the sale
-// closed and the earned gnomes open, owned by deployer: the token, its extensions, its royalty to the
-// owner. rlm is this realm's live cur, which grc721 records as the token's
-// home. The tests call it again for a fresh collection.
+// setUp starts the collection empty and owned by deployer (the token, its
+// extensions, its royalty to the owner), the catalogue unpublished, the
+// sale closed and the earned gnomes open. rlm is this realm's live cur,
+// which grc721 records as the token's home. The tests call it again for a
+// fresh collection.
 func setUp(_ int, rlm realm, deployer address) {
 	token, ledger = grc721.NewToken(tokenName, tokenSymbol, 0, rlm)
 	teller = ledger.CallerTeller()

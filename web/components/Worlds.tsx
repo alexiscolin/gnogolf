@@ -28,8 +28,8 @@ export const WORLDS: readonly { id: Cup; name: string; tag: string }[] = CUPS.ma
 /** A cup by its id: the garden's when it is none of them. */
 export const worldOf = (id: string | null | undefined) => WORLDS.find((w) => w.id === id) || WORLDS[0];
 
+/** A cup's emblem, a little scene in the game's own inked, flat style (any other id: the Builder's blueprint). */
 export function Emblem({ id }: { id: string }) {
-  // each a little scene in the game's own inked, flat style
   if (id === "garden")
     return (
       <Frame>

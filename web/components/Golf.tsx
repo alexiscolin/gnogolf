@@ -63,8 +63,8 @@ import type { skinOfTraits } from "@/lib/gnomes/skin";
 // (lib/testhooks.ts); ?won, a win card for a round nobody played, in a dev
 // build only.
 const DEV = process.env.NODE_ENV !== "production";
-// the shot clip in the hole-finished card (ADR-003): NEXT_PUBLIC_CLIPS=1, or
-// ?clips in a dev build (the flag is read when the dev server starts)
+// the shot clip in the hole-finished card: NEXT_PUBLIC_CLIPS=1, or ?clips in a
+// dev build (the flag is read when the dev server starts)
 const CLIPS = process.env.NEXT_PUBLIC_CLIPS === "1";
 
 declare global {
@@ -101,10 +101,11 @@ const loadSent = () => {
 };
 
 /** How a save goes: signing (part of of), checking (sent: the chain read back), refused (why; stale: its
- *  weather is over; final: the chain played it, otherwise than here: sent, it is not offered again), unsure (why; sent: Adena said it went, so a save again only reads it again, by its
- *  hash if Adena gave one; else it may have gone: the player checks before saving again; was: the
- *  player's best there as the last commit went, 0 for none), or saved (stays: the older best the chain
- *  kept, this round not beating it: a tie keeps the older round). */
+ *  weather is over; final: the chain played it, otherwise than here: sent, it is not offered again), unsure
+ *  (why; sent: Adena said it went, so a save again only reads it again, by its hash if Adena gave one; else
+ *  it may have gone: the player checks before saving again; was: the player's best there as the last
+ *  commit went, 0 for none), or saved (stays: the older best the chain kept, this round not beating it: a
+ *  tie keeps the older round). */
 type Rec = null
   | { at: "signing"; part?: number; of?: number }
   | { at: "checking" }
@@ -112,7 +113,7 @@ type Rec = null
   | { at: "unsure"; error: string; sent: boolean; hash?: string; was?: number }
   | { at: "saved"; stays?: number };
 
-/** Config travels in the query string (a public production build keeps its own node: safeEndpoint). */
+/** Config travels in the query string (a public production build keeps its own node: endpoints). */
 interface Config {
   rpc: string;
   web: string;
@@ -215,7 +216,7 @@ const sameCold = <T extends object>(a: T, b: T) => {
   return true;
 };
 // the pull's power, drawn straight onto the bar as it changes: a React render
-// a pointer move was the whole of the aim's work in the page
+// a pointer move would be the whole of the aim's work in the page
 const barWidth = (hot: Hot) => `${Math.round((hot.get().power || 0) * 100)}%`;
 function AimBar({ hot }: { hot: Hot }) {
   const bar = useRef<HTMLSpanElement>(null);
@@ -632,8 +633,7 @@ export default function Golf() {
   // started from the gnome's, for its own hole's round
   const [nameStem, setNameStem] = useState(() => suggestName(gnome));
   useEffect(() => setNameStem(suggestName(gnome)), [holeNow, gnome]);
-  // a save under way, either card's (the win card's, the waiting round's: the same round can be on both):
-  // a second click starts no second one
+  // a save under way, from either card (the same round can be on both): a second click starts no second one
   const saving = useRef(false);
   // the rounds whose last commit went through, and how that went (SENT)
   const [sentRounds] = useState(() => new Map<string, Rec>(loadSent()));
@@ -841,8 +841,8 @@ export default function Golf() {
 
   // a dare in the link (by: the sharer), or a player picked on a board: their
   // best on each hole played, read on the chain with its round, raced as a
-  // ghost (ADR-004), said as the hole opens; they join the friends. Play solo
-  // drops it for the page.
+  // ghost, said as the hole opens; they join the friends. Play solo drops it
+  // for the page.
   const [dare, setDare] = useState(() => {
     const by = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("by") : null;
     return by && isAddress(by) ? by : "";
@@ -980,7 +980,7 @@ export default function Golf() {
   const raceWith = (player: string, from: RivalKind = "board") => (setBoard(false), game.current?.reset(), pickRival(player, from));
   // a rival picked on the rival screen (or its board's sheet): their ghosts next, their bests kept when read there
   const toGhosts = (player: string, bests?: ReadonlyMap<string, Readonly<Record<Mode, number>>>, from?: RivalKind) => (sound("select"), bests && setRivalOn({ by: player, bests, at: saves }), raceWith(player, from), setScreen("ghosts"));
-  // Play solo, the picker's or the game's choice's: the duel dropped for the page (note: the word said as it goes)
+  // Play solo (the picker's, the game choice's): the duel dropped for the page; note: the toast said as it goes
   const dropDuel = (note: string | null) => {
     if (dare && !solo) track("duel_dropped", { rival: rivalKind() });
     setSolo(true);
@@ -1120,6 +1120,7 @@ export default function Golf() {
   const saveMode = toSave && toSave.roundMode === "pro" ? "pro" : "assisted";
   useEffect(() => {
     setBest(null);
+    setBestAsked("");
     setGhostHere(false);
     setOnCourse(null);
     if (!account || !saveId || !game.current) return;
@@ -1556,8 +1557,7 @@ export default function Golf() {
       award(badgesFor({ strokes, par: parOf(h), pro: (s.roundMode || aim) === "pro", kind: s.kind, timed: s.timed, cups: after, weathers: weathersSeen(), duel }, badgesEarned()), id);
     }
   };
-  // ----------------------------------------------------------- analytics
-  // (lib/analytics.ts, docs/analytics.md; nothing goes without its key)
+  // analytics (nothing goes without its key)
   // a round as analytics says it: the hole, its cup, solo or a duel, the aim
   const rivalKind = (): RivalKind => (dare === me ? "self" : rivalFrom.current);
   const playOf = (id: string): Play => ({ hole: id, cup: cupOf(allList.find((h) => h.id === id) || {}), mode: racing ? "duel" : "solo", aim: (s && s.roundMode) || aim });
@@ -1768,7 +1768,6 @@ export default function Golf() {
             <div className="drawer" onClick={() => setMenu(false)}>
               <Dialog as="aside" onClose={() => setMenu(false)} className="drawer__panel" role="dialog" aria-modal="true" aria-label="Menu" onClick={(e) => e.stopPropagation()}>
                 <div className="drawer__head">
-                  {/* the cup being played, and the way to another */}
                   {(() => {
                     // the cup being played; tapping it goes to the cups (their ghosts in a duel)
                     const cup = worldOf(s.world);
@@ -2558,7 +2557,7 @@ function Picker({ world, gnome, onChange, onPick, unlocked, chosen, onPlayAs, on
           </div>
           <button className="round" aria-label="Next gnome" onClick={() => step(1)}>›</button>
         </div>
-        {/* the collection between the tile and the aim card, the aim card's width (the GUI spec's A3) */}
+        {/* the collection between the tile and the aim card, the aim card's width */}
         {owned}
         <AimSetting aim={aim} onChange={onAim} compact />
         {/* a locked gnome on show: the button still plays, as the gnome really chosen */}

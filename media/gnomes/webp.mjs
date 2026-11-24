@@ -38,7 +38,7 @@ function imageChunks(webp) {
  * @param {number} w @param {number} h @param {number} ms each frame's time
  */
 export function animate(frames, w, h, ms) {
-  const flags = Buffer.from([0x02, 0, 0, 0]); // animation; (no alpha: an opaque background)
+  const flags = Buffer.from([0x02, 0, 0, 0]); // animated, no alpha: an opaque background
   const vp8x = chunk("VP8X", Buffer.concat([flags, u24(w - 1), u24(h - 1)]));
   const anim = chunk("ANIM", Buffer.from([0xff, 0xff, 0xff, 0xff, 0, 0])); // background, loop forever
   const anmf = frames.map((f) => chunk("ANMF", Buffer.concat([u24(0), u24(0), u24(w - 1), u24(h - 1), u24(ms), Buffer.from([0x02]), imageChunks(f)])));

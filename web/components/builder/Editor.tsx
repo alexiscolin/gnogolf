@@ -1,21 +1,13 @@
 "use client";
 
-// The editor (the GUI spec's B1 and B2): the header, the palette, the board
-// with its checks docked under it, the selected piece and the player's
-// view. The draft lives in a session (its history; a drag one step); every
-// change is checked by the whole pipeline (pipeline.ts validate, the render
-// census included) 150 ms after the last, and nothing that breaks the hole
-// is ever made: the board, the inspector and the keys all ask first
-// (edit.ts). The ball shows in Build too: quick shots pulled on the board,
-// played on the hole as it is (quickshot.ts), and the meter's best line;
-// never a proof. Play (T) plays the hole over the editor (kept open below
-// it: the same zoom, selection and history after): with the author's
-// address, each round a try at the next weather not holed, its proof kept
-// in the draft (TestMode); the difficulty's change said as it comes ("par 3
-// → 4"), and a ghost ball runs the meter's line after a drop. The green is
-// painted on the board (B: Paint, Erase; surface.ts), each stroke one step
-// through the same gate as every edit (edit.ts gate), refused with why. One
-// tool in hand at a time: a piece armed, or the paint.
+// The editor: the header, the palette, the board with its checks docked
+// under it, the selected piece and the player's view. The draft lives in a
+// session (its history; a drag is one step). The whole pipeline, render
+// census included, checks the hole once changes pause, and nothing that
+// breaks it is ever made: the board, the inspector, the keys and the paint
+// all go through edit.ts's gate first. Quick shots and the meter's
+// line are never a proof: Play (T) makes the proofs, over the editor, which
+// stays open below it (the same zoom, selection and history after).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { useFlash } from "@/components/common";
@@ -91,18 +83,18 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   /** a file opened as it is: why it is broken, said until it passes ("" none) */
   opened?: string;
 }) {
-  // one session (its undo history) while the editor is open: a step saved and handed back is not a new draft (its key opens a new one)
+  // one session (its undo history) a mount: the saved step the parent hands back is not a new draft (a new key remounts)
   const [session] = useState(() => makeSession(first));
   const others = useMemo(() => new Set(taken), [taken.join(" ")]); // eslint-disable-line react-hooks/exhaustive-deps -- (a list each render: its addresses)
   const [, bump] = useState(0);
   const [again, setAgain] = useState(false); // the hints asked for again (the header's "?")
   const draft = session.now(), kept = session.kept();
-  // the hole as kept, as checked: the same object while only its proofs or par change (a round holed in play is no
-  // reason to validate, census and meter it again mid-game); every check, key and meter answer is of it
+  // the hole as kept, for the checks, the key and the meter: the same object while only its proofs or par change (a
+  // round holed in Play is no reason to check and measure it all again mid-game)
   const shapeOf = useRef(kept);
   if (!sameShape(shapeOf.current, kept)) shapeOf.current = kept;
   const shape = shapeOf.current;
-  // each world's palette as loaded (a switch hands its own over with the draft, an undo finds the one before: nothing unmounts to load it again)
+  // each world's palette once loaded: a world switch or an undo across worlds finds it here, nothing unmounts to load it
   const [palettes, setPalettes] = useState<ReadonlyMap<string, readonly PaletteEntry[]>>(new Map());
   const palette = palettes.get(draft.world) ?? null;
   // its load failed (offline, an old deploy's chunk gone), and each Try again (the world's loader forgets a failed load)
@@ -143,9 +135,9 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const [shots, setShots] = useState<QuickShot[]>([]);
   const [aim, setAim] = useState<QuickShot | null>(null);
   const [lineOn, setLineOn] = useState(false);
-  // the meter's par last measured (a change said a moment by the chip: "par 3 → 4"); a drop that held, waiting for the
-  // ghost ball's run on the hole it made ("next": the change it makes, bound as it is kept; any other change since drops
-  // it); the run, a moment
+  // the meter's par last measured (a change said a moment under the meter: "par 3 → 4"); a drop that held, waiting for
+  // the ghost ball's run on the hole it made ("next": the change it makes, bound as it is kept; any other change since
+  // drops it); the run, a moment
   const lastPar = useRef(0), [parBump, setParBump] = useFlash(1800, ""), landed = useRef<Draft | "next" | null>(null);
   const [roll, setRoll] = useFlash<{ path: V[][]; n: number } | null>(1300, null);
   // the keys line at the board's foot, a browser's first visit only (and the rest of it); the player's view large (P)
@@ -154,8 +146,8 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const [look, setLook] = useState<Look>(FLAT);
   // a timed piece's blinking played, in the inspector and on the board (its pause holds both)
   const [blinking, setBlinking] = useState(true);
-  // Play (T): the hole as kept, its canonical bytes and proof key, played over the editor (kept open: the same zoom, selection and history after)
-  // (the author it opened with: one Adena shares late never swaps a game under way; the address given in play does)
+  // Play (T): the hole as kept, its canonical bytes and proof key, and the author it opened with (one Adena shares late
+  // never swaps a game under way; the address given in play does)
   const [playing, setPlaying] = useState<{ hex: string; key: string; author: string | null } | null>(null), [want, setWant] = useState(playFirst);
   // the last try's round that holed (no address yet), left on the board as a dotted trail (played again as the hole changes);
   // its shots kept until the address is given, then replayed once in each weather (TestMode's onTried drops them)
@@ -184,7 +176,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
   const quick: ValidateOptions | null = useMemo(() => palette && { host, palette, slug: draft.slug || undefined }, [host, palette, draft.slug]);
   const full: ValidateOptions | null = useMemo(() => quick && { ...quick, census }, [quick]);
 
-  // the whole pipeline on the hole as kept (a drag's own checks are the board's), 150 ms after the last change; the 3D from its canonical bytes
+  // the whole pipeline on the hole as kept, CHECK_MS after the last change (a drag's own checks are the board's)
   useEffect(() => {
     if (!full) return;
     const t = setTimeout(() => {
@@ -221,7 +213,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
     shotSeen.current = shots.at(-1);
     if (shotsShown.at(-1)?.holed) sound("cup");
   }, [shots, aim, shotsShown]);
-  // the meter's answer for the hole as kept: a change of par said a moment by the chip, with a chime (up: lower, harder);
+  // the meter's answer for the hole as kept: a change of par said a moment under the meter, with a chime (up: lower, harder);
   // after a drop that held, the ghost ball runs its line (the answer for the hole the drop made, never a later one's)
   useEffect(() => void (landed.current = landed.current === "next" ? shape : null), [shape]);
   useEffect(() => {
@@ -291,7 +283,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
     if (why.length) return say(refusalOf(why[0]));
     set({ ...draft, pieces: draft.pieces.map((p) => (p.id === piece.id ? t : p)) });
   };
-  // a copy, or the keyboard's drop, past the Builder's limits: refused with why (the ghost says it on the board)
+  // a copy with no room near, or past the Builder's limits: refused with why
   const copy = () => piece && quick && tryEdit(copyPiece(draft, piece.id, quick), roomFor(draft, piece) || "No room near it for a copy.");
   // deleted: the focus to the board (Tab goes on to its pieces), not lost with the Inspector's button
   const remove = () => {
@@ -457,7 +449,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
             onRound={(r) => (setTried(r), setTrail(roundOf(host, kept, r)))} onLeave={() => setPlaying(null)} onPublish={() => (setPlaying(null), publish())} />
         </div>
       )}
-      {/* under Play, out of Tab's and a reader's reach (Play beside it, not in it: inert takes all it holds) */}
+      {/* inert under Play, out of Tab's and a screen reader's reach (Play sits beside it: inert would take it too) */}
       <main className={`bench tint--${draft.world}`} inert={!!playing}>
         <Header title={draft.title} address={{ slug: draft.slug, fixed: !!draft.proofs.length }} world={draft.world} worlds={WORLDS} step="edit"
           steps={{ edit: { locked: "", done: false }, play: { locked: playOff === CHECKING ? "" : playOff, done: proved }, publish: { locked: shut, done: false } }}

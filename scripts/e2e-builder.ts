@@ -46,11 +46,11 @@ const { sameSources } = await import("../web/lib/sim/sources.ts");
 
 const chain = makeChain({ rpc: RPC, web: env("WEB") });
 
-// ------------------------------------------------------------------ report
+// the report: OUT's table, numbered on from e2e-builder.sh's rows
 let n = Number(env("N0")), npass = Number(env("PASS0")), nfail = Number(env("FAIL0")), nnote = 0;
 let fails = env("FAILS0");
 const cell = (s: unknown) => String(s).replace(/\n/g, " ").replace(/\|/g, "\\|").slice(0, 220);
-/** A row of the table: ok true (PASS), false (FAIL), or "note" (what is not there yet, said, not failed). */
+/** A row of the table: ok true (PASS), false (FAIL), or "note" (a known gap: said, not failed). */
 function row(step: string, call: string, expected: unknown, got: unknown, ok: boolean | "note", gas: unknown = "-") {
   n++;
   const r = ok === "note" ? "NOTE" : ok ? "PASS" : "FAIL";
@@ -65,7 +65,6 @@ function row(step: string, call: string, expected: unknown, got: unknown, ok: bo
 }
 const is = (step: string, call: string, expected: unknown, got: unknown, gas?: unknown) => row(step, call, expected, got, String(expected) === String(got), gas);
 
-// ------------------------------------------------------------------ gnokey
 interface Sent { ok: boolean; out: string; gas: number; delta: number; fee: number; why: string; events: { type: string; attrs: { key: string; value: string }[] }[] }
 const num = (out: string, label: string) => Number((out.match(new RegExp(`^${label}:\\s*(-?\\d+)`, "m")) ?? [])[1] ?? NaN);
 /**
@@ -98,7 +97,6 @@ function run(command: string, key: string): Sent {
 }
 const event = (s: Sent, type: string) => Object.fromEntries((s.events.find((e) => e.type === type)?.attrs ?? []).map((a) => [a.key, a.value]));
 
-// ------------------------------------------------------------------ drafts
 const ring = (pts: V[]) => pts.map((p, i) => rail(`r${i + 1}`, p, pts[(i + 1) % pts.length]));
 
 /** A post of the world's palette: its own, else a skinned post of every world. */
@@ -111,7 +109,6 @@ async function errorsOf(d: Draft): Promise<string[]> {
   return validate(d, { host, palette, census, slug: d.slug || "draft" }).issues.filter((i) => i.severity === "error").map((i) => `${i.rule} ${i.text}`);
 }
 
-// --------------------------------------------- the Publish step's readings
 /** What Publish.tsx reads before it opens, read the same way (the takedown list is the site's: none here). */
 async function readings(alias: string) {
   const [publishing, rules, writer, versions, holes, gas, byte, chainId] = await Promise.all([
@@ -127,7 +124,6 @@ async function readings(alias: string) {
   return { publishing, rules, writer, taken: false, versions, firstCommunity: !holes.some((h) => h.official === false), gas, byte, chainId };
 }
 
-// ------------------------------------------------------- one hole, published
 interface Measure { hole: string; id: string; bytes: number; runes: number; v: number; newAuthor: boolean; firstCommunity: boolean; stored: number; predicted: number; depositCap: number; depositPaid: number; gasAsked: number; gasUsed: number; fee: number }
 const measures: Measure[] = [];
 const authorsSeen = new Set<string>();
@@ -255,7 +251,7 @@ async function play(label: string, id: string, d: Draft) {
   is(`${label}: the player's best`, `BestOf(id, "assisted", pl)`, shots.length, best);
 }
 
-// ------------------------------------------------------------ the scenario
+// the scenario
 // 1. a plain lane: the chain's first community hole, its author's first
 const plain = { ...lane("garden", [], 30, 12), slug: "plain-lane", title: "Plain lane" };
 const v1 = await publish("plain lane", plain, "a1");
@@ -329,10 +325,10 @@ if (v1) {
   }
 }
 
-// ------------------------------------------------------------------ hostile
 // Holes the Builder refuses (its checks), published around it with a plain
 // gnokey PublishMine: the chain takes them (it checks the data, not the
-// play); the Builder will not open them; the lists, today, still show them.
+// play); the Builder will not open them; the lists show them all the same
+// (a note, not a failure).
 {
   const palette = await loadPalette("garden"), post = postOf(palette, "garden");
   const base = lane("garden", [], 30, 12);
@@ -365,7 +361,7 @@ if (v1) {
   }
 }
 
-// ------------------------------------------------------------------ the hole of the day's list
+// the hole of the day's list
 {
   // DayCandidates from the day's point round to it, two a page: every community hole Holes() lists, each once,
   // with the block its first version was published at
@@ -381,7 +377,6 @@ if (v1) {
   is("the hole of the day's list: each with its first version's block", "DayCandidates born", true, born.every((b) => b > 0));
 }
 
-// ------------------------------------------------------------------ summary
 fs.appendFileSync(OUT, `\n**${npass} passed, ${nfail} failed${nnote ? `, ${nnote} noted` : ""}** of ${n} steps.${fails.trim() ? ` Failed: ${fails.trim()}.` : ""}\n`);
 fs.appendFileSync(OUT, `\n### What each publish stored and cost\n\n| hole | id | data B | name+note runes | v | new author | first community | stored B | publishBytes | Δ | deposit cap (bill) | deposit paid | gasFor | gas used | used/asked |\n|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|\n`);
 for (const m of measures)

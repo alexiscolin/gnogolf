@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-// linkishRef is linkish as it was before its one byte pass (strings.ToLower,
-// the look-alike dots replaced, then three scans): the reference its answers
-// must equal, whatever the text.
+// linkishRef is linkish written plainly (strings.ToLower, the look-alike dots
+// replaced, then three scans): the reference linkish's one-byte pass must
+// equal, whatever the text.
 func linkishRef(s string) bool {
 	low := strings.ToLower(s)
 	for _, d := range []string{"．", "。", "․", "﹒"} {

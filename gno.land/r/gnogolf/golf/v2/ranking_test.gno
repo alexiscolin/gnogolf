@@ -13,8 +13,7 @@ import (
 
 // The course ranking against a reference model: plain code that keeps what
 // happened (every best, per hole and mode, and the finishes that moved a
-// standing) and derives the ranking from it the obvious way, as docs/golf.md
-// says it:
+// standing) and derives the ranking from it the obvious way:
 //
 //   - a standing is, over the current course holes, the holes a player has a
 //     best on, the strokes of those bests, and the pars of those holes;

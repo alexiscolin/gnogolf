@@ -317,9 +317,9 @@ func TestNewRulesRefuseTheMint(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "rules changed", func() { MintEarned(cross(cur), "wizard") })
 }
 
-// New rules (store's writer moved, ADR-012): every proof refuses until the
-// owner accepts them, and only store's current writer can be accepted; then
-// the same player's proof passes again, and what was minted stays minted once.
+// New rules (store's writer moved): every proof refuses until the owner
+// accepts them, and only store's current writer can be accepted; then the
+// same player's proof passes again, and what was minted stays minted once.
 func TestTheOwnerAcceptsOnlyStoresNewRules(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	for _, id := range cupHoles(f, "garden", 18) {
@@ -379,7 +379,7 @@ func TestAnEarnedGnomeIsBoundToItsPlayer(cur realm, t *testing.T) {
 	urequire.AbortsContains(t, cur, "bound to its player", func() { Approve(cross(cur), bob, id) })
 	// (the hook's panic aborts the transfer, and on chain the whole call with
 	// the ledger's write; the harness does not revert what a recovered call
-	// wrote, as golf's z_worst_shot notes, so the state is not checked here)
+	// wrote, so the state is not checked here)
 	urequire.AbortsContains(t, cur, "bound to its player", func() { TransferFrom(cross(cur), alice, bob, id) })
 
 }
@@ -429,9 +429,9 @@ func TestEarnedIDsAreAboveEveryCatalogue(t *testing.T) {
 	uassert.Equal(t, int64(1_000_001), int64(firstEarned))
 }
 
-// Earned gnomes have their own switch, apart from the
-// sale's, open at deploy: the owner can stop MintEarned for a fault in the
-// proof without pausing the sale, and the sale's switch never stops it.
+// Earned gnomes have their own switch, apart from the sale's, open at
+// deploy: the owner can stop MintEarned for a fault in the proof without
+// pausing the sale, and the sale's switch never stops it.
 func TestEarnedGnomesHaveTheirOwnSwitch(cur realm, t *testing.T) {
 	f := withRows(t, cur)
 	for _, id := range cupHoles(f, "garden", 18) {

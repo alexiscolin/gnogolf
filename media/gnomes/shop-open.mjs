@@ -1,23 +1,9 @@
 // @ts-check
-// The gnome shop opened from the menu's Shop panel as a player on a slow
-// link and a phone's CPU would (Fast 3G, the CPU 4x slower), at 1440, 1024
-// and 390: the layout shifts the page reports over 6 s, failing over 0.01
-// (the shop draws its final frame first: ShopFrame.tsx); then every card's
-// picture in sight loaded (no broken image), and the shop never wider than
-// the window (no sideways scroll); a gnome's sheet opened from a card over
-// everything, the network banner too (never a chip over its Buy), its Buy
-// footer over nothing that follows it (its Traits there to click); the
-// head's and the cards' small words at WCAG AA (4.5:1) on their ground, and
-// every card's #number in sight however long its name, the cards of a row one height (the shop's, a player's); the toolbar's controls, on each of its
-// lines, as tall as one another, on one top, their words on one baseline; the search (in All alone) open a row of its own under it (over nothing),
-// a tier filter and the view selected gold; the picker's collection between its tile and its aim card,
-// one slim row (its thumbnails of one frame, its line on one line, two on a phone, on its button's baseline), its head whole (at 1440, 1280, 1024 and 390, unthrottled: media/lib/rows.mjs); the menu
-// and the shop never sideways from 360 to 1440 px wide; the shop, the cups and the menu scrolled to their foot clear
-// of the network chip (at 1440, 1024, 390); About's link cards' words on one left edge. Before, the title screen alone: none of
-// the sale read (the catalogue), the collection's wardrobe nor the shop's
-// part of the game (components/gnomes/Game.tsx: a dev build's chunk names
-// it) fetched, which only a screen showing the sale needs. With OUT, a frame every 100 ms and a
-// strip of them.
+// The gnome shop as a player gets it, checked in headless Chrome against APP: the
+// title screen fetching none of it, the shop opened on a slow link and a phone's
+// CPU, its toolbar, search and picker in line, never wider than the window,
+// offline, and clear of the network chip. Prints PASS or FAIL a check; exits
+// non-zero on a FAIL. With OUT, a frame every 100 ms of the opening and a strip of them.
 //   APP=https://… node media/gnomes/shop-open.mjs   (OUT=<dir> for the frames)
 import fs from "node:fs";
 import path from "node:path";
@@ -33,13 +19,16 @@ for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440,
   await b.send("Page.navigate", { url: APP + "/" });
   for (let i = 0; i < 90 && !(await b.ev(`!![...document.querySelectorAll("button")].find((x) => /Click to start/.test(x.textContent))`)); i++) await sleep(500);
   await sleep(3000);
+  // the title screen alone: none of the sale fetched (the catalogue, the wardrobe, the shop's chunk:
+  // components/gnomes/Game.tsx), which only a screen showing it needs
   const early = await b.ev(`performance.getEntriesByType("resource").map((e) => e.name).filter((n) => n.includes("/gnomes/catalogue.json") || n.includes("gnome-dress") || n.includes("components_gnomes_"))`);
   await b.js(`[...document.querySelectorAll("button")].find((x) => /Click to start/.test(x.textContent)).click()`);
   for (let i = 0; i < 60 && !(await b.ev(`!!document.querySelector(".mode--shop")`)); i++) await sleep(500);
   await sleep(1500);
-  // throttled from here: what a player on a slow link and a phone's CPU sees
+  // throttled from here (Fast 3G, the CPU 4x slower): what a player on a slow link and a phone's CPU sees
   await b.send("Network.emulateNetworkConditions", { offline: false, latency: 563, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 });
   await b.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+  // the layout shifts over the 6 s after the click, under 0.01: the shop draws its final frame first (ShopFrame.tsx)
   await b.js(`window.__cls = 0; window.__shifts = []; new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) { window.__cls += e.value; window.__shifts.push([Math.round(performance.now()), +e.value.toFixed(4), (e.sources || []).map((s) => s.node ? (s.node.className || s.node.nodeName) : "").join(" ").slice(0, 120)]); } }).observe({ type: "layout-shift", buffered: false }); true`);
   const r = await b.ev(`(() => { const r = document.querySelector(".mode--shop").getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; })()`);
   const dir = OUT && path.join(OUT, `${TAG}-${w}`);
@@ -81,7 +70,7 @@ for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440,
   console.log(`${ok ? "PASS" : "FAIL"} opening the shop at ${w}: ${early.length} sale reads on the title screen, layout shift ${cls.cls}, ${pics.n} pictures in sight, ${pics.broken.length} broken, ${wide} px sideways, ${over} of the banner over a sheet, ${low.length} small words under 4.5:1, ${cut} #numbers cut${covered ? `, ${covered}` : ""}`, low.length ? JSON.stringify(low) : "", early.length ? JSON.stringify(early) : "", pics.broken.length ? JSON.stringify(pics.broken.slice(0, 6)) : "", cls.shifts.length ? JSON.stringify(cls.shifts).slice(0, 400) : "");
   b.kill();
   if (!dir) continue;
-  // a strip: every other frame (0-5.8 s), 6 a row
+  // a strip: every other frame (0-5.8 s), 6 a row (10 on a phone)
   const b2 = await launch({ width: 1600, height: 1000 });
   const sel = files.filter((_, i) => i % 2 === 0), cw = w > 600 ? 240 : 120;
   const html = `<html><body style="margin:0;font:12px sans-serif;background:#fff"><div style="display:grid;grid-template-columns:repeat(${w > 600 ? 6 : 10},${cw}px);gap:3px">${sel.map((f, i) => `<figure style="margin:0"><img src="file://${f}" width="${cw}"><figcaption>${i * 200} ms</figcaption></figure>`).join("")}</div></body></html>`;
@@ -92,8 +81,8 @@ for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440,
   fs.writeFileSync(path.join(OUT, `strip-${TAG}-${w}.png`), Buffer.from(data, "base64"));
   b2.kill();
 }
-// the toolbar: one height, one top and one baseline a line (the views, the tiers, the search in All; no look switch, no
-// more filters: those are gone from it)
+// the toolbar: one height, one top and one baseline a line (the views, the tiers, the search in All; never a look
+// switch or more filters)
 for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440, 900, false], [1280, 800, false], [1024, 700, false], [390, 844, true]])) {
   const b = await launch({ width: w, height: h, mobile, touch: mobile });
   await b.send("Page.navigate", { url: APP + "/g/" });
@@ -111,7 +100,7 @@ for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440,
   await sleep(300);
   const sel = { box: JSON.stringify(await b.ev(footprint(".gbar .tierbtn"))) === JSON.stringify(tier), gold: await b.ev(gold(".gbar .tierbtn")), view: await b.ev(gold(".gbar__views button.on")), line: await b.ev(misaligned(bar)) };
   const ok = lean && Array.isArray(off) && off.length === 0 && sel.box && sel.gold && sel.view && sel.line.length === 0;
-  // the search, between the look and more filters: open, a row of its own under the bar, the gallery's width (its
+  // the search, alone at the bar's end: open, a row of its own under the bar, the gallery's width (its
   // container's, whatever the shelf shows), over nothing (the bar's controls where they were), focused, the gallery's
   // spacing under it; Escape shuts it from the field, its ✕ or its icon, the shop kept; left empty it shuts; left
   // with a query it stays, its icon then back to the field (the query kept), pressed again it clears and shuts

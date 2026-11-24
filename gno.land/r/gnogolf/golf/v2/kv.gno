@@ -121,8 +121,8 @@ func (v view) Iterate(start, end string, cb func(key, x string) bool) bool {
 	return v.walk(start, end, cb, false)
 }
 
-// ReverseIterate is the rows in [start, end] descending (store's, as v1's
-// bptree: its end is kept), end "" for no bound.
+// ReverseIterate is the rows in [start, end] descending (store's back walk
+// keeps its end), end "" for no bound.
 func (v view) ReverseIterate(start, end string, cb func(key, x string) bool) bool {
 	return v.walk(start, end, cb, true)
 }

@@ -8,13 +8,13 @@
 // up (paint, drop, tweak, any world, play); the test's weathers turning green; the Publish step's 3D view; the dare
 // between friends; the logo, the slogan and the button on the music's last hit.
 //
-// --record: the Builder's take (a headless Chrome against a site with the Builder on, APP: the playground's by
-// default; its frames and marks in WORK); --shoot: the 3D shots (render.mjs --cut=builder --frames; --only=name,…
-// some again); --edit: the cut, from the last take and shots; none: all three. -> media/builder/gnogolf-builder.mp4
-// (1920x1080, H.264 and AAC) and its first frame as gnogolf-builder-cover.jpg. CTA sets the end card's button.
+// --record: the Builder's take (a headless Chrome against APP, a site with the Builder on; its frames and marks in
+// WORK); --shoot: the 3D shots (render.mjs --cut=builder --frames; --only=name,… some again); --edit: the cut, from
+// the last take and shots; none: all three. -> media/builder/gnogolf-builder.mp4 (1920x1080, H.264 and AAC) and its
+// first frame as gnogolf-builder-cover.jpg. CTA sets the end card's button.
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts
 //   then publish holes.json's holes (PublishMine, as AUTHOR), then
-//   APP=http://100.64.12.34:5181 node media/builder/promo.mjs
+//   APP=https://… node media/builder/promo.mjs
 // Needs: Node 22.15+, Google Chrome, /opt/homebrew/bin/ffmpeg, the music (media/promo/CREDITS.txt).
 
 import { execFileSync } from "node:child_process";
@@ -36,8 +36,6 @@ const W = 1280, H = 720, DPR = 1.5;
 // the author the test rounds are proved under: gnodev's test1 (a well-known dev key; nothing is published)
 const AUTHOR = process.env.AUTHOR || "g1jg8mtutu9khhfwc4nxmuhcpftf0pajdhfvsqf5";
 const CTA = process.env.CTA || "BUILD YOURS ON GNO.LAND";
-
-// ------------------------------------------------------------------ the take
 
 // the drawn pointer: an arrow following the page's own pointer events, pressed smaller
 const POINTER = `addEventListener("DOMContentLoaded", () => {
@@ -102,7 +100,7 @@ async function record() {
   const editor = `!!document.querySelector(".palette [data-tool=grow]") && document.querySelectorAll("[data-end]").length === 2`;
 
   try {
-    // ------------------------------------------- take 1: the flashes, on the Garden's dogleg (the first run)
+    // take 1: the flashes, on the Garden's dogleg (the first run)
     await c.send("Page.navigate", { url: `${APP}/build/?camlog` });
     await until(editor, "editor");
     await sleep(1500);
@@ -166,8 +164,8 @@ async function record() {
     await sleep(800);
     mark("played");
 
-    // ------------------------------------------- take 2: each video hole opened from its file (any world: the board in
-    // each one's look), the Blowhole last, then holed in each weather and published
+    // take 2: each video hole opened from its file (any world: the board in each one's look), the Blowhole last, then
+    // holed in each weather and published
     const holes = JSON.parse(fs.readFileSync(path.join(HERE, "holes.json"), "utf8"));
     const open = button(/^Open a file/);
     for (const slug of ["avalanche", "skate-plaza", "blowhole"]) {
@@ -245,13 +243,11 @@ async function record() {
   console.log(`take: ${frames.length} frames over ${(frames[frames.length - 1][0] - frames[0][0]).toFixed(1)} s`);
 }
 
-// ------------------------------------------------------------------ the cut
-
 // the cut on the music's beat grid (175 BPM; the last hit, beat 87.5, on the end card's button). Each stretch is one of:
 // - shot: the game's own 3D, filmed by the trailer's rig (media/promo/render.mjs, its frames at these beats): a hole
 //   published (holes.ts), its camera, the weather drawn, a one-stroker found in the chain's weather now (ace), timed to
-//   drop in the cup at dropAt seconds into the stretch (render.mjs logs when it sinks: sink, that time, is what the
-//   titles land on; dropAt is moved by what they differ);
+//   drop in the cup at dropAt seconds into the stretch; the titles land on when it sank (render.mjs's sinks.json, sink
+//   until it is filmed), and dropAt is moved by what the two differ;
 // - from/to: the Builder's take between two marks (seconds after them) played to fill its beats, cropped to [x, y, w]
 //   of its window (16:9);
 // - stills: the take's frames at those marks, an equal share of the beats each (hard cuts), cropped alike.

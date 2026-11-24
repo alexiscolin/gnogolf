@@ -1,11 +1,10 @@
 "use client";
 
-// What the picker adds for a player who holds gnomes (the game's picker
-// itself unchanged, Golf.tsx Picker): one line saying who sees what, one
-// row of their gnomes' faces (a tap plays one, free, kept in this browser),
-// and, apart, the one call that costs: showing everyone another than their
-// best (Equip). Loaded with the shop's chunk, and only for a player with a
-// collection.
+// What the game's picker (Golf.tsx Picker) adds for a player who holds
+// gnomes: one line saying who sees what, one row of their gnomes' faces (a tap
+// plays one, free, kept in this browser), and, apart, the one call that costs:
+// showing everyone another than their best (Equip). Loaded with the shop's
+// chunk, and only for a player with a collection.
 import "@/app/gnomes.css";
 import { useState } from "react";
 import Share from "@/components/Share";

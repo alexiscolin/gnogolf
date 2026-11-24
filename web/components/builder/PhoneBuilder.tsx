@@ -1,12 +1,10 @@
 "use client";
 
-// /build on a phone, a touch screen or under 900 px (the GUI spec's B6): the
-// Builder is for a computer, a link to open it there, and holes to play
-// (playing stays on the phone). Nothing of the editor is imported here, nor
-// builder.wasm (test/builder-route.test.ts holds it so): so it judges no
-// community hole, and lists only those this browser has already passed
-// (lib/community.ts knownOnly); the game's cups screen judges and lists the rest.
-// The author's own holes come with who played them (useRewards.ts), as on a computer.
+// /build on a phone, a touch screen or under 900 px: a link to open the
+// Builder on a computer, and holes to play here. Neither the editor nor
+// builder.wasm is imported (test/builder-route.test.ts holds it so), so it
+// judges no community hole: it lists only those this browser already passed,
+// and the game's cups screen lists the rest.
 import "@/app/title.css";
 import "@/app/build/phone.css";
 import { useEffect, useMemo, useState } from "react";

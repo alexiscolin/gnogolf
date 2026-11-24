@@ -18,11 +18,9 @@ import (
 // than Holes and the hub have room for (120). z_list_base_filetest publishes
 // them; z_list_read_filetest publishes the same, then reads Holes and renders
 // the hub. The difference of their gas is the two reads, 0.74e9 for their
-// 120 rows each (v1: 0.49e9: a row decoded from store's strings costs more
-// than a tree's own objects), which walk no more than they list however
-// many publish. (The authors the owner hid are not
-// walked at all: TestAHiddenHoleTakesNoPlace. A filetest has no owner to
-// hide with.)
+// 120 rows each, which walk no more than they list however many publish.
+// (The authors the owner hid are not walked at all, as
+// TestAHiddenHoleTakesNoPlace checks: a filetest has no owner to hide with.)
 func publishAll(cur realm) {
 	data := hex.EncodeToString([]byte(course.Encode(&course.Simple{W: 32, H: 16, World: "garden", Title: "Listed", Strokes: 3,
 		Tee: physics.V(2, 8), Pin: physics.V(20, 8), Substeps: 14, CupRadius: 1.5,
@@ -45,4 +43,4 @@ func main(cur realm) {
 // 120 120
 
 // Gas:
-// 8341698607
+// 8341698605

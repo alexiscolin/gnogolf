@@ -1,13 +1,9 @@
 "use client";
 
-// The Builder's one header (the GUI spec's B1): Back (the draft is kept),
-// the hole's name in place (its address follows
-// it, shown on Publish), the three steps (Build, Play, Publish), and on the
-// right the difficulty meter (a click shows its line on the board),
-// the history and the mode's one action, the way on (Play, in Build; once
-// every weather is sunk, Publish: Play then its step, T still). A step done or
-// open is a link back to it; a locked one says why; Publish, once open, is
-// lit: the way on. The world a hole is in changes from its menu, a button saying it.
+// The Builder's one header: Back, the hole's name (its address follows it),
+// the world menu, the three steps (Build, Play, Publish; a locked one says
+// why), and on the right the difficulty meter, the history and the mode's
+// one action (Play in Build, Publish once every weather is sunk).
 import { useRef } from "react";
 import { MOD } from "./Inspector";
 import { worldName } from "@/lib/builder/rules";

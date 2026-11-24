@@ -13,7 +13,7 @@ import (
 // grc721 runs it after its own write, and its panic reverts the movement.
 // A burn's cleanup is in Burn: grc721 removes the owner before OnBurn and
 // gives it the id alone. Its rows are in a bptree, not grc721/enumerable's
-// lists: measured, enumerable added 5 to 9 KB to a buy (z_storage_buy).
+// lists, which add 5 to 9 KB to a buy.
 type holdings struct{}
 
 var _ grc721.Extension = holdings{}

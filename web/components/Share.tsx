@@ -118,7 +118,7 @@ interface ClipProps {
   /** the clip once made, null when gone: the share buttons send it */
   onClip: (clip: Clip | null) => void;
 }
-/** The shot as a clip (ADR-003; NEXT_PUBLIC_CLIPS): made once the hole is
+/** The shot as a clip (NEXT_PUBLIC_CLIPS): made once the hole is
  *  won and looped in the card, with a download in its corner; the share
  *  buttons above send it (the phone's sheet as a file, X as a download to
  *  drop in its post). Only where the browser records MP4; elsewhere nothing

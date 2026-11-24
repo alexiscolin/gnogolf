@@ -1,9 +1,7 @@
 "use client";
 
-// The author's published holes and the rounds saved on them, read from the
-// chain (lib/builder/rewards.ts readRewards), with the author's last look at
-// them: for "Your holes" on a computer (Start.tsx) and on a phone
-// (PhoneBuilder.tsx, which loads nothing of the editor: lib only here).
+// "Your holes" read from the chain, on a computer (Start.tsx) and on a phone
+// (PhoneBuilder.tsx): lib imports only, so the phone loads nothing of the editor.
 import { useEffect, useState } from "react";
 import type { Chain } from "@/lib/chain";
 import { keepSeen, loadSeen, readRewards, statsOf, type SavedOn, type Seen } from "@/lib/builder/rewards";

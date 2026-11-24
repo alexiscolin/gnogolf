@@ -4,13 +4,13 @@
 // own front screen: About.tsx FrontScreen), its views a tap apart (on sale,
 // a player's own, all; a player's gnomes, read-only), and a gnome in a sheet
 // over it (GnomeSheet). Its own chunk (Game.tsx, behind NEXT_PUBLIC_GNOMES),
-// fetched once a door to it shows, with its styles: the title and the holes' pages carry
-// none of it. Everything it shows is read: the catalogue the site serves, the
-// realm's Collection, Sold, GnomesOf and Worn, the region; each gnome drawn
-// as the thumbnails show him, or as the chain does (the look a sheet's switch
-// picked). One way to each thing: the player's own under Mine (their album its badge, the
-// album itself one line under their team), the search in All alone, a share
-// one button.
+// fetched once a door to it shows, with its styles: the title and the holes'
+// pages carry none of it. Everything it shows is read: the catalogue the site
+// serves, the realm's Collection, Sold, GnomesOf and Worn, the region; each
+// gnome drawn as the thumbnails show him, or as the chain does (the look a
+// sheet's switch picked). One way to each thing: the player's own under Mine
+// (their album its badge, the album itself one line under their team), the
+// search in All alone, a share one button.
 import "@/app/gnomes.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FrontScreen } from "@/components/About";
@@ -179,7 +179,7 @@ export default function ShopScreen({ chain, account, wallet, onConnect, view, on
         </>
       )}
       {viewing === "theirs" && <Button variant="gold" className="btn--cta" onClick={() => onRace(view.who!)}>Race their ghost</Button>}
-      {/* their album (ADR-011), under their Race, folded; the player's own comes under their team */}
+      {/* their album, under their Race, folded; the player's own comes under their team */}
       {theirs && theirs.rows.length > 0 && albumOf(theirs.rows, theirs.who, false)}
       {/* one toolbar: the tiers (their prices and what is left, once) and Mine (the album's count its badge: the one way
           to the player's own) at its left; the search (open, a row of its own under it) and how the gnomes are drawn at its right */}

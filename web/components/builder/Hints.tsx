@@ -1,13 +1,9 @@
 "use client";
 
-// The first run's hints (the GUI spec's B1): one by each place a first hole
-// goes through (the palette, the green's paint, Play, the steps), short, never in the way:
-// the pointer goes through them, and they are gone at the first drag (the
-// editor's onDone); never a tutorial, and never over the 3D. Shown on the
-// first visit only (templates.ts HINTS_KEY). Asked for again (the header's
-// "?"), a glossary of the world's pieces comes under them, on one screen:
-// each palette tile's picture, its name and what it does (tiles.ts), and
-// every key, in a sheet as the game's (its X, Escape or the dim round it puts it away).
+// The first run's hints: one by each place a first hole goes through, short
+// and never in the way (the pointer goes through them; gone at the first
+// drag). Asked for again (the header's "?"), they come in a sheet with a
+// glossary of the world's pieces and every key.
 import { allTiles } from "@/lib/builder/tiles";
 import { cap, required, theWorld } from "@/lib/builder/rules";
 import { weathersSaid } from "@/lib/builder/rules";
@@ -18,7 +14,7 @@ import { MOD } from "./Inspector";
 import { Picture } from "./Palette";
 import { Sheet } from "@/components/ui";
 
-/** The four, the world's weathers named in Play's. */
+/** The four hints (the one for Play names the world's weathers). */
 const hintsOf = (world: string) => [
   ["palette", "Drag a piece onto the board"],
   ["green", "Paint or Erase (B): drag the green"],

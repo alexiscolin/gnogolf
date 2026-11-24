@@ -1,14 +1,9 @@
 "use client";
 
-// The checks, docked under the board (the GUI spec's B3), and nothing while
-// all is well: what the header says already (the difficulty, why Play
-// waits) is not said again. It opens on a problem: each thing to fix in the
-// player's words (explain.ts plainOf; the rule's code a tooltip, for us), a
-// click on it selecting its piece and framing it, Move it where the piece
-// can simply move (edit.ts fixOf); a round an edit broke (editor.ts
-// brokenLine); a limit once it nears (editor.ts dials: amber from 80%, red
-// at it, said in a sentence then). Fixed, it folds back. Its live parts are
-// said by a screen reader.
+// The checks, docked under the board: quiet while all is well (the header
+// already says the difficulty and why Play waits). It opens on a problem:
+// each thing to fix in the player's words (a click frames its piece; Move it
+// where the piece can simply move), a round an edit broke, a limit as it nears.
 import { Button } from "@/components/ui";
 import type { Issue } from "@/lib/builder/checks";
 import { dials, problems, type Gauge } from "@/lib/builder/editor";

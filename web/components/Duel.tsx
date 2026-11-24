@@ -1,6 +1,6 @@
 "use client";
 
-// A ghost duel's own pieces of the page (ADR-004): the dare on the picker and
+// A ghost duel's own pieces of the page: the dare on the picker and
 // the fine print on the win card. The race is the engine's (engine/rival.ts),
 // the words lib/duel.ts's; the score card and the win card are Golf.tsx's.
 import type { ReactNode } from "react";
@@ -8,7 +8,7 @@ import { skyWord, type Duel } from "@/lib/duel";
 import type { Mode } from "@/lib/types";
 import { AIM_NAMES } from "@/components/common";
 
-// sky: the weather the ghost was played in and today's, when both are known ("" is clear)
+/** The weather the ghost was played in and today's, when both are known ("" is clear). */
 export type Sky = { theirs: string; mine: string } | null;
 // (fog plays as clear skies: only a weather that pushes or slows the ball is a difference)
 const plays = (kind: string) => (kind === "fog" ? "" : kind);
@@ -17,7 +17,7 @@ const differs = (sky: Sky): sky is { theirs: string; mine: string } => !!sky && 
 /** The picker's dare, armed: who is raced and the strokes to beat (the link's
  *  sticker) and the way to play solo on one line; under it, only what changes
  *  the race: an ace, a mixed aim, a weather that was not today's. */
-// mark: what is said beside their name (their collector rank, ADR-011)
+// mark: what is said beside their name (their collector rank)
 export function DuelNote({ duel, mode, sky, onDrop, mark = null }: { duel: Duel; mode: Mode; sky: Sky; onDrop: () => void; mark?: ReactNode }) {
   const { ghost, name, self } = duel;
   const notes = [
@@ -36,7 +36,7 @@ export function DuelNote({ duel, mode, sky, onDrop, mark = null }: { duel: Duel;
   );
 }
 
-/** The win card's duel fine print: a different weather and a mixed race said, what V1 does not record, and the rival's round on gnoweb (round). */
+/** The win card's duel fine print: a different weather and a mixed race said, that the chain does not record duels, and the rival's round on gnoweb (round). */
 export function DuelFine({ duel, mode, sky, round }: { duel: Duel; mode: Mode; sky: Sky; round?: string }) {
   return (
     <p className="real__fine">

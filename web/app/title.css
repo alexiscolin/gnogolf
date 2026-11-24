@@ -1,11 +1,6 @@
-/* The front screens: the title, the cups, the gnome picker and a cup won,
-   one look: a calm fade in the world's colours under even halftone dots,
-   the inked frame round the screen, and the style on the cards: glossy inked frames, paper panels, gold
-   for the call to action, and everything
-   moving a transform or an opacity: the compositor's work, not the page's.
-   The live scene behind the title is lib/scene/title.ts. */
-
-/* ------------------------------------------------------------ the system */
+/* The front screens (the title, the cups, the gnome picker, a cup won), one look: the world's colours under even
+   halftone dots, the inked frame round the screen, glossy inked cards on paper, gold for the call to action. All
+   motion is a transform or an opacity: the compositor's work, not the page's. */
 
 /* the backdrop's colour, registered so a new world's cross-fades in */
 @property --s0 { syntax: "<color>"; inherits: true; initial-value: #fff3df; }
@@ -107,7 +102,7 @@
 /* the picker's pick, a size under the title's start */
 .front .btn--play { font-size: clamp(18px, 2vw, 22px); padding: 12px 34px; }
 
-/* ------------------------------------------------------------ the title */
+/* the title */
 
 .screen--title {
   background: var(--s0);
@@ -217,7 +212,7 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   .screen--title .title__facts li { font-size: 14px; padding: 5px 10px; }
 }
 
-/* ------------------------------------------------------------ the cups */
+/* the cups */
 
 .worlds--v2 .worlds__in { width: min(1680px, 94vw); }
 .front__head { position: relative; display: grid; justify-items: center; gap: 4px; margin-bottom: clamp(14px, 2.6vh, 30px); }
@@ -248,7 +243,6 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   transition: transform var(--t-pop) var(--spring);
 }
 .world__info { display: grid; justify-items: center; gap: 6px; width: 100%; padding: 14px 8px 8px; }
-/* the standing reads first, the green under it supports it */
 /* the standing on one line in every state: on a narrow card the strokes
    without their word, as the won badge says them */
 .worlds--v2 .world__info { container-type: inline-size; }
@@ -393,8 +387,8 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   .modes__list--four .mode { aspect-ratio: auto; min-height: 124px; }
   .modes__list--four .mode__name { font-size: 28px; }
 }
-/* where the screen scrolls from its top (globals.css, its column 16 in): the cards off the frame's line (its 16 and 3);
-   a phone's frame is 8 in, the 16 clears it */
+/* where the screen scrolls from its top (globals.css: its column 16 in, on the frame's line), the cards 12 in from it,
+   clear of the frame (16 in, 3 wide); a phone's frame is 8 in, so the column's 16 clears it */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) { .modes__list { width: min(100% - 24px, var(--front-w)); } }
 @media (max-width: 600px) { .modes__list { width: 100%; } }
 /* the game chosen, big, beside Back: its panel's colour, inked (over the screens, under the sheets) */
@@ -421,7 +415,7 @@ body:has(.sheet) .modetag { visibility: hidden; }
 .screen.front--fit { display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding: clamp(28px, 5vh, 48px) clamp(28px, 4vw, 64px) 48px; } /* (clear of the frame at the sides too; the block as tall as it needs, in the middle: its last frame gives up height, and scrolls, only when the window is short) */
 body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) + 16px); }
 @media (min-height: 880px) { body:has(.netbanner) .screen.front--fit { padding-top: calc(var(--chip-room) + 16px); } } /* (room to spare: the block in the page's middle, not just above the banner) */
-.worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window) */ /* (the screen's room, its padding off: 100vw overflowed it, a sideways scroll) */
+.worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window; the screen's room inside its padding: 100vw would scroll sideways) */
 .rival .front__head { margin: 0; }
 @media (max-height: 720px) { .front--fit .front__head > .eyebrow { display: none; } }
 /* where the cups' screen scrolls from its top (globals.css): the head under the
@@ -471,7 +465,7 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 .rival__name { grid-area: name; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 6px 4px 0; font-size: clamp(22px, 2.3vw, 30px); font-weight: 700; line-height: 1.1; }
 .rival__line { grid-area: line; padding: 0 4px; }
 .rival__pick:disabled .rival__line { grid-column: 1 / -1; white-space: nowrap; } /* (no Race: its line takes the width, one line) */
-/* Race: the call to action's gold (above), a pill on its drop */
+/* Race: the call to action's gold (globals.css .btn--gold), a pill on its drop */
 .rival__go { padding: 6px 22px 7px; border-radius: var(--pill); font-size: 18px; font-weight: 700; box-shadow: var(--shadow-btn); }
 .rival__go::after { content: " ▸"; }
 /* a board row's, small (globals.css .lb li) */
@@ -506,7 +500,7 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 /* anyone on the board, clear of the picks: its heading and the way to the
    whole board (All players →), then its frame (the board's own list,
    globals.css .lb--full ol): stickers, four a row, in equal columns, centred
-   (the scrollbar's gutter kept on both sides; room for a sticker's place, over its corner) */
+   (the scrollbar's gutter kept on both sides) */
 .rival__board { flex: 0 1 auto; min-height: 160px; display: flex; flex-direction: column; width: 100%; margin-top: clamp(0px, 1.2vh, 12px); }
 .rival__boardhead { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; } /* (a phone: the link under the heading) */
 .rival__boardhead .rival__h { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
@@ -559,7 +553,7 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
   .sticker { grid-template: auto auto auto / minmax(0, 1fr); justify-items: center; padding: 10px 8px; text-align: center; }
   .sticker__face { grid-row: auto; }
   .sticker__who, .sticker__sub { max-width: 100%; }
-  .podium__row { gap: 8px; padding-left: 8px; } /* (the first medal clear of the page's frame) */
+  .podium__row { gap: 8px; padding-left: 8px; }
   .podium .sticker { padding: 8px 4px 6px; }
   .podium :is(.sticker, .podium__ghost) { min-height: 114px; }
   .podium .sticker__sub { font-size: 11px; }
@@ -645,7 +639,7 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
   .worlds--v2 .world:hover:not([disabled]), .worlds--v2 .world:focus-visible, .mode:hover:not([disabled]), .mode:focus-visible, button.sticker:hover, .ghost:hover, .gcard:hover, .gcollect--door:hover, .bholes__start:hover { transform: none; }
 }
 
-/* ------------------------------------------------------------ the picker */
+/* the picker */
 
 /* top to bottom: the pill and the name (the one heading), the gnome on a
    flat card in the cup's muted colour with his dots (a locked gnome's unlock
@@ -701,12 +695,12 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
 .screen--pick .pick__tile {
   position: relative; display: grid; grid-template-rows: 1fr auto; width: var(--pick-w); height: calc(var(--pick-w) * 1.12);
 }
-/* a short window's tile (a dare or the collection above it) never under the plain one's on a phone on its side (36vh:
-   140px), so its dots stay on its foot, not over the gnome (a phone's own sizes, its dots smaller: above) */
+/* a short window's tile (a dare or the collection above it) never smaller than the plain one on a phone on its side
+   (36vh: 140px), so its dots stay at its foot, clear of the gnome (a phone keeps its own sizes: above) */
 @media (min-width: 601px) { .screen--pick .pick__tile { width: max(var(--pick-w), 140px); height: calc(max(var(--pick-w), 140px) * 1.12); } }
 .screen--pick .pick__tile > .pick__canvas { width: 100%; height: 100%; min-height: 0; }
-/* locked: the gnome greyed as he always was (the filter on his canvas's
-   mount, not on the tile), and what earns him on an ink band across him */
+/* locked: the gnome greyed (the filter on his canvas's mount, not on the
+   tile), and what earns him on an ink band across him */
 .screen--pick .pick__tile > .pick__canvas--locked { filter: brightness(.15) saturate(0); opacity: .7; }
 .pick__lock {
   position: absolute; z-index: 2; left: -8%; right: -8%; top: 60%; margin: 0; padding: 8px 12%;
@@ -725,7 +719,7 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
   .pick__lock { font-size: 15px; padding: 6px 12%; }
 }
 
-/* ------------------------------------------------------------ a cup won */
+/* a cup won */
 
 /* the front's own backdrop with the cup's card over it: its glossy frame,
    its emblem on top, the paper panel inside */

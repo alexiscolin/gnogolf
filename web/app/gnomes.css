@@ -1,16 +1,14 @@
 /* The gnome shop's own pieces (components/gnomes/*), on the game's tokens,
    controls, sheet and front screen (globals.css, title.css): only what the
    game had no piece for. Loaded with the shop's part of the game
-   (gnomes/Game.tsx: the picker's Collection and the player's row, the finish
-   card's line), so on the game's screens too: every rule here keeps to the
-   shop's pieces. The GUI spec's mockups (kit.css, "NEW") are the reference. */
+   (gnomes/Game.tsx), which the picker and the finish card use too: every
+   rule here keeps to the shop's own classes. */
 
 /* the tiers: one colour and one shape each (the shape reads in grey too); never --chain's blue */
 :root {
   --tier-common: #e8dfcc; --tier-rare: #7cc8f0; --tier-epic: #c6a4f5; --tier-legendary: #ffd75e;
   --portrait-bg: #f6ead2; /* the ground a gnome's portrait sits on: his tile, a face, an album's slot */
 }
-/* (every gap, padding and margin of the shop's pieces on the game's spacing scale: globals.css --sp-*) */
 .shop, .gsheet { font-variant-numeric: tabular-nums; }
 
 /* a tier's chip: its shape and its name, on its colour */
@@ -40,7 +38,7 @@
    column; a front screen's head (the rival's: title.css .front--fit) but the screen scrolling from its top, the
    head in the corner buttons' row, the gutters slim (the banner's room at the end, as the cups') */
 .screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { justify-content: flex-start; padding: 0 40px 48px; } /* (24 inside the page's frame, 16 in) */
-@media (max-width: 600px) { .screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { padding-inline: 16px; } } /* (the page's frame closer: globals.css) */
+@media (max-width: 600px) { .screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { padding-inline: 16px; } } /* (the page's frame closer: title.css) */
 .shop .worlds__in { width: min(1160px, 100%); display: grid; justify-items: stretch; }
 .shop .front__head { justify-self: center; }
 /* a player's page's Race: centred at its own width, as every call to action of the game (the column stretches the rest) */
@@ -324,11 +322,11 @@ body:has(.shop .sheet) .netbanner { visibility: hidden; }
 .owned__face[aria-pressed="true"] { padding: 3px; background: var(--gold); } /* (the game's "on": gold inside its edge; a ring outside is focus alone) */
 .owned__face[aria-pressed="true"] img { border-radius: 50%; }
 
-/* ---------------------------------------------------------------- the collection on the game's screens (Promo.tsx) */
-/* the picker's Collection section, between the tile and the aim card (the GUI spec's A3), at least the aim card's
-   width: one slim row about a button high, its thumbnails, its line and its button on one middle line; the line
-   shortened at its end, never wrapped on a computer, two lines at most on a phone; the player's own gnomes, their
-   line over their faces, the whole collection under them */
+/* the collection on the game's screens (Promo.tsx) */
+/* the picker's Collection section, between the tile and the aim card, at least the aim card's width: one slim row
+   about a button high, its thumbnails, its line and its button on one middle line; the line shortened at its end,
+   never wrapped on a computer, two lines at most on a phone; the player's own gnomes, their line over their faces,
+   the whole collection under them */
 .gcollect { display: flex; align-items: center; gap: var(--sp-3); width: fit-content; min-width: max(var(--pick-w, 100%), 230px); max-width: 100%; margin: 0 auto var(--gap-l, 12px); padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3); border: var(--edge); border-radius: 16px; background: var(--white); box-shadow: var(--shadow-btn); text-align: left; }
 .gcollect:has(.owned) { flex-direction: column; align-items: stretch; width: max(var(--pick-w, 100%), 230px); }
 .gcollect .owned { min-width: 0; width: 100%; margin: 0; }

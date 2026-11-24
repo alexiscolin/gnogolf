@@ -21,8 +21,8 @@ var (
 	next  = strings.TrimSuffix(self, "store") + "golf/v3"
 )
 
-// each test starts from the deploy: the owner set, v2 the writer, nothing
-// proposed, the collections made at init and empty
+// fresh is the deploy, for each test: the owner set, v2 the writer, nothing
+// proposed or paused, the collections made at init and empty.
 func fresh() {
 	owner, pending, writer, proposed, at, paused = boss, "", rules, "", 0, ""
 	colls = map[string]*bptree.BPTree{}
@@ -31,7 +31,10 @@ func fresh() {
 	}
 }
 
-// (testing.SetRealm acts on the frame that calls it: called in each test's own body)
+// (testing.SetRealm acts on the frame that calls it: each test calls it in
+// its own body, never through a helper.)
+
+// skip moves block time on by at least seconds (a block is 5 seconds).
 func skip(seconds int64) { testing.SkipHeights(seconds/5 + 1) }
 
 func TestTheFirstWriterIsTheRulesBesideStore(t *testing.T) {

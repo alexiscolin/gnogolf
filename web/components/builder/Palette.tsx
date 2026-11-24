@@ -1,23 +1,13 @@
 "use client";
 
-// The palette (the GUI spec's B3): the green's two tools on top (Paint,
-// Erase: Board's paint, B; the one on pressed again puts it down), then the
-// pieces by what they do (tiles.ts),
-// the four a first hole needs first (Bumper, Sand, Water, Slope: its walls
-// are the green's own, painted on the board), the world's others by group
-// under "More pieces" (a Bank there, an inner bank; folded at first: the four
-// fit the column unscrolled; each group folding too), another world's under "From other worlds" (palette.ts HOME,
-// folded at first), each fold kept as left for the visit, and the bin a
-// piece dragged from the board is dropped on to remove it. Every piece is
-// one row: the game's own picture of it (drawn offline:
-// media/builder/tiles.mjs), its name and what it does, in its look as last
-// chosen (a look is chosen in the Inspector, for the piece selected: the
-// next one placed takes it). Press a row and it follows the pointer onto
-// the board (Board's ghost); a press arms it, always (a refused drop leaves
-// it armed: pressed again, it is carried again, never put back); from the
-// keyboard, Enter arms it and again puts it back (1 to 4 arm the first
-// four). A limit reached switches the pieces it would pass off, with why. It
-// scrolls in itself.
+// The palette: the green's two tools on top (Paint, Erase), then the pieces
+// by what they do (tiles.ts): the four a first hole needs first, the world's
+// others by group under "More pieces" (folded at first, so the four fit the
+// column unscrolled), other worlds' under "From other worlds", and the bin a
+// piece dragged off the board is dropped on. A press arms a piece, always (a
+// refused drop leaves it armed), and it follows the pointer onto the board;
+// Enter arms it from the keyboard. A limit reached switches off the pieces
+// that would pass it, with why.
 import { useState, type ReactNode } from "react";
 import { type PaletteEntry } from "@/lib/builder/palette";
 import { armOn, foldOpen, lookOf, pictureOf, saveFold, tilesOf, type Fold, type Tile } from "@/lib/builder/tiles";
@@ -26,7 +16,7 @@ import { cap, theWorld, worldName } from "@/lib/builder/rules";
 import { sound } from "@/lib/feel";
 import type { PaintMode } from "@/lib/builder/surface";
 
-/** A look's picture: a file, its place kept (no shift as it loads). */
+/** A look's picture (drawn offline by media/builder/tiles.mjs), its size set so nothing shifts as it loads. */
 export const Picture = ({ world, e, px }: { world: string; e: PaletteEntry; px: number }) => (
   <img src={pictureOf(world, e)} width={px} height={px} alt="" draggable={false} decoding="async" />
 );

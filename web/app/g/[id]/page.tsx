@@ -1,7 +1,7 @@
 // A gnome's own page (/g/94/) and an earned kind's (/g/king/), built once from
 // the catalogue (app/g/pages.ts): link crawlers run no JavaScript, so each
 // has its own words and card; the game itself opens the shop on that gnome
-// (Golf.tsx reads the path). As app/h/[slot] for the holes (ADR-003).
+// (Golf.tsx reads the path), as app/h/[slot] does for the holes.
 import type { Metadata } from "next";
 import Game from "@/app/game";
 import Intro from "@/app/intro";

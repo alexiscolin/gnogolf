@@ -22,9 +22,9 @@ import (
 // course.Simple decoded here from that data is the realm's hole. This test
 // then plays that Simple directly against the published version, in the same
 // weather laid on both: calm, rain, wind and storm, from the tee, on stroke 0
-// at tick 0 and on stroke 1 at tick 5; and checks that
-// both give a renderer the same pieces, and golf's listing the hole's own
-// name, par, world and order.
+// at tick 0 and on stroke 1 at tick 5; and checks that both give a renderer
+// the same pieces, and golf's listing the hole's own name, par, world and
+// order.
 func TestDataPlaysAsTheRealmHole(cur realm, t *testing.T) {
 	for _, d := range courseData {
 		raw, err := hex.DecodeString(d[3])

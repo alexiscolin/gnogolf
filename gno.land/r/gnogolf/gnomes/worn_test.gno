@@ -10,10 +10,10 @@ import (
 	"gno.land/p/nt/uassert/v0"
 )
 
-// Wearing is free (ADR-007): every player wears their best gnome, the
-// highest tier they hold then its lowest id, unless they put another on for
-// everyone with Equip. Worn says which, in one cheap read: the holder's
-// rows sort best first, so it reads one row.
+// Wearing is free: every player wears their best gnome, the highest tier
+// they hold then its lowest id, unless they put another on for everyone
+// with Equip. Worn says which, in one cheap read: the holder's rows sort
+// best first, so it reads one row.
 
 func wornJSON(player address, id int64, put bool) string {
 	g, _ := tokenAt(id)

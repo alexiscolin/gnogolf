@@ -1,7 +1,7 @@
 {
   // The node scripts: run as TypeScript by node itself (--experimental-strip-types),
   // so only erasable syntax, or as plain .mjs checked from their JSDoc (// @ts-check).
-  // They reach the client's chain reader in web/lib.
+  // They import the client's modules from web/lib.
   "compilerOptions": {
     "target": "ES2023",
     "lib": ["es2023", "dom", "dom.iterable"],

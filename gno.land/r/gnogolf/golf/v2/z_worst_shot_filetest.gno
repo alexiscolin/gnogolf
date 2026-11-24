@@ -19,7 +19,7 @@ import (
 // board-wide zones on top. Each shot is played with the work its commit has
 // left (golf's cap, MaxWork at the most), and one that reaches a cap under
 // MaxWork is refused. The Launch of each, decode, forecast and shot, measured
-// end to end on a local chain (the qeval filler method), in its weather:
+// end to end in its weather:
 //
 //	a2       160 bumper walls across the board, the steepest hill, 31
 //	         ice zones, 8 of them 64-point circles                0.87e9
@@ -52,13 +52,13 @@ import (
 //	         cap ("commit the first 11"): its 11 taps, then the
 //	         full shot alone                                      0.80e9
 //
-// All are under 1.6e9, and the 2e9 Adena simulates. Since a hole's dearest
-// weather is bounded at publish (golf's worstGas: a commit's first shot has
-// minShotWork in any weather), all but a60, a31 and posts are refused at
-// publish, as the output says: each forecast tests their walls and polygon
-// edges on every puddle try. Their measures are kept as the record of what
-// the cap held before; the heaviest a published hole can do is now what a60,
-// a31 and posts do.
+// All are under 1.6e9, and the 2e9 Adena simulates. A hole's dearest weather
+// is bounded at publish (golf's worstGas: a commit's first shot has
+// minShotWork in any weather), so all but a60, a31 and posts are refused
+// there, as the output says: each forecast tests their walls and polygon
+// edges on every puddle try. The refused ones' measures are what the shot cap
+// alone would hold; the heaviest a published hole can do is what a60, a31 and
+// posts do.
 
 type spec struct {
 	slug, world, walls string

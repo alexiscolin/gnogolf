@@ -12,7 +12,7 @@ import (
 )
 
 func roll(speed float64) physics.Shot {
-	// a straight roll past a pin at (10,5), constant speed, 6 substeps
+	// a straight roll along y 5.5 from x 4, at a constant speed: 8 points
 	p := []physics.Vec2{}
 	for i := 0; i < 8; i++ {
 		p = append(p, physics.Vec2{X: 4 + float64(i)*speed, Y: 5.5})
@@ -28,7 +28,7 @@ func TestSlowBallDropsWhileCrossing(t *testing.T) {
 	if last := shot.Rest(); last.X != 10 || last.Y != 5.5 {
 		t.Fatalf("the path must end on the pin, got %v", last)
 	}
-	if len(shot.Path) > 8 { // it drops over the middle now, not at the rim
+	if len(shot.Path) > 8 { // it drops over the middle, not at the rim
 		t.Fatalf("the path must be cut at the cup, got %d points", len(shot.Path))
 	}
 }
@@ -180,8 +180,8 @@ func TestWeatherIsLaidUnderTheCourse(t *testing.T) {
 	}
 }
 
-// Each kind of weather is play: its wind and its zones on a lane, bit for bit
-// as GG1 writes them (fingerprint.Of plays only the rain and the wind).
+// Each kind of weather is pinned bit for bit: its wind, and its zones on a
+// lane as GG1 writes them (fingerprint.Of plays only the rain and the wind).
 func TestEachWeatherIsPinned(t *testing.T) {
 	h := &Simple{
 		W: 40, H: 10, Tee: physics.V(2, 5), Pin: physics.V(38, 5), Substeps: 20, CupRadius: 1,
@@ -191,8 +191,8 @@ func TestEachWeatherIsPinned(t *testing.T) {
 		Wind: "cee4c15fb0ef846f", Rain: "9e38c0564bf7a1c8", Fog: "8b11e2aac4310774", Storm: "8bb0b15d1f866b9d", Snow: "45ea6e0340ef4047",
 	} {
 		v, zs := WeatherFor(kind, h, 13)
-		b := strconv.AppendUint([]byte(Encode(&Simple{Course: &physics.Field{Zones: zs}})), math.Float64bits(v.X), 16)
-		s := sha256.Sum256(strconv.AppendUint(append(b, ' '), math.Float64bits(v.Y), 16))
+		wind := strconv.FormatUint(math.Float64bits(v.X), 16) + " " + strconv.FormatUint(math.Float64bits(v.Y), 16)
+		s := sha256.Sum256([]byte(Encode(&Simple{Course: &physics.Field{Zones: zs}}) + wind))
 		if got := hex.EncodeToString(s[:8]); got != want {
 			t.Errorf("%s draws %s, want %s", kind, got, want)
 		}

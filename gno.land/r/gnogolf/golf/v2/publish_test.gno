@@ -263,7 +263,7 @@ func TestAPulsesSetUpIsCharged(cur realm, t *testing.T) {
 func limitsHole() *course.Simple { return atLimits(course.MaxWalls-28-4, physics.Surface, "sand") }
 
 // heavyHole is limitsHole as heavy as golf takes it: 21 of its 128 inner
-// walls (24 in v1: v2's commit also keeps its rows in store, storeGas), and slopes for its polygons (a puddle try tests a polygon's edges on
+// walls, and slopes for its polygons (a puddle try tests a polygon's edges on
 // ground only), so its dearest weather leaves a commit's first shot its room.
 func heavyHole() *course.Simple { return atLimits(21, physics.Slope, "slope") }
 
@@ -637,7 +637,9 @@ func TestSimulateCommitIsTheNextCommit(cur realm, t *testing.T) {
 	uassert.PanicsContains(t, cur, "on the board", func() { SimulateCommit(id, -1, 8, 0, "0,1", Period()) })
 }
 
-// The fixes of the second bug hunt, on the reads.
+// The reads refuse what the writes refuse: no shots or too many, a ball off
+// the board, a bad tick (a long one is clamped); friends lists each valid
+// address once.
 func TestTheReadsRefuseWhatTheWritesRefuse(cur realm, t *testing.T) {
 	id := register(cur, "reads")
 	for _, shots := range []string{"", ";;", " ; "} {
@@ -807,9 +809,8 @@ func TestNewestCommunityHolesAreListed(cur realm, t *testing.T) {
 }
 
 // One author publishing as many holes as they like fills perAuthor rows and
-// no more: everyone else's, older or newer, stay listed. 1000 is the bound
-// the list once scanned (maxScanned): as many newer holes of one author
-// took every older one off the list and the hub.
+// no more: everyone else's, older or newer, stay listed, the older ones even
+// past a flood of 1000.
 func TestOneAuthorCannotFloodTheList(cur realm, t *testing.T) {
 	defer asideCourse(cur)()
 	data := hexOf(cupHole("pond", 1, "Flood"))

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # try-local.sh: the whole game on this machine, to try by hand, from this
 # machine or another one on the tailnet: a local chain with the game, the
-# gnome shop and the Builder on it, throwaway wallets, and the site's dev
-# server. Ctrl+C stops everything. docs/try-local.md says what to try.
+# gnome shop and the Builder on it, throwaway wallets, and the site built as
+# the real one is. Ctrl+C stops everything.
 #
 #   scripts/try-local.sh          start it all (a new chain each time)
 #   scripts/try-local.sh close [days]  set the genesis's closing date, or bring it forward, to days
@@ -183,7 +183,7 @@ trap stop EXIT
 trap 'exit 130' INT TERM
 echo "$WORK" >"$last"
 
-# ------------------------------------------------------------------ the chain
+# the chain
 # the two wallets a person imports: made here, handed to the seed in its
 # environment, never written down (the others stay the seed's own)
 MNEMONIC_p1=$("$GNOKEY" generate 2>/dev/null | tail -1) MNEMONIC_p0=$("$GNOKEY" generate 2>/dev/null | tail -1)
@@ -198,7 +198,7 @@ MNEMONIC_p1=$MNEMONIC_p1 MNEMONIC_p0=$MNEMONIC_p0 \
 . "$WORK/seed.env"
 echo "$DEV_PID" >"$WORK/dev.pid"
 
-# ------------------------------------------------------------------ the site
+# the site
 WALLET_RPC=http://127.0.0.1:$RPC_PORT WEB_URL=http://127.0.0.1:$GNOWEB_PORT
 # the site as the real one is built, the playground's settings in it; served from WORK
 start_app() {
@@ -212,7 +212,7 @@ start_app() {
 # the Serve entries first (the wallet's RPC and gnoweb are the client's settings), then the site
 APP_HTTPS="" APP_TCP=""
 if [ -n "$TS_NAME" ]; then
-	SERVED=1 # (before: what a failing `up` opened is recorded, and removed on exit all the same)
+	SERVED=1 # (set first: what a failing `up` opened is removed on exit all the same)
 	out=$("$PREVIEW" up "$NAME" "$APP_PORT" "$RPC_PORT:-" "$GNOWEB_PORT:-") || die "tailnet-preview refused: $out"
 	APP_HTTPS=$(printf '%s\n' "$out" | sed -n "s#^ *\(https://[^ ]*\) *-> *127.0.0.1:$APP_PORT\$#\1#p")
 	APP_TCP=$(printf '%s\n' "$out" | sed -n "s#^ *\(http://[^ ]*\) *-> *127.0.0.1:$APP_PORT .*#\1#p")
@@ -236,7 +236,7 @@ for u in "http://127.0.0.1:$APP_PORT" ${APP_TCP:+"$APP_TCP"} ${APP_HTTPS:+"$APP_
 done
 [ -z "$TS_NAME" ] || [ "$(check "$WALLET_RPC/status")" = 200 ] || log "try-local: warning: the wallet's RPC $WALLET_RPC does not answer"
 
-# ------------------------------------------------------------------ the guide
+# the guide
 cat <<EOF
 
 ================================================================ Gnogolf, local

@@ -7,16 +7,13 @@ import { messageOf, useCopied } from "@/components/common";
 import { errorKind, isAddress, type Chain } from "@/lib/chain";
 
 // "Use gnokey instead": the calls Adena would sign, as one paste for a
-// terminal (bash or zsh: macOS, Linux, WSL) that needs gnokey and nothing
-// else: the weather asked first (gnokeyLate: too late, nothing goes), then one
-// plain `gnokey maketx call` per commit, after a Reset of its own
-// (gnokeyPlan), each sent again a block later if the node had not taken the
-// one before yet, and the paste stops at the first that fails (gnokeyPaste).
-// Collapsed by default; the key name is the player's own, kept in this browser.
-// Once copied, the player says when it went (onSent): the game asks the chain
-// for the account connected (me), else for the key's address, typed once
-// (optional, kept in this browser like the name); with neither, the round stays.
-// The name, a Claim and a tip go the same way (GnokeyTx), in the same panel (Panel).
+// terminal (bash or zsh: macOS, Linux, WSL) that needs gnokey and nothing else
+// (lib/adena.ts writes it: gnokeyLate, gnokeyPlan, gnokeyPaste). Collapsed by
+// default; the key name is the player's own, kept in this browser. Once
+// copied, the player says when it went (onSent): the game asks the chain for
+// the account connected (me), else for the key's address, typed once
+// (optional, kept like the name); with neither, the round stays. The name, a
+// Claim and a tip go the same way (GnokeyTx), in the same panel (Panel).
 const KEY = "gnogolf.gnokey";
 // any name gnokey takes, quoted for the shell: all but a quote and control characters
 const keyOk = (k: string) => /^[^'\\\u0000-\u001f]{1,64}$/.test(k);

@@ -1,13 +1,9 @@
 "use client";
 
-// The selected piece (the GUI spec's B2, the right column over the player's
-// view): its name, Turn · Copy · Delete with their keys, its looks (a piece
-// of several: chosen here, and the next one placed takes the look last
-// chosen), its sizes and numbers as label · slider · value rows, its timing
-// (a cycle strip for a timed piece). How to move it is said once in this
-// browser (keys.ts seen). A setting that would break the hole does not
-// take: the slider stays at the last value that holds, and the reason is
-// said once (settings.ts; edit.ts canPlace).
+// The selected piece's settings: Turn, Copy and Delete, its looks (the next
+// one placed takes the look last chosen), its sizes and numbers as sliders,
+// and its timing. A setting that would break the hole does not take: the
+// slider stays at the last value that holds, and why is said once.
 import { entryName } from "@/lib/builder/names";
 import { useEffect, useRef, useState } from "react";
 import { Button, Segmented } from "@/components/ui";
@@ -44,7 +40,7 @@ function Row({ label, value, range, shown, note, onChange, onDone }: { label: st
   );
 }
 
-/** The cycle of a timed piece as a strip of its steps (there: filled), a playhead running on the game's clock (72 ms a substep) while it plays. */
+/** The cycle of a timed piece as a strip of its steps (there: filled), a playhead running on the game's clock while it plays. */
 function Cycle({ t, unit, playing, onPlay }: { t: Pulse; unit: string; playing: boolean; onPlay: () => void }) {
   const cells = Math.min(t.every, 40), [step, setStep] = useState(0);
   useEffect(() => {
@@ -173,8 +169,8 @@ export default function Inspector({ draft, piece, quick, full, playing, onPlay, 
         </div>
       )}
       </details>
-      {/* its timing, in words: when it is there, how fast it blinks and how open it
-          leaves the way, its cycle playing as it plays on the board; the numbers under Fine */}
+      {/* its timing in words (when it is there, how fast it blinks, how open it leaves the way), its cycle playing as on
+          the board; the numbers under Fine */}
       {ent.clocks.length > 1 && (
         <div className="range"><span>Timing</span>
           <Segmented className="seg--s" label="When it is there" value={c.k} options={ent.clocks.map((k) => [k, CLOCKS[k]] as const)} onChange={(k) => setDraft(withClock(draft, p.id, k, ent))} />

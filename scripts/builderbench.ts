@@ -1,7 +1,6 @@
 #!/usr/bin/env -S node --experimental-strip-types
-// The 3D board's budget (the GUI spec's B3), measured in a headless Chrome
-// against a dev server with the Builder on, and enforced: it exits non-zero
-// past any of it.
+// The 3D board's budget, measured in a headless Chrome against a dev server
+// with the Builder on, and enforced: it exits non-zero past any of it.
 // - 60 fps at 1440×900 while the pointer sweeps the board (the scene drawing
 //   each frame), and 30 fps at least with the CPU four times slower
 //   (Emulation.setCPUThrottlingRate);

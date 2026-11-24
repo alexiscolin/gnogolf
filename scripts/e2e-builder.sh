@@ -49,7 +49,7 @@ q() { "$GNOKEY" query vm/qeval -remote "$RPC_ADDR" -data "$GOLF.$1" 2>&1 | sed -
 # the report: the rows the TypeScript driver goes on with (its row(), the same table)
 report
 
-# ------------------------------------------------------------------- chain
+# the chain
 log "e2e: work dir $WORK"
 addkey test1 "$TEST1_MNEMONIC"
 for k in a1 a2 pl; do addkey $k "$("$GNOKEY" generate 2>/dev/null | tail -1)"; done
@@ -70,7 +70,7 @@ DEV=$!
 for _ in $(seq 60); do curl -s "http://$RPC_ADDR/status" >/dev/null && break; sleep 1; done
 curl -s "http://$RPC_ADDR/status" >/dev/null || die "gnodev did not start (see $WORK/gnodev.log)"
 
-# ------------------------------------------------------------------ deploy
+# deploy
 MAINNET=1 sh "$root/scripts/stage.sh" "$NS" "$WORK/stage" >"$WORK/stage.log" 2>&1 || die "stage.sh failed (see $WORK/stage.log)"
 for p in p/$NS/gnogolf/physics p/$NS/gnogolf/course r/$NS/gnogolf/store r/$NS/gnogolf/golf/v2; do
 	sleep 2 # (the last deploy's block in, so that the sequence read is its next)
@@ -81,13 +81,13 @@ for p in p/$NS/gnogolf/physics p/$NS/gnogolf/course r/$NS/gnogolf/store r/$NS/gn
 	else row "deploy" "addpkg gno.land/$p" "deployed" "$(printf %s "$TXOUT" | grep -m1 'Data:')" 1 "$GAS"; die "deploy of $p failed"; fi
 done
 
-# --------------------------------------------------- publishing, opened
+# publishing, opened
 no "publishing: closed at deploy" "golf: publishing community holes is not open yet" a1 "$GOLF" PublishMine early "$(awk '$1=="garden/3"{print $4}' "$root/data/holes.txt")" ""
 no "publishing: owner only" "golf: only the owner can open or close publishing" a1 "$GOLF" SetPublishing true
 ok "publishing: the owner opens it" "opened" test1 "$GOLF" SetPublishing true
 is "publishing: Publishing()" "Publishing()" "(true bool)" "$(q 'Publishing()')"
 
-# --------------------------------------------- the Builder's holes, played
+# the Builder's holes, played
 cd "$root/web" || die "no web/"
 RPC="http://$RPC_ADDR" WEB="http://$WEB_ADDR" NEXT_PUBLIC_REALM=$GOLF GNOKEY=$GNOKEY KEYHOME=$KH PASS=$PASS \
 	OWNER=$OWNER A1=$A1 A2=$A2 PL=$PL OUT=$OUT N0=$n PASS0=$npass FAIL0=$nfail FAILS0="$FAILS" \

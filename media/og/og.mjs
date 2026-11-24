@@ -1,5 +1,5 @@
 // @ts-check
-// The link cards (ADR-003): one 1200×630 JPEG per hole, per cup and for the
+// The link cards: one 1200×630 JPEG per hole, per cup and for the
 // home page, in web/public/og/, and the holes' names and pars for their pages
 // (web/app/h/holes.json). Each hole is shot in the game's Far view, by day and
 // in clear weather (?og, ?weather=clear), the HUD hidden; the card is then laid

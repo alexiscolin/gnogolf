@@ -83,11 +83,10 @@ publish() {
 n=0
 while read -r slot _ _ hex; do
 	n=$((n + 1))
-	# the simulation's gas, what Publish of b bytes costs with a fifth more:
-	# every hole's first version took under 25M and 55K a byte (onyx
-	# toolchain, gnodev). The call then asks what the simulation used and a
-	# tenth more, rounded up: the same run, but the state can differ by a few
-	# bytes by the time it lands.
+	# the simulation's gas, what Publish of b bytes costs with a fifth more (a
+	# course hole takes under 25M and 55K a byte). The call then asks what the
+	# simulation used and a tenth more, rounded up: the same run, but the state
+	# can differ by a few bytes by the time it lands.
 	gas=$(awk -v b=$((${#hex} / 2)) 'BEGIN {printf "%d", (25000000 + 55000 * b) * 1.2}')
 	printf '%2d %-12s ' "$n" "$slot"
 	if publish "$slot" "$hex" "$gas" only; then

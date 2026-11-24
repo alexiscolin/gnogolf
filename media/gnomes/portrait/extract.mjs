@@ -5,9 +5,9 @@
 // (build.mjs): the realm's SVG is the game's gnome seen from the
 // thumbnails' camera, not a drawing of it.
 //
-// The client is read from DESIGNS (default: this repo's root), bundled with
-// the same pinned esbuild as media/gnomes/render.mjs, from its web/ (its node_modules installed). Its bake is kept from
-// merging: every object is made "live" as it is made, so each mesh stays one.
+// The client is read from DESIGNS (default: this repo's root) and bundled from
+// its web/ (its node_modules installed). Its bake is kept from merging: every
+// object is made "live" as it is made, so each mesh stays one.
 import path from "node:path";
 import { bundledPage, SEEDED } from "../../lib/page.mjs";
 
@@ -49,9 +49,9 @@ window.texture = (id) => textures.get(id);
 window.gnomes = GNOMES;
 window.props = Object.fromEntries(Object.entries(PROP_DESIGNS).map(([k, v]) => [k, "legend" in v ? "legend" : v.at]));
 window.vocab = { DARK: VOCAB.COLOURS.map(([, v]) => darkBody(v)), ...Object.fromEntries(Object.entries(VOCAB).filter(([, v]) => Array.isArray(v))), TIER_LOOK };
-// the earned nine as every field of their look (their stripes a pattern), by kind
 // the gnome some traits draw, every other field plain (lib/gnomes/skin.ts: the client's own reading)
 window.skinOf = (t) => skinOf({ ...PLAIN, accessories: [], ...t }, { id: "portrait", name: "", line: "" });
+// the earned nine as every field of their look (their stripes a pattern), by kind
 window.earned = EARNED_KINDS.map((k) => encode(lookOf(GNOMES.find((g) => g.unlock === k))));
 // what the showcase draws of him: the gnome standing on the ground, or his trail behind him as he rolled in
 const shown = (skin, trail) => {

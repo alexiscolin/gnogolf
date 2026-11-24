@@ -513,9 +513,8 @@ html, body {
   color: var(--ink);
 }
 
-/* the call to action: gold, inked, on its shadow (Button's "gold": the title's
-   start and the picker's pick, .btn--cta; a duel's Race, title.css .rival__go:
-   the picks', the hole cards', a friend's, a board row's) */
+/* the call to action: gold, inked, on its shadow (Button's "gold", and a
+   duel's Race: title.css .rival__go) */
 .btn--gold, .rival__go {
   background: var(--gold-grad); color: var(--ink); border: var(--edge-bold);
 }
@@ -609,8 +608,6 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
 
 @keyframes bounce { to { transform: translateY(-22px) } }
 
-/* Title and picker: full screens in the reference's language — a drawn
-   frame, a halftone rising from the bottom, the hole live but veiled behind. */
 /* Opaque and without an entrance animation, on purpose: the title is shown
    twice at startup (while the bundle loads, then by the game) and the scene
    builds behind it. Any fade or transparency turns that into a flicker. */
@@ -1877,7 +1874,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .boards { max-width: 560px; height: min(800px, calc(100dvh - 40px)); display: flex; flex-direction: column; } /* (the close X sits in the sheet's own corner) */
 .boards > * { flex: none; }
 .boards > .lb { flex: 1 1 auto; min-height: 180px; overflow-y: auto; }
-.boards > .lb > :first-child { margin-top: 0; } /* (a flex item: its first margin no longer falls through it to the tabs') */
+.boards > .lb > :first-child { margin-top: 0; } /* (a flex item: its first child's margin would stay inside it, a gap under the tabs) */
 /* a board's frame that fills what its screen leaves (the sheet's; the rival's
    board and their ghosts, title.css): only its list scrolls, never the page */
 .boards > .lb--full, .rival__board .lb--full { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
@@ -1945,10 +1942,9 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 .confirm { max-width: 360px; }
 .sheet:has(.confirm) { z-index: var(--z-confirm); }
 
-/* ---------------------------------------------------------- shared controls
-   One look for every control (components/ui.tsx): a button sinks when pressed,
-   lifts a little under the pointer, rings when focused, greys when disabled.
-   The segmented switch and the toggle are the same family. */
+/* shared controls (components/ui.tsx), one look: a button sinks when pressed,
+   lifts a little under the pointer, rings when focused, greys when disabled;
+   the segmented switch and the toggle are the same family */
 .btn, .burger, .adena { position: relative; transition: transform var(--t-press), box-shadow var(--t-press), background .15s; }
 .btn:hover:not([disabled], [aria-disabled="true"]), .burger:hover, .adena:hover { transform: translateY(calc(-1 * var(--lift))); box-shadow: 0 5px 0 var(--ink); }
 .btn:active:not([disabled], [aria-disabled="true"]), .burger:active, .adena:active { transform: translateY(var(--press)); box-shadow: 0 1px 0 var(--ink); }
@@ -1997,7 +1993,7 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
    (after the card's own rules, so they hold) */
 @media (max-width: 600px) {
   .card--duel { flex: none; min-width: 0; padding: 5px 10px; gap: 0; } .card--duel strong { font-size: 15px; } .card--duel .duel__row .eyebrow { max-width: 64px; }
-  .card--duel .card__par { gap: 4px; font-size: 10px; } .card--duel .card__par svg { width: 14px; height: 14px; }
+  .card--duel .card__par { font-size: 10px; }
   body:has(.card--duel) .timed { top: 106px; } /* (the hole's note under it: the card is the row's tallest) */
 }
 .card--duel:hover { border-color: var(--ink); }
@@ -2276,10 +2272,9 @@ body:has(.netbanner) { --chip-room: calc(max(var(--chip-low), env(safe-area-inse
 .feedback__form .real__fine { margin: 0; text-align: center; }
 .feedback__form .btn--wide { margin: 4px 0 0; }
 
-/* ------------------------------------------------------------ the shot clip
-   (ADR-003, NEXT_PUBLIC_CLIPS; components/Share.tsx ShareClip): the holing
-   stroke, recorded after the hole, looped in the win card above its buttons.
-   Its own classes only: without the flag no element carries them. */
+/* the shot clip (NEXT_PUBLIC_CLIPS; components/Share.tsx ShareClip): the
+   holing stroke, recorded after the hole, looped in the win card above its
+   buttons. Its own classes only: without the flag no element carries them. */
 .clip { margin: 0 auto 16px; }
 .clip__screen { position: relative; max-width: 440px; margin: 0 auto; aspect-ratio: 16 / 9; border: var(--edge); border-radius: 18px; overflow: hidden; background: var(--sky-day); }
 /* (440: a window the card still reads around) */
@@ -2296,9 +2291,8 @@ body:has(.netbanner) { --chip-room: calc(max(var(--chip-low), env(safe-area-inse
 .clip__save { position: absolute; top: 10px; right: 10px; border-radius: var(--pill); }
 .clip__save svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ------------------------------------------------------------ a round waiting
-   for its save after a reload (Adena installed meanwhile): a card at the top,
-   on any screen, under the sheets (5) */
+/* a round waiting for its save after a reload (Adena installed meanwhile): a
+   card at the top, on any screen, under the sheets (5) */
 .pending { position: fixed; top: max(16px, env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); z-index: var(--z-screen); display: flex; align-items: center; gap: 12px; width: max-content; max-width: calc(100vw - 32px); padding: 8px 8px 8px 16px; border: var(--edge); border-radius: 18px; background: var(--paper); color: var(--ink); font-size: 15px; }
 .pending__say { display: grid; gap: 2px; }
 .pending .btn { padding: 8px 14px; font-size: 15px; }
@@ -2308,9 +2302,8 @@ body:has(.hud--top) .pending { top: max(14px, env(safe-area-inset-top)); min-hei
 @media (max-width: 1600px) { body:has(.hud--top) .pending { top: 104px; min-height: 0; } }
 /* on a front screen, centred on its corner buttons' line (Back, About: 34px + 52/2) */
 body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
-/* ------------------------------------------------ by breakpoint
-   The media rules no later rule fights, gathered here. The ones a later rule
-   overrides stay where they are. */
+/* by breakpoint: the media rules no later rule fights, gathered here (the ones
+   a later rule overrides stay where they are) */
 
 @media (max-width: 600px) {
   /* a phone: the hint wraps inside the screen instead of running off both sides */
@@ -2417,7 +2410,7 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
    buttons, and of the network banner at the end */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) {
   .screen.worlds { place-items: start center; align-content: start; padding: 0; }
-  .worlds__in { padding: 96px 16px 72px; } /* (16: in from a phone's frame, on a wider one's line: the modes' cards keep off it, title.css; a screen that fits its window: its own, title.css .front--fit) */
+  .worlds__in { padding: 96px 16px 72px; } /* (16 in: clear of a phone's frame, on a wider one's line, which the modes' cards keep off: title.css; a screen that fits its window pads itself: title.css .front--fit) */
   .front--fit .worlds__in { padding-inline: 0; }
   .worlds--v2 .worlds__in { width: 100%; }
 }
@@ -2443,7 +2436,7 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
   .btn--save-rank { flex-wrap: wrap; justify-content: center; } .btn__rank { position: static; transform: none; box-shadow: none; flex-basis: 100%; text-align: center; margin-top: 4px; }
 }
 /* a phone: the camera button its mode's own width, so the bottom row fits beside the network
-   banner (140px) with "Third person" at 375; the narrowest, its icon and ▾ (its label says the mode) */
+   banner (140px) with "Third person" at 375; the narrowest, its eye and dots (its label says the mode) */
 @media (max-width: 400px) { .cam-btn { min-width: 0; } }
 @media (max-width: 370px) { .cam-btn__name { display: none; } }
 

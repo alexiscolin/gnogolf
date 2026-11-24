@@ -2,8 +2,8 @@
 // by narrow planks laid over the streets below, with a turn at every roof.
 // Chimneys stand on the tall roof and on the third. A cat sleeps on the
 // second plank every other stroke (the first, the third...): cross it on
-// the second. Step off a roof or a plank and you are back where that stretch
-// began.
+// the second. Step off a roof or a plank and you are back where you played
+// from.
 package town15
 
 import (
@@ -50,8 +50,8 @@ var me = author.Fit(&course.Simple{
 			{Circle: physics.Circle{C: physics.V(41, 16), R: 0.8}, Bounce: 0.7, Skin: "chimney"},
 		},
 		Zones: []physics.Zone{
-			// off the roofs: back to the start of the stretch you fell from (the
-			// first zone a ball is in acts: past plank 2, past plank 1, the rest)
+			// off the roofs: back where the stroke was played from, whichever of
+			// the three a ball is in (no rule reads a hazard's Vec)
 			{Kind: physics.Hazard, Min: physics.V(37, 0), Max: physics.V(62, 26), Vec: physics.V(41, 21), Poly: roofs(), Outside: true, Skin: "roof"},
 			{Kind: physics.Hazard, Min: physics.V(22, 0), Max: physics.V(37, 26), Vec: physics.V(24.5, 5.5), Poly: roofs(), Outside: true, Skin: "roof"},
 			{Kind: physics.Hazard, Min: physics.V(0, 0), Max: physics.V(61, 26), Vec: physics.V(6, 7.5), Poly: roofs(), Outside: true, Skin: "roof"},

@@ -3,11 +3,11 @@
 // catalogue and the nine earned kinds, a record of what makeBall builds from
 // its traits (web/test/looks.ts). The unit tests hold every gnome to it
 // (web/test/looks.test.ts). --write takes the records again, but never
-// changes nor drops one of a released series or of an earned kind: a released look
-// is changed by a new trait format, never in place (docs/gnomes/design.md,
-// "Permanence"). A record format that sees more (RECORD) is taken on only
-// where the gnome still draws as the file's own format recorded him.
-// Without --write, it says what differs and exits non-zero.
+// changes nor drops one of a released series or of an earned kind: a
+// released look is changed by a new trait format, never in place. A record
+// format that sees more (RECORD) is taken on only where the gnome still
+// draws as the file's own format recorded him. Without --write, it says what
+// differs and exits non-zero.
 //
 //   node --experimental-strip-types scripts/gnomelooks.ts [--write]
 //   (from web/: npm run gnomes:looks [-- --write])
@@ -24,7 +24,7 @@ type Catalogue = import("../web/lib/gnomes/catalogue.ts").Catalogue;
 const FILE = new URL("../data/gnomes/looks.golden.json", import.meta.url);
 const catalogue = JSON.parse(fs.readFileSync(new URL("../data/gnomes.json", import.meta.url), "utf8")) as Catalogue;
 const saved = (fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE, "utf8")) : { record: RECORD, looks: {} }) as { record?: number; looks?: Record<string, unknown> };
-// (the first file was the looks alone, in format 1)
+// (a file in record format 1 is the looks alone)
 const was = saved.record ?? 1, golden = (saved.looks ?? saved) as Record<string, unknown>;
 const write = process.argv.includes("--write");
 

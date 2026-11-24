@@ -12,9 +12,9 @@
 // changed and not, and on holes at the work limits, its refusals word for
 // word; author.Fit and Encode byte for byte. Any difference fails.
 //
-// The holes: the course's (data/holes.txt, their plans in
-// the solver's bests, private/botcheck/hole-bests.json, kept out of the public repo:
-// without them, random shots only).
+// The holes: the course's (data/holes.txt), their plans the solver's bests
+// (private/botcheck/hole-bests.json, kept out of the public repo: without
+// them, random shots only).
 //
 //   cd web && node --experimental-strip-types --import ./test/setup.mjs ../scripts/wasmparity.ts
 //   (scripts/wasm.sh --check runs it; check.sh runs that)

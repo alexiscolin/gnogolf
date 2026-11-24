@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --experimental-strip-types
 // The gnome collection's catalogue: data/gnomes.json made from data/gnomes/
 // (series.json, and each series' archetypes.json, epics.json and
-// legendaries.json), then every rule of docs/gnomes/design.md checked
+// legendaries.json), then every rule of the collection checked
 // (web/lib/gnomes/validate.ts). With --check nothing is written: the file
 // must be what the data makes, and pass. Any failure exits non-zero.
 //

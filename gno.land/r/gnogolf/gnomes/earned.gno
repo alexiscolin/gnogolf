@@ -13,8 +13,8 @@ import (
 )
 
 // The nine gnomes players earn (web/lib/card.ts UNLOCKS), minted free once
-// store proves the feat, and bound to their player (ADR-007). The proof
-// reads store with golf/v2's own key layout and never calls golf/v2:
+// store proves the feat, and bound to their player. The proof reads store
+// with golf/v2's own key layout and never calls golf/v2:
 //
 //   - a cup's holes: store's "slots", "<world rank><world>/<order>" -> the
 //     slot's current version id (golf/v2 slotKey);
@@ -27,8 +27,8 @@ import (
 // bests carry no format version, so the proof refuses while store's writer
 // is not the rules it reads: a later format can refuse a mint, never prove
 // a false one. After a rules change the owner accepts the new rules
-// (AcceptRules, ADR-012), once checked to keep these rows as golf/v2 writes
-// them, and the proof reads again.
+// (AcceptRules), once checked to keep these rows as golf/v2 writes them,
+// and the proof reads again.
 
 // rulesAtDeploy is the golf realm whose rows the proof reads at deploy
 // (stage.sh rewrites it with the other paths); rules is the one it reads now.
@@ -38,9 +38,9 @@ var rules string
 
 // AcceptRules makes path the rules the proof reads: store's current writer
 // and no other, so the owner can follow a rules change store's own public
-// delay has carried out, never point the proof elsewhere (ADR-012). A
-// paused store has no writer (""): nothing to accept, and the proof stays
-// refused until it resumes. Owner only.
+// delay has carried out, never point the proof elsewhere. A paused store
+// has no writer (""): nothing to accept, and the proof stays refused until
+// it resumes. Owner only.
 func AcceptRules(cur realm, path string) {
 	assertOwner(0, cur)
 	w := golfRows.Writer()
@@ -394,8 +394,8 @@ func field(s string, i int) (string, int, bool) {
 //	{"version":1,"kind":"viking","player":"g1…","ok":false,"minted":"",
 //	 "holes":18,"finished":16,"strokes":48,"par":54,"missing":["garden/1",…]}
 //
-// with a "reason" when it cannot be asked ("paused" while SetEarnedOpen holds
-// it, "rules changed").
+// with a "reason" when it cannot be asked: "paused" (SetEarnedOpen) or
+// "rules changed".
 func Proof(kind string, player address) string {
 	ok, c, why := prove(kind, player.String())
 	if !earnedOpen {

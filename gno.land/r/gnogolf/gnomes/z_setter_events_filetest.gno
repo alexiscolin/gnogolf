@@ -10,10 +10,9 @@ import (
 	gnomes "gno.land/r/gnogolf/gnomes"
 )
 
-// The owner's setters emit the events the spec lists for an indexer to
-// follow, named as it names them and with the new value: here the closing
-// date's, the genesis's sale opened then withdrawn, the site's, and the
-// earned gnomes' switch.
+// The owner's setters emit an event for an indexer to follow, with the new
+// value: here the closing date's, the genesis's sale opened then withdrawn,
+// the site's, and the earned gnomes' switch.
 func main(cur realm) {
 	testing.SetRealm(testing.NewUserRealm(gnomes.Owner()))
 	gnomes.AddSeries(cross(cur), "genesis", genesis())

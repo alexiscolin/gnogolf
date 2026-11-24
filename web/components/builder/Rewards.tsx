@@ -1,10 +1,8 @@
 "use client";
 
-// What an author gets back once a hole is out (lib/builder/rewards.ts), on the Builder's start (Start.tsx's "Your
-// holes"): the Builder's badges as the game's medals, and the author's test
-// round saved on the chain with Adena, the hole's first record to beat and
-// its ghost. (The holes and their rounds: useRewards.ts, the phone's
-// screen's too.)
+// What an author gets back once a hole is out, on "Your holes": the
+// Builder's badges as the game's medals, and the author's test round saved
+// on the chain with Adena (the hole's first record to beat, and its ghost).
 import { useEffect, useRef, useState } from "react";
 import { Medal } from "@/components/Badges";
 import { Button } from "@/components/ui";

@@ -14,8 +14,8 @@ import (
 // whole, 72 slots, a best in each mode a slot and each par. The difference
 // of the two files' gas (the two `// Gas:` goldens) is the King's proof, the
 // heaviest MintEarned makes: 44.3M on the onyx toolchain, this file's
-// loading of gnomes included, of the order of golf's Claim (70.2M). No
-// client sends MintEarned yet; the e2e run sends it with 200M.
+// loading of gnomes included, of the order of golf's Claim (70.2M). The e2e
+// run sends MintEarned with 200M.
 func f(s string) string { return strconv.Itoa(len(s)) + ":" + s }
 
 func main(cur realm) {

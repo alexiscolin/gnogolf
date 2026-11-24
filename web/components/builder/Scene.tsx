@@ -1,19 +1,13 @@
 "use client";
 
-// The board in 3D (the GUI spec's B3): the game's own buildHole on the hole
-// as checked (the pipeline's HoleState of its canonical bytes: what will be
-// published), seen through the board's lens by an orthographic camera
+// The board in 3D: the game's own buildHole on the hole as checked (what will
+// be published), through the board's lens by an orthographic camera
 // (camera3d.ts), on the Builder's one canvas (stage.ts). It only shows: the
-// overlay over it (Board's SVG) picks, edits and draws the selection, the
-// handles and the ghost, in the same map. Drawn on demand: when the hole,
-// the view or the look changes; while the pointer is about (awake), its
-// timed pieces move on the game's clock and, with motion allowed, its water
-// moves too; idle, the loop stops. The hole is built again only when the
-// checked hole changes (a drop, an undo), never as the pointer moves.
-// The same scene gives the player's view (PlayerView.tsx): the hole from the
-// tee through the game's lens, drawn in a corner of the board's canvas and
-// copied out, once a build (the edit settled), when asked, or when the canvas
-// comes back to it (from Play, or its context lost and back), never a frame.
+// Board's SVG over it picks and edits. Drawn on demand (the hole, the view or
+// the look changed; while the pointer is about, its timed pieces move, and
+// its water with motion allowed), and built again only when the checked hole
+// changes, never as the pointer moves. The same scene paints the player's
+// view (PlayerView.tsx).
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { applyRig, makeScene, setLighting, teeRig } from "@/lib/scene/camera";
