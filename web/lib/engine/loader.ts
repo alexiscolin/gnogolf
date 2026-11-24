@@ -284,6 +284,6 @@ export function makeLoader(E: Live, { renderer, weather, aside, forceWorld, self
     warm,
     warmAside,
     /** Whether the hole of the latest load is still being built and compiled. */
-    warming: () => warming === loads,
+    warming: () => warming !== 0 && warming === loads,
   };
 }
