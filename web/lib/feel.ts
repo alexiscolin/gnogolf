@@ -102,12 +102,25 @@ function tone(a: AudioContext, { type = "sine", f0, f1 = f0, at = 0, dur, gain =
   o.stop(t + dur + 0.02);
 }
 
+// White noise, made once a context: every noise sound plays a stretch of it
+// from a random point (as random as a fresh one, once band-passed), and the
+// rain bed loops it whole. Longer than the longest sound, a gust (2.4 s).
+const NOISE_S = 3;
+const whites = new WeakMap<AudioContext, AudioBuffer>();
+function white(a: AudioContext) {
+  let buf = whites.get(a);
+  if (!buf) {
+    const n = a.sampleRate * NOISE_S, d = (buf = a.createBuffer(1, n, a.sampleRate)).getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    whites.set(a, buf);
+  }
+  return buf;
+}
+
 function noise(a: AudioContext, { at = 0, dur, f0, f1 = f0, q = 1, gain = 0.2 }: { at?: number; dur: number; f0: number; f1?: number; q?: number; gain?: number }) {
-  const t = a.currentTime + at, n = Math.ceil(a.sampleRate * dur);
-  const buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+  const t = a.currentTime + at;
   const src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain();
-  src.buffer = buf;
+  src.buffer = white(a);
   bp.type = "bandpass";
   bp.Q.value = q;
   bp.frequency.setValueAtTime(f0, t);
@@ -115,7 +128,7 @@ function noise(a: AudioContext, { at = 0, dur, f0, f1 = f0, q = 1, gain = 0.2 }:
   g.gain.setValueAtTime(gain, t);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
   src.connect(bp).connect(g).connect(a.destination);
-  src.start(t);
+  src.start(t, Math.random() * (NOISE_S - dur), dur);
 }
 
 const SOUNDS = {
@@ -226,10 +239,8 @@ export function ambience(w: Mood = {}) {
   if (!a) return;
   // the rain bed: looped noise through a band-pass, its gain ramped
   if (!bed && on && (w.rain || w.storm)) {
-    const n = a.sampleRate * 2, buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     const src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain();
-    src.buffer = buf;
+    src.buffer = white(a);
     src.loop = true;
     bp.type = "bandpass";
     bp.frequency.value = 1400;

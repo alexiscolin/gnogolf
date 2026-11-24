@@ -21,6 +21,7 @@
     "gnomes": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/gnomes.ts",
     "gnomes:stats": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/gnomestats.ts",
     "gnomes:looks": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/gnomelooks.ts",
+    "scene:looks": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/scenelooks.ts",
     "gnomes:rows": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/gnomerows.ts",
     "gnomes:thumbs": "node ../media/gnomes/render.mjs",
     "gnomes:cards": "node ../media/gnomes/cards.mjs",

@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { cartMouth, planks, drawnGround, lantern, lanternsLit, GLASS, DEAD_GLASS, MINES, chamferField, type DeckSpan } from "../lib/scene/mines-kit.ts";
 import { seeded, GRASS } from "../lib/scene/common.ts";
 import { relief } from "../lib/scene/materials.ts";
-import { md, type Hole } from "../lib/scene/data.ts";
+import { md, type Hole, type Height } from "../lib/scene/data.ts";
 import { CELL, inPoly, nearestOnPoly, type Terrain } from "../lib/terrain.ts";
 import holes from "../lib/scene/title-holes.json" with { type: "json" };
 import type { Vec2 } from "../lib/types.ts";
@@ -265,6 +265,32 @@ test("a hole built twice from one object draws its lights once (the Builder's Pu
   await loadWorld("mines");
   const s = holes.mines as unknown as Hole, glows = (g: THREE.Object3D) => (g.getObjectByName("mines:glowBatch") as THREE.Points).geometry.attributes.position.count;
   assert.equal(glows(build(s)), glows(build(s)));
+});
+
+test("the headlamp's sheet is laid on the ground again only once the gnome, or the way he faces, has moved", async () => {
+  const { build, loadWorld } = await import("./scene-harness.ts");
+  await loadWorld("mines");
+  const s = holes.mines as unknown as Hole, course = build(s), sheet = course.getObjectByName("mines:headlamp") as THREE.Mesh;
+  const scene = new THREE.Scene(), gnome = new THREE.Group(), body = new THREE.Group(), lamp = new THREE.Object3D();
+  gnome.name = "gnome";
+  Object.assign(gnome.userData, { body, lamp });
+  scene.add(course, gnome.add(body, lamp));
+  const [x, z] = s.start, pos = sheet.geometry.attributes.position as THREE.BufferAttribute;
+  gnome.position.set(x, (course.userData.height as Height)(x, z) + 0.5, z);
+  const draw = (n = 1) => {
+    for (let i = 0; i < n; i++) (scene.updateMatrixWorld(), sheet.onBeforeRender({} as never, scene, {} as never, sheet.geometry, {} as never, {} as never));
+    return pos.version;
+  };
+  const laid = draw();
+  assert.equal(draw(30), laid, "at rest: the sheet as it lies");
+  body.rotation.y = 1;
+  const turned = draw();
+  assert.ok(turned > laid, "turned to aim: laid again");
+  assert.ok(draw(200) > turned, "laid as the light swings round");
+  const swung = draw(), first = pos.getX(0);
+  assert.equal(draw(30), swung, "facing his way: at rest again");
+  gnome.position.x += 0.5;
+  assert.ok(draw() > swung && pos.getX(0) !== first, "rolled on: laid where he is");
 });
 
 test("the lane's edge wear runs the whole length of a long wall", async () => {

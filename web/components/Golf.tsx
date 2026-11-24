@@ -23,6 +23,7 @@ import type { Feel } from "@/lib/feel";
 import { hasAdena, connect, current, onOurNode, recordRound, chainSplit, readBack, replayDiffers, gasOf, roundGas, shortOf, depositBytes, nameBytes, NAME_GAS, PRICE, onWalletChange, type SendError } from "@/lib/adena";
 import Title, { Hat, choresOf } from "@/components/Title";
 import Worlds, { WORLDS, Emblem, worldOf } from "@/components/Worlds";
+import Community from "@/components/Community";
 import Weather from "@/components/Weather";
 import Share, { ShareClip, type Clip } from "@/components/Share";
 import Gnokey from "@/components/Gnokey";
@@ -74,11 +75,11 @@ declare global {
   }
 }
 
-const SCREENS = ["title", "modes", "rival", "ghosts", "worlds", "pick", "play", "shop"] as const;
+const SCREENS = ["title", "modes", "rival", "ghosts", "worlds", "community", "pick", "play", "shop"] as const;
 type Screen = (typeof SCREENS)[number];
 const isScreen = (v: unknown): v is Screen => SCREENS.some((x) => x === v);
 // the screen before each one, for its Back button and Escape (the picker's: the cups, or a duel's ghosts)
-const BACK = { modes: "title", rival: "modes", ghosts: "rival", worlds: "modes" } as const satisfies Partial<Record<Screen, Screen>>;
+const BACK = { modes: "title", rival: "modes", ghosts: "rival", worlds: "modes", community: "worlds" } as const satisfies Partial<Record<Screen, Screen>>;
 /** The connected Adena account. */
 type Account = NonNullable<Awaited<ReturnType<typeof current>>>;
 // the last finished round not yet on the chain, kept for this tab: installing
@@ -121,7 +122,7 @@ interface Config {
   cup: string;
   place: number;
   gnome: string;
-  screen: "" | "modes" | "rival" | "worlds" | "pick" | "shop";
+  screen: "" | "modes" | "rival" | "worlds" | "community" | "pick" | "shop";
   /** the shop's own address (/g/, /g/<id>/, ?who=): a gnome open, a player's gnomes */
   shop: ShopView;
   shot: string;
@@ -162,9 +163,9 @@ function useConfig() {
       cup: /^[a-z]{2,16}$/.test(p.get("cup") || "") ? p.get("cup") || "" : "",
       place: /^\d{1,3}$/.test(p.get("hole") || "") ? Number(p.get("hole")) : 0,
       gnome: /^[a-z]{2,16}$/.test(p.get("gnome") || "") ? p.get("gnome") || "" : "",
-      // ?screen=modes, ?screen=rival, ?screen=cups: the game's choice, a duel's rival, the cups (a reload stays there);
-      // ?screen=pick: a cup hole's picker, not its play
-      screen: onShop ? "shop" : p.get("screen") === "rival" ? "rival" : p.get("screen") === "modes" ? "modes" : p.get("screen") === "cups" ? "worlds" : p.get("screen") === "pick" ? "pick" : "",
+      // ?screen=modes, ?screen=rival, ?screen=cups, ?screen=community: the game's choice, a duel's rival, the cups, the
+      // community's holes (a reload stays there); ?screen=pick: a cup hole's picker, not its play
+      screen: onShop ? "shop" : p.get("screen") === "rival" ? "rival" : p.get("screen") === "modes" ? "modes" : p.get("screen") === "cups" ? "worlds" : p.get("screen") === "community" ? "community" : p.get("screen") === "pick" ? "pick" : "",
       shop: { open: gp || undefined, who: isAddress(p.get("who")) ? p.get("who") || undefined : undefined },
       shot: p.get("shot") || "",
       // ?play skips the title screen — for screenshots and smoke tests
@@ -556,6 +557,10 @@ export default function Golf() {
   // a link to a hole its author has not holed yet, refused before the wallet came back: theirs once their account is
   // known (the wallet's restore comes later than the link's judging), so judged again then, and opened if it is
   const unheldLink = useRef("");
+  // (forgotten once the player leaves the cups it landed on: never opened over what they went to since)
+  useEffect(() => {
+    if (screen !== "worlds") unheldLink.current = "";
+  }, [screen]);
   useEffect(() => {
     const link = unheldLink.current, me = account?.address;
     if (!link || !me || authorOf(link) !== me || !game.current) return;
@@ -946,6 +951,8 @@ export default function Golf() {
   // the cups' place in a duel: their ghosts' holes
   const cupsScreen: Screen = dare && !solo ? "ghosts" : "worlds";
   const rivalName = (rival && rival.name) || shortAddr(dare);
+  // whose ghost is raced, under the cups' title and the community's
+  const racingNote = dare && !solo && <p className="dare">Racing {rivalName}</p>;
   // the duel on this hole: the rival's best in the round's aim mode, else their other one
   const duelMode = (s && s.roundMode) || aim;
   const duel: Duel | null = useMemo(() => {
@@ -1481,9 +1488,11 @@ export default function Golf() {
   const nextAfter = cupWon && s ? nextCup(cupWon.cup, s.worlds) : ""; // the cup after the one just complete
   // the hole a link opened, named over the gnomes (from the cups, the player knows where they go)
   const linked = s && s.linked && s.id && s.name ? `${s.place ? `Hole ${holeNumber(s.holes, s.id)} · ` : ""}${s.name}` : "";
-  // The address bar follows the screen: the title is the bare page, the cups
-  // ?cup=<world>, the picker adds &gnome= (past the cup's first hole, &hole=
-  // and &screen=pick), a hole ?cup=&hole=&gnome=. A new screen is a new
+  // The address bar follows the screen: the title is the bare page, the
+  // game's choice, a duel's rival, the cups and the community's holes
+  // ?screen=modes, rival, cups and community, the picker ?cup=<world>&gnome=
+  // (past the cup's first hole, &hole= and &screen=pick), a hole
+  // ?cup=&hole=&gnome=. A new screen is a new
   // history entry (Back returns to the one before); moving within a hole —
   // next hole, another gnome — only rewrites the current one.
   const place = s && s.place, world = s && s.world, idHere = s && s.id;
@@ -1497,7 +1506,7 @@ export default function Golf() {
       else q.set("hole", idHere);
       q.set("gnome", gnome);
     } else if (screen === "worlds") q.set("screen", "cups"); // (not ?cup=: that opens the cup)
-    else if (screen === "modes" || screen === "rival") q.set("screen", screen);
+    else if (screen === "modes" || screen === "rival" || screen === "community") q.set("screen", screen);
     // (an address of its own: a step Back returns from; a dare link's title keeps it, Start goes there)
     else if (screen === "ghosts" || (screen === "title" && dare && !solo)) q.set("by", dare);
     // (the picker of a hole past the cup's first: that hole, marked the picker's, so a reload or a copied link lands on it, not in play)
@@ -1530,7 +1539,7 @@ export default function Golf() {
       const p = new URLSearchParams(window.location.search);
       const st: unknown = e.state; // a history entry's state: this page's own, or anyone's
       const was = st && typeof st === "object" && "screen" in st && isScreen(st.screen) ? st.screen : null;
-      const sc: Screen = was || (p.get("hole") ? "play" : p.get("cup") ? "worlds" : p.get("screen") === "rival" ? "rival" : p.get("screen") === "modes" ? "modes" : p.get("screen") === "cups" ? "worlds" : "title");
+      const sc: Screen = was || (p.get("hole") ? "play" : p.get("cup") ? "worlds" : p.get("screen") === "rival" ? "rival" : p.get("screen") === "modes" ? "modes" : p.get("screen") === "cups" ? "worlds" : p.get("screen") === "community" ? "community" : "title");
       // the shop's address says what it showed
       if (sc === "shop") setShopView({ open: (/^\/g\/([a-z0-9]{1,16})\/?$/.exec(window.location.pathname) || [])[1], who: isAddress(p.get("who")) ? p.get("who") || undefined : undefined });
       lastScreen.current = sc; // arriving here is not a new step
@@ -1672,9 +1681,7 @@ export default function Golf() {
           onBack={() => setScreen(BACK.worlds)}
           onAbout={() => setAbout(true)}
           community={s.community}
-          chain={game.current && game.current.chain}
-          me={account && account.address}
-          racing={dare && !solo && <p className="dare">Racing {rivalName}</p>}
+          racing={racingNote}
           next={(c) => toPlay[c][0]?.name}
           podium={<Podium chain={game.current && game.current.chain} me={me} mode={aim} gnome={gnome} onOpen={() => setBoard(true)}
             holes={toPlay[guessCup(s.world || "")].slice(0, 6)} onRace={(p, id) => (raceWith(p), openHole(id))}
@@ -1682,9 +1689,13 @@ export default function Golf() {
               <button className="linkish" onClick={() => (sound("blip"), setBadgesOpen(true))}>Badges {badgesEarned().length}/{BADGES.length} →</button>
               {shopOn && <button className="linkish" onClick={() => (sound("blip"), openShop())}>Gnomes →</button>}
             </>} />}
-          onCommunity={openHole}
+          onCommunity={() => setScreen("community")}
           onPick={enterCup}
         />
+      )}
+      {screen === "community" && s && (
+        <Community community={s.community} chain={game.current && game.current.chain} me={me} onPlay={openHole}
+          onBack={() => setScreen(BACK.community)} onAbout={() => setAbout(true)} racing={racingNote} />
       )}
       {screen === "pick" && <Picker world={(s && s.world) || "garden"} backLabel={cupsScreen === "ghosts" ? "Back to their ghosts" : undefined} hole={linked} dare={duel ? <DuelNote duel={duel} mode={aim} sky={sky} onDrop={() => dropDuel("Solo now. Your strokes still count.")} mark={<Collector chain={game.current?.chain} player={dare} />} /> : !dareHole || dareHole === holeId ? dareNote : ""} aim={aim} onAim={setAim} gnome={gnome} onChange={choose} onPick={play} unlocked={unlocked} chosen={savedGnome()}
         onPlayAs={(id) => (setGnome(id), play())}
@@ -2141,7 +2152,7 @@ export default function Golf() {
       )}
       {rules && <Rules onClose={() => setRules(false)} onBadges={() => (setRules(false), setBadgesOpen(true))} />}
       {badgesOpen && <Badges fresh={freshBadges} onClose={() => setBadgesOpen(false)} />}
-      {(screen === "rival" || screen === "ghosts" || screen === "worlds" || screen === "pick") && <ModeTag kind={screen === "rival" || (dare && !solo) ? "duel" : "solo"} />}
+      {(screen === "rival" || screen === "ghosts" || screen === "worlds" || screen === "community" || screen === "pick") && <ModeTag kind={screen === "rival" || (dare && !solo) ? "duel" : "solo"} />}
       {/* every screen but the title's (its film is the page) */}
       {cfg && screen !== "title" && <NetBanner rpc={cfg.rpc} onSupport={() => setSupport(true)} onFeedback={() => (sound("blip"), setFeedbackOpen(true))} />}
       {feedbackOpen && <Feedback where={{ screen, aim, network: cfg ? networkOf(cfg.rpc) : null, adena: hasAdena(), connected: !!account, card_holes: holesNow, saved_any: savedAny, ...(screen === "play" && s ? { hole: s.id, cup: s.world, cam: s.cam } : {}) }} onClose={() => setFeedbackOpen(false)} />}

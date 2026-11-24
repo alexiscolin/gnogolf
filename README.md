@@ -132,7 +132,7 @@ in the URL.
 | In the URL | What it does |
 |---|---|
 | `?hole=garden/7`, `?cup=garden&hole=7` | opens a hole (any build) |
-| `?screen=cups` | straight to the cups; also `modes`, `rival`, `pick` (any build) |
+| `?screen=cups` | straight to the cups; also `modes`, `rival`, `community`, `pick` (any build) |
 | `?rpc=`, `?web=` | another node, another gnoweb (a dev or local build): this machine's, or over https a `*.gno.land` host, the build's own or one in `NEXT_PUBLIC_ALLOWED_HOSTS` |
 | `?play` | skips the title |
 | `?shot=angle,power` | fires a shot on load |
@@ -163,8 +163,9 @@ scripts/check.sh --smoke      # then a played round, on a local chain and npm ru
 
 `check.sh` runs the types and the linter, the Gno tests with their gas and
 storage goldens, the holes' fingerprints, the packages staged as a deploy
-takes them, the gnomes' portraits, catalogue and looks, the wasm against the
-realm byte for byte, and the unit tests with their coverage floor. Besides the
+takes them, the gnomes' portraits, catalogue and looks, the scene's builds
+against their golden, the wasm against the realm byte for byte, and the unit
+tests with their coverage floor. Besides the
 toolchain it needs TinyGo 0.42.0
 (`brew install tinygo-org/tools/tinygo`, with binaryen's `wasm-opt`) and
 Chrome (`CHROME` says where).

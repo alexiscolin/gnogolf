@@ -151,9 +151,6 @@ export async function gateOf(chain: Judging, id: string, deps: JudgeDeps = build
   const [v, held] = await Promise.all([verdictOf(chain, id, deps), heldFor(chain, id, self)]);
   return !v.ok ? "unchecked" : held ? "" : "unheld";
 }
-/** gateOf for a link: nothing against one not read now (it is loaded, and said not to load or to lead nowhere). */
-export const linkGate = (chain: Judging, id: string, deps: JudgeDeps = builder, self?: string | null): Promise<Gate> =>
-  gateOf(chain, id, deps, self).catch(() => "");
 
 /** Whether this browser already knows a version passes the rules, null if not (never a judging: the phone's /build
  *  screen loads no builder.wasm). */

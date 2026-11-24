@@ -91,10 +91,6 @@ const Awning = () => {
   );
 };
 
-/** A hole's sketch on its blueprint, inked (behind the Builder's gnome, as the shop's awning: what says "you draw
- *  holes"): the sheet tilted, its grid, the lane round its bend, the ball at its tee, the flag rising out of the
- *  disc over the sheet's top, the pencil out of its side. */
-
 /**
  * A duel's rival, on a screen of their own: a friend's name or address typed
  * (the (i) says where to find one), three picked for the player (today's

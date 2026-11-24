@@ -16,7 +16,7 @@ import { canonicalHex, proofKey } from "../lib/builder/proof.ts";
 import { FLAT, TILT, toBoard, toPlane, toScreen, fromPlane, matrixOf, relook, type Look, type View } from "../lib/builder/view.ts";
 import { FIELD } from "../lib/builder/rules.ts";
 import { parseDraft, type Draft, type V } from "../lib/builder/draft.ts";
-import { placePiece } from "../lib/builder/edit.ts";
+import { clampMove, movePiece, placePiece } from "../lib/builder/edit.ts";
 import { QUARTER } from "../lib/builder/handles.ts";
 import { validate } from "../lib/builder/pipeline.ts";
 
@@ -79,7 +79,7 @@ async function play(world: string, look: Look, three = false) {
     }
     return b;
   };
-  const env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5 });
+  const env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5, slop: 4 / v.k });
   const drag = (target: Target, from: V, to: V, bin = false) => {
     ed.g.down(env(), at(from), target);
     for (let k = 1; k <= 4; k++) ed.g.move(env(), at([from[0] + ((to[0] - from[0]) * k) / 4, from[1] + ((to[1] - from[1]) * k) / 4]));
@@ -116,7 +116,7 @@ void test("the same pointer edits on the 2D board and on the 3D one, flat, turne
 void test("a post whose rim sets the frame (the hole shifted off the board's quarters): the grid the hole's own, the tee's, for every edit", async () => {
   const palette = await loadPalette("island"), o = { host, palette }, full = { ...o, census }, entry = (id: string) => palette.find((e) => e.id === id)!;
   const castle = placePiece(entry("*/post/sandcastle"), "s", [15, 0]); // (the island's sandcastle, r 2.2, may sit on a rail: the hole's low edge its rim)
-  const ed = editor({ ...lane("island", [castle]), slug: "rim" }), env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5 });
+  const ed = editor({ ...lane("island", [castle]), slug: "rim" }), env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5, slop: 0.125 });
   assert.notEqual(ed.s.now().tee[1] % QUARTER, 0, "framed by the rim: the tee off the board's quarters");
   const drag = (target: Target, from: V, to: V) => (ed.g.down(env(), from, target), ed.g.move(env(), to), ed.g.up(env(), to));
   ed.arm(entry("*/post/rock"));
@@ -163,7 +163,8 @@ void test("alongAxis: a stroke in straight legs, its wobble left out; it turns o
 void test("a piece pressed and let go where it was (a click that selects it), or dragged back to its place: nothing to undo", async () => {
   const palette = await loadPalette("garden"), o = { host, palette }, full = { ...o, census };
   const rock = placePiece(palette.find((e) => e.id === "*/post/rock")!, "r", [15, 10]);
-  const ed = editor({ ...lane("garden", [rock]), slug: "click" }), env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5 });
+  // (the board at 8 px a unit, a big hole fitted on a laptop: a slop of 4 px)
+  const ed = editor({ ...lane("garden", [rock]), slug: "click" }), env = () => ({ draft: ed.s.now(), quick: o, full, armed: ed.armed(), selected: ed.sel(), step: 0.5, slop: 4 / 8 });
   const at = (ed.s.now().pieces.find((p) => p.id === "r")!.geometry as { c: V }).c;
   assert.equal(ed.s.canUndo(), false);
   ed.g.down(env(), at, { t: "piece", id: "r" }), ed.g.up(env(), at);
@@ -174,7 +175,22 @@ void test("a piece pressed and let go where it was (a click that selects it), or
   ed.g.down(env(), [at[0] + 0.3, at[1] + 0.2], { t: "handle", key: "c" }), ed.g.up(env(), [at[0] + 0.3, at[1] + 0.2]);
   const tee = ed.s.now().tee;
   ed.g.down(env(), [tee[0] + 0.3, tee[1]], { t: "end", which: "tee" }), ed.g.up(env(), [tee[0] + 0.3, tee[1]]);
+  // and the hand wobbling a pixel or two before the let-go
+  ed.g.down(env(), [tee[0] + 0.3, tee[1]], { t: "end", which: "tee" }), ed.g.move(env(), [tee[0] + 0.5, tee[1]]), ed.g.up(env(), [tee[0] + 0.5, tee[1]]);
   assert.equal(ed.s.canUndo(), false, "a handle, the tee: touched");
   ed.g.down(env(), at, { t: "piece", id: "r" }), ed.g.move(env(), [at[0] + 2, at[1]]), ed.g.up(env(), [at[0] + 2, at[1]]);
   assert.equal(ed.s.canUndo(), true, "moved: undone in one step");
+});
+
+void test("a nudge that moves nothing (the keyboard, toward a rail the piece touches): nothing to undo, and Redo kept", async () => {
+  const palette = await loadPalette("garden"), o = { host, palette };
+  const rock = placePiece(palette.find((e) => e.id === "*/post/rock")!, "r", [12, 0.5], { size: 0.5 }); // (framed: touching the top rail)
+  const s = makeSession({ ...lane("garden", [rock]), slug: "nudge" });
+  const moveTo = (to: V) => s.set(frame({ ...s.now(), pieces: s.now().pieces.map((p) => (p.id === "r" ? movePiece(p, to) : p)) }));
+  moveTo([20, 10]);
+  s.undo();
+  const at = (s.now().pieces.find((p) => p.id === "r")!.geometry as { c: V }).c, to = clampMove(s.now(), "r", [at[0], at[1] - 0.5], o);
+  assert.deepEqual(to, at, "the clamp keeps it where it is");
+  moveTo(to); // (as the editor's nudge makes the edit)
+  assert.deepEqual([s.canUndo(), s.canRedo()], [false, true]);
 });

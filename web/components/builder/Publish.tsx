@@ -129,9 +129,10 @@ export default function Publish({ host, draft, author, next, onDraft, onRetest, 
     setSent("landing");
     // (sent: Adena's answer, or gnokey's "I ran it": this browser may play its version before its author holds a best on
     // it, lib/community.ts keepOwn; its alias, the link it is shared by, only once the chain names it: never one a
-    // transaction that failed would let this browser play before its author holds it)
-    await keepOwn(chain, id);
-    if (await landed(async () => (await chain.current(alias).catch(() => "")) === id, () => live.current)) return (await keepOwn(chain, id, true), setSent("done"), onDone(id));
+    // transaction that failed would let this browser play before its author holds it. A node not answering marks
+    // nothing: the transaction is sent all the same)
+    await keepOwn(chain, id).catch(() => {});
+    if (await landed(async () => (await chain.current(alias).catch(() => "")) === id, () => live.current)) return (await keepOwn(chain, id, true).catch(() => {}), setSent("done"), onDone(id));
     if (live.current) (setSent(""), setWhy("The chain does not show it yet. If you signed, give it a minute and look again."));
   };
   const adena = async () => {

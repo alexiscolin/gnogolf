@@ -23,19 +23,18 @@ const hintsOf = (world: string) => [
   ["steps", "Then Publish it for anyone to play"],
 ] as const;
 
-export default function Hints({ world, onDone, glossary = null }: {
+export default function Hints({ world, glossary = null }: {
   /** the draft's: the weathers Play's hint names */
   world: string;
-  onDone: () => void;
-  /** the "?": the world's pieces under the hints */
-  glossary?: { world: string; palette: readonly PaletteEntry[] } | null;
+  /** the "?": the world's pieces under the hints, in a sheet (onClose: closed) */
+  glossary?: { world: string; palette: readonly PaletteEntry[]; onClose: () => void } | null;
 }) {
   const hints = (inPanel: boolean) => hintsOf(world).map(([at, text], k) => <p key={at} className={inPanel ? "bhint bhint--in" : "bhint"}><b>{k + 1}</b>{text}</p>);
   // the first run: the four in order, the pointer through them
   if (!glossary) return <div className="bhints" role="note" aria-label="Four hints">{hints(false)}</div>;
   const tiles = allTiles(glossary.palette);
   return (
-    <Sheet label={`How it works, and ${theWorld(glossary.world)}'s pieces`} className="bgloss" onClose={onDone}>
+    <Sheet label={`How it works, and ${theWorld(glossary.world)}'s pieces`} className="bgloss" onClose={glossary.onClose}>
       <h2>How it works</h2>
       <div className="bgloss__hints">{hints(true)}</div>
       <h3 className="h-sub">{cap(theWorld(glossary.world))}&apos;s pieces</h3>

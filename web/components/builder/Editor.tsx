@@ -488,10 +488,10 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
               <aside className="col" aria-label="The selected piece">
                 <h2 className="col__head">Piece settings</h2>
                 {/* painting with no piece selected: how the paint goes, in its place */}
-                {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
+                {paint && !piece ? <p className="nothing">Drag to paint (or erase) the green · drag a side to move it · click a side to open it · dashed: open, no wall</p> : <Inspector draft={draft} kept={kept} piece={piece} quick={quick} full={full} playing={blinking} onPlay={() => setBlinking((on) => !on)} onPreview={preview} onCommit={commit} onCancel={cancel} onSet={set} onSay={say} onTurn={turn} onCopy={copy} onDelete={remove}
                   onChoose={(tile, id) => setChosen({ world: draft.world, looks: { ...looks, [tile]: id } })} />}
                 {/* the first run's hints, in order, under the empty settings: never over the hole, the 3D or one another */}
-                {hints && !piece && <Hints world={draft.world} onDone={onHinted} />}
+                {hints && !piece && <Hints world={draft.world} />}
               </aside>
             </div>
           </>
@@ -503,7 +503,7 @@ export default function Editor({ host, first, author, onSave, onBack, onPublish,
             </div>
           ) : <p className="bench__wait" aria-busy="true">Loading the {draft.world}&apos;s pieces…</p>
         )}
-        {again && palette && <Hints world={draft.world} glossary={{ world: draft.world, palette }} onDone={() => (setAgain(false), onHinted())} />}
+        {again && palette && <Hints world={draft.world} glossary={{ world: draft.world, palette, onClose: () => (setAgain(false), onHinted()) }} />}
       </main>
     </>
   );

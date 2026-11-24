@@ -304,7 +304,7 @@ export default function Board(props: BoardProps) {
     const r = box.current!.getBoundingClientRect();
     return toBoard(view, look, [e.clientX - r.left, e.clientY - r.top]);
   };
-  const env: Env = { draft, quick, full, armed, selected, step, paint: mode && green ? { mode, green } : null };
+  const env: Env = { draft, quick, full, armed, selected, step, slop: 4 / view.k, paint: mode && green ? { mode, green } : null };
 
   /** A side from the keyboard: an arrow moves it a cell (along its way out, the arrow as it points on the screen), Enter or Space opens or shuts it; the author's wall on it: neither, why said. */
   function onSideKey(e: RKeyboardEvent<SVGGElement>, i: number) {

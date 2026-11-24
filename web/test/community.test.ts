@@ -4,9 +4,10 @@
 // of its data, under the rules' version), only for holes about to be shown.
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import { host, hexOf, lane } from "./builder-fixture.ts";
 import "./scene-harness.ts";
-import { aliasOf, authorHoled, BESTS_AT_ONCE, bornBefore, DAY_SKIPS, keepDay, keptDay, VERDICT_RULES, communityOf, DAY_TRIES, dayHole, dayHole as day, dayPoint, gateOf, heldBefore, heldFor, dayRows, HARD_KEY, keepLevel, keepOwn, keptLevel, knownOnly, knownVerdict, linkGate, MODES, pageOf, shownOnly, sortHoles, verdictOf, VERDICT_KEY, type Verdict } from "../lib/community.ts";
+import { aliasOf, authorHoled, BESTS_AT_ONCE, bornBefore, DAY_SKIPS, keepDay, keptDay, VERDICT_RULES, communityOf, DAY_TRIES, dayHole, dayPoint, gateOf, heldBefore, heldFor, dayRows, HARD_KEY, keepLevel, keepOwn, keptLevel, knownOnly, knownVerdict, MODES, pageOf, shownOnly, sortHoles, verdictOf, VERDICT_KEY, type Verdict } from "../lib/community.ts";
 import { writeHole } from "../lib/builder/gg1.ts";
 import type { DayRow, HoleRow } from "../lib/types.ts";
 import type { HoleIn } from "../lib/builder/types.ts";
@@ -142,13 +143,9 @@ void test("a hole whose data cannot be read now is no verdict: never said to bre
   const chain = chainOf(data);
   await assert.rejects(verdictOf(chain, `${A}/good/v1`, deps), /no hole/, "the node down: no verdict at all");
   await assert.rejects(playable(chain, `${A}/good/v1`, deps), /no hole/, "not a no: the load says it did not load, with Try again");
-  assert.equal(await linkGate(chain, `${A}/good/v1`, deps), "", "a link to it (or to an id the chain has not): not refused, so loaded, and said not to load");
   assert.ok(!Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i) ?? "").some((k) => k.startsWith(VERDICT_KEY)), "no verdict kept");
   data[`${A}/good/v1`] = goodHex;
   assert.deepEqual(await verdictOf(chain, `${A}/good/v1`, deps), { ok: true }, "read later: judged, and it passes");
-  data[`${A}/bad/v1`] = hostileHex;
-  assert.equal(await linkGate(chain, `${A}/bad/v1`, deps), "unchecked", "refused only on a verdict that refuses it");
-  assert.equal(await linkGate(chain, "garden/1/v1", deps), "", "a course hole: never");
 });
 
 void test("a list's page: its verified rows, said to be judging until every row of the page has a verdict", () => {
@@ -215,16 +212,16 @@ void test("dayHole: the first candidate published before the day began that the 
   const ok = { ok: true as const }, no = { ok: false as const, why: "x" };
   const born = (m: [HoleRow, boolean | null][]) => new Map(m.map(([h, v]) => [h.slot ?? "", v]));
   const v = (m: [HoleRow, Verdict | null][]) => new Map(m.map(([h, x]) => [h.id, x]));
-  const all = new Map<string, boolean | null>(), dayHole = (rows: HoleRow[], b: Map<string, boolean | null>, vs: Map<string, Verdict | null>, held = all) => day(rows, b, vs, held);
+  const all = new Map<string, boolean | null>();
   for (const h of [a, b, c]) all.set(h.id, true);
-  assert.deepEqual(dayHole([a, b, c], born([[a, false], [b, true]]), v([[b, ok]])), { day: b, unread: false }, "a: published today, never the day's");
-  assert.deepEqual(dayHole([a, b, c], born([[a, true], [b, true]]), v([[a, no], [b, ok]])), { day: b, unread: false }, "a: refused, the next");
-  assert.deepEqual(dayHole([a, b, c], born([[a, true]]), v([])), { day: null, unread: false, need: { what: "verdict", h: a } }, "a not judged yet: the day waits");
-  assert.deepEqual(dayHole([a, b, c], born([[a, true], [b, true]]), v([[a, null], [b, ok]])), { day: null, unread: true }, "a not read: never skipped");
-  assert.deepEqual(dayHole([a, b, c], born([[a, null]]), v([])), { day: null, unread: true }, "when a was published not read: never skipped");
+  assert.deepEqual(dayHole([a, b, c], born([[a, false], [b, true]]), v([[b, ok]]), all), { day: b, unread: false }, "a: published today, never the day's");
+  assert.deepEqual(dayHole([a, b, c], born([[a, true], [b, true]]), v([[a, no], [b, ok]]), all), { day: b, unread: false }, "a: refused, the next");
+  assert.deepEqual(dayHole([a, b, c], born([[a, true]]), v([]), all), { day: null, unread: false, need: { what: "verdict", h: a } }, "a not judged yet: the day waits");
+  assert.deepEqual(dayHole([a, b, c], born([[a, true], [b, true]]), v([[a, null], [b, ok]]), all), { day: null, unread: true }, "a not read: never skipped");
+  assert.deepEqual(dayHole([a, b, c], born([[a, null]]), v([]), all), { day: null, unread: true }, "when a was published not read: never skipped");
   const many = Array.from({ length: DAY_TRIES + 1 }, (_, i) => listed(`h${i}`));
   for (const h of many) all.set(h.id, true);
-  assert.deepEqual(dayHole(many, born(many.map((h) => [h, true])), v(many.map((h, i) => [h, i < DAY_TRIES ? no : ok]))), { day: null, unread: false, done: true }, "DAY_TRIES refused: none today, no page more read");
+  assert.deepEqual(dayHole(many, born(many.map((h) => [h, true])), v(many.map((h, i) => [h, i < DAY_TRIES ? no : ok])), all), { day: null, unread: false, done: true }, "DAY_TRIES refused: none today, no page more read");
 });
 
 void test("the day's hole: the same all day however many publish (more than Holes() lists), version or are taken down beside it", async () => {
@@ -304,8 +301,8 @@ void test("a hole's meter level, kept by its version on its chain (its id, genes
   await assert.doesNotReject(keepLevel({ ...chain, genesis: () => Promise.reject(new Error("down")) }, id, 1), "its chain not read: nothing kept, nothing thrown");
 });
 
-//a publish with gnokey skips the Builder's proof, and the rules alone pass a hole no round
-// can hole. A community hole is listed, linked, played and picked for the day only once its author holds a best on it.
+// A publish with gnokey skips the Builder's proof, and the rules alone pass a hole no round can hole: a community
+// hole is listed, linked, played and picked for the day only once its author holds a best on it.
 void test("a community hole its author has not holed: not listed, not played, not the day's; once they hold a best, all three", async () => {
   let held = false;
   const chain = chainOf({ [`${A}/good/v1`]: goodHex, [`${A}/bad/v1`]: hostileHex }, "dev", "G1", () => held);
@@ -347,16 +344,6 @@ void test("a best not read now is no verdict", async () => {
   assert.deepEqual(await knownVerdict(down, `${A}/good/v1`), { ok: true }, "the rules' verdict kept all the same: a fact of its own, the best asked again");
 });
 
-// The verifier's (2026-10-22): a link says why it is refused; the day's pick holds all day; the author plays their own.
-void test("a link to a hole refused says why: not the Builder's rules, or not holed by its maker yet; not read now, not refused", async () => {
-  const chain = chainOf({ [`${A}/good/v1`]: goodHex, [`${A}/bad/v1`]: hostileHex }, "dev", "G1", () => false);
-  assert.equal(await linkGate(chain, `${A}/good/v1`, deps), "unheld");
-  assert.equal(await linkGate(chain, `${A}/bad/v1`, deps), "unchecked");
-  assert.equal(await linkGate(chain, "garden/1/v1", deps), "");
-  const down = { ...chain, bests: () => Promise.reject(new Error("node down")) };
-  assert.equal(await linkGate(down, `${A}/good/v1`, deps), "", "not read now: loaded, and said not to load");
-});
-
 void test("the day's pick: a hole counts only with its author's best set before the day began; one not holed yet passes without a try", async () => {
   const day = Date.UTC(2026, 9, 7);
   // the author's best at block 10 (before the day) on x, at block 500 (during it) on y, none on z
@@ -371,12 +358,12 @@ void test("the day's pick: a hole counts only with its author's best set before 
   assert.equal(await heldBefore(chain, `${A}/z/v1`, day), false);
   assert.equal(await heldBefore(chain, "garden/1/v1", day), true);
   const rows = ["z", "y", "x"].map((n) => ({ id: `${A}/${n}/v1`, slot: `${A}/${n}` })), born = new Map(rows.map((h) => [h.slot, true]));
-  const notHeld = { ok: true as const }, verdicts = new Map(rows.map((h) => [h.id, h.id.includes("/x/") ? { ok: true as const } : notHeld]));
+  const ok = { ok: true as const }, verdicts = new Map(rows.map((h) => [h.id, ok]));
   const held = new Map(await Promise.all(rows.map(async (h) => [h.id, await heldBefore(chain, h.id, day)] as const)));
   assert.equal(dayHole(rows, born, verdicts, held).day?.id, `${A}/x/v1`, "z and y passed over: x, held before the day");
   // more unheld ones than DAY_TRIES before it: none of them a try
   const many = [...Array.from({ length: DAY_TRIES + 2 }, (_, i) => ({ id: `${A}/u${i}/v1`, slot: `${A}/u${i}` })), rows[2]];
-  assert.equal(dayHole(many, new Map(many.map((h) => [h.slot, true])), new Map(many.map((h) => [h.id, h === rows[2] ? { ok: true as const } : notHeld])), new Map(many.map((h) => [h.id, h === rows[2]]))).day?.id, `${A}/x/v1`);
+  assert.equal(dayHole(many, new Map(many.map((h) => [h.slot, true])), new Map(many.map((h) => [h.id, ok])), new Map(many.map((h) => [h.id, h === rows[2]]))).day?.id, `${A}/x/v1`);
   // a best not read now: the day waits, never skips it
   assert.deepEqual(dayHole(rows, born, verdicts, new Map([[rows[0].id, null]])), { day: null, unread: true });
 });
@@ -428,7 +415,6 @@ void test("the day's pick is kept in this browser for its UTC day, by chain; a k
   assert.equal(await keptDay(chain, day), null, "not a community hole's row");
 });
 
-//a best at the chain's first block counts; the author sees their own listed.
 void test("heldBefore: a best at block 0 (the chain's first) is a best held before the day", async () => {
   const day = Date.UTC(2026, 9, 7);
   const chain = {
@@ -445,4 +431,12 @@ void test("the community list shows the author their own hole before they hold a
   const page = async (me: string | null) => pageOf(rows, 10, verdicts, new Map([[rows[0].id, await heldFor(chain, rows[0].id, me)]])).rows.length;
   assert.equal(await page(A), 1, "its author's account");
   assert.equal(await page("g1" + "c".repeat(38)), 0, "another's");
+});
+
+void test("the community's screen (components/Community.tsx, read as source): the most played read with the day's and the page's, the worlds by their names, no \"no hole\" while more lie beyond", () => {
+  const src = fs.readFileSync(new URL("../components/Community.tsx", import.meta.url), "utf8");
+  assert.ok(src.indexOf("const trending =") < src.indexOf("const seen =") && /const seen = [^\n]*trending\.map/.test(src), "the most played among the holes whose maps and players are read");
+  assert.match(src, /players=\{saved\?\.asked\.has\(h\.id\) \? statsOf\(/, "a card's players said once its hole was read, never 0 before");
+  assert.match(src, /\{worldName\(w\)\}<\/Button>/, "a world's chip names it as its cards do");
+  assert.match(src, /!listed\.length && !page\.more && \(/, "a page showing none with more beyond is not said to be empty");
 });

@@ -12,11 +12,11 @@ export const garden = await loadPalette("garden");
 export const put = (id: string, entry: string, at: [number, number], p: Parameters<typeof placePiece>[3] = {}) => placePiece(garden.find((e) => e.id === entry)!, id, at, p);
 
 type P = [number, number];
-const plank = (id: string, a: P, b: P, thick: number, clock: Draft["pieces"][number]["clock"] = { k: "fixed" }) => ({ ...put(id, "*/bar/plank", a), geometry: { t: "bar" as const, a, b, thick }, clock });
-const box = (id: string, entry: string, min: P, max: P, more = {}) => ({ ...put(id, entry, min), geometry: { t: "rect" as const, min, max }, ...more });
-const slope = (id: string, min: P, max: P, grade: number, dir: P) => ({ ...put(id, "*/slope/", min, { grade }), geometry: { t: "rect" as const, min, max }, params: { grade, dir } });
+export const plank = (id: string, a: P, b: P, thick: number, clock: Draft["pieces"][number]["clock"] = { k: "fixed" }) => ({ ...put(id, "*/bar/plank", a), geometry: { t: "bar" as const, a, b, thick }, clock });
+export const box = (id: string, entry: string, min: P, max: P, more = {}) => ({ ...put(id, entry, min), geometry: { t: "rect" as const, min, max }, ...more });
+export const slope = (id: string, min: P, max: P, grade: number, dir: P) => ({ ...put(id, "*/slope/", min, { grade }), geometry: { t: "rect" as const, min, max }, params: { grade, dir } });
 /** The lane cut across at x 15 but for a door 3 wide (two pieces taking turns in it shut it for good). */
-const door = () => [rail("u", [15, 0], [15, 8.5]), rail("v", [15, 11.5], [15, 20])];
+export const door = () => [rail("u", [15, 0], [15, 8.5]), rail("v", [15, 11.5], [15, 20])];
 
 /** Each broken hole: what it breaks, the hole, the refusals the whole pipeline gives (rule, piece, sentence). */
 export const cases: [string, () => Draft, string[]][] = [
@@ -108,8 +108,8 @@ export const cases: [string, () => Draft, string[]][] = [
     [`E16 -: Too many pieces: ${BUILDER_LIMITS.pieces + 1} of ${BUILDER_LIMITS.pieces}`]],
   ["E16: a moving piece past the Builder's limit (clock hands)", () => lane("garden", Array.from({ length: BUILDER_LIMITS.moving + 1 }, (_, k) => put(`h${k}`, "*/bar/clock hand", [8, 4 + 2 * k])), 50, 30),
     [`E16 -: Too many moving pieces: ${BUILDER_LIMITS.moving + 1} of ${BUILDER_LIMITS.moving}`]],
-  // each one published and played before these rules, a ball trapped for good, a
-  // hole no round can hole, or a piece drawn where the physics has none
+  // each one published and played before these rules: a ball trapped for good, a hole no round can hole, or a piece
+  // drawn where the physics has none
   ["E17: a tunnel let out in a box of rails: the ball never gets out", () => lane("garden", [put("x", "*/tunnel/cave", [8, 3], { to: [17, 15] }), rail("a", [14, 12], [20, 12]), rail("b", [20, 12], [20, 18]), rail("c", [20, 18], [14, 18]), rail("d", [14, 18], [14, 12])]),
     ["E17 x: The cave lets the ball out at (18.5, 16.5), where it can never get back to the cup"]],
   ["E17: a tunnel let out on an island in a pond: every shot off it is back on it", () => lane("garden", [put("x", "*/tunnel/cave", [8, 3], { to: [17, 15] }),
@@ -120,6 +120,10 @@ export const cases: [string, () => Draft, string[]][] = [
   ["E17: that dead end in four abutting slopes of one fall (one slope to climb, no crest between them)", () => lane("garden", [rail("c", [8, 5], [50, 5]), ...[10, 20, 30, 40].map((x, i) => slope(`x${i}`, [x, 0], [x + 10, 5], 0.35, [1, 0]))], 50, 20),
     ["E17 x0: The slope sends the ball down at (51.05, 2.05), where it can never get back to the cup"]],
   ["E17: that dead end with ice laid on it (ice keeps it one-way)", () => lane("garden", [rail("c", [8, 5], [50, 5]), slope("x", [10, 0], [50, 5], 0.35, [1, 0]), box("i", "*/surface/ice", [10, 0], [50, 5])], 50, 20),
+    ["E17 x: The slope sends the ball down at (51.05, 2.05), where it can never get back to the cup"]],
+  ["E17: that dead end's slope run back under the tee (from the tee, the ball rolls down into it)", () => ({ ...lane("garden", [rail("c", [8, 5], [50, 5]), slope("x", [0, 0], [50, 5], 0.35, [1, 0])], 50, 20), tee: [3, 4] }),
+    ["E17 x: The slope sends the ball down at (51.05, 2.05), where it can never get back to the cup"]],
+  ["E17: that dead end with a bumper out on the lane (none in it for the ball to kick off)", () => lane("garden", [rail("c", [8, 5], [50, 5]), slope("x", [10, 0], [50, 5], 0.35, [1, 0]), put("k", "*/post/bumper", [40, 16])], 50, 20),
     ["E17 x: The slope sends the ball down at (51.05, 2.05), where it can never get back to the cup"]],
   ["E17: the cup beyond a valley of two long slopes: down the one, no ball climbs the other (rolling spends what the downhill gave)", () => lane("garden", [slope("x", [10, 0], [40, 10], 0.35, [1, 0]), slope("y", [40, 0], [70, 10], 0.35, [-1, 0])], 80, 10),
     ["E17 y: The cup cannot be reached from the tee: the slope is too long for a ball to climb"]],

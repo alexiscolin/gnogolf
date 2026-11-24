@@ -14,9 +14,10 @@
 // the day's too, is first judged by the Builder's own rules (verdictOf), none
 // the site took down is ever in the list (communityOf), and none whose author
 // holds no best on it (heldFor: the chain's word that it holes).
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { DayRow, HoleRow } from "@/lib/types";
 import { sound } from "@/lib/feel";
+import { FrontScreen } from "@/components/About";
 import { Button, Segmented } from "@/components/ui";
 import { authorFirst, authorMark, chainQuery, plural } from "@/components/common";
 import { HoleMap, NoMap, useHoleMaps } from "@/components/HoleMap";
@@ -29,9 +30,8 @@ import { inTurn, type MapHole } from "@/lib/duel";
 import { undeclared, type Chain } from "@/lib/chain";
 import { aliasOf, authorHoled, BESTS_AT_ONCE, shownOnly, bornBefore, dayHole, dayRows, dayStart, heldBefore, heldFor, keepDay, keepLevel, keptDay, keptLevel, pageOf, sortHoles, verdictOf, type Helds, type SortBy, type Verdict, type Verdicts } from "@/lib/community";
 import { takedownOf, takenDown } from "@/lib/takedown";
-import { cap } from "@/lib/builder/rules";
 import { SearchButton, SearchRow, useSearch } from "@/components/Search";
-import { CUPS } from "@/lib/card";
+import { CUPS, worldName } from "@/lib/card";
 
 /** How many community holes a page judges and lists, one more page on each "Show more". */
 const PAGE = 24;
@@ -46,12 +46,16 @@ const found = (h: HoleRow, q: string) => !q || [h.name, h.slot, authorOf(h.id)].
 /** How many holes the trending row shows (the most played of those open), and how many of the most played are judged for it. */
 const TRENDING = 3, TREND_JUDGED = 8;
 
-export default function Community({ community, chain, me = null, onPlay }: {
+export default function Community({ community, chain, me = null, onPlay, onBack, onAbout, racing }: {
   community: readonly HoleRow[];
   chain: Pick<Chain, "bests" | "blockTime" | "dayCandidates" | "ghost" | "holeData" | "chainId" | "genesis" | "realm" | "state" | "savedOn"> | null;
   /** the player's address, if known: their own holes listed before they hold a best on them */
   me?: string | null;
   onPlay: (id: string) => void;
+  onBack: () => void;
+  onAbout: () => void;
+  /** a duel chosen: whose ghost is raced, said under the title */
+  racing?: ReactNode;
 }) {
   const [by, setBy] = useState<SortBy>("new");
   // one world's holes, or every one (offered once there are holes in two worlds)
@@ -158,14 +162,17 @@ export default function Community({ community, chain, me = null, onPlay }: {
     for (const h of page.rows) if (authorOf(h.id) && !holed.has(h.id)) void authorHoled(chain, h.id).then((yes) => live && setHoled((m) => new Map(m).set(h.id, yes)), () => {});
     return () => void (live = false);
   }, [chain, page.judging, ids]); // eslint-disable-line react-hooks/exhaustive-deps -- (holed: read once each, not again as it fills)
-  // the players of the page's holes and the day's (one read a dozen holes), once the page is judged, each hole read once
+  // the players of the holes shown, the day's, the most played and the page's (one read a dozen holes), once the page
+  // is judged, each hole read once
   const [saved, setSaved] = useState<SavedRead | null>(null);
   // the day's hole: this browser's for the day, else the one dayHole picked (kept for the day once found)
   const day = kept ?? (kept === null ? today.day : null), unread = page.unread || (!kept && today.unread) || dayDown;
   useEffect(() => {
     if (chain && kept === null && today.day) void keepDay(chain, now, today.day);
   }, [chain, kept, today.day?.id]); // eslint-disable-line react-hooks/exhaustive-deps -- (now: the visit's; today.day: by its id)
-  const seen = [...(day ? [day.id] : []), ...page.rows.map((h) => h.id)];
+  // trending: the most played holes open to the player, none the day's
+  const trending = shownOnly(played, verdicts, opens).filter((h) => h.id !== day?.id).slice(0, TRENDING);
+  const seen = [...new Set([...(day ? [day.id] : []), ...trending.map((h) => h.id), ...page.rows.map((h) => h.id)])];
   useEffect(() => {
     if (!chain || page.judging || !seen.length) return;
     let live = true;
@@ -182,63 +189,63 @@ export default function Community({ community, chain, me = null, onPlay }: {
   const [remix, setRemix] = useState(false);
   useEffect(() => setRemix(builderOn() && onComputer((q) => window.matchMedia(q).matches)), []);
   const card = (h: HoleRow, big = false) => (
-    <HoleCard h={h} big={big} map={maps.get(h.id)} players={saved && statsOf(h, saved.saved, authorOf(h.id) ?? "")} mark={authorMark(holed.get(h.id))}
+    <HoleCard h={h} big={big} map={maps.get(h.id)} players={saved?.asked.has(h.id) ? statsOf(h, saved.saved, authorOf(h.id) ?? "") : null} mark={authorMark(holed.get(h.id))}
       level={by === "hard" ? levels.get(h.id) : undefined} remix={remix} onPlay={() => (sound("select"), onPlay(h.id))} />
   );
-  // trending: the most played holes open to the player, none the day's
-  const trending = shownOnly(played, verdicts, opens).filter((h) => h.id !== day?.id).slice(0, TRENDING);
   return (
-    <section className="community" aria-label="Community holes">
-      {(day || trending.length > 0) && (
-        <div className="community__featured">
-          {day && (
-            <div className="community__day">
-              <span className="eyebrow">Hole of the day</span>
-              {card(day, true)}
-            </div>
-          )}
-          {trending.length > 0 && (
-            <div className="community__trending">
-              <span className="eyebrow">Most played</span>
-              <ul className="community__cards">{trending.map((h) => <li key={h.id}>{card(h)}</li>)}</ul>
-            </div>
-          )}
-        </div>
-      )}
-      {/* every hole, under one toolbar as the shop's: a chip a world at its left (pressed again, every world); the
-          search's icon (its row under the toolbar while in use) and the order at its right */}
-      <span className="eyebrow">Every hole</span>
-      <div className="cbar">
-        {worlds.length > 1 && (
-          <div className="cbar__worlds" role="group" aria-label="Show one world's holes">
-            {worlds.map((w) => (
-              <Button key={w} size="s" type="button" aria-pressed={world === w} onClick={() => (sound("blip"), setWorld(world === w ? "all" : w), setShown(PAGE))}>{cap(w)}</Button>
-            ))}
+    <FrontScreen className="worlds--v2" tint="garden" back="Back to the cups" onBack={onBack} onAbout={onAbout} eyebrow="Holes by players · not ranked" title="Community holes" dare={racing}>
+      <section className="community" aria-label="Community holes">
+        {(day || trending.length > 0) && (
+          <div className="community__featured">
+            {day && (
+              <div className="community__day">
+                <span className="eyebrow">Hole of the day</span>
+                {card(day, true)}
+              </div>
+            )}
+            {trending.length > 0 && (
+              <div className="community__trending">
+                <span className="eyebrow">Most played</span>
+                <ul className="community__cards">{trending.map((h) => <li key={h.id}>{card(h)}</li>)}</ul>
+              </div>
+            )}
           </div>
         )}
-        <div className="cbar__end">
-          <SearchButton search={search} />
-          <Segmented options={SORTS} value={by} onChange={(v) => (sound("blip"), setBy(v))} label="Order the community holes" />
+        {/* every hole, under one toolbar as the shop's: a chip a world at its left (pressed again, every world); the
+            search's icon (its row under the toolbar while in use) and the order at its right */}
+        <span className="eyebrow">Every hole</span>
+        <div className="cbar">
+          {worlds.length > 1 && (
+            <div className="cbar__worlds" role="group" aria-label="Show one world's holes">
+              {worlds.map((w) => (
+                <Button key={w} size="s" type="button" aria-pressed={world === w} onClick={() => (sound("blip"), setWorld(world === w ? "all" : w), setShown(PAGE))}>{worldName(w)}</Button>
+              ))}
+            </div>
+          )}
+          <div className="cbar__end">
+            <SearchButton search={search} />
+            <Segmented options={SORTS} value={by} onChange={(v) => (sound("blip"), setBy(v))} label="Order the community holes" />
+          </div>
         </div>
-      </div>
-      <SearchRow search={search} />
-      <ul className="community__cards">
-        {listed.map((h) => <li key={h.id}>{card(h)}</li>)}
-      </ul>
-      {!page.judging && !rating && !unread && !listed.length && (
-        <p className="community__none">{q || world !== "all" ? "No hole here: try other words or another world." : "No hole open here yet: a community hole shows once its maker has holed it, saved on-chain."}</p>
-      )}
-      {unread && !page.judging && <p className="note note--bad" role="alert">Some holes did not load. <button className="linkish" onClick={retry}>Try again</button></p>}
-      {page.judging ? (
-        <p className="community__judging" aria-live="polite">Checking the holes against the Builder rules…</p>
-      ) : rating ? (
-        <p className="community__judging" aria-live="polite">Working out how hard each hole is…</p>
-      ) : page.more > 0 && (
-        <button className="linkish" onClick={() => setShown((n) => n + PAGE)}>
-          Show more
-        </button>
-      )}
-    </section>
+        <SearchRow search={search} />
+        <ul className="community__cards">
+          {listed.map((h) => <li key={h.id}>{card(h)}</li>)}
+        </ul>
+        {!page.judging && !rating && !unread && !listed.length && !page.more && (
+          <p className="community__none">{q || world !== "all" ? "No hole here: try other words or another world." : "No hole open here yet: a community hole shows once its maker has holed it, saved on-chain."}</p>
+        )}
+        {unread && !page.judging && <p className="note note--bad" role="alert">Some holes did not load. <button className="linkish" onClick={retry}>Try again</button></p>}
+        {page.judging ? (
+          <p className="community__judging" aria-live="polite">Checking the holes against the Builder rules…</p>
+        ) : rating ? (
+          <p className="community__judging" aria-live="polite">Working out how hard each hole is…</p>
+        ) : page.more > 0 && (
+          <button className="linkish" onClick={() => setShown((n) => n + PAGE)}>
+            Show more
+          </button>
+        )}
+      </section>
+    </FrontScreen>
   );
 }
 
@@ -258,7 +265,7 @@ function HoleCard({ h, big, map, players, mark, level, remix, onPlay }: {
           {level != null && ` · ${LEVELS[level]}`}
           {level === null && " · not measured"}
         </small>
-        {mark && <small className="community__mark">{mark}</small>}
+        {mark && <small>{mark}</small>}
       </span>
       <span className="ccard__acts">
         <Button size="s" onClick={onPlay}>Play</Button>

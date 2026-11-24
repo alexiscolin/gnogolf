@@ -11,6 +11,7 @@ import { camlog } from "@/lib/testhooks";
 import { reducedMotion } from "@/lib/device";
 import { CLASSIC, CUPS, guessCup } from "@/lib/card";
 import { stillsOnly } from "@/lib/prefs";
+import { SHOP } from "@/lib/gnomes/door";
 import type { Title as TitleScene } from "@/lib/scene/title"; // the live title scene, once its module has loaded and made it
 import type { Skin } from "@/lib/scene/gnome";
 
@@ -285,9 +286,12 @@ function useTitleScene(host: RefObject<HTMLDivElement | null>, film: RefObject<H
   const [scene, setScene] = useState<{ world: string; live: boolean; phase: Visit["phase"]; bare: boolean } | null>(null);
   useEffect(() => {
     if (!visit) {
-      // a link to a hole (?hole=, ?cup=, its page /h/…): the title is only its
-      // loader, on the default sky, with nothing behind it
-      const deep = /[?&](hole|cup)=/.test(location.search) || /^\/h\//.test(location.pathname);
+      // a link past the title (a hole's: ?hole=, ?cup=, its page /h/…; the
+      // cups' or a rival's: ?screen=cups, rival; the shop's pages /g/…): the
+      // title is only its loader, on the default sky, with nothing behind it
+      // (?screen=modes loads under the menu's frame, and the menu's Back opens
+      // the whole title at that address)
+      const deep = /[?&]((hole|cup)=|screen=(cups|rival)\b)/.test(location.search) || /^\/h\//.test(location.pathname) || (SHOP && /^\/g(\/|$)/.test(location.pathname));
       const world = deep ? guessWorld() : nextWorld(), live = !deep && !wantsStill(), canvas = live ? document.createElement("canvas") : null;
       if (canvas) canvas.className = "title__canvas";
       const v: Visit = (visit = { world, canvas, video: null, phase: "splash", p: null, ready: false, bare: deep, kill: undefined, notify() {} });
@@ -334,10 +338,13 @@ function useTitleScene(host: RefObject<HTMLDivElement | null>, film: RefObject<H
 const noSubscribe = () => () => {};
 const onServer = () => "garden";
 
-/** The title screen. Kept free of three.js so it can show while the game's
- *  bundle is still loading: the first thing on screen is the last thing to go.
- *  The line under the button is fixed text: it shows while the chain is still
- *  being reached, so it must not depend on anything the chain answers. */
+/** The title screen. Prerendered, it paints before any script runs, and it
+ *  stays while the game's bundle loads: the first thing on screen is the last
+ *  thing to go. Its first load brings three.js (prefs.ts reads the gnomes),
+ *  downloading beside React rather than after it: the game behind it is ready
+ *  no later, sooner on a slow link. The line under the button is fixed text: it
+ *  shows while the chain is still being reached, so it must not depend on
+ *  anything the chain answers. */
 // gnome: the player's own (Golf.tsx): the live scene's watcher by the cup wears it
 export default function Title({ onStart, onAbout, loading = false, world: given, gnome }: { onStart?: () => void; onAbout?: () => void; loading?: boolean; world?: string; gnome?: Skin }) {
   const guessed = useSyncExternalStore(noSubscribe, guessWorld, onServer);

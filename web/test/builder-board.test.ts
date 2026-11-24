@@ -177,7 +177,7 @@ void test("a piece placed, from the palette or by the keyboard, pays one census:
   let kept: Draft | null = null;
   const g = makeGesture({ onSet: (x) => (kept = frame(x)), onSelect: () => {}, onDisarm: () => {}, onPreview: () => {}, onCommit: () => {}, onCancel: () => {}, onBin: () => {}, onPaint: () => {} });
   drawn = 0;
-  assert.ok("placed" in (g.up({ draft: d, quick, full, armed: rock, selected: null, step: 0.5 }, [20, 10]) ?? {}));
+  assert.ok("placed" in (g.up({ draft: d, quick, full, armed: rock, selected: null, step: 0.5, slop: 0.125 }, [20, 10]) ?? {}));
   validate(kept!, full);
   assert.equal(drawn, 1, "the palette's drop");
 });

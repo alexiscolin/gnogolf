@@ -74,8 +74,10 @@ export function useOnce(what: Once, when = true): boolean {
   return on;
 }
 
-export default function Inspector({ draft, piece, quick, full, playing, onPlay, onPreview, onCommit, onCancel, onSet, onSay, onTurn, onCopy, onDelete, onChoose }: {
+export default function Inspector({ draft, kept, piece, quick, full, playing, onPlay, onPreview, onCommit, onCancel, onSet, onSay, onTurn, onCopy, onDelete, onChoose }: {
   draft: Draft;
+  /** the draft as kept (draft: as shown, a slider's change in it while it moves) */
+  kept: Draft;
   piece: Piece | null;
   quick: ValidateOptions;
   full: ValidateOptions;
@@ -118,9 +120,9 @@ export default function Inspector({ draft, piece, quick, full, playing, onPlay, 
     onSet(r);
     return true;
   };
-  // let go: kept if it holds with the census too
+  // let go: kept if the whole change holds against the draft as kept, census and trap search too
   const done = () => {
-    const why = canPlace(draft, p, full);
+    const why = canPlace(kept, p, full, undefined, draft);
     if (why.length) return (onCancel(), onSay(refusalOf(why[0])));
     onCommit();
   };

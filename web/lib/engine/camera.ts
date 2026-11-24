@@ -961,26 +961,28 @@ export function makeCamera(E: Live) {
   // whether the course hides B from P: a wall or a post between them, higher
   // than the sight line where it crosses (no allocation, no ray)
   const POST_H = 1.6;
-  let why = ""; // what occluded() last found in the way (the probes')
+  let blocker: Wall | Post | number | "ground" | "" = ""; // what occluded() last found in the way: a solid by its offset in solids
   function occluded(P: THREE.Vector3, B: THREE.Vector3) {
     if (!g.s) return false;
     // the ground and the decor between (from 1.5 out: what the ball sits in is not in the way)
-    if (!lineClear(B, P.x, P.y, P.z)) return (why = "ground"), true;
+    if (!lineClear(B, P.x, P.y, P.z)) return (blocker = "ground"), true;
     for (const w of walls()) {
       if (!inWay(w)) continue;
       const t = segHit(B.x, B.z, P.x, P.z, w.a, w.b); // from the ball towards the camera
       if (t < 0) continue;
       const x = B.x + (P.x - B.x) * t, z = B.z + (P.z - B.z) * t;
-      if (B.y + (P.y - B.y) * t < ground(x, z) + wallH(w)) return (why = "wall " + w.skin), true;
+      if (B.y + (P.y - B.y) * t < ground(x, z) + wallH(w)) return (blocker = w), true;
     }
     for (const p of posts()) {
       if (!p.c) continue;
       const t = rayCircle(B.x, B.z, P.x, P.z, p.c, p.r || 0.5);
-      if (t > 0 && t < 1 && B.y + (P.y - B.y) * t < ground(p.c[0], p.c[1]) + POST_H) return (why = "post " + p.skin), true;
+      if (t > 0 && t < 1 && B.y + (P.y - B.y) * t < ground(p.c[0], p.c[1]) + POST_H) return (blocker = p), true;
     }
-    for (const k of nearSolids()) if (boxT(k, B.x, B.y, B.z, P.x, P.y, P.z) >= 0) return (why = "box " + Array.from(solids.subarray(k, k + 6), (v) => v.toFixed(1)).join(",")), true;
-    return (why = ""), false;
+    for (const k of nearSolids()) if (boxT(k, B.x, B.y, B.z, P.x, P.y, P.z) >= 0) return (blocker = k), true;
+    return (blocker = ""), false;
   }
+  /** What occluded() last found in the way, in the probes' words. */
+  const why = () => (typeof blocker === "string" ? blocker : typeof blocker === "number" ? "box " + Array.from(solids.subarray(blocker, blocker + 6), (v) => v.toFixed(1)).join(",") : ("a" in blocker ? "wall " : "post ") + blocker.skin);
   // the nearest wall, post or solid on the line from (ox, oz) to (cx, cz), as
   // a fraction (1: none); its top (hitTop) for the sight line to clear there
   let hitH = KERB, hitY = NaN, hitOut = 0; // the kerb's height over the ground there, or a solid's top (and where the line leaves it)
@@ -1277,7 +1279,7 @@ export function makeCamera(E: Live) {
     /** A world's camSolids: the pieces' boxes, from the hole built and not yet merged. */
     collect,
     /** ?camlog only: the solids' count, and the ground under (x, z) as the camera has it. */
-    solidsInfo: (x: number, z: number, r = 0) => ({ solids: solids.length / 6, near: nearSolids().length, floor: +floorAt(x, z).toFixed(2), why: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.7)), why), body: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.3)), why),
+    solidsInfo: (x: number, z: number, r = 0) => ({ solids: solids.length / 6, near: nearSolids().length, floor: +floorAt(x, z).toFixed(2), why: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.7)), why()), body: (occluded(camera.position, _v.copy(E.ball.position).setY(E.ball.position.y + 0.3)), why()),
       boxes: r ? nearSolids().filter((k) => Math.hypot((solids[k] + solids[k + 3]) / 2 - x, (solids[k + 2] + solids[k + 5]) / 2 - z) < r).map((k) => Array.from(solids.subarray(k, k + 6), (v) => +v.toFixed(1))) : undefined }),
     /** The mouse over the course (the whole-course view leans with it). */
     hover: onHover,

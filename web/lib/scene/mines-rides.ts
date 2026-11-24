@@ -556,7 +556,8 @@ function geyser(z: Zone, t: Terrain) {
     grate.rotation.z = Math.min(1, o * 3) * 1.9;
     jet.scale.set(0.8 + 0.2 * o + 0.05 * Math.sin(tt * 21), H * o, 0.8 + 0.2 * o + 0.05 * Math.cos(tt * 17));
     for (let i = 0; i < N; i++) {
-      const [u0, a, sz, w] = seeds[i];
+      // (read by index: destructured, a puff allocates on every frame)
+      const sd = seeds[i], u0 = sd[0], a = sd[1], sz = sd[2], w = sd[3];
       const u = (tt * (0.55 + 0.25 * w) + u0) % 1;
       // blowing: rolling up the column and off its head; between: a plume
       // that builds over the period, taller and thicker as the blow comes

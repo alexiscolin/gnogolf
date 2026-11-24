@@ -16,8 +16,8 @@
 #   NEXT_PUBLIC_GNOT_URL  optional: where mainnet's players get GNOT (default
 #                         the faucet above)
 #   NEXT_PUBLIC_OTHER_URL the other deployment, linked from the About sheet
-#   NEXT_PUBLIC_COMMUNITY optional: 1 lists the community's holes with the cups
-#                         (off until the builder is out)
+#   NEXT_PUBLIC_COMMUNITY optional: 1 shows the community's holes (a band under
+#                         the cups, their own screen; off until the builder is out)
 #   NEXT_PUBLIC_BUILDER   optional: 1 opens the hole Builder at /build (off: a
 #                         page that says it is not open yet)
 #   NEXT_PUBLIC_CLIPS     optional: 1 offers a clip of the holing shot (ADR-003)

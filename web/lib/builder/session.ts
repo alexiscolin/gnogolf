@@ -17,17 +17,17 @@ export function makeSession(first: Draft) {
     },
     /** The drag let go: what it made is one step (nothing if it changed nothing). */
     commit() {
-      if (live && live !== h.now()) h.push(live);
+      if (live && !same(live, h.now())) h.push(live);
       live = null;
     },
     /** The drag dropped: back to before it. */
     cancel() {
       live = null;
     },
-    /** One edit at once (a click, a key, a slider let go): one step. */
+    /** One edit at once (a click, a key, a slider let go): one step (nothing if it changed nothing). */
     set(d: Draft) {
       live = null;
-      if (d !== h.now()) h.push(d);
+      if (!same(d, h.now())) h.push(d);
     },
     /** An edit beside the board (the name, the slug): made on the draft as kept, any drag's preview dropped. */
     edit(f: (kept: Draft) => Draft) {
@@ -43,6 +43,10 @@ export function makeSession(first: Draft) {
     canRedo: () => h.canRedo(),
   };
 }
+
+/** Whether an edit left the hole as it was: every field of it the same, a number to a millionth (a drag away and back adds float dust). */
+export const same = (a: Draft, b: Draft) => a === b || JSON.stringify(a, millionth) === JSON.stringify(b, millionth);
+const millionth = (_: string, v: unknown) => (typeof v === "number" ? Math.round(v * 1e6) / 1e6 : v);
 
 /** A gesture with many ends (a slider: its pointer up, its key up, its blur): run once each time something changed, never for nothing. */
 export function settle(run: () => void) {

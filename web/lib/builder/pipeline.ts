@@ -116,11 +116,12 @@ function extent(d: Draft): Issue[] {
 }
 
 /** Whether a point lies strictly inside a convex outline (its edges, in order). */
-const within = (q: V, sides: readonly [V, V][]) => {
+export const within = (q: V, sides: readonly [V, V][]) => {
   const s = sides.map(([a, b]) => (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]));
   return s.every((x) => x > 1e-9) || s.every((x) => x < -1e-9);
 };
-const segSeg = (a: V, b: V, c: V, e: V) => (crosses(a, b, c, e) ? 0 : Math.min(segDist(a[0], a[1], c, e), segDist(b[0], b[1], c, e), segDist(c[0], c[1], a, b), segDist(e[0], e[1], a, b)));
+/** The distance between segments a→b and c→e: 0 where they cross. */
+export const segSeg = (a: V, b: V, c: V, e: V) => (crosses(a, b, c, e) ? 0 : Math.min(segDist(a[0], a[1], c, e), segDist(b[0], b[1], c, e), segDist(c[0], c[1], a, b), segDist(e[0], e[1], a, b)));
 
 /** A draft's bar, once: the piece, its corners (build.Bar's), its sides in order, its middle. */
 type Bar = { p: Piece & { geometry: { t: "bar"; a: V; b: V; thick: number } }; c: V[]; sides: [V, V][]; mid: V };
@@ -133,7 +134,7 @@ const barsOf = (d: Draft): Bar[] =>
 /** A draft's fixed rails. */
 const railsOf = (d: Draft) => d.pieces.filter((p): p is Piece & { geometry: { t: "rail"; a: V; b: V } } => p.geometry.t === "rail" && p.clock.k === "fixed");
 /** Whether the palette lets p lie on or in q (as: q's kind as overlaps names it, "wall" a rail's or a bar's), or q on p. */
-const mayOverlap = (palette: readonly PaletteEntry[]) => (p: Piece, q: Piece, as: string) => {
+export const mayOverlap = (palette: readonly PaletteEntry[]) => (p: Piece, q: Piece, as: string) => {
   const kp = entryIn(p.entry, palette)?.kind;
   return !!entryIn(p.entry, palette)?.overlaps?.includes(as) || !!entryIn(q.entry, palette)?.overlaps?.includes(kp === "rail" || kp === "bar" ? "wall" : kp ?? "");
 };

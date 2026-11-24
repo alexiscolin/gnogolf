@@ -1,7 +1,7 @@
 // @ts-check
 // The Builder's video, for social media: node media/builder/promo.mjs [--record] [--shoot [--only=a,b]] [--edit]
 //
-// The trailer's tone (media/promo/render.mjs, v11): its music ("Dizzy Racing", CC0, 175 BPM, its last 30 s), its
+// The trailer's tone (media/promo/render.mjs, v11): its music ("Dizzy Racing", CC0, 175 BPM, its last 40 s), its
 // titles (big rounded words in ink, a word in gold or red, landing on a beat), cut on the beat. The news first, on the
 // cards' paper (the cover: the first frame, whole); then play: three fun
 // holes built of the Builder's own pieces (holes.ts: checked, proved, published on the local chain under AUTHOR), filmed

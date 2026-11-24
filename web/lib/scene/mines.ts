@@ -2233,7 +2233,7 @@ function headlamp(s: Hole) {
   mesh.frustumCulled = false;
   (ud(mesh).live = true), (mesh.name ||= "mines:headlamp");
   const last = new THREE.Vector3(NaN, 0, 0), fwd = new THREE.Vector3(), at = new THREE.Vector3(), sc = new THREE.Vector3();
-  let yaw = Math.PI / 2;
+  let yaw = Math.PI / 2, laidX = NaN, laidZ = NaN, laidYaw = NaN, laidFalling = false;
   mesh.onBeforeRender = (_r, scene) => {
     const gn = gnomeIn(scene), lamp = gn && gn.userData.lamp;
     if (!gn || !lamp || !shown(lamp)) return void ((uK.value = 0), cv.lake?.follow(0, 0, 0, 0));
@@ -2258,13 +2258,16 @@ function headlamp(s: Hole) {
     }
     yaw += Math.atan2(Math.sin(want - yaw), Math.cos(want - yaw)) * 0.25;
     const cs = Math.cos(yaw), sn = Math.sin(yaw);
-    // the sheet under the light, on the ground as it lies
-    for (let i = 0; i < pos.count; i++) {
-      const u = (i % (NA + 1)) / NA, v = Math.floor(i / (NA + 1)) / NS, lx = -BACK_ + u * (R + BACK_ + 0.3), lz = (v - 0.5) * 2 * SIDE_;
-      const x = p.x + lx * cs - lz * sn, z = p.z + lx * sn + lz * cs;
-      pos.setXYZ(i, x, (falling ? cv.pitAt!(x, z) ?? floorY : cv.t.height(x, z)) + lift, z);
+    // the sheet under the light, on the ground as it lies: laid again only once he or the way he faces has moved
+    if (p.x !== laidX || p.z !== laidZ || yaw !== laidYaw || falling !== laidFalling) {
+      (laidX = p.x), (laidZ = p.z), (laidYaw = yaw), (laidFalling = falling);
+      for (let i = 0; i < pos.count; i++) {
+        const u = (i % (NA + 1)) / NA, v = Math.floor(i / (NA + 1)) / NS, lx = -BACK_ + u * (R + BACK_ + 0.3), lz = (v - 0.5) * 2 * SIDE_;
+        const x = p.x + lx * cs - lz * sn, z = p.z + lx * sn + lz * cs;
+        pos.setXYZ(i, x, (falling ? cv.pitAt!(x, z) ?? floorY : cv.t.height(x, z)) + lift, z);
+      }
+      pos.needsUpdate = true;
     }
-    pos.needsUpdate = true;
     uO.value.set(p.x, p.z);
     uD.value.set(cs, sn);
     uK.value = (cv.lampK.value < 0.5 ? 1.25 : 0.24) * (falling ? Math.max(0.35, 1 - (p.y - floorY) / 8) * 2 : 1); // (in the dark it is the light; down the pit, the only light)

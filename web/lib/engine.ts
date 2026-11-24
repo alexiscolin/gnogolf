@@ -89,7 +89,7 @@ const { maxRoundStrokes, maxPower: MAX_POWER } = RULES;
 // the part of the screen the HUD covers, in CSS pixels: the camera frames
 // what is left, so the course is centred in what the player can actually see
 const HUD = { top: 108, bottom: 136, side: 14 };
-// the community's holes listed with the cups (off until the builder is out)
+// the community's holes shown: their band under the cups, their screen (off until the builder is out)
 const COMMUNITY = process.env.NEXT_PUBLIC_COMMUNITY === "1";
 const OVERVIEW_MS = 1500; // how long a new hole is shown whole before closing on the ball
 

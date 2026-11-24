@@ -311,15 +311,15 @@ const LAUNCH = (KICK * 10 ** 0.75) ** 2 / 2, TOP = SPEED_CAP ** 2 / 2;
  * longer than a ball can climb. A ball comes to rest on the flat (anywhere a
  * slope does not roll it on), or on such ground pinned against a wall at its
  * foot, or at the bottom of a valley (two falls meeting head on); from rest
- * a stroke gives it at most LAUNCH to climb with (TOP with a bumper to kick
- * off), which a downhill adds to (up to SpeedCap) and an uphill spends at the
+ * a stroke gives it at most LAUNCH to climb with (TOP where it meets a
+ * bumper), which a downhill adds to (up to SpeedCap) and an uphill spends at the
  * slope's grade per unit climbed, one plane all along (abutting slopes of one
  * grade and fall are one slope), and on such ground the rolling resistance
  * of the surface there per unit rolled (a full stroke climbs about 17 up the
  * steepest grass slope, as the physics plays it); a step from one plane to another
- * keeps no more than a launch's (generous all the same: a bounce's loss and
- * the grass off such ground are left out, so nothing a ball can climb is
- * ever called a trap). Fixed
+ * keeps no more than a launch's (TOP's with a bumper on the board; generous
+ * all the same: a bounce's loss and the grass off such ground are left out,
+ * so nothing a ball can climb is ever called a trap). Fixed
  * hazards stop it (they send it back where it was struck), timed and pulsed
  * pieces are left out but those that shut a cell for good (gridOf). In calm
  * weather: the snow's slower green or a puddle may hold a ball on such a
@@ -391,8 +391,16 @@ export function traps(h: HoleIn, clearance = h.ballR, full = false): Trap[] {
     });
   }
   const exitOf = (i: number) => g.cell(zs[i].vec ?? zs[i].min);
-  // (a bumper on the board: a ball may come off it at SpeedCap)
-  const launch = [...h.posts, ...h.pulses.flatMap((p) => p.posts)].some((p) => kicks(p.skin ?? "") && (p.bounce ?? 0) > 1) || h.walls.some((w) => kicks(w.skin ?? "") && (w.bounce ?? 0) > 1) ? TOP : LAUNCH;
+  // (where a ball meets a bumper, within a ball and a cell of it, it may come off it at SpeedCap)
+  const kick = new Uint8Array(n), near = h.ballR + CELL, kicker = (p: { skin?: string; bounce?: number }) => kicks(p.skin ?? "") && (p.bounce ?? 0) > 1;
+  const bump = (lo: V, hi: V, hit: (k: number) => boolean) => {
+    const [i0, i1, j0, j1] = g.box(lo, hi);
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (hit(j * nx + i)) kick[j * nx + i] = 1;
+  };
+  for (const p of [...h.posts, ...h.pulses.flatMap((q) => q.posts)].filter(kicker)) bump([p.c[0] - p.r - near, p.c[1] - p.r - near], [p.c[0] + p.r + near, p.c[1] + p.r + near], (k) => Math.hypot(xs[k] - p.c[0], ys[k] - p.c[1]) <= p.r + near);
+  for (const w of h.walls.filter(kicker)) bump([Math.min(w.a[0], w.b[0]) - near, Math.min(w.a[1], w.b[1]) - near], [Math.max(w.a[0], w.b[0]) + near, Math.max(w.a[1], w.b[1]) + near], (k) => segDist(xs[k], ys[k], w.a, w.b) <= near);
+  // (with one on the board, what a step from one plane to another keeps: a ball kicked off it climbs on)
+  const launch = kick.some(Boolean) ? TOP : LAUNCH;
   // (the cup's disc: its box's cells only)
   const atCup = new Uint8Array(n), [ci0, ci1, cj0, cj1] = g.box([h.pin[0] - h.cupR, h.pin[1] - h.cupR], [h.pin[0] + h.cupR, h.pin[1] + h.cupR]);
   for (let j = cj0; j <= cj1; j++) for (let i = ci0; i <= ci1; i++) if (Math.hypot(xs[j * nx + i] - h.pin[0], ys[j * nx + i] - h.pin[1]) <= h.cupR) atCup[j * nx + i] = 1;
@@ -412,7 +420,7 @@ export function traps(h: HoleIn, clearance = h.ballR, full = false): Trap[] {
     const f = falls[i]!, along = outline(zs[i]).map((q) => q[0] * f.u[0] + q[1] * f.u[1]);
     climb.set(rootOf(i), (climb.get(rootOf(i)) ?? 0) + (f.grade + most[i]) * (Math.max(...along) - Math.min(...along)));
   }
-  if (!full && [...climb.values()].every((c) => c <= launch)) return parts(g, { solid, wet, mouth, timed, hopAt, hopTo, hopZone, atCup, exitOf, zs, tee: g.cell(h.tee) });
+  if (!full && [...climb.values()].every((c) => c <= LAUNCH)) return parts(g, { solid, wet, mouth, timed, hopAt, hopTo, hopZone, atCup, exitOf, zs, tee: g.cell(h.tee) });
   // each cell's plane, a number (the first zone of its grade and fall; -1 off one-way ground)
   const planeOf = falls.map((f, i) => (f ? falls.findIndex((q) => q && q.plane === f.plane) : i)), planes = new Int16Array(n).fill(-1);
   for (let k = 0; k < n; k++) if (ground[k] >= 0) planes[k] = planeOf[ground[k]];
@@ -489,18 +497,20 @@ export function traps(h: HoleIn, clearance = h.ballR, full = false): Trap[] {
       if (j < 0 || solid[j] || wet[j]) return;
       // in at the mouth, out at its way out, as fast (a way out in a mouth: on, a few times at most)
       if (mouth[j] >= 0) return void (jumps < 4 && visit(exitOf(mouth[j]), e, mouth[j] * 3, jumps + 1));
-      if (rests[j]) e = Math.max(e, launch); // where it can stop, it can be struck again
+      if (kick[j]) e = TOP;
+      else if (rests[j]) e = Math.max(e, LAUNCH); // where it can stop, it can be struck again
       if (e <= best[j] + 1e-3) return; // (a thousandth more is no more: the flood settles)
       if (best[j] < 0) seen.push(j);
       // (the flat at a launch's, the most of it: in turn, no heap needed; the rest by their energy)
-      (best[j] = e), (cause[j] = why), rests[j] === 1 && e === launch ? flat.push(j) : push(j);
+      (best[j] = e), (cause[j] = why), rests[j] === 1 && e === LAUNCH ? flat.push(j) : push(j);
       // (at the cup, or where a place the cup is reached from lies)
       if (atCup[j] || (toCup && group[j] >= 0 && fine.get(group[j]))) holed = true;
     };
-    for (const k of starts) visit(k, launch, -1);
+    // (a start on one-way ground: its slope leads the ball on from there)
+    for (const k of starts) visit(k, LAUNCH, ground[k] >= 0 ? ground[k] * 3 + 1 : -1);
     while ((f0 < flat.length || size) && !(toCup && holed)) {
       // (the most energetic first: the heap's above a launch, then the flat's, then the heap's)
-      const k = f0 < flat.length && !(size && best[heap[0]] > launch) ? flat[f0++] : pop(), e = best[k], why = cause[k];
+      const k = f0 < flat.length && !(size && best[heap[0]] > LAUNCH) ? flat[f0++] : pop(), e = best[k], why = cause[k];
       if (e <= done[k]) continue; // (met already with as much)
       done[k] = e;
       around(k, nx, n, (j) => {

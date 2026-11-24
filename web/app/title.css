@@ -331,21 +331,16 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 .cband__name .tag { font-size: 12px; }
 .cband__stats { display: flex; flex-wrap: wrap; gap: 4px 18px; font-size: 15px; font-weight: 700; color: var(--ink-soft); }
 .cband__stats b { font-size: 20px; color: var(--ink); }
-.cband__new { font-size: 14px; font-weight: 700; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cband__go { padding: 8px 16px; border: var(--edge-bold); border-radius: var(--pill); background: var(--gold); font-weight: 800; white-space: nowrap; box-shadow: 0 3px 0 var(--ink); }
 @media (max-width: 700px) {
   .cband { grid-template-columns: auto 1fr; padding-right: 14px; }
   .cband__art { width: 88px; }
   .cband__go { grid-column: 1 / -1; justify-self: stretch; text-align: center; }
 }
-/* their screen: the list as wide as the cups' row */
-.worlds--community .community { width: min(1200px, 100%); max-width: none; margin-top: 0; } /* (the screen centres its children: a width of its own, not its content's) */
-.community__none { margin: var(--sp-4) 0 0; font-weight: 700; color: var(--ink-soft); }
 /* the cup's diorama in a round inked window, as a game's panel shows its gnome */
 /* sized by the window's height too, so a laptop's cards end clear of the network banner */
 .worlds--v2 .world__art { width: min(80%, 20vh); margin: 4px auto 0; aspect-ratio: 1 / 1; border-radius: 50%; }
 .worlds--v2 .world[disabled] .world__art img { filter: grayscale(.85) opacity(.75); }
-.worlds--v2 .community { padding: 10px 14px; } /* flat: a list to read */
 /* a cup with no still baked yet: its emblem is the window */
 .worlds--v2 .world__art--emblem { border: 0; background: none; }
 .world__art--emblem > svg { display: block; width: 100%; height: 100%; }

@@ -506,7 +506,7 @@ button.tmode__chip:focus-visible { outline: 3px solid var(--ink); outline-offset
 .bgloss { display: flex; flex-direction: column; gap: var(--sp-2); width: min(800px, 100%); max-width: none; max-height: 100%; overflow: auto; overscroll-behavior: contain; padding: var(--sp-3) var(--sp-4); }
 .bgloss__hints { display: grid; gap: var(--sp-1); }
 .bgloss p { margin: 0; font-size: 15px; line-height: normal; color: var(--ink); } /* (not the sheet's grey prose) */
-.bhint--in { position: static; max-width: none; padding: 0; border: 0; box-shadow: none; background: none; }
+.bhint--in { padding: 0; border: 0; background: none; }
 .bgloss .bgloss__keys { margin: var(--sp-1) 0 0; columns: 2 300px; column-gap: var(--sp-4); font-size: 13px; font-weight: 600; line-height: 1.35; color: var(--ink); }
 .bgloss__keys > div { display: grid; grid-template-columns: 4.6em minmax(0, 1fr); gap: var(--sp-2); padding: 3px 0; break-inside: avoid; }
 .bgloss__keys dt { justify-self: start; } .bgloss__keys dd { margin: 0; }

@@ -339,26 +339,21 @@ export const teeRig = (s: Pick<HoleState, "board" | "start" | "cup">, height: (x
 // pass `out` (a rig from an earlier call) to reuse it: called every frame,
 // it then allocates nothing
 export function focusRig(point: THREE.Vector3, overview: Pick<Rig, "dist">, view: View, cup: THREE.Vector3 | null = null, out: Rig | null = null): Rig {
-  const T = (v: THREE.Vector3) => (out ? out.target.copy(v) : v.clone());
-  const R = (r: Rig) => ((r.tilt = 1), out ? Object.assign(out, { dist: r.dist, ox: r.ox, oy: r.oy, tilt: 1 }) : r);
+  const r = out || { target: new THREE.Vector3(), dist: 0, ox: 0, oy: 0 };
+  r.target.copy(point);
+  r.dist = Math.max(overview.dist * 0.5, 18);
   // with a cup given, frame the ball and the cup together: the target sits
   // between them, nearer the ball, and the camera backs off as they part —
   // you aim seeing where you aim
   if (cup) {
     const gap = Math.hypot(cup.x - point.x, cup.z - point.z);
-    return R({
-      // close on the gnome, as before, leaning a little toward the cup so its
-      // direction shows; "Whole course" is there to see everything
-      target: T(point).lerp(cup, Math.min(0.22, 6 / Math.max(gap, 1))),
-      dist: Math.max(overview.dist * 0.5, 18) + Math.min(gap * 0.12, 5),
-      ox: 0,
-      oy: view.h / 2 - (view.top + (view.h - view.top - view.bottom) / 2),
-    });
+    // close on the gnome, leaning a little toward the cup so its direction
+    // shows; "Whole course" is there to see everything
+    r.target.lerp(cup, Math.min(0.22, 6 / Math.max(gap, 1)));
+    r.dist += Math.min(gap * 0.12, 5);
   }
-  return R({
-    target: T(point),
-    dist: Math.max(overview.dist * 0.5, 18),
-    ox: 0,
-    oy: view.h / 2 - (view.top + (view.h - view.top - view.bottom) / 2),
-  });
+  r.ox = 0;
+  r.oy = view.h / 2 - (view.top + (view.h - view.top - view.bottom) / 2);
+  r.tilt = 1;
+  return r;
 }
