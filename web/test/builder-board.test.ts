@@ -5,7 +5,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { host, lane, rail } from "./builder-fixture.ts";
-import { build } from "./scene-harness.ts";
+import "./scene-harness.ts";
 import { clampEnd, clampHandle, copyPiece, dragCheck, dropEnd, dropHandle, dropMove, errorsOf, newErrors, pieceLabel, placeNear, placePiece, removePiece, toWorld } from "../lib/builder/edit.ts";
 import { handlesOf, notTurned, setHandle, snap, turnPiece } from "../lib/builder/handles.ts";
 import { frame } from "../lib/builder/gg1.ts";
@@ -21,7 +21,6 @@ const ctx = { host, palette: garden, census };
 const entry = (id: string) => garden.find((e) => e.id === id)!;
 const put = (id: string, e: string, at: [number, number], p: Parameters<typeof placePiece>[3] = {}) => placePiece(entry(e), id, at, p);
 const errors = (d: Draft) => validate(d, ctx).issues.filter((i) => i.severity === "error");
-void build;
 /** The board's own quarters (these pieces in no framed hole: the tee's grid is the board's). */
 const O: V = [0, 0];
 

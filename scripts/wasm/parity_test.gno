@@ -273,12 +273,18 @@ func wpUnusedSkin() string {
 // work limits; Encode writes what it is given, Decode is the one to refuse.
 func wpLimits() []*course.Simple {
 	past := []func(h *course.Simple){
-		func(h *course.Simple) { h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.951, 0)}} },
-		func(h *course.Simple) { h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.95, 0)}} },
+		func(h *course.Simple) {
+			h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.951, 0)}}
+		},
+		func(h *course.Simple) {
+			h.Course.Zones = []physics.Zone{{Kind: physics.Slope, Max: physics.V(8, 8), Vec: physics.V(0.95, 0)}}
+		},
 		func(h *course.Simple) { h.Course.Walls[0].Every, h.Course.Walls[0].On = 2, 3 },
 		func(h *course.Simple) { h.Course.Walls[0].Every, h.Course.Walls[0].On = course.MaxTiming+1, 1 },
 		func(h *course.Simple) { h.Course.Walls[0].Bounce = 1.51 },
-		func(h *course.Simple) { h.Course.Posts = []physics.Post{{Circle: physics.Circle{C: physics.V(9, 8), R: 8.01}}} },
+		func(h *course.Simple) {
+			h.Course.Posts = []physics.Post{{Circle: physics.Circle{C: physics.V(9, 8), R: 8.01}}}
+		},
 		func(h *course.Simple) { h.CupRadius = 2.01 },
 		func(h *course.Simple) { h.Strokes = 20 },
 		func(h *course.Simple) { h.Substeps = course.MaxSubsteps + 1 },

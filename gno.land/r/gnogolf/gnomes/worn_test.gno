@@ -83,7 +83,9 @@ func TestWornManyAnswersABoardPage(cur realm, t *testing.T) {
 	fresh(t, cur)
 	mintTo(alice, mustGnome(common()))
 	mintTo(bob, mustGnome(nthOfTier(1, 0)))
-	row := func(p address, id int64) string { return "{" + strings.TrimPrefix(wornJSON(p, id, false), `{"version":1,`) }
+	row := func(p address, id int64) string {
+		return "{" + strings.TrimPrefix(wornJSON(p, id, false), `{"version":1,`)
+	}
 	nobody := testutils.TestAddress("nobody")
 	got := WornMany(alice.String() + ",nope," + bob.String() + "," + alice.String() + "," + nobody.String())
 	uassert.Equal(t, `{"version":1,"rows":[`+row(alice, common())+","+row(bob, nthOfTier(1, 0))+"]}", got, "those who hold one, once each, in order")

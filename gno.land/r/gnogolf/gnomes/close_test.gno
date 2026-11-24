@@ -56,7 +56,7 @@ func TestAnEmptyOwnerCannotSetTheClose(cur realm, t *testing.T) {
 func TestTheSaleClosesAtItsDateToTheBlock(cur realm, t *testing.T) {
 	fresh(t, cur)
 	at := now() + 5 // the next block
-	closeAt = at // (set as stored: the block's boundary here, not the notice SetCloseAt asks)
+	closeAt = at    // (set as stored: the block's boundary here, not the notice SetCloseAt asks)
 	testing.SetRealm(asUser(alice, ugnot(priceOf(1))))
 	Buy(cross(cur), "1") // the block before: open
 

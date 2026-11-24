@@ -112,7 +112,7 @@ for (const [w, h] of SIZES) {
 
 // the buttons in a row as tall as one another, on one top and their words on one baseline (Button's sizes): the
 // header's (Back, the steps, the meter, ?, undo, redo, the action), the Inspector's; off, a button keeps the box it has
-// on (undo, before and after an edit), and so does one on (the difficulty chip showing its line: gold, as every on
+// on (undo, before and after an edit), and so does one on (the difficulty meter showing its line: gold, as every on
 // control); the palette's pieces are rows on one grid, no look under them, its first four whole with no scroll
 for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   const c = await editor(w, h);
@@ -120,7 +120,7 @@ for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   await c.js(`document.querySelector("[data-piece]").focus()`);
   await sleep(600);
   const rows = [
-    { name: "the header", box: ".bhead__start > .btn, .bhead .stepper, .bhead__end .btn, .bhead__end .chip", words: ".bhead .step span, .bhead__end .chip > span, .bhead__act" },
+    { name: "the header", box: ".bhead__start > .btn, .bhead .stepper, .bhead__end .btn", words: ".bhead .step span, .bhead__end .meter > span, .bhead__act" },
     { name: "the Inspector's", box: ".insp__acts .btn" },
   ];
   assert.deepEqual(await c.js<string[]>(misaligned(rows)), [], `${at}: out of line`);
@@ -132,7 +132,7 @@ for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   await sleep(600);
   assert.equal(await c.js(`document.querySelector(".bhead__hist").disabled`), false, `${at}: undo on after an edit`);
   assert.deepEqual(await c.js<object>(footprint(".bhead__hist")), off, `${at}: undo's box changes as it comes on`);
-  // on (the difficulty chip pressed: its line on the board): gold, its box kept, the header still in line
+  // on (the difficulty meter pressed: its line on the board): gold, its box kept, the header still in line
   const METER = ".bhead__meter .meter";
   for (let k = 0; k < 40 && (await c.ev<boolean>(`!document.querySelector(${JSON.stringify(METER)}) || document.querySelector(${JSON.stringify(METER)}).disabled`)); k++) await sleep(300);
   const unpressed = await c.js<object>(footprint(METER));
@@ -140,9 +140,9 @@ for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   await sleep(300);
   assert.equal(await c.js(`document.querySelector(${JSON.stringify(METER)}).getAttribute("aria-pressed")`), "true", `${at}: the meter's line not on`);
   assert.ok(await c.js<boolean>(`!!document.querySelector(".board__line polyline")`), `${at}: the meter's line not drawn on the board`);
-  assert.deepEqual(await c.js<object>(footprint(METER)), unpressed, `${at}: the difficulty chip's box changes as it comes on`);
-  assert.equal(await c.js(gold(METER)), true, `${at}: the difficulty chip on, not gold`);
-  assert.deepEqual(await c.js<string[]>(misaligned([rows[0]])), [], `${at}: the header out of line with the chip on`);
+  assert.deepEqual(await c.js<object>(footprint(METER)), unpressed, `${at}: the difficulty meter's box changes as it comes on`);
+  assert.equal(await c.js(gold(METER)), true, `${at}: the difficulty meter on, not gold`);
+  assert.deepEqual(await c.js<string[]>(misaligned([rows[0]])), [], `${at}: the header out of line with the meter on`);
   // the palette: every piece one row on one grid (as tall, as wide, one left edge; the green's two tools over them, side by side), a piece's looks under it, no badge, no popover
   const rowsOf = await c.js<{ l: number; w: number; h: number }[]>(`[...document.querySelectorAll(".palette .ptile > .piece:not(.piece--tool)")].filter((e) => e.checkVisibility()).map((e) => { const r = e.getBoundingClientRect(); return { l: r.left, w: r.width, h: r.height }; })`);
   for (const r of rowsOf) assert.ok(Math.abs(r.l - rowsOf[0].l) < 0.5 && Math.abs(r.w - rowsOf[0].w) < 0.5 && Math.abs(r.h - rowsOf[0].h) < 0.5, `${at}: a palette row off the others' grid (${JSON.stringify(r)} against ${JSON.stringify(rowsOf[0])})`);
@@ -319,7 +319,7 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   assert.equal(await c.js(`document.querySelectorAll(".issue").length`), 0, "fixed: nothing left to fix");
   assert.ok(fixed.b - fixed.t < 1, `fixed: the dock folds back (${fixed.b - fixed.t} px)`);
   for (let k = 0; k < 30 && !(await c.ev<boolean>(`!!document.querySelector(".bhead__meter")`)); k++) await sleep(300);
-  assert.ok(Math.abs((await box(c, ".bhead__hist"))!.l - undoOff.l) < 1, "Undo moves as Play's reason gives way to the difficulty chip");
+  assert.ok(Math.abs((await box(c, ".bhead__hist"))!.l - undoOff.l) < 1, "Undo moves as Play's reason gives way to the difficulty meter");
   console.log("a problem in the dock: ok");
   c.kill();
 }

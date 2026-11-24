@@ -47,9 +47,9 @@ func fields(s, what string, n int) []string {
 	return f[1:]
 }
 
-func itoa(n int) string      { return strconv.Itoa(n) }
-func i64(n int64) string     { return strconv.FormatInt(n, 10) }
-func ftoa(x float64) string  { return strconv.FormatFloat(x, 'g', -1, 64) } // (exact: it reads back to the same float)
+func itoa(n int) string     { return strconv.Itoa(n) }
+func i64(n int64) string    { return strconv.FormatInt(n, 10) }
+func ftoa(x float64) string { return strconv.FormatFloat(x, 'g', -1, 64) } // (exact: it reads back to the same float)
 func btoa(b bool) string {
 	if b {
 		return "1"

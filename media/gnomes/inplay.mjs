@@ -19,7 +19,7 @@ const catalogue = JSON.parse(fs.readFileSync(new URL("data/gnomes.json", ROOT), 
 // three of each sold tier from three homes, and every Legendary; 0 is the Classic, for comparison
 const PICK = [0, 1, 105, 415, 73, 177, 487, 94, 203, 511, 104, 208, 311, 414, 516, 618, 720];
 const ids = process.argv.slice(2).map(Number);
-const todo = (ids.length ? ids : PICK).map((id) => (id ? catalogue.gnomes.find((g) => g.id === id) : { id: 0, tier: "earned", name: "The Classic", traits: "" }));
+const todo = /** @type {typeof catalogue.gnomes} */ ((ids.length ? ids : PICK).map((id) => (id ? catalogue.gnomes.find((g) => g.id === id) : { id: 0, tier: "earned", name: "The Classic", traits: "" })));
 const HOLES = [
   { key: "garden", slot: "garden/3", weather: "clear", shoot: true, ghost: true }, // (a hole-in-one on record: a shot that holes is there to find)
   { key: "storm", slot: "island/2", weather: "storm", roll: true },
@@ -111,7 +111,7 @@ async function findHoling() {
   return null;
 }
 for (const g of todo) {
-  const r = { id: g.id, tier: g.tier, name: g.name, holes: {}, pictures: [] };
+  const r = { id: g.id, tier: g.tier, name: g.name, holes: {}, pictures: /** @type {string[]} */ ([]) };
   if (!holing) holing = await findHoling();
   for (const h of HOLES) {
     const q = `?play&camlog&rpc=${encodeURIComponent(RPC)}&hole=${h.slot}&weather=${h.weather}` + (g.traits ? `&traits=${g.traits}` : "") + (h.ghost && g.traits ? `&rivaltraits=${g.traits}` : "");
@@ -121,6 +121,7 @@ for (const g of todo) {
       continue;
     }
     await sleep(2500);
+    /** @type {Record<string, any>} */
     const out = (r.holes[h.key] = { cupAtPlay: await cupUnder() });
     r.pictures.push(await shot(`${g.id}-${h.key}-play.jpg`));
     // a close-up: a little above and in front of him, on his side

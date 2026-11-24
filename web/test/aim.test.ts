@@ -6,10 +6,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
-import { makeAimer, steerAim } from "../lib/engine/aim.ts";
+import { aimRig } from "./aim-rig.ts";
+import { steerAim } from "../lib/engine/aim.ts";
+import { pullFull } from "../lib/chain.ts";
 import { sight } from "../lib/scene/data.ts";
-import type { Live } from "../lib/engine/types.ts";
-import type { Mode, Stroke, Vec2 } from "../lib/types.ts";
+import type { Stroke, Vec2 } from "../lib/types.ts";
 
 // ------------------------------------------------------------ steerAim
 
@@ -43,7 +44,7 @@ void test("steerAim: back inside the zone the spin stops, the fine aim going on 
 });
 
 void test("steerAim: down is the power, as a pull's; a 45° pull to full power does not spin; at the press's height, no shot", () => {
-  const full = Math.max(120, Math.min(VW, VH) * 0.24);
+  const full = pullFull(VW, VH);
   const a = steerAim(0, full, full, 1, VW, VH);
   assert.equal(a.spin, 0);
   assert.equal(a.shot?.power, 10);
@@ -52,12 +53,6 @@ void test("steerAim: down is the power, as a pull's; a 45° pull to full power d
 });
 
 // ------------------------------------------------------------ makeAimer fixtures
-
-function makeDots(cap = 64) {
-  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), cap);
-  dots.count = 0;
-  return dots;
-}
 
 interface PendingCall {
   kind: "simulateFrom" | "simulateRound";
@@ -84,39 +79,8 @@ function mkStroke(path: Vec2[], cause = ""): Stroke {
 }
 
 function makeRig() {
-  const dots = makeDots();
-  const aim = new THREE.Group() as unknown as Live["aim"];
-  (aim as unknown as THREE.Group).userData.dots = dots;
   const chain = makeChain();
-  const g = {
-    roundMode: null as Mode | null,
-    ball: { x: 0, y: 0 },
-    period: 1,
-    shots: [] as string[],
-    id: "garden/1" as string | null,
-    rest: null as Vec2 | null,
-    round: 1,
-    course: null as { userData: { ghosts?: (on: boolean) => void } } | null,
-    weather: null as { fog?: boolean } | null,
-    s: null as { walls: { a: Vec2; b: Vec2; skin: string }[]; posts: { c: Vec2; r: number; skin: string }[]; hole?: string; slot?: string } | null,
-  };
-  const band = { visible: false };
-  const E = {
-    g,
-    chain,
-    aim,
-    band,
-    ground: () => 0,
-    mode: "assisted" as Mode,
-    shot: { angle: 0, power: 0, deg: undefined as number | undefined },
-    dragging: false,
-    tickNow: () => 0,
-    landing: () => null,
-    zones: () => [],
-    clock: 0,
-  } as unknown as Live;
-  const aimer = makeAimer(E);
-  return { E, g, aim: aim as unknown as THREE.Group, dots, band, chain, aimer };
+  return { ...aimRig(chain), chain };
 }
 
 const settle = () => Promise.resolve().then(() => Promise.resolve());

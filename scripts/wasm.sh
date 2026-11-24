@@ -58,18 +58,24 @@
 # committed golf.wasm is not that build, then runs the parity test.
 #
 # GNO is the onyx gno binary (default: the toolchain's, in GNO_TOOLCHAIN: see
-# check.sh), for its GNOROOT; TINYGO the tinygo binary (default: in PATH).
+# check.sh), for its GNOROOT; TINYGO the tinygo binary (default: in PATH, else
+# tinygo-0.42.0/bin/tinygo beside the toolchain's folder), which finds
+# binaryen's wasm-opt in PATH or WASMOPT.
 set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 here=$root/scripts/wasm
 realm=gno.land/r/gnogolf/golf/v2 # the rules the site plays
 toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 GNO=${GNO:-$toolchain/gno}
-TINYGO=${TINYGO:-tinygo}
 TINYGO_VERSION=0.42.0
+TINYGO=${TINYGO:-$(command -v tinygo || echo "$(dirname "$toolchain")/tinygo-$TINYGO_VERSION/bin/tinygo")}
 export GOTOOLCHAIN=go1.26.0
 if ! "$TINYGO" version 2>/dev/null | grep -q "^tinygo version $TINYGO_VERSION "; then
 	echo "wasm.sh: TinyGo $TINYGO_VERSION is needed (brew install tinygo-org/tools/tinygo, or set TINYGO); found: $("$TINYGO" version 2>&1 || true)" >&2
+	exit 1
+fi
+if ! "$TINYGO" env WASMOPT >/dev/null; then
+	echo "wasm.sh: TinyGo needs binaryen's wasm-opt, in PATH or WASMOPT" >&2
 	exit 1
 fi
 gnoroot=$(GNOHOME=$toolchain/gnohome "$GNO" env GNOROOT)

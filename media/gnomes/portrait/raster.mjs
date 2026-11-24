@@ -19,10 +19,12 @@ const dot = (/** @type {V3} */ a, /** @type {V3} */ b) => a[0] * b[0] + a[1] * b
 const cross = (/** @type {V3} */ a, /** @type {V3} */ b) => /** @type {V3} */ ([a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]);
 const unit = (/** @type {V3} */ a) => { const l = Math.hypot(...a); return /** @type {V3} */ ([a[0] / l, a[1] / l, a[2] / l]); };
 
-// the showcase's camera: 26° high, looking at (0, 0.8, 0) from 4.9 away, three-quarters from his front
+// the showcase's camera: 26° high, looking at (0, 0.8, 0) from VIEW_DEPTH away, three-quarters from his front
+/** The camera's distance to its target, the body's centre. */
+export const VIEW_DEPTH = 4.9;
 const TARGET = /** @type {V3} */ ([0, 0.8, 0]);
 const BACK = unit([0.68, 0.36, 0.72]);
-const EYE = /** @type {V3} */ ([TARGET[0] + BACK[0] * 4.9, TARGET[1] + BACK[1] * 4.9, TARGET[2] + BACK[2] * 4.9]);
+const EYE = /** @type {V3} */ ([TARGET[0] + BACK[0] * VIEW_DEPTH, TARGET[1] + BACK[1] * VIEW_DEPTH, TARGET[2] + BACK[2] * VIEW_DEPTH]);
 const FWD = /** @type {V3} */ ([-BACK[0], -BACK[1], -BACK[2]]);
 const RIGHT = unit(cross(FWD, [0, 1, 0]));
 const UP = cross(RIGHT, FWD);

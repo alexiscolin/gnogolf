@@ -11,7 +11,7 @@ import os from "node:os";
 import path from "node:path";
 
 type Server = http.Server;
-const { playgroundServer } = (await import("../../scripts/playground-server.mjs")) as { playgroundServer: (o: { root: string; rpc: string }) => Server };
+const { playgroundServer } = await import("../../scripts/playground-server.mjs");
 
 const listen = (s: Server) => new Promise<number>((r) => s.listen(0, "127.0.0.1", () => r((s.address() as { port: number }).port)));
 /** A request sent with its path as written (fetch would normalize it). */

@@ -12,13 +12,11 @@ import { loadPalette } from "../lib/builder/palette.ts";
 import { placePiece } from "../lib/builder/edit.ts";
 import { LIMITS } from "../lib/builder/gg1.ts";
 import { DRAFT_ID, validate } from "../lib/builder/pipeline.ts";
-import type { Issue } from "../lib/builder/checks.ts";
 import { plainOf, two } from "../lib/builder/explain.ts";
 import { pieceName } from "../lib/builder/names.ts";
 
 const garden = await loadPalette("garden");
 const entry = (id: string) => garden.find((e) => e.id === id)!;
-const err = (rule: Issue["rule"]): Issue => ({ rule, severity: "error", text: "x" });
 const stateAt1 = (hex: string) => (host.load(DRAFT_ID, hex), host.setperiod(1), JSON.parse(host.state(DRAFT_ID)) as unknown);
 
 void test("brokenLine: the rounds an edit broke, said calm, the weathers still holed after them; nothing else (the header says it)", () => {
@@ -27,7 +25,6 @@ void test("brokenLine: the rounds an edit broke, said calm, the weathers still h
   assert.equal(brokenLine({ errors: 0, proved: false, rounds: { kept: [], broken: ["Your Clear round now stops short", "Your Wind round now stops short"] } }), "Your Clear round now stops short · and 1 more");
   assert.equal(brokenLine({ errors: 0, proved: true, rounds: { kept: ["", "wind", "rain"], broken: [] } }), "");
   assert.equal(brokenLine({ errors: 1, proved: false, rounds: { kept: [], broken: ["Your Wind round now stops short"] } }), "", "a thing to fix first: listed under the board");
-  void err;
 });
 
 void test("gauges: the hole's counts, its size and its room, green, amber from 80%, red at the limit", () => {

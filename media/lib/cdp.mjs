@@ -38,7 +38,7 @@ export function slotOf(name) {
 /** @type {Map<number, string>} each Chrome's pid -> the profile launch made for it ("" for the caller's) */
 const live = new Map();
 // Chrome runs in its own process group (detached), so a kill takes its helpers too
-const stop = (pid) => {
+const stop = (/** @type {number} */ pid) => {
   try { process.kill(-pid, "SIGKILL"); } catch { try { process.kill(pid, "SIGKILL"); } catch {} }
   const made = live.get(pid);
   if (made) try { fs.rmSync(made, { recursive: true, force: true, maxRetries: 3 }); } catch {}

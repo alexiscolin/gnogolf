@@ -7,10 +7,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import * as THREE from "three";
+import { aimRig } from "./aim-rig.ts";
 import { answer, makeHost, type Ask } from "../lib/sim/host.ts";
 import type * as Sim from "../lib/sim.ts";
-import type { Live } from "../lib/engine/types.ts";
 import type { Stroke } from "../lib/types.ts";
 
 const repo = new URL("../../", import.meta.url);
@@ -67,19 +66,11 @@ void test("a worker that fails a simulation turns the page's previews off, not b
 });
 
 void test("the page's own previews every frame (third person) on a still aim: the chain is still asked once, 120 ms on", async (t) => {
-  const sim = await import("../lib/sim.ts"), { makeAimer } = await import("../lib/engine/aim.ts");
+  const sim = await import("../lib/sim.ts");
   assert.equal(await sim.simHole(chain(), ID), true);
-  const aim = new THREE.Group();
-  aim.userData.dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), 256);
   let asked = 0;
   const ask = () => (asked++, new Promise<Stroke>(() => {}));
-  const E = {
-    g: { roundMode: null, ball: { x: 2, y: 3 }, period: PERIOD, shots: [], id: ID, rest: null, round: 1, course: null, weather: null, s: null },
-    aim, band: { visible: false }, ground: () => 0, mode: "assisted", shot: { angle: 0.3, power: 7, deg: 21 },
-    dragging: true, tickNow: () => 0, landing: () => null, zones: () => [], clock: 0,
-    chain: { ...chain(), simulateFrom: ask, simulateRound: ask },
-  } as unknown as Live;
-  const aimer = makeAimer(E);
+  const { aimer } = aimRig({ ...chain(), simulateFrom: ask, simulateRound: ask }, { id: ID, period: PERIOD, ball: { x: 2, y: 3 }, dragging: true, shot: { angle: 0.3, power: 7, deg: 21 } });
   t.mock.timers.enable({ apis: ["setTimeout"] });
   for (let i = 0; i < 20; i++) aimer.preview(), t.mock.timers.tick(16);
   assert.equal(asked, 1);
@@ -89,21 +80,12 @@ void test("the page's own previews every frame (third person) on a still aim: th
 });
 
 void test("a shot the page refuses that the chain answers is a difference", async (t) => {
-  const sim = await import("../lib/sim.ts"), { makeAimer } = await import("../lib/engine/aim.ts"); // the aim's own copy
+  const sim = await import("../lib/sim.ts"); // the aim's own copy
   assert.equal(await sim.simHole(chain(), ID), true);
   refusing = true;
-  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), 256);
-  const aim = new THREE.Group();
-  aim.userData.dots = dots;
   const asked: ((s: Stroke) => void)[] = [];
   const ask = () => new Promise<Stroke>((ok) => asked.push(ok));
-  const E = {
-    g: { roundMode: null, ball: { x: 2, y: 3 }, period: PERIOD, shots: [], id: ID, rest: null, round: 1, course: null, weather: null, s: null },
-    aim, band: { visible: false }, ground: () => 0, mode: "assisted", shot: { angle: 0.3, power: 7, deg: 21 },
-    dragging: true, tickNow: () => 0, landing: () => null, zones: () => [], clock: 0,
-    chain: { ...chain(), simulateFrom: ask, simulateRound: ask },
-  } as unknown as Live;
-  const aimer = makeAimer(E);
+  const { E, aimer } = aimRig({ ...chain(), simulateFrom: ask, simulateRound: ask }, { id: ID, period: PERIOD, ball: { x: 2, y: 3 }, dragging: true, shot: { angle: 0.3, power: 7, deg: 21 } });
   t.mock.timers.enable({ apis: ["setTimeout"] });
   aimer.preview();
   t.mock.timers.tick(120);

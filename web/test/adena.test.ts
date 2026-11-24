@@ -463,8 +463,7 @@ test("chainSplit: a chain refusal ('commit the first N') retries smaller, then c
   assert.deepEqual(parts, [[0, 2], [2, 3]]);
   assert.deepEqual(chain.calls.map((c) => c.name), ["simulateRound", "simulateRound", "simulateCommit"]);
   // the tee read goes in s.period (here: unset), the continuing SimulateCommit
-  // in chainSplit's own `period` argument — worth knowing if a caller ever
-  // passes the two out of step (see report)
+  // in chainSplit's own `period` argument
   assert.equal(chain.calls[0].args[2], undefined);
   assert.equal(chain.calls[2].args[4], 7);
 });
@@ -991,6 +990,16 @@ test("commitsOf: a shot heavier than what is left of the budget (less its fixed 
   assert.deepEqual(commitsOf({ pts: heavy.map(() => 200), works: heavy, fixed: 150_000_000 }), [[0, 1], [1, 2], [2, 3], [3, 4]]);
   // without the works (a round kept from before they were said): the path's model alone
   assert.deepEqual(commitsOf({ pts: [60, 60] }), [[0, 2]]);
+});
+
+test("sendTip: one bank send of the tip in ugnot, from the player to the owner, at a send's gas", async () => {
+  const { a, calls } = fakeAdena();
+  setWindow({ adena: a });
+  await sendTip({ from: ADDR, to: OWNER, gnot: 5, price: 0.001, chainId: CHAIN, rpc: RPC });
+  const tx = calls.find((c) => c.name === "DoContract")!.args[0] as { messages: unknown[]; gasWanted: number; memo: string };
+  assert.deepEqual(tx.messages, [{ type: "/bank.MsgSend", value: { from_address: ADDR, to_address: OWNER, amount: "5000000ugnot" } }]);
+  assert.equal(tx.gasWanted, 2_000_000);
+  assert.equal(tx.memo, "gnogolf tip");
 });
 
 test("sendTip: sends nothing without two addresses and a whole ugnot amount", async () => {

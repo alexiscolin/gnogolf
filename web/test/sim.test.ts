@@ -8,10 +8,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import * as THREE from "three";
+import { aimRig } from "./aim-rig.ts";
 import { answer, makeHost, type Ask } from "../lib/sim/host.ts";
-import type { Live } from "../lib/engine/types.ts";
-import type { Mode, Stroke, Vec2 } from "../lib/types.ts";
+import type { Stroke } from "../lib/types.ts";
 
 const repo = new URL("../../", import.meta.url);
 const wasm = new WebAssembly.Module(fs.readFileSync(new URL("web/lib/sim/golf.wasm", repo)));
@@ -26,7 +25,6 @@ class FakeWorker {
 }
 (globalThis as { Worker?: unknown }).Worker = FakeWorker;
 const { startSim, simHole, simReady, simStroke, same } = await import("../lib/sim.ts");
-const { makeAimer } = await import("../lib/engine/aim.ts");
 
 const NS = "nym-tester000";
 const asked: string[] = [];
@@ -63,21 +61,11 @@ void test("a stroke answers as the chain's JSON; a shot the chain would refuse a
   assert.equal(await simStroke("garden/2/v1", [], "21.0000,8.0000", null, PERIOD), null); // no data loaded for it
 });
 
-// the aim, as aim.test.ts rigs it, on this hole with the page's own previews
+// the aim on this hole, a pull held, with the page's own previews
 function rig() {
-  const dots = new THREE.InstancedMesh(new THREE.SphereGeometry(0.1, 4, 3), new THREE.MeshBasicMaterial(), 256);
-  dots.count = 0;
-  const aim = new THREE.Group();
-  aim.userData.dots = dots;
   const calls: { args: unknown[]; resolve: (s: Stroke) => void }[] = [];
   const ask = (...args: unknown[]) => new Promise<Stroke>((resolve) => calls.push({ args, resolve }));
-  const g = { roundMode: null as Mode | null, ball: { x: 2, y: 3 }, period: PERIOD, shots: [] as string[], id: ID, rest: null as Vec2 | null, round: 1, course: null, weather: null, s: null };
-  const E = {
-    g, aim, band: { visible: false }, ground: () => 0, mode: "assisted" as Mode, shot: { angle: 0.3, power: 7, deg: 21 as number | undefined },
-    dragging: true, tickNow: () => 0, landing: () => null, zones: () => [], clock: 0,
-    chain: { ...chain, simulateFrom: ask, simulateRound: ask },
-  } as unknown as Live;
-  return { E, dots, calls, aimer: makeAimer(E) };
+  return { ...aimRig({ ...chain, simulateFrom: ask, simulateRound: ask }, { id: ID, period: PERIOD, ball: { x: 2, y: 3 }, dragging: true, shot: { angle: 0.3, power: 7, deg: 21 } }), calls };
 }
 
 void test("the aim draws the page's own answer at once, and asks the chain only once the hand rests", async () => {

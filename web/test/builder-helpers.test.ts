@@ -21,7 +21,7 @@ void test("one home each for the helpers the Builder shares", () => {
   assert.deepEqual(where(/slice\(0, ?\d\)\}…\$\{[^}]*slice\(-\d\)/), [], "an address shortened by hand");
   assert.deepEqual(where(/charAt\(0\)\.toUpperCase\(\)(?: \+ |\}\$\{)[\w.]+\.slice\(1\)/), [path.join("lib", "card.ts")], "a world's name, a sentence capitalised by hand");
   assert.deepEqual(where(/\.download = /), [path.join("components", "builder", "share.ts")], "a file saved by hand");
-  assert.deepEqual(where(/MAX_NAME = 40|MAX_NOTE = 140/).filter((f) => !f.endsWith("draft.ts")), [], "the name's and the note's lengths said twice");
+  assert.deepEqual(where(/MAX_TITLE = 40|MAX_NOTE = 140/).filter((f) => !f.endsWith("draft.ts")), [], "the name's and the note's lengths said twice");
 });
 
 void test("one home each for the Builder's own words and numbers: a point, a list, a capital, a weather's name, Fit's margin", () => {

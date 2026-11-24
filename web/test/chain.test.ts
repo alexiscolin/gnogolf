@@ -601,7 +601,7 @@ test("dayCandidates: DayCandidates' page as asked (after, limit), each row a hol
   setFetch((url) => (assert.equal(decoded(url).expr.replace(/^.*DayCandidates/, "DayCandidates"), `DayCandidates("g1x", 25)`), qevalReply(reply)));
   assert.deepEqual(await chain.dayCandidates("g1x", 25), reply);
   reply = { version: 1, rows: [{ ...row, born: "7" }], next: "" };
-  await assert.rejects(chain.dayCandidates("g1x", 25));
+  await assert.rejects(chain.dayCandidates("g1x", 25), (e) => errorKind(e) === "chain");
 });
 
 // ------------------------------------------------------------ boards, and the mode guard
@@ -671,9 +671,9 @@ test("ghost reads a best with its round, null for none, and never asks for a bad
   reply = null;
   assert.equal(await chain.ghost("garden/1", "pro", ADDR1), null);
   reply = { ...GHOST, strokes: 0 };
-  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), "a best of 0 strokes is no best");
+  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), (e) => errorKind(e) === "chain", "a best of 0 strokes is no best");
   reply = { ...GHOST, strokes: 1 };
-  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), "one shot a stroke");
+  await assert.rejects(chain.ghost("garden/1", "pro", ADDR1), (e) => errorKind(e) === "chain", "one shot a stroke");
   reply = { ...GHOST, mode: "assisted" };
   assert.equal(await chain.ghost("garden/1", "pro", ADDR1), null, "not the mode asked for: none");
   assert.equal(await chain.ghost("garden/1", "pro", 'g1") + x'), null);

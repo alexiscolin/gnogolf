@@ -76,8 +76,8 @@ func TestACopyNeverReplacesAnOwnBest(cur realm, t *testing.T) {
 	giveName(cur, a, "rpa")
 	giveName(cur, b, "rpb")
 	replayAs(cur, b, id, "0.6,0.01;0.62,0.01;0.64,0.01;0.66,1") // their own, 4
-	replayAs(cur, a, id, "0.37,0.01;0.41,0.01;0.29,1")         // 3
-	replayAs(cur, b, id, "0.37,0.01;0.41,0.01;0.29,1")         // a's, sent again
+	replayAs(cur, a, id, "0.37,0.01;0.41,0.01;0.29,1")          // 3
+	replayAs(cur, b, id, "0.37,0.01;0.41,0.01;0.29,1")          // a's, sent again
 	uassert.Equal(t, 4, BestOf(id, "assisted", b), "their own best stays")
 	uassert.Equal(t, "2", holeRank(id, b), "and so does its place")
 }

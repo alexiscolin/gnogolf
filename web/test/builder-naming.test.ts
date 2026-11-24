@@ -24,8 +24,8 @@ void test("suggestName: the same for a draft and a roll, another at the next rol
 });
 
 void test("seedOf: a draft's own (its world, its starting place and pieces), not its name", () => {
-  const d = STARTERS.garden.dogleg;
-  assert.equal(seedOf(d), seedOf({ ...d, title: "Another" }));
+  const d = STARTERS.garden.dogleg, renamed = { ...d, title: "Another" };
+  assert.equal(seedOf(d), seedOf(renamed));
   assert.notEqual(seedOf(d), seedOf(STARTERS.garden.straight));
   assert.notEqual(suggestName("garden", seedOf(d), 0), suggestName("garden", seedOf(STARTERS.garden.straight), 0));
 });

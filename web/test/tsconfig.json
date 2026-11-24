@@ -4,10 +4,12 @@
   // client's modules by their .ts path.
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["es2023", "dom"],
+    "lib": ["es2023", "dom", "dom.iterable"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    "allowJs": true,
     "allowImportingTsExtensions": true,
+    "paths": { "@/*": ["../*"] },
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
     "strict": true,

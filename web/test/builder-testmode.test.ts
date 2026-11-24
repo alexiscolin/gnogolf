@@ -174,7 +174,7 @@ void test("cameFrom: played under its alias's next version, a draft is a new ver
 
 test("freeSlug: the start card's offer free of the drafts and of the author's holes on the chain; unread, the drafts' next", async () => {
   const on = new Set(["a/mole-run", "a/mole-run-2", "a/mole-run-4"]);
-  const versions = (alias: string) => Promise.resolve({ slot: alias, versions: on.has(alias) ? [{ v: 1, id: `${alias}/v1`, by: "a", sha: "", note: "", next: "", height: 1 }] : [] });
+  const versions = (alias: string) => Promise.resolve({ version: 1, slot: alias, versions: on.has(alias) ? [{ v: 1, id: `${alias}/v1`, by: "a", sha: "", note: "", next: "", height: 1 }] : [] });
   assert.equal(await freeSlug({ versions }, "a", "mole-run", new Set(["mole-run-3"])), "mole-run-5");
   assert.equal(await freeSlug({ versions: () => Promise.reject(new Error("down")) }, "a", "mole-run", new Set()), "mole-run-2");
 });

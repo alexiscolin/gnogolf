@@ -64,7 +64,6 @@ test("shop: each read asks the gnomes' realm once, its arguments quoted, its ans
     Worn: "",
     WornMany: { version: 1, rows: [{ player: A, id: "3", name: "Thistle", tier: "common", traits: "01", equipped: false }] },
     CanBuy: can({ ok: true, total: 36e6 }),
-    Params: { version: 1, maxHours: 168, maxBatch: 5, denom: "ugnot" },
   });
   const shop = makeShop(chain, "gno.land/r/x/gnogolf/gnomes");
   assert.equal((await shop.collection()).tiers.length, 4);
@@ -75,11 +74,10 @@ test("shop: each read asks the gnomes' realm once, its arguments quoted, its ans
   assert.equal(await shop.worn(A), null);
   assert.equal((await shop.wornMany([A, "nobody", A])).get(A)?.name, "Thistle");
   assert.equal((await shop.canBuy(A, [7])).total, 36e6);
-  assert.equal((await shop.params()).maxBatch, 5);
   assert.ok(asked.every((a) => a.realm === "gno.land/r/x/gnogolf/gnomes"));
   assert.deepEqual(asked.map((a) => a.expr), [
     "Collection()", 'Gnome("94")', "Sold()", `GnomesOf(address("${A}"), 0)`, `Worn(address("${A}"))`,
-    `WornMany("${A}")`, `CanBuy(address("${A}"), "7")`, "Params()",
+    `WornMany("${A}")`, `CanBuy(address("${A}"), "7")`,
   ]);
 });
 
@@ -152,7 +150,7 @@ test("shop: the now row follows the sale's life: teaser, players first, open, so
   assert.equal(nowRow(c, isSold([]), entries, T0 - 60).at, "teaser");
   const players = nowRow(c, isSold([1, 2]), entries, T0 + 60);
   assert.equal(players.at, "players");
-  assert.ok(players.at !== "closed" && players.at !== "none" && players.sale.size === 720 && players.sale.sold === 2 && players.sale.series === "genesis" && players.sale.name === "Genesis");
+  assert.ok(players.sale.size === 720 && players.sale.sold === 2 && players.sale.series === "genesis" && players.sale.name === "Genesis");
   assert.equal(nowRow(c, isSold([]), entries, T0 + 49 * 3600).at, "open");
   const all = Array.from({ length: 720 }, (_, i) => i + 1);
   assert.equal(nowRow(c, isSold(all), entries, T0 + 49 * 3600).at, "soldout");
@@ -265,9 +263,9 @@ test("shop: every refusal CanBuy gives has its words: the button's and a note", 
   const w = (r: CanBuy) => whyNot(r, c, tansy, T0 + 60);
   assert.equal(w(can({ ok: true })), null);
   assert.deepEqual(w(can({ reason: "paused" })), { button: "Paused for a moment", note: "The sale picks up where it stopped." });
-  assert.deepEqual(w(can({ reason: "players-only", window: { until, left: { common: 3, rare: 2, epic: 1 } } })), { button: "Players first until Sun 18:00 UTC", note: "Save one round on-chain to buy now.", play: true });
-  assert.deepEqual(w(can({ reason: "window-cap", window: { until, left: { common: 3, rare: 2, epic: 0 } } })), { button: "1 of 1 Epic this window", note: "Your share until Sun 18:00 UTC. Then open to everyone." });
-  assert.deepEqual(w(can({ reason: "cap", left: { common: 10, rare: 5, epic: 0 } })), { button: "2 of 2 Epics", note: "The most one wallet buys." });
+  assert.deepEqual(w(can({ reason: "players-only", window: { until, left: { common: 3, rare: 2, epic: 1, legendary: 0 } } })), { button: "Players first until Sun 18:00 UTC", note: "Save one round on-chain to buy now.", play: true });
+  assert.deepEqual(w(can({ reason: "window-cap", window: { until, left: { common: 3, rare: 2, epic: 0, legendary: 0 } } })), { button: "1 of 1 Epic this window", note: "Your share until Sun 18:00 UTC. Then open to everyone." });
+  assert.deepEqual(w(can({ reason: "cap", left: { common: 10, rare: 5, epic: 0, legendary: 1 } })), { button: "2 of 2 Epics", note: "The most one wallet buys." });
   assert.deepEqual(w(can({ reason: "later" })), { button: "Opens today, 18:00 UTC", note: "From the Garden." });
   // two series' sales to come: the date is the gnome's own series'
   const two = collection({ series: [genesis({ sale: { ...SALE, start: T0 + 86400 } }), { name: "winter-2027", first: 721, last: 723, sold: 0, closed: false, sale: { ...SALE, start: T0 + 7 * 86400 } }] });
@@ -405,9 +403,9 @@ test("shop: the sale card's edges: none sold, all sold, not started, players fir
   assert.ok(teaser.at === "teaser" && teaser.share === 0);
   assert.deepEqual(teaser.chip, { text: "Opens today, 18:00 UTC", short: "Opens 18:00 UTC", full: "Genesis opens today, 18:00 UTC." });
   const players = saleLine(nowRow(c, none, entries, T0 + 60), c, entries, none, T0 + 60)!;
-  assert.deepEqual(players.chip, { text: "Players first · until Sun 18:00 UTC", short: "Players first · Sun 18:00 UTC", full: "Players first until Sun 18:00 UTC: save one round on-chain to buy now." });
+  assert.deepEqual(players.at !== "closed" && players.chip, { text: "Players first · until Sun 18:00 UTC", short: "Players first · Sun 18:00 UTC", full: "Players first until Sun 18:00 UTC: save one round on-chain to buy now." });
   const p = collection({ open: false }), paused = saleLine(nowRow(p, none, entries, T0 + 60), p, entries, none, T0 + 60)!;
-  assert.deepEqual(paused.chip, { text: "Paused for a moment", short: "Paused", full: "Paused for a moment: the sale picks up where it stopped." });
+  assert.deepEqual(paused.at !== "closed" && paused.chip, { text: "Paused for a moment", short: "Paused", full: "Paused for a moment: the sale picks up where it stopped." });
   const k = collection({ series: CLOSED });
   assert.deepEqual(saleLine(nowRow(k, none, entries, T0), k, entries, none, T0), { at: "closed", title: "The sale is closed", count: "486 made · 234 never made", label: "The sale is closed: 486 gnomes made, 234 never made" });
   const w = collection({ series: [genesis({ sale: null })] });

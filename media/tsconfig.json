@@ -6,7 +6,7 @@
   // stay unannotated (noImplicitAny off), the rest of strict holds.
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["es2023", "dom"],
+    "lib": ["es2023", "dom", "dom.iterable"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "allowJs": true,
@@ -18,5 +18,5 @@
     "types": ["node"],
     "typeRoots": ["../web/node_modules/@types"]
   },
-  "include": ["lib/*.mjs", "promo/*.mjs", "camera/*.mjs", "gnomes/*.mjs", "gnomes/portrait/*.mjs", "builder/*.mjs"]
+  "include": ["lib/*.mjs", "promo/*.mjs", "og/*.mjs", "camera/*.mjs", "gnomes/*.mjs", "gnomes/portrait/*.mjs", "builder/*.mjs"]
 }

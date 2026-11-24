@@ -64,7 +64,7 @@ const HOLES: Record<string, { world: string; make: Make }> = {
 };
 
 const only = process.argv[2];
-const out: Record<string, unknown> = fs.existsSync(new URL("holes.json", import.meta.url)) ? JSON.parse(fs.readFileSync(new URL("holes.json", import.meta.url), "utf8")) : {};
+const out = (fs.existsSync(new URL("holes.json", import.meta.url)) ? JSON.parse(fs.readFileSync(new URL("holes.json", import.meta.url), "utf8")) : {}) as Record<string, unknown>;
 let failed = 0;
 for (const [slug, { world, make }] of Object.entries(HOLES)) {
   if (only && slug !== only) continue;
@@ -82,7 +82,7 @@ for (const [slug, { world, make }] of Object.entries(HOLES)) {
   for (const { kind, period } of plan(host, id, world, NOW)) {
     const shots = await holing(host, id, d.tee, d.pin, period, { fan: { spread: 60, step: 2, powers: Array.from({ length: 39 }, (_, k) => 0.5 + k * 0.25) } });
     const p = shots && (await replay(makeLocalChain(host, holeRow(id, d), hex, period), { key, id, kind, period, shots }));
-    if (p && typeof p !== "string") proofs.push(p), console.log(`  ${slug} ${kind || "clear"}: holed in ${p.shots.length}`);
+    if (p && typeof p !== "string") { proofs.push(p); console.log(`  ${slug} ${kind || "clear"}: holed in ${p.shots.length}`); }
     else { failed++; console.error(`not holed: ${slug} in ${kind || "clear"}${p ? `: ${p}` : ""}`); }
   }
   const est = await estimate(host, d);

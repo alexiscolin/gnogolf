@@ -190,9 +190,8 @@ EOF
 
 KH=$WORK/keys
 
-# chain time: the last block's, unix seconds; a block's by height
+# chain time: the last block's, unix seconds
 chaintime() { curl -s "http://$RPC_ADDR/status" | jq -r .result.sync_info.latest_block_time | py epoch; }
-blocktime() { curl -s "http://$RPC_ADDR/block?height=$1" | jq -r .result.block.header.time | py epoch; }
 wait_until() { # wait_until <unix> <why>
 	log "e2e: waiting for chain time $1 ($2), $(($1 - $(chaintime)))s"
 	while [ "$(chaintime)" -lt "$1" ]; do sleep 5; done

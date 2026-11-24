@@ -46,6 +46,7 @@ function editor(first: Draft) {
   const g = makeGesture({
     onPreview: (d) => s.preview(d), onCommit: () => s.commit(), onCancel: () => s.cancel(), onSet: (d) => s.set(frame(d)),
     onSelect: (id) => (selected = id), onDisarm: () => (armed = null), onBin: (id) => s.set(frame({ ...s.now(), pieces: s.now().pieces.filter((p) => p.id !== id) })),
+    onPaint: () => {},
   });
   return { s, g, sel: () => selected, arm: (e: PaletteEntry | null) => (armed = e), armed: () => armed };
 }

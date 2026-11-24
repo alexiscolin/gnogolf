@@ -15,7 +15,7 @@
 //   (from web/) node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../media/builder/holes.ts
 //   then publish holes.json's holes (PublishMine, as AUTHOR), then
 //   APP=http://100.64.12.34:5181 node media/builder/promo.mjs
-// Needs: Node 22+, Google Chrome, /opt/homebrew/bin/ffmpeg, the music (media/promo/CREDITS.txt).
+// Needs: Node 22.15+, Google Chrome, /opt/homebrew/bin/ffmpeg, the music (media/promo/CREDITS.txt).
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -99,12 +99,6 @@ async function record() {
   const cell = (/** @type {number} */ x, /** @type {number} */ y) => c.js(`(() => { const m = document.querySelector(".board__plane").getScreenCTM(); return [m.a * ${x} + m.c * ${y} + m.e, m.b * ${x} + m.d * ${y} + m.f]; })()`);
   const button = (/** @type {RegExp} */ re) => `[...document.querySelectorAll("button")].find((b) => ${re}.test(b.textContent.trim()))`;
   const pieces = () => c.js(`document.querySelectorAll("[data-piece]").length`);
-  const drag = async (/** @type {number[]} */ from, /** @type {number[]} */ to, ms = 700) => {
-    await glide(from, 380);
-    await mouse("mousePressed", at, true);
-    await glide(to, ms, true);
-    await mouse("mouseReleased", at);
-  };
   const editor = `!!document.querySelector(".palette [data-tool=grow]") && document.querySelectorAll("[data-end]").length === 2`;
 
   try {
@@ -248,7 +242,7 @@ async function record() {
     if (c.errors.length) console.log("page errors:", c.errors.slice(0, 5));
     c.kill();
   }
-  console.log(`take: ${frames.length} frames over ${(frames.at(-1)[0] - frames[0][0]).toFixed(1)} s`);
+  console.log(`take: ${frames.length} frames over ${(frames[frames.length - 1][0] - frames[0][0]).toFixed(1)} s`);
 }
 
 // ------------------------------------------------------------------ the cut
@@ -263,6 +257,7 @@ async function record() {
 // - stills: the take's frames at those marks, an equal share of the beats each (hard cuts), cropped alike.
 // Titles at seconds into a stretch; "drop": as its ball drops (sink).
 const UP = { day: true, cup: "" };
+/** @type {{ shot?: any, from?: [string, number], to?: [string, number], stills?: [string, number][], beats: number[], crop?: number[], titles: any[] }[]} */
 const CUT = [
   // the hook: the ball fed to the blowhole, spat over the lagoon, holed
   { shot: { ...UP, name: "opener", hole: "blowhole", weather: "clear", ace: true, dropAt: 1.8, sink: 2.1, ramp: [1.6, 2.6, 0.45, 0.2],

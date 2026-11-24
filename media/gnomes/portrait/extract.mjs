@@ -8,7 +8,6 @@
 // The client is read from DESIGNS (default: this repo's root), bundled with
 // the same pinned esbuild as media/gnomes/render.mjs, from its web/ (its node_modules installed). Its bake is kept from
 // merging: every object is made "live" as it is made, so each mesh stays one.
-import fs from "node:fs";
 import path from "node:path";
 import { bundledPage, SEEDED } from "../../lib/page.mjs";
 

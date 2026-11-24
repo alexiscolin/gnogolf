@@ -126,6 +126,18 @@ void test("the hole pages' names and pars (app/h/holes.json, written by media/og
   for (const [slot, page] of Object.entries(pages)) assert.deepEqual(page, data[slot], slot);
 });
 
+void test("the title's holes (lib/scene/title-holes.json, baked from HoleState) are the course data's", () => {
+  const title = JSON.parse(fs.readFileSync(new URL("web/lib/scene/title-holes.json", repo), "utf8")) as Record<string, Record<string, unknown>>;
+  for (const [world, t] of Object.entries(title)) {
+    const line = lines.find(([slot, v1]) => t.hole === slot || t.hole === v1);
+    assert.ok(line, `${world}: ${String(t.hole)} is no course hole`);
+    host.load(`${line[0]}/v1`, line[3]);
+    const s = JSON.parse(host.state(`${line[0]}/v1`)) as Record<string, unknown>;
+    // (the snapshot's own: the id it was baked under, official there, no weather)
+    for (const k of Object.keys(t)) if (!["hole", "official", "weather"].includes(k)) assert.deepEqual(t[k], s[k], `${world}: ${k}`);
+  }
+});
+
 const ID = "g1hvuayx9ll7dal54kr0f6t89j8867z8lf5vtxgv/t/v1", P = 5967997;
 
 void test("state answers HoleState at the clock set; forecast refuses a period ahead of it", () => {

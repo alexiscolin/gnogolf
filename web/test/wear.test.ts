@@ -7,7 +7,8 @@ import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import { gnomeById, rivalSkin } from "../lib/scene/gnome.ts";
-import { meet, know, pickOf, pick, playing, seen, tokenSkin, onWear } from "../lib/gnomes/wear.ts";
+import { meet, know, playing, seen, tokenSkin } from "../lib/gnomes/wear.ts";
+import { pickOf, pick, onWear } from "../lib/gnomes/door.ts";
 import type { Catalogue } from "../lib/gnomes/catalogue.ts";
 import type { Worn } from "../lib/gnomes/shop.ts";
 

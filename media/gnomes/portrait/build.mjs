@@ -15,7 +15,7 @@
 // gnome by its depth key and paints them in that order.
 import fs from "node:fs";
 import { gnomePage, DESIGNS } from "./extract.mjs";
-import { rasterize, maskOf, erode, dilate, trace, simplify, pathOf, areaOf, project, toUnits, unitsAt, LIT_SRGB, N, SIZE } from "./raster.mjs";
+import { rasterize, maskOf, erode, dilate, trace, simplify, pathOf, areaOf, project, toUnits, unitsAt, LIT_SRGB, N, SIZE, VIEW_DEPTH } from "./raster.mjs";
 
 const OUT = new URL("../../../gno.land/r/gnogolf/gnomes/art.gno", import.meta.url);
 const check = process.argv.includes("--check");
@@ -460,7 +460,7 @@ const rays = Array.from({ length: 16 }, (_, k) => {
 const frame = {
   plinth: ellipse(0.72),
   rings: [ellipse(0.805), ellipse(0.905)],
-  ringWidth: Math.round(unitsAt(0.05, 4.9) * 2) / 2,
+  ringWidth: Math.round(unitsAt(0.05, VIEW_DEPTH) * 2) / 2,
   shade: ellipse(0.55, 0.011),
   rays: pathOf(rays),
 };

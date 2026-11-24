@@ -1,11 +1,14 @@
 {
   // The node scripts: run as TypeScript by node itself (--experimental-strip-types),
-  // so only erasable syntax. They reach the client's chain reader in web/lib.
+  // so only erasable syntax, or as plain .mjs checked from their JSDoc (// @ts-check).
+  // They reach the client's chain reader in web/lib.
   "compilerOptions": {
     "target": "ES2023",
-    "lib": ["es2023", "dom"],
+    "lib": ["es2023", "dom", "dom.iterable"],
     "module": "esnext",
     "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "allowJs": true,
     "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true,
@@ -16,5 +19,5 @@
     "types": ["node"],
     "typeRoots": ["../web/node_modules/@types"]
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "*.mjs", "../media/builder/*.ts"]
 }

@@ -17,7 +17,11 @@ const { SKIES, UNLOCKS } = await import("../web/lib/card.ts");
 const { GNOMES } = await import("../web/lib/scene/gnome.ts");
 const { CLIMATES } = await import("../web/lib/sky.ts");
 const { KICKS, MAX_BOUNCE, MAX_MOVE, MAX_PAR, MIN_RAMP, MIN_SHOT_WORK, WEATHER } = await import("../web/lib/builder/rules.ts");
+const { MAX_NOTE, MAX_TITLE } = await import("../web/lib/builder/draft.ts");
+const { MAX_BYTES } = await import("../web/lib/builder/pipeline.ts");
 const { encode, PLAIN } = await import("../web/lib/gnomes/codec.ts");
+const { MAX_PLAYERS } = await import("../web/lib/gnomes/shop.ts");
+const { MAX_BATCH } = await import("../web/lib/gnomes/tx.ts");
 
 let failed = 0;
 function check(name: string, f: () => void) {
@@ -226,6 +230,11 @@ check("gnomes earned.gno: UNLOCKS and GNOMES", () => {
     assert.equal(m[1] + k + m[2], encode({ ...PLAIN, accessories: [], tier: "earned", kind: i + 1 }), `earnedTraits(${i + 1}): codec.ts`);
   });
 });
+// the most ids a Buy carries (tx.ts) and players a WornMany asks of (shop.ts, wear.ts)
+check("gnomes config.gno and equip.gno: the client's batches", () => {
+  assert.equal(MAX_BATCH, constOf(gnomes("config.gno"), "maxBatch"), "maxBatch: tx.ts MAX_BATCH");
+  assert.equal(MAX_PLAYERS, constOf(gnomes("equip.gno"), "maxPlayers"), "maxPlayers: shop.ts MAX_PLAYERS");
+});
 // the hole builder's palette (web/lib/builder/rules.ts): the skins that are
 // physics, and the bounce a passive piece plays at most, as step.gno has them
 check("the physics the builder's palette is bound by", () => {
@@ -239,6 +248,12 @@ check("the physics the builder's palette is bound by", () => {
   const data = fs.readFileSync(new URL("../gno.land/p/gnogolf/course/data.gno", import.meta.url), "utf8");
   assert.ok(has(data, `if h.Strokes > ${MAX_PAR} {`), "course.Decode: the most par changed");
   assert.ok(has(golf, "const minShotWork = 4 * physics.MaxWork / 5") && MIN_SHOT_WORK === (4 * RULES.maxWork) / 5, "golf's minShotWork changed");
+});
+// the most a hole's name, its note and its data may be in the builder (draft.ts, pipeline.ts), as golf has them
+check("golf's name, note and data bounds: the builder's", () => {
+  assert.equal(MAX_TITLE, constOf(golf, "maxName"), "maxName: draft.ts MAX_TITLE");
+  assert.equal(MAX_NOTE, constOf(golf, "maxNote"), "maxNote: draft.ts MAX_NOTE");
+  assert.ok(has(realm("data.gno"), "const maxData = 32 << 10") && MAX_BYTES === 32 << 10, "maxData: pipeline.ts MAX_BYTES");
 });
 
 if (failed) {

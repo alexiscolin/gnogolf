@@ -106,7 +106,7 @@ void test("draftFile: a file name from the slug, else the name, else a plain one
 
 void test("remixOf: someone's hole as a new draft of the remixer's, its maker credited in the note, no name, no par, no proofs", async () => {
   const hex = canonicalHex({ ...STARTERS.garden.straight, title: "Mole Run" }, host)!;
-  const d = await fromPublished(hex, host, `${B}/mole-run/v2`, A);
+  const d = await fromPublished(hex, host, `${B}/mole-run/v2`, A, census);
   if (typeof d === "string") throw new Error(d);
   const r = remixOf({ ...d, par: 3, note: "theirs" }, `${B}/mole-run/v2`);
   assert.deepEqual([r.slug, r.title, r.par, r.proofs], ["", "", 0, []]);

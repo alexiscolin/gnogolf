@@ -55,6 +55,7 @@ test("collection: some owned fill their world, tier and set; an earned gnome its
   assert.equal(a.tiers.find((t) => t.key === "legendary")!.have, 1);
   assert.equal(a.tiers.find((t) => t.key === "earned")!.have, 1);
   assert.ok(a.tiers.find((t) => t.key === "earned")!.items.some((x) => x.unlock === "king" && x.mine));
+  assert.equal(album(gnomes, earned, [{ ...earnedRow(8), id: "100008" }]).tiers.find((t) => t.key === "earned")!.have, 1, "earned by the realm's tier, whatever its id");
   assert.equal(a.sets.find((s) => s.key === g1.archetype)!.items.find((x) => x.id === 1)!.mine, true);
   assert.equal(a.have, 5);
   assert.equal(albumLine(a, g1.home), `${a.worlds.find((w) => w.key === g1.home)!.label} ${a.worlds.find((w) => w.key === g1.home)!.have}/${a.worlds.find((w) => w.key === g1.home)!.of}`);

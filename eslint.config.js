@@ -52,7 +52,7 @@ export default tseslint.config(
     rules: { "@typescript-eslint/no-floating-promises": "off" },
   },
   {
-    files: ["scripts/*.ts", "private/botcheck/*.ts"],
+    files: ["scripts/*.ts", "media/builder/*.ts", "private/botcheck/*.ts"],
     extends: [tseslint.configs.recommendedTypeChecked],
     languageOptions: {
       parserOptions: { projectService: true, tsconfigRootDir: new URL("./scripts/", import.meta.url).pathname },
@@ -63,7 +63,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ["web/*.mjs", "media/promo/*.mjs", "media/camera/*.mjs", "media/lib/*.mjs", "media/og/*.mjs", "media/gnomes/*.mjs", "scripts/*.mjs"],
+    files: ["web/*.mjs", "web/test/*.mjs", "media/**/*.mjs", "scripts/*.mjs"],
     languageOptions: { ecmaVersion: 2024, sourceType: "module", globals: globals.node },
     rules: {
       "no-undef": "error",

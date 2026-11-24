@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import type { Feel } from "../lib/feel.ts";
+import type { Feel, SoundName } from "../lib/feel.ts";
 
 // lib/feel.ts only builds real sound when `window` and `AudioContext` exist
 // (see its `audio()`), and wires a few browser event listeners at import
@@ -148,13 +148,13 @@ test("hush: still lets a sound through right after a gesture (menu clicks off-co
 });
 
 test("sound: every named sound plays without throwing, an unknown name is a no-op", () => {
-  const names = [
+  const names: SoundName[] = [
     "putt", "knock", "boing", "splash", "stretch", "sand", "ice", "puddle", "flowers", "thud", "whoosh", "pop", "win",
     "select", "blip", "start", "cup",
   ];
   for (const name of names) assert.doesNotThrow(() => sound(name), name);
   const before = { ...calls };
-  sound("not-a-real-sound");
+  sound("not-a-real-sound" as SoundName);
   assert.deepEqual(calls, before, "unknown sound: nothing created");
 });
 

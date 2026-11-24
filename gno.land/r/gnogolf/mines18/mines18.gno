@@ -217,10 +217,10 @@ func ground() []physics.Vec2 {
 		dn[1:10],
 		build.Arc(physics.V(46.5, 10.6), 2.3, deg(180), deg(360), 4), // the side stope
 		dn[10:],
-		arc(landN, 4.5, dn[len(dn)-1], onLake(rimX, rimY, 330), 4),              // round the landing
-		ring(rimX, rimY, 330, 444, 29),                                          // the rim path's rail
+		arc(landN, 4.5, dn[len(dn)-1], onLake(rimX, rimY, 330), 4),             // round the landing
+		ring(rimX, rimY, 330, 444, 29),                                         // the rim path's rail
 		arc(landS, 3.5, onLake(rimX, rimY, 84), meet(lakeX, lakeY, 110, 0), 5), // round the south landing
-		ring(lakeX-1, lakeY-1, 110, 290, 20)[1:],                                // the lava's far shore
+		ring(lakeX-1, lakeY-1, 110, 290, 20)[1:],                               // the lava's far shore
 		arc(landN, 4.5, onLake(lakeX, lakeY, 290), ds[len(ds)-1], 2),
 		rev(ds)[1:len(ds)-1],
 		arc(station, 5.5, ds[0], physics.V(14.3, 66.5), 2),

@@ -5,9 +5,10 @@
 // of the gnome shop but its door (components/gnomes/Door.tsx): its part of
 // the game is a chunk the door fetches, an import() under the flag as the
 // build writes it, so a build with NEXT_PUBLIC_GNOMES off has no such chunk
-// at all. Walked here from the sources: the static imports, not the
-// type-only ones, and of the import() calls only those every page makes
-// (ALWAYS).
+// at all. Nor any world but the garden: the others are chunks loadWorld
+// fetches (scene/worlds.ts). Walked here from the sources: the static
+// imports, not the type-only ones, and of the import() calls only those
+// every page makes (ALWAYS).
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -43,6 +44,12 @@ test("the first load carries none of the collection gnomes' wardrobe", () => {
   assert.ok(first.includes("components/Golf.tsx") && first.includes("components/Leaderboard.tsx"), "the walk reaches the game and its boards");
   const heavy = first.filter((f) => /scene\/gnome-(dress|kit|props|matter|legend)\.ts$|gnomes\/props\.ts$/.test(f));
   assert.deepEqual(heavy, []);
+});
+
+test("the first load carries no world but the garden", () => {
+  const first = [...eager(path.join(WEB, "app/game.tsx"))].map((f) => path.relative(WEB, f));
+  assert.ok(first.includes("lib/scene/garden.ts"), "the walk reaches the garden");
+  assert.deepEqual(first.filter((f) => /^lib\/scene\/(island|town|mountain|mines)(-\w+)?\.ts$/.test(f)), []);
 });
 
 // the shop's door, all of the shop the game's first load may carry: the flag and the wear signal (door.ts), the

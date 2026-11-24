@@ -150,4 +150,3 @@ func TestJgetReadsV1sJSON(t *testing.T) {
 	uassert.Equal(t, "x", jget(jobject(j, "a/v10"), "note"))
 	uassert.Equal(t, "", jobject(j, "a/v2"))
 }
-

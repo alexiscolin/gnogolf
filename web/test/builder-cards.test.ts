@@ -20,7 +20,7 @@ void test("draftMap: a starter's rails, posts and zones, its tee and cup, in its
   assert.ok(m.walls.every((w) => w.every === 0), "none moving");
   assert.deepEqual(m.posts.map((p) => p.skin), ["palm", "coral"]);
   assert.deepEqual(draftMap(tidepool).zones.map((z) => [z.kind, z.skin]), [["hazard", "tidepool"]]);
-  assert.ok(m.cupR > 0, "its world's cup");
+  assert.ok(m.cupR! > 0, "its world's cup");
 });
 
 void test("draftMap: a bar round its four corners; a pulse's piece drawn as a moving one", () => {

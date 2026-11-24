@@ -63,7 +63,7 @@ void test("E7: a timed piece on for part of its cycle; a pulse that comes and go
 });
 
 void test("E4, E14: gaps side by side, each too narrow, shut the way as one does; beside a wide one, they do not", () => {
-  const across = (...ys: [number, number][]) => hole({ walls: [...box(0, 0, 40, 20), ...[0, ...ys.flat(), 20].flatMap((y, k, all) => (k % 2 ? [] : [{ a: [20, y], b: [20, all[k + 1]] }]))] });
+  const across = (...ys: [number, number][]) => hole({ walls: [...box(0, 0, 40, 20), ...[0, ...ys.flat(), 20].flatMap((y, k, all): WallIn[] => (k % 2 ? [] : [{ a: [20, y], b: [20, all[k + 1]] }]))] });
   assert.match(rules(across([5, 5.9]))[0], /^E4 .* 0\.9 wide, narrower than the ball \(1\)$/);
   assert.equal(rules(across([5, 5.9], [14.1, 15])).filter((r) => r.startsWith("E4")).length, 2, "two");
   assert.equal(rules(across([3, 3.9], [9.55, 10.45], [16.1, 17])).filter((r) => r.startsWith("E4")).length, 3, "three");

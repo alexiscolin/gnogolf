@@ -137,7 +137,7 @@ for (const width of [390, 1280]) {
   say(!(await b.ev(`document.querySelector(".gsheet h2")?.textContent.includes("Sign in")`)), "nothing sent while a box is unticked");
   await shot(b, "review-1280");
   await tick(b);
-  w.next("cancel");
+  /** @type {NonNullable<typeof w>} */ (w).next("cancel");
   await click(b, ".gsheet button", "Order with obligation to pay");
   say(await until(b, w, `document.querySelector(".gsheet .note")?.textContent.includes("Cancelled in Adena")`), "cancelled in Adena: nothing was sent, said");
   await shot(b, "review-cancelled-1280");
@@ -186,7 +186,7 @@ for (const width of [390, 1280]) {
   await until(b, w, `document.querySelector(".gsheet .review")`);
   await sleep(500);
   await tick(b);
-  w.next("maybe");
+  /** @type {NonNullable<typeof w>} */ (w).next("maybe");
   await click(b, ".gsheet button", "Order with obligation to pay");
   say(await until(b, w, `document.querySelector(".gsheet .note")?.textContent.includes("Don't buy again")`), "unsure: don't buy again, said");
   await shot(b, "unsure-1280");
@@ -228,7 +228,7 @@ for (const width of [390, 1280]) {
     say(!!(await b.ev(`document.querySelector(".owned__line")?.textContent.includes("You play")`)), "a tap plays him, free: You play … · everyone sees …");
     await shot(b, "picker-picked-1280");
     await click(b, ".owned__line button", "Show to everyone");
-    for (let i = 0; i < 60 && JSON.parse((await qg(`Worn(address("${env.p1}"))`)) || "{}").id !== "73"; i++) (await w.pump(), await sleep(500));
+    for (let i = 0; i < 60 && JSON.parse((await qg(`Worn(address("${env.p1}"))`)) || "{}").id !== "73"; i++) (await /** @type {NonNullable<typeof w>} */ (w).pump(), await sleep(500));
     say(JSON.parse((await qg(`Worn(address("${env.p1}"))`)) || "{}").id === "73", "Show to everyone: Equip signed, Worn(p1) is #73");
     await until(b, w, `document.querySelector(".owned__line")?.textContent.startsWith("Everyone sees")`, 20e3);
     say(!!(await b.ev(`document.querySelector(".owned .share")?.textContent.includes("Your rivals will see")`)), "shown to everyone: the game's share row, \"Your rivals will see …\"");

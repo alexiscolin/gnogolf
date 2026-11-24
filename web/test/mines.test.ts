@@ -13,7 +13,7 @@ test("cartMouth: a cart's timber set, 0.5 clear either side of the cart and 0.4 
   assert.deepEqual(cartMouth(2), { width: 3, height: 2.9 }, "one height for every cart");
 });
 
-const span = (x0: number, z0: number, x1: number, z1: number, angle = 0, top = () => 0): DeckSpan => ({
+const span = (x0: number, z0: number, x1: number, z1: number, angle = 0, top: DeckSpan["top"] = () => 0): DeckSpan => ({
   inside: (x, z) => x >= x0 && x <= x1 && z >= z0 && z <= z1, top, box: [x0, z0, x1, z1], angle,
 });
 /** The gaps across the rows: the z-ranges the triangles cover, merged; how many holes between them. */
@@ -85,7 +85,7 @@ test("rockfall: its dust fades on its own material, never the halos' shared one"
   state.live.length = 0;
   extras({ version: 1, walls: bar, posts: [], zones: [] } as unknown as Parameters<typeof extras>[0], s, t); // the roof comes down this stroke
   const t0 = performance.now() / 1000;
-  for (let k = 0; k <= 30; k++) for (const f of state.live) f(t0 + k * 0.1, 0.1);
+  for (let k = 0; k <= 30; k++) for (const f of state.live) f(t0 + k * 0.1);
   assert.equal(haloMat().opacity, before, "the shared halo material untouched");
 });
 
@@ -102,7 +102,7 @@ test("the ball's cues in the mines' words: a draught, not a gust; the strongroom
   assert.equal(mines.at(at, 1, 0, { kind: "ice" }, "mines"), "Slippery");
 });
 
-test("one lantern for the mines, its glass the one GLASS, dimmed at once by lanternsLit", () => {
+test("lantern: one for the mines, its glass the one GLASS, dimmed at once by lanternsLit", () => {
   const glass: THREE.Material[] = [];
   lantern(0.55).traverse((o) => { if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshBasicMaterial && !md(o.material).hull) glass.push(o.material); });
   assert.deepEqual(glass, [GLASS], "its only unlit part (its ink aside) is the shared glass");
