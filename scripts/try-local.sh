@@ -27,9 +27,9 @@
 # link the server reads on every request, so "rebuild" swaps a new build in
 # at once (one rename) while the old one keeps serving.
 #
-# Every server listens on 127.0.0.1 alone. With Tailscale, the tailnet-preview
-# script (TAILNET_PREVIEW, ~/bin/tailnet-preview) opens Tailscale
-# Serve entries, tailnet only, never Funnel, and removes them on exit: the site
+# Every server listens on 127.0.0.1 alone. With Tailscale up and
+# TAILNET_PREVIEW set to a script of yours (`up NAME PORT...`, `down NAME`,
+# `list`), it opens Serve entries, tailnet only, never Funnel, and removes them on exit: the site
 # as https on the machine's ts.net name (a secure context: copying and sharing
 # links need one) and as raw TCP on its Tailscale IP (the fallback, plain
 # http: the rest works there too), the node's RPC as raw TCP for a
@@ -46,14 +46,14 @@
 # (26667) and GNOWEB_PORT (8868: not gnodev's own 26657 and 8888, often
 # another node's), CHAINID (gnogolf-local: not "dev", which Adena keeps for its
 # own network), NS (nym-trylocal000), WORK (a new folder under
-# ~/.cache/gnogolf-try-local), TAILNET=0 (this machine alone), GNO_TOOLCHAIN
+# ~/.cache/gnogolf-try-local), TAILNET_PREVIEW (unset: this machine alone), TAILNET=0 (the same, with it set), GNO_TOOLCHAIN
 # as in check.sh. Local only: nothing is sent anywhere else.
 set -u
 root=$(cd "$(dirname "$0")/.." && pwd)
 toolchain=${GNO_TOOLCHAIN:-${XDG_CACHE_HOME:-$HOME/.cache}/gno-toolchains/onyx}
 GNOKEY=${GNOKEY:-$toolchain/gnokey}
-PREVIEW=${TAILNET_PREVIEW:-$HOME/bin/tailnet-preview}
-NAME=gnogolf-try # the Serve entries' name in tailnet-preview
+PREVIEW=${TAILNET_PREVIEW:-}
+NAME=gnogolf-try # the Serve entries' name
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/gnogolf-try-local
 last=$cache/last # the WORK of the playground running, for its commands
 log() { printf '%s\n' "$*" >&2; }
@@ -157,8 +157,8 @@ for p in "$APP_PORT" "$RPC_PORT" "$GNOWEB_PORT"; do
 done
 # the tailnet: this machine's Tailscale IP and ts.net name, and the script that opens the Serve entries
 TS_IP="" TS_NAME=""
-if [ "${TAILNET:-1}" = 1 ] && command -v tailscale >/dev/null && TS_IP=$(tailscale ip -4 2>/dev/null | head -1) && [ -n "$TS_IP" ]; then
-	[ -x "$PREVIEW" ] || die "the tailnet-preview script is not at $PREVIEW (set TAILNET_PREVIEW, or TAILNET=0 for this machine alone)"
+if [ -n "$PREVIEW" ] && [ "${TAILNET:-1}" = 1 ] && command -v tailscale >/dev/null && TS_IP=$(tailscale ip -4 2>/dev/null | head -1) && [ -n "$TS_IP" ]; then
+	[ -x "$PREVIEW" ] || die "TAILNET_PREVIEW is not a script that runs: $PREVIEW (unset it, or TAILNET=0, for this machine alone)"
 	! "$PREVIEW" list | grep -qx "$NAME:" || die "Serve entries of a former run are still up: scripts/try-local.sh down"
 	TS_NAME=$(tailscale status --json | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')
 fi
