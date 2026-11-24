@@ -10,18 +10,7 @@ way to fake a score.
 
 **[Play at gnogolf.xyz](https://gnogolf.xyz).** Free, no wallet needed.
 
-<table>
-  <tr>
-    <td><img src="web/public/title/cup-garden.webp" alt="The Garden"><br>The Garden</td>
-    <td><img src="web/public/title/cup-island.webp" alt="The Island"><br>The Island</td>
-    <td><img src="web/public/title/cup-town.webp" alt="Mushroom Town"><br>Mushroom Town</td>
-  </tr>
-  <tr>
-    <td><img src="web/public/title/cup-mountain.webp" alt="The Mountain"><br>The Mountain</td>
-    <td><img src="web/public/title/cup-mines.webp" alt="The Crystal Mines"><br>The Crystal Mines</td>
-    <td></td>
-  </tr>
-</table>
+![A tour of the worlds, as the title screen plays it](docs/img/play.gif)
 
 ## What's in it
 
