@@ -3,10 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "predev": "node ../scripts/gnomeassets.mjs",
+    "predev": "node ../scripts/gnomeassets.mjs && npm run -s coursemaps",
     "dev": "next dev",
     "typecheck": "tsc --noEmit",
-    "prebuild": "node ../scripts/gnomeassets.mjs",
+    "prebuild": "node ../scripts/gnomeassets.mjs && npm run -s coursemaps",
     "build": "tsc --noEmit && next build",
     "lint": "eslint --max-warnings 0 --no-error-on-unmatched-pattern . ../media/promo ../media/lib ../media/og ../media/gnomes ../media/builder ../scripts ../private/botcheck",
     "selfcheck": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/selfcheck.ts",
@@ -23,7 +23,9 @@
     "gnomes:looks": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/gnomelooks.ts",
     "scene:looks": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/scenelooks.ts",
     "gnomes:rows": "node --experimental-strip-types --disable-warning=ExperimentalWarning ../scripts/gnomerows.ts",
+    "coursemaps": "node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./test/setup.mjs ../scripts/coursemaps.ts",
     "gnomes:thumbs": "node ../media/gnomes/render.mjs",
+    "gnomes:portraits": "node ../media/gnomes/portraits.mjs",
     "gnomes:cards": "node ../media/gnomes/cards.mjs",
     "builder:tiles": "node ../media/builder/tiles.mjs"
   },

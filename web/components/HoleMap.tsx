@@ -1,13 +1,13 @@
 // Flat SVG, no WebGL: a screen can show as many as it needs.
-import { useEffect, useId, useState } from "react";
-import type { Chain } from "@/lib/chain";
+import { useEffect, useId, useRef, useState } from "react";
 import { Frame } from "@/components/ui";
 import { mapFit, mapView, mapZone, pathD, railRuns, type MapHole, type MapKind } from "@/lib/duel";
+import { mapNow, mapOf, type MapChain } from "@/lib/maps";
 import { BALL_R, cupRadius, inSea } from "@/lib/terrain";
 import type { Vec2, Zone } from "@/lib/types";
 
-/** A hole from above in a round window, in its cup's colours. path: a ghost's path, drawn over it. */
-export function HoleMap({ hole, path = [], className = "rival__map" }: { hole: MapHole; path?: readonly Vec2[]; className?: string }) {
+/** A hole from above in a round window, in its cup's colours. path: a ghost's path, drawn over it. late: it came after its window, faded in. */
+export function HoleMap({ hole, path = [], className = "rival__map", late = false }: { hole: MapHole; path?: readonly Vec2[]; className?: string; late?: boolean }) {
   const lane = useId(), { at, k } = mapView(mapFit(hole, path), hole), line = pathD(path, at);
   const [cx, cy] = at(hole.cup), [tx, ty] = at(hole.start);
   // the mines' board frame, out in the void, is the chain's and not drawn
@@ -19,7 +19,7 @@ export function HoleMap({ hole, path = [], className = "rival__map" }: { hole: M
   const felt = [...rails(false).filter(closed), ...outside.map((z) => [...z.poly!, z.poly![0]])].map((run) => pathD(run, at)).join("");
   const zones = hole.zones.filter((z) => !z.outside).map((z) => ({ z, kind: mapZone(z) }));
   return (
-    <Frame className={`${className} tint--${hole.world}`}>
+    <Frame className={`${className} tint--${hole.world}${late ? " late" : ""}`}>
       <defs><clipPath id={lane}><path d={felt} clipRule="evenodd" /></clipPath></defs>
       <rect width="120" height="120" className="map__turf" />
       {/* a lane without rails: what surrounds it first, then the lane over it */}
@@ -60,24 +60,24 @@ function ZoneShape({ z, kind, at }: { z: Zone; kind: MapKind; at: (p: Vec2) => V
   return (<>{shape}{r >= 1.5 && <path d={`M${mx - r * (ux + uy)} ${my - r * (uy - ux)}L${mx + r * ux} ${my + r * uy}L${mx - r * (ux - uy)} ${my - r * (uy + ux)}`} className="map__fall" />}</>);
 }
 
-// A version's map never changes: read once a session. A failed read is asked again.
-const read = new Map<string, Promise<MapHole>>();
-/** The maps of the holes asked for, by id, as each read comes in. */
-export function useHoleMaps(chain: Pick<Chain, "state"> | null, ids: readonly string[]): ReadonlyMap<string, MapHole> {
-  const [maps, setMaps] = useState<ReadonlyMap<string, MapHole>>(new Map());
+/** The maps of the holes asked for, by id: those already here at once, the others as each read comes in. */
+export function useHoleMaps(chain: MapChain | null, ids: readonly string[]): ReadonlyMap<string, MapHole> {
+  const [, drawn] = useState(0);
   const key = ids.join(" ");
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    for (const id of key.split(" ").filter(Boolean)) {
-      let p = read.get(id);
-      if (!p) read.set(id, (p = chain.state(id))), p.catch(() => read.delete(id));
-      void p.then((m) => live && setMaps((was) => (was.has(id) ? was : new Map(was).set(id, m))), () => {});
-    }
+    for (const id of key.split(" ").filter(Boolean)) if (!mapNow(id)) void mapOf(chain, id).then(() => live && drawn((n) => n + 1), () => {});
     return () => void (live = false);
   }, [chain, key]);
-  return maps;
+  return new Map(ids.flatMap((id) => { const m = mapNow(id); return m ? [[id, m] as const] : []; }));
 }
 
-/** A map's window, empty: while it reads, or without one. */
-export const NoMap = ({ className = "rival__map" }: { className?: string }) => <Frame className={className}><rect width="120" height="120" className="map__turf" /></Frame>;
+/** A map's window, empty. wait: its map is being read (it pulses). */
+export const NoMap = ({ className = "rival__map", wait = false }: { className?: string; wait?: boolean }) => <Frame className={className + (wait ? " wait" : "")}><rect width="120" height="120" className="map__turf" /></Frame>;
+
+/** A hole's map in its window, or the window alone until it is here. */
+export function MapSlot({ hole, path, className, wait = false }: { hole: MapHole | undefined; path?: readonly Vec2[]; className?: string; wait?: boolean }) {
+  const late = useRef(!hole);
+  return hole ? <HoleMap hole={hole} path={path} className={className} late={late.current} /> : <NoMap className={className} wait={wait} />;
+}
