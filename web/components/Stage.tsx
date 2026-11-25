@@ -16,14 +16,15 @@ export function Portrait({ skin, className = "" }: { skin: Skin | "ghost"; class
 }
 
 const warm: HTMLImageElement[] = []; // (kept: a decoded picture stays decoded)
-/** The game's gnomes' pictures fetched ahead, once: a card's are there as its screen opens. */
+/** The game's gnomes' pictures fetched ahead, once: a card's are there as its screen opens. Resolves once they are in (one that fails too). */
 export function warmPortraits() {
-  if (warm.length) return;
-  for (const src of ["/portraits/ghost.webp", ...GNOMES.map(portraitOf)]) {
-    const im = new Image();
-    im.src = src;
-    warm.push(im);
-  }
+  if (!warm.length)
+    for (const src of ["/portraits/ghost.webp", ...GNOMES.map(portraitOf)]) {
+      const im = new Image();
+      im.src = src;
+      warm.push(im);
+    }
+  return Promise.all(warm.map((im) => im.decode().catch(() => {})));
 }
 
 /** A gnome hopping in its own WebGL canvas, over his Portrait if the box holds one. Returns the ref of the box to draw it in. */

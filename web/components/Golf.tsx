@@ -87,6 +87,8 @@ function fatalKind(err: unknown): FatalKind {
   if (errorKind(err) === "down" || /fetch|network|timed? ?out|timeout|abort|rpc|abci|http|connect|load failed|did not answer/i.test(m)) return "down";
   return "bug";
 }
+/** The longest the title's loader holds for the next screens' files once the game is in (ms). */
+const WARM_MS = 2000;
 // what the error banner says, per kind: its title and its sentence
 const BANNER = {
   down: ["The course is not reachable right now", "The chain the game plays on did not answer. It may be restarting."],
@@ -584,12 +586,22 @@ export default function Golf() {
   // whose ghost is raced, under the cups' title and the community's
   const racingNote = dare && !solo && <p className="dare">Racing {rivalName}</p>;
 
-  // the title's wait put to use, in idle moments: the files the first screens show (the Builder's wasm on a computer alone: a phone has no Builder)
-  useEffect(() => whenIdle([
-    loadCourse,
-    warmPortraits,
-    () => builderOn() && onComputer((q) => window.matchMedia(q).matches) && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {}),
-  ]), []);
+  // what the next screens show at once (the course's maps, the gnomes' pictures), fetched beside the game: the title's
+  // loader holds for them only while they are not in, WARM_MS past the game at most (then they go on behind it)
+  const [warm, setWarm] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void Promise.all([loadCourse(), warmPortraits()]).then(() => live && setWarm(true));
+    // (the Builder's wasm, in an idle moment and on a computer alone: a phone has no Builder)
+    whenIdle([() => builderOn() && onComputer((q) => window.matchMedia(q).matches) && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
+    return () => void (live = false);
+  }, []);
+  const started = !!s;
+  useEffect(() => {
+    if (!started || warm) return;
+    const t = setTimeout(() => setWarm(true), WARM_MS);
+    return () => clearTimeout(t);
+  }, [started, warm]);
   // the chain's list in: the course's current versions (their maps are the site's own), and the community's first maps read ahead
   const course = s ? s.allHoles : null, community = s ? s.community : null;
   useEffect(() => {
@@ -842,7 +854,7 @@ export default function Golf() {
       {/* rain and storm darken and wet the whole scene a little */}
       {playing && wx && (wx.rain || wx.storm) && <div className={"wet" + (wx.storm ? " wet--storm" : "")} aria-hidden="true" />}
 
-      {screen === "title" && <Title loading={!s} world={s ? s.world : undefined} gnome={SHOP ? gnomeById(gnome) : undefined} onStart={() => (setScreen(dare && !solo && dare === linkDare.current ? "ghosts" : "modes"), (linkDare.current = ""))} onAbout={() => setAbout(true)} />}
+      {screen === "title" && <Title loading={!s || !warm} world={s ? s.world : undefined} gnome={SHOP ? gnomeById(gnome) : undefined} onStart={() => (setScreen(dare && !solo && dare === linkDare.current ? "ghosts" : "modes"), (linkDare.current = ""))} onAbout={() => setAbout(true)} />}
       {screen === "modes" && (
         <Modes gnome={gnome} counts={s ? s.worlds : undefined} onBack={() => setScreen(BACK.modes)} onAbout={() => setAbout(true)}
           onSolo={() => (dropDuel(null), setScreen("worlds"))} onDuel={() => setScreen("rival")}
