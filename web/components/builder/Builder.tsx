@@ -9,7 +9,7 @@
 import "@/app/title.css";
 import "@/app/build/builder.css";
 import "@/app/build/phone.css";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui";
 import { DRAFT_PREFIX, dropDraft, keptText, loadDrafts, newKey, saveDraft, saveOver, type Draft, type Kept } from "@/lib/builder/draft";
 import { endpoints, keepAuthor, knownAuthor, remixId } from "@/lib/builder/holes";
@@ -54,7 +54,8 @@ export default function Builder() {
     setDrafts((list) => [...list, { key, draft }]);
     openAt(key);
   }, [openAt]);
-  useEffect(() => {
+  // (before the first paint: the start never shows empty, nor for a frame ahead of a first run's hole)
+  useLayoutEffect(() => {
     const list = loadDrafts();
     // a remix asked for (taken from the address at once: a reload does not make another)
     const remix = remixId(window.location.search), url = new URL(window.location.href);
