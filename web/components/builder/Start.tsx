@@ -60,7 +60,7 @@ export default function Start({ author, drafts, said = "", onOpen, onAdd, onDele
   // the world's templates, and its plain green: the sign's Build
   const starts = useMemo(() => startsIn(world).map((s) => ({ ...s, map: draftMap(s.draft) })), [world]);
   const scratch = starts.find((s) => s.name === "scratch"), templates = starts.filter((s) => s !== scratch);
-  const keys = useKeys(drafts);
+  const { keys, down, retry } = useKeys(drafts);
   const { chain, keep } = useMemo(() => {
     const { rpc, web, keep } = endpoints(window.location.search);
     return { chain: makeChain({ rpc, web }), keep };
@@ -116,12 +116,13 @@ export default function Start({ author, drafts, said = "", onOpen, onAdd, onDele
     <section className="bholes__mine" aria-labelledby="bholes-mine">
       <h3 id="bholes-mine" className="h-section bholes__h">Your holes {any && <small>{count}</small>}</h3>
       {got && author && got.rows.length > 0 ? <BuilderBadges facts={factsOf(got.rows, got.saved, author)} /> : coming.length > 0 && <BuilderBadges />}
+      {down && <p className="bholes__why" role="alert">The Builder&apos;s checker did not load: the weathers holed are not shown. <button type="button" className="linkish" onClick={retry}>Try again</button></p>}
       {any ? (
         <ul className="bholes__list">
           {drafts.map(({ key, draft: d }) => {
             // (under the id its Publish would go by: the version after the one on the chain, else its first; the author unknown, the best of its ids)
             const h = rowOf(d), st = draftState(d, keys.get(key) ?? null, author && d.slug ? `${author}/${d.slug}/v${(h ? versionOf(h.id) : 0) + 1}` : null);
-            const checking = d.proofs.length > 0 && !keys.has(key); // (its rounds read against the hole as it is: builder.wasm, loading)
+            const checking = d.proofs.length > 0 && !keys.has(key) && !down; // (its rounds read against the hole as it is: builder.wasm, loading)
             return (
               <li key={key} className="bholes__draft bholes__draft--open">
                 <span className="bholes__map bholes__map--s"><HoleMap hole={draftMap(d)} className="bholes__svg" /></span>
@@ -233,15 +234,16 @@ function Live({ s, fresh }: { s: HoleStats; fresh: boolean }) {
   );
 }
 
-/** Each proved draft's proof key by its own key (proof.ts proofKey: the hole as it is now), for its state, once builder.wasm is in; null when a fit refuses. */
+/** Each proved draft's proof key by its own key (proof.ts proofKey: the hole as it is now), for its state, once builder.wasm is in; null when a fit refuses. down: it did not load, retry asks again. */
 function useKeys(drafts: readonly Kept[]) {
   const [keys, setKeys] = useState<ReadonlyMap<string, string | null>>(new Map());
+  const [down, setDown] = useState(false), [tries, setTries] = useState(0);
   useEffect(() => {
     const proved = drafts.filter((k) => k.draft.proofs.length);
     if (!proved.length) return;
     let live = true;
-    void loadBuilder().then((host) => Promise.all(proved.map((k) => proofKey(k.draft, host)))).then((found) => live && setKeys(new Map(proved.map((k, i) => [k.key, found[i]]))), () => {});
+    void loadBuilder().then((host) => Promise.all(proved.map((k) => proofKey(k.draft, host)))).then((found) => live && setKeys(new Map(proved.map((k, i) => [k.key, found[i]]))), () => live && setDown(true));
     return () => void (live = false);
-  }, [drafts]);
-  return keys;
+  }, [drafts, tries]);
+  return { keys, down, retry: () => (setDown(false), setTries((n) => n + 1)) };
 }
