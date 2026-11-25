@@ -8,7 +8,7 @@ import type { Mode } from "@/lib/types";
 import { UNLOCKS } from "@/lib/card";
 import { sound } from "@/lib/feel";
 import { AboutButton, BackButton } from "@/components/About";
-import { useGnomeStage } from "@/components/Stage";
+import { Portrait, useGnomeStage } from "@/components/Stage";
 import { Button } from "@/components/ui";
 import { AimSetting } from "@/components/game/Hud";
 
@@ -54,9 +54,9 @@ export function Picker({ world, gnome, onChange, onPick, unlocked, chosen, onPla
         <h2 className="pick__name" tabIndex={-1}>{skin.name}</h2>
         <div className="pick__stage">
           <button className="round" aria-label="Previous gnome" onClick={() => step(-1)}>‹</button>
-          {/* the tile: the gnome's own renderer (its canvas mount) and his dots along its foot */}
+          {/* the tile: his picture at once, the gnome's own renderer over it (its canvas mount), his dots along its foot */}
           <div className="pick__tile">
-            <div ref={canvas} className={"pick__canvas" + (unlocked(skin.id) ? "" : " pick__canvas--locked")} />
+            <div ref={canvas} className={"pick__canvas" + (unlocked(skin.id) ? "" : " pick__canvas--locked")}><Portrait skin={skin} /></div>
             {/* a locked gnome: what earns him, on a band across him */}
             {!unlocked(skin.id) && <p className="pick__lock">🔒 {skin.unlock ? UNLOCKS[skin.unlock].need : "Keep playing"}</p>}
             <div className="pick__dots">

@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton, FrontHead } from "@/components/About";
 import { HoleMap, NoMap, useHoleMaps } from "@/components/HoleMap";
-import { useGnomeStage } from "@/components/Stage";
+import { Portrait } from "@/components/Stage";
 import { Emblem } from "@/components/Worlds";
 import { Button, Segmented, Sheet } from "@/components/ui";
 import { buttonClass } from "@/components/button";
@@ -231,13 +231,11 @@ function useKeys(drafts: readonly Kept[], host: BuilderHost) {
   return keys;
 }
 
-/** The workshop's sign: the game's Miner in his hard hat, out of a blueprint's disc (the menu's Builder panel's), hopping under the pointer; what the Builder is for, in a line. */
+/** The workshop's sign: the game's Miner in his hard hat, out of a blueprint's disc (the menu's Builder panel's); what the Builder is for, in a line. */
 function Workshop() {
-  const [hot, setHot] = useState(false);
-  const stage = useGnomeStage<HTMLSpanElement>(gnomeById("miner"), { act: "hop", playing: hot });
   return (
-    <header className="bholes__sign" onPointerEnter={() => setHot(true)} onPointerLeave={() => setHot(false)}>
-      <span ref={stage} className="bholes__gnome"><Emblem id="build" /></span>
+    <header className="bholes__sign">
+      <span className="bholes__gnome"><Emblem id="build" /><Portrait skin={gnomeById("miner")} /></span>
       <div className="bholes__say">
         <FrontHead eyebrow="The Builder" title="Hard hats on!" />
         <p>Build your own hole, sink it in every weather, put your name on it.</p>

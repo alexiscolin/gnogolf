@@ -523,66 +523,46 @@ export function makeGhost(o: number, skin: Skin = GHOST) {
   return { ball, fade };
 }
 
-/** An act a preview plays: hop (the picker), solo, duel (he and a ghost hop in turn), build (he hammers) or shop (he sways and bows). */
-export type Act = "hop" | "solo" | "duel" | "build" | "shop";
-
-const ease = (x: number) => (x < 0.5 ? 2 * x * x : 1 - (-2 * x + 2) ** 2 / 2);
-/** One gnome at k ms of the solo act's 3.6 s: a roll of two turns about his middle, a wobble, a blink, then a hop. */
-function soloAt(g: Gnome, k: number) {
-  const { body, eyes, mid } = g.userData;
-  const roll = Math.min(k / 1300, 1), wob = k > 1300 && k < 1800 ? (1800 - k) / 500 : 0, a = ease(roll) * Math.PI * 4;
-  body.rotation.set(a, 0.35, Math.sin(k / 45) * 0.18 * wob);
-  const hop = k > 2900 && k < 3300 ? Math.sin(((k - 2900) / 400) * Math.PI) * 0.34 : 0;
-  // He turns about his middle: his body's centre goes round it.
-  body.position.set(0, mid * (1 - Math.cos(a)) + hop, -mid * Math.sin(a));
-  for (const e of eyes || []) e.scale.y = k > 2300 && k < 2430 ? 0.12 : 1;
-  return hop;
-}
-
-/** He hops, turning. */
+/** He hops, turning: on the ground at 0, as his portrait stands him. */
 function hopAt(g: Gnome, t: number) {
   const { body } = g.userData;
-  const hop = Math.abs(Math.sin((t + 900) / 380)) * 0.22;
+  const hop = Math.abs(Math.sin(t / 380)) * 0.22;
   body.rotation.y = Math.sin((t + 900) / 1400) * 0.7;
   body.position.y = hop;
   return hop;
 }
-/** He hammers: three eased leans forward from his feet, 0.8 s each, then a little hop; 3.2 s in all. */
-function buildAt(g: Gnome, t: number) {
-  const { body } = g.userData, k = t % 3200;
-  const lean = k < 2400 ? (1 - Math.cos(((k % 800) / 800) * Math.PI * 2)) / 2 : 0;
-  const hop = k >= 2500 && k < 3000 ? Math.sin(((k - 2500) / 500) * Math.PI) * 0.18 : 0;
-  body.rotation.set(lean * 0.24, 0.42, 0);
-  body.position.set(0, hop, 0);
-  return hop;
-}
-/** He sways to show one side then the other, with a small bow at each; 4 s. */
-function shopAt(g: Gnome, t: number) {
-  const { body } = g.userData, a = ((t % 4000) / 4000) * Math.PI * 2;
-  body.rotation.set(Math.max(0, Math.sin(a * 2)) * 0.12, Math.sin(a) * 0.75, 0);
-  body.position.set(0, 0, 0);
-  return 0;
-}
-/** Each act's pose at time t (ms). Returns his hop's height, which his shadow follows. Each loops seamlessly. */
-export const ACTS: Record<Act, (g: Gnome, t: number) => number> = { hop: hopAt, duel: hopAt, solo: (g, t) => soloAt(g, t % 3600), build: buildAt, shop: shopAt };
-/** Each act's stage: how far back the camera stands (z) and how much higher it looks (lift), so every panel's gnome stands on the same baseline. */
-export const STAGES: Record<Act, { z: number; lift: number }> = {
-  hop: { z: 4.2, lift: 0 }, solo: { z: 4.2, lift: 0 }, build: { z: 4.2, lift: 0 }, shop: { z: 4.2, lift: 0 }, duel: { z: 5.2, lift: 0.2 },
-};
 
-/** A turntable with its own small renderer, for the picker and the panels. Still, it holds its pose and draws nothing until it plays. */
-export function makePreview(canvas: HTMLCanvasElement, { act = "hop", still = false }: { act?: Act; still?: boolean } = {}) {
+/** The stage's camera: it frames the pompom at the top of a hop down to the shadow. */
+export function stageCamera() {
+  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50);
+  camera.position.set(0, 0.95, 4.2);
+  camera.lookAt(0, 0.38, 0);
+  return camera;
+}
+/** A gnome stood on the stage at time t (ms) of his hop, his shadow on the ground under him. */
+export function onStage(g: Gnome, t = 0) {
+  const { shade } = g.userData, hop = hopAt(g, t);
+  g.scale.setScalar(0.82); // room above the hat for the hop
+  shade.position.y = -BALL_R + 0.02; // right under him, in frame
+  shade.scale.setScalar(1 - hop * 1.6);
+  shade.material.opacity = 0.18 * (1 - hop * 1.4);
+  return g;
+}
+
+/** A gnome's picture as the site serves it: the game's own cut out as the stage first shows them
+ *  (media/gnomes/portraits.mjs), a collection gnome's thumbnail. One this page cannot name: the Classic's. */
+export function portraitOf(skin: Skin) {
+  const token = /^t(\d+)$/.exec(skin.id);
+  return token ? `/gnomes/${token[1]}.webp` : `/portraits/${GNOMES.some((g) => g.id === skin.id) ? skin.id : GNOMES[0].id}.webp`;
+}
+
+/** A turntable with its own small renderer, for the picker and the win card: he hops, or stands still under reduced motion. */
+export function makePreview(canvas: HTMLCanvasElement) {
   const renderer = makeRenderer(canvas);
   const scene = makeScene();
-  const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 50), stage = STAGES[act];
-  camera.position.set(0, 0.95 + stage.lift, stage.z);
-  camera.lookAt(0, 0.38 + stage.lift, 0); // frames the pompom at the top of a hop down to the shadow
+  const camera = stageCamera();
   let gnome: Gnome | null = null, alive = true;
-  // the ghost, a step to his right
-  const rival = act === "duel" ? makeGhost(0.55).ball : null;
-  if (rival) (rival.scale.setScalar(0.82), rival.position.set(0.46, 0, -0.25), scene.add(rival));
-  // The act's own clock: it runs only while playing, never under reduced motion.
-  let t = 0, last = 0, playing = !still, drawn = false;
+  let t = 0, last = 0, drawn = false;
   const size = () => {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     renderer.setSize(w, h, false);
@@ -595,20 +575,11 @@ export function makePreview(canvas: HTMLCanvasElement, { act = "hop", still = fa
     requestAnimationFrame(tick);
     const dt = last ? Math.min(now - last, 50) : 0;
     last = now;
-    if (playing && motion) t += dt;
+    if (motion) t += dt;
     else if (drawn) return;
     if (gnome) {
-      const { shade } = gnome.userData;
-      // His shadow stays on the ground and shrinks as he rises.
-      const hop = ACTS[act](gnome, t);
-      shade.scale.setScalar(1 - hop * 1.6);
-      shade.material.opacity = 0.18 * (1 - hop * 1.4);
-      gnome.userData.tick?.(t); // a Legendary's piece moves with the act
-    }
-    // the ghost hops when he lands: their turns
-    if (rival) {
-      rival.userData.body.position.y = Math.abs(Math.cos((t + 900) / 380)) * 0.22;
-      rival.userData.body.rotation.y = -Math.sin((t + 900) / 1400) * 0.7;
+      onStage(gnome, t);
+      gnome.userData.tick?.(t); // a Legendary's piece moves with the hop
     }
     renderer.render(scene, camera);
     drawn = true;
@@ -622,20 +593,13 @@ export function makePreview(canvas: HTMLCanvasElement, { act = "hop", still = fa
         disposeCourse(gnome);
       }
       gnome = makeBall(skin);
-      gnome.scale.setScalar(0.82); // room above the hat for the hop
-      gnome.userData.shade.position.y = -BALL_R + 0.02; // right under him, in frame
-      if (rival) gnome.position.x = -0.42;
       scene.add(gnome);
       drawn = false;
-    },
-    /** Plays the act, or holds it where it is. */
-    play(on: boolean) {
-      playing = on;
     },
     resize: size,
     destroy() {
       alive = false;
-      for (const g of [gnome, rival]) if (g) disposeCourse(g);
+      if (gnome) disposeCourse(gnome);
       renderer.dispose();
       releaseShared();
       renderer.forceContextLoss();

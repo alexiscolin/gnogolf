@@ -559,7 +559,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
   const myBest = myRow || mine, myScore = !myBest ? "" : kind === "hole" ? strokesWord(myBest.strokes) : `${holesWord(myBest.holes || 0)} at ${vsPar(standingVs(myBest))}`;
   // the rows to come, blank: drawn as the rows will be (the rival's stickers, as many as it shows)
   // (read, nobody: free, the places with no bars; the rival's, one row of them, never a box that scrolls)
-  const ghosts = (free?: string) => row ? <ol className="lb__blank" aria-hidden="true">{Array.from({ length: max || 3 }, (_, i) => <li key={i}><StickerGhost at={i + 1} free={free} /></li>)}</ol> : <Ghosts free={free} />;
+  const ghosts = (free?: string) => row ? <ol className="lb__blank" aria-hidden="true">{Array.from({ length: free === undefined ? max || 3 : 3 }, (_, i) => <li key={i}><StickerGhost at={i + 1} free={free} /></li>)}</ol> : <Ghosts free={free} />;
   const title = kind === "hole" ? s.name : "The course";
   const own = !max && !row; // (a board of its own, not the rival's stickers)
   const listedRows = shown ? (whole || !own ? shown.rows.slice(0, max) : shown.rows.slice(0, TOP)) : [];
@@ -1059,7 +1059,7 @@ const Place = ({ at, plain = false }: { at: number; plain?: boolean }) =>
 /** A place nobody holds yet, or not yet read: a sticker drawn blank (its bar while read; free: read, nobody, the
  *  first place's words in its place). */
 const StickerGhost = ({ at = 0, free }: { at?: number; free?: string }) =>
-  <div className="sticker podium__ghost"><Frame className="sticker__face" />{at > 0 && <Place at={at} />}{free === undefined ? <i /> : at <= 1 && free && <b className="podium__free">{free}</b>}</div>;
+  <div className={`sticker podium__ghost${free === undefined ? " wait" : ""}`}><Frame className="sticker__face" />{at > 0 && <Place at={at} />}{free === undefined ? <i /> : at <= 1 && free && <b className="podium__free">{free}</b>}</div>;
 /** A board's player as a sticker: their gnome flat (in their ghost's skin;
  *  yours, your gnome), their name and a line under it (sub); a tap
  *  races them (onClick), else it only shows. */

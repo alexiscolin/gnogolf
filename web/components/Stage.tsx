@@ -1,32 +1,56 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { makePreview, type Act, type Skin } from "@/lib/scene/gnome";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { GNOMES, makePreview, portraitOf, type Skin } from "@/lib/scene/gnome";
 
-/** A gnome turning in its own WebGL canvas. Returns the ref of the box to draw it in. */
-export function useGnomeStage<T extends HTMLElement = HTMLDivElement>(skin: Skin, { act = "hop", playing = true }: { act?: Act; playing?: boolean } = {}) {
+/** A gnome's picture, there at once: no WebGL, a card can show as many as it needs. ghost: a duel's, whoever he is. */
+export function Portrait({ skin, className = "" }: { skin: Skin | "ghost"; className?: string }) {
+  const src = skin === "ghost" ? "/portraits/ghost.webp" : portraitOf(skin);
+  // not fetched yet (a link straight past the title): his stage pulses, then he fades in
+  const [at, setAt] = useState<"" | "wait" | "late">("");
+  const img = useRef<HTMLImageElement>(null);
+  useLayoutEffect(() => setAt(img.current!.complete ? "" : "wait"), [src]);
+  // (said by the card he is on: the picture adds nothing for a reader)
+  return <img ref={img} className={`portrait${src.startsWith("/gnomes/") ? " portrait--thumb" : ""}${at && (at === "wait" ? " portrait--wait" : " late")} ${className}`.trim()} src={src} alt="" width="512" height="512" draggable={false}
+    onLoad={() => setAt((was) => (was === "wait" ? "late" : was))} onError={() => setAt("")} />;
+}
+
+const warm: HTMLImageElement[] = []; // (kept: a decoded picture stays decoded)
+/** The game's gnomes' pictures fetched ahead, once: a card's are there as its screen opens. */
+export function warmPortraits() {
+  if (warm.length) return;
+  for (const src of ["/portraits/ghost.webp", ...GNOMES.map(portraitOf)]) {
+    const im = new Image();
+    im.src = src;
+    warm.push(im);
+  }
+}
+
+/** A gnome hopping in its own WebGL canvas, over his Portrait if the box holds one. Returns the ref of the box to draw it in. */
+export function useGnomeStage<T extends HTMLElement = HTMLDivElement>(skin: Skin) {
   const box = useRef<T>(null);
   const preview = useRef<ReturnType<typeof makePreview> | null>(null);
   useEffect(() => {
     // A fresh canvas on every mount: a released WebGL context cannot be taken again on the same element.
-    const el = document.createElement("canvas");
+    const at = box.current!, el = document.createElement("canvas");
     el.className = "pick__canvas"; // sizing only; the locked look is the wrapper's CSS filter
-    box.current!.appendChild(el);
+    at.appendChild(el);
     let p: ReturnType<typeof makePreview>;
-    try { p = preview.current = makePreview(el, { act, still: !playing }); } catch { return () => el.remove(); } // no WebGL to spare: no stage
+    try { p = preview.current = makePreview(el); } catch { return () => el.remove(); } // no WebGL to spare: his picture stays
+    // his picture goes as the canvas draws its first frame (asked after the preview's own: the same frame)
+    const drawn = requestAnimationFrame(() => (at.dataset.live = ""));
     const onResize = () => p.resize();
     window.addEventListener("resize", onResize);
     return () => {
+      cancelAnimationFrame(drawn);
+      delete at.dataset.live;
       window.removeEventListener("resize", onResize);
       p.destroy();
       el.remove();
     };
-  }, [act]); // eslint-disable-line react-hooks/exhaustive-deps -- playing has its own effect below
+  }, []);
   useEffect(() => {
     preview.current && preview.current.show(skin);
   }, [skin]);
-  useEffect(() => {
-    preview.current && preview.current.play(playing);
-  }, [playing]);
   return box;
 }
