@@ -292,7 +292,7 @@ button.issue__why:hover { text-decoration-style: solid; }
 .bholes__draft--open:hover { border-color: var(--green); }
 .bholes__draft--open :is(a, .bholes__acts button, .bsave) { position: relative; z-index: 1; }
 .bholes__draft { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-content: start; gap: var(--sp-1) var(--sp-3); padding: var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); box-shadow: var(--shadow-btn); }
-.bholes__draft.wait { min-height: 108px; } /* (a hole the chain listed last time, read again: its card's room) */
+.bholes__draft.wait { min-height: 118px; } /* (a hole the chain listed last time, read again: its card's room) */
 .bholes__map--s { grid-row: 1 / 3; align-self: start; padding: 4px; border: var(--edge); border-radius: 12px; }
 .bholes__map--s .bholes__svg { width: 44px; }
 /* its name on a line, then its facts and its state side by side */
