@@ -1,6 +1,5 @@
 // The title's and the cup cards' stills and clips, rendered from the live
-// scene (title.ts): dev only, for media/camera/titlebake.mjs and
-// media/promo/render.mjs --cups. Title.tsx loads it on a dev page with
+// scene (title.ts): dev only, for media/promo/render.mjs --cups. Title.tsx loads it on a dev page with
 // ?titlebake, which puts both on window; production builds never load it.
 import * as THREE from "three";
 import { makeTitle, golden, holeOf, cupCam, CUP, RIDE_AT, RIDE_S, type CupFrame } from "./title";
@@ -14,7 +13,7 @@ import type { Hole } from "./data";
  * A still of the title or of a cup card's diorama, as a PNG data URL on a
  * clear background (the page paints the sky): what the Low tier, no WebGL
  * and reduced motion show. hole: a cup card's own (cups.json's first, the
- * chain's), else the title's. Dev only: media/camera/titlebake.mjs calls it.
+ * chain's), else the title's. Dev only.
  */
 export async function titleStill(kind: string, world: string, w: number, h: number, hole?: Hole | null) {
   const canvas = document.createElement("canvas");

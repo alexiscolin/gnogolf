@@ -131,8 +131,8 @@ export function Emblem({ id }: { id: string }) {
 
 
 /**
- * A card's diorama: its still (baked by the title's own scene, media/camera/
- * titlebake.mjs), and under the pointer or the focus its clip, four of its
+ * A card's diorama: its still (baked by the title's own scene, ?titlebake),
+ * and under the pointer or the focus its clip, four of its
  * holes round and round (media/promo/render.mjs --cups). Its first frame is
  * the still, so it takes over without a jump. Still and clip are fetched
  * while the title loads (warmClips), the clip's element made with the screen;

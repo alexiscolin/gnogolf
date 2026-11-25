@@ -1,4 +1,4 @@
-// The test hooks: what media/camera/*.mjs (and a dev ?won) read of a game.
+// The test hooks: what the capture and test scripts (and a dev ?won) read of a game.
 // Attached to createGame()'s API only for a page opened with ?camlog (or
 // with hooks); Golf.tsx puts that game on window.__g.
 import * as THREE from "three";
@@ -249,7 +249,7 @@ export function probes(E: Live, { cam, rp, placeBall, fakeWeather, stroke, aimDr
     surfaceAudit: (step?: number) => surfaceAudit(E, step),
     /** ?camlog only: what a ray straight down at (x, z) meets in the course (audit.ts). */
     whatAt: (x: number, z: number) => whatAt(E, x, z),
-    // the glows against the solids (media/rides/glow.mjs), the movers frame by frame (movers.mjs), the rails' clearance (clear.mjs)
+    // the glows against the solids, the movers frame by frame, the rails' clearance
     glows: () => glows(E),
     lamps: (lantern: number) => lamps(E, lantern),
     movers: () => movers(E),

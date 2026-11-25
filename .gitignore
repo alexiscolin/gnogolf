@@ -38,7 +38,7 @@ scripts/wasm/r/gnogolf/golf/golf_builder.go
 # local tool settings
 .netlify/
 
-# internal notes, decisions by hand and the bot check cron: their own repo (a private repo)
+# internal notes, decisions by hand and the bot check cron (kept privately)
 private/
 
 # Legal drafts and the lawyer pack stay out of the public repo (kept privately)

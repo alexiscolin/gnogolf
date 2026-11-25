@@ -365,7 +365,7 @@ export default function Title({ onStart, onAbout, loading = false, world: given,
     if (gnome && p && scene && scene.live) void p.then((t) => t && t.wear(gnome));
   }, [gnome, scene]);
   // ?titlebake (dev): the stills' and clips' baker (window.__titleStill,
-  // __cupClip), for media/camera/titlebake.mjs and media/promo/render.mjs
+  // __cupClip), for media/promo/render.mjs
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" && /[?&]titlebake/.test(location.search)) void import("@/lib/scene/titlebake");
   }, []);

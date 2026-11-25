@@ -5,8 +5,8 @@ what a shot does. The full API is in [docs/golf.md](docs/golf.md); this page
 is what a client needs of it, and the rules it must keep.
 
 A working client lives in `web/`: Next.js, a static export of plain files
-with no server side, talking to a gno node over HTTP (
-[docs/development.md](docs/development.md#by-hand) says how to run and build it, and what a build
+with no server side, talking to a gno node over HTTP
+([docs/development.md](docs/development.md#by-hand) says how to run and build it, and what a build
 for a public host needs). Everything under `web/lib` is plain TypeScript that
 knows nothing about React (the game: `lib/engine.ts`, `lib/scene/`,
 `lib/chain.ts`); the realm's answers are typed in `lib/types.ts` and checked
@@ -27,7 +27,7 @@ build time (`NEXT_PUBLIC_REALM`).
    somewhere on screen that the chain disagrees with. This is the one rule
    that, if broken, breaks everything else quietly.
 2. **Skin is a hint, geometry is the contract.** Draw any hole from its shapes
-   alone and treat an unknown skin as the plain form — an unrecognised wall is a
+   alone and treat an unknown skin as the plain form: an unrecognised wall is a
    wall, a post is a post, a zone is a tinted area. An author ships
    `"giant skull"` today, an artist adds the mesh next month, nothing breaks in
    between. What a zone *does* is in its fields (`kind`, `air`, `capped`),
@@ -38,8 +38,8 @@ build time (`NEXT_PUBLIC_REALM`).
 3. **Two points far apart in a path mean a tunnel.** The ball is somewhere else.
    Do not interpolate across the gap; cut, or play a pipe animation.
    **`"air"` says where the ball is off the ground**: a string with one `0`/`1`
-   per path point. A fast ball that goes over the top of a slope takes off —
-   further the faster it is and the steeper the hill — and in the air it flies
+   per path point. A fast ball that goes over the top of a slope takes off,
+   further the faster it is and the steeper the hill. In the air it flies
    over water, sand and tunnel mouths, and cannot drop into the cup; walls still
    stop it. Draw a jump only where `air` says so.
 4. **Preview is free, committing is not.** Every `Simulate*` read costs
@@ -70,7 +70,7 @@ All are `vm/qeval` ABCI queries: plain HTTP GET, no wallet, no gas.
 GET <rpc>/abci_query?path="vm/qeval"&data=0x<hex of "<pkgpath>.<expression>">
 ```
 
-The expression syntax is `<pkgpath>.<call>` — a dot, not a newline. The reply
+The expression syntax is `<pkgpath>.<call>`: a dot, not a newline. The reply
 carries a base64 Gno-typed result that has to be unwrapped twice:
 
 ```js
@@ -154,7 +154,7 @@ anyone else's hole is a community hole.
 replays them from the tee, read-only, and returns the last shot's path plus
 `strokes`, `holed` and `period`. `SimulateRound(hole, shots)` is the same in
 the current weather. Replaying the decisions is what keeps the free game and
-a recorded one identical — `PlayRoundAt` with the same string records
+a recorded one identical: `PlayRoundAt` with the same string records
 exactly what was shown. Format each number the same way on both calls (the
 web client uses `toFixed(4)`).
 

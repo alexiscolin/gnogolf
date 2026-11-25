@@ -1,4 +1,4 @@
-// The render-vs-physics audit (a ?camlog test hook, media/rides/audit.mjs):
+// The render-vs-physics audit (a ?camlog test hook):
 // over a grid of board points, what the chain has there (a hazard's skin, the
 // lane, the rough) against what the scene draws: every surface a ray
 // straight down meets, top first (its height and what it belongs to), and the
