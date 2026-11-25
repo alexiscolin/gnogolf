@@ -101,7 +101,6 @@ web/lib/              the game: engine, 3D scene, Builder, chain client; no Reac
 web/components/       the interface
 data/                 the 90 holes as published, and the gnome catalogue
 scripts/              checks, deploys, the local playground, end-to-end runs
-docs/decisions/       why it is built this way, one decision a file
 ```
 
 Each of these folders has a README that says where to start.
@@ -117,8 +116,6 @@ Each of these folders has a README that says where to start.
 - [CLIENT.md](CLIENT.md): how to write your own client.
 - [docs/golf.md](docs/golf.md), [physics](docs/physics.md),
   [course](docs/course.md): the realm's API, the physics, the hole format.
-- [docs/decisions/](docs/decisions/README.md): the decisions behind the game, from the architecture
-  to the gnomes.
 - [docs/pitch.md](docs/pitch.md): the game in one page, to share.
 - [gno.land](https://gno.land) and [its docs](https://docs.gno.land): the
   chain Gnogolf runs on.
