@@ -87,6 +87,8 @@ function fatalKind(err: unknown): FatalKind {
   if (errorKind(err) === "down" || /fetch|network|timed? ?out|timeout|abort|rpc|abci|http|connect|load failed|did not answer/i.test(m)) return "down";
   return "bug";
 }
+/** Whether the Builder opens here: out on this build, and on a computer (a phone has its one screen, none of its code). */
+const builderComputer = () => builderOn() && onComputer((q) => window.matchMedia(q).matches);
 /** The longest the title's loader holds for the next screens' files once the game is in (ms). */
 const WARM_MS = 2000;
 // what the error banner says, per kind: its title and its sentence
@@ -593,12 +595,8 @@ export default function Golf() {
   useEffect(() => {
     let live = true;
     void Promise.all([loadCourse(), warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")])]).then(() => live && setWarm(true));
-    // (the Builder, in idle moments and on a computer alone, a phone has none: its wasm, then its page and its screens' code)
-    if (builderOn() && onComputer((q) => window.matchMedia(q).matches))
-      whenIdle([
-        () => import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {}),
-        () => (router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {})),
-      ]);
+    // (the Builder's wasm, in an idle moment and on a computer alone: a phone has no Builder)
+    if (builderComputer()) whenIdle([() => import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
     return () => void (live = false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- (the gnome kept as the page opens)
   const started = !!s;
@@ -617,11 +615,17 @@ export default function Golf() {
     if (chain && community && community.length) whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
   }, [course, community]);
 
-  // on the menu, the rival's screen read ahead in an idle moment: a Duel opens with its picks there
+  // on the menu, in idle moments: the rival's screen read ahead (a Duel opens with its picks there), and on a computer the
+  // Builder's page and its screens' code, once (never at the title: they would take the link from the game's own start)
+  const builderAhead = useRef(false);
   useEffect(() => {
+    if (screen !== "modes") return;
     const chain = game.current && game.current.chain;
-    if (screen === "modes" && chain && course) whenIdle([() => warmRival(chain, me, aim, course)]);
-  }, [screen, me, aim, course]);
+    if (chain && course) whenIdle([() => warmRival(chain, me, aim, course)]);
+    if (builderAhead.current || !builderComputer()) return;
+    builderAhead.current = true;
+    whenIdle([() => (router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {}))]);
+  }, [screen, me, aim, course]); // eslint-disable-line react-hooks/exhaustive-deps -- (the router: the app's own, the same all along)
 
   // an "add me as a friend" link: the address joins this browser's friends
   useEffect(() => {
