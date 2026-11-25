@@ -608,9 +608,9 @@ export default function Golf() {
   // the chain's list in: the course's current versions (their maps are the site's own), and the community's first maps read ahead
   const course = s ? s.allHoles : null, community = s ? s.community : null;
   useEffect(() => {
-    if (!course) return;
-    knowCourse(course);
     const chain = game.current && game.current.chain;
+    if (!course || !chain) return;
+    knowCourse(chain, course);
     // (the community screen's first holes: its most played, its newest)
     if (chain && community && community.length) whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
   }, [course, community]);

@@ -49,7 +49,7 @@ const TRENDING = 3, TREND_JUDGED = 8;
 
 export default function Community({ community, chain, me = null, onPlay, onBack, onAbout, racing }: {
   community: readonly HoleRow[];
-  chain: Pick<Chain, "bests" | "blockTime" | "dayCandidates" | "ghost" | "holeData" | "chainId" | "genesis" | "realm" | "state" | "savedOn"> | null;
+  chain: Pick<Chain, "bests" | "blockTime" | "dayCandidates" | "ghost" | "holeData" | "chainId" | "genesis" | "realm" | "state" | "savedOn" | "versions"> | null;
   /** the player's address, if known: their own holes listed before they hold a best on them */
   me?: string | null;
   onPlay: (id: string) => void;
