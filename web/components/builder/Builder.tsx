@@ -1,7 +1,8 @@
 "use client";
 
-// The Builder on a computer: builder.wasm loaded, then the drafts this
-// browser keeps (Start), the editor (Build, with Play over it) and Publish.
+// The Builder on a computer: the drafts this browser keeps (Start) at once,
+// builder.wasm loading behind them; the editor (Build, with Play over it)
+// and Publish once it is in.
 // A hole remixed from the game (?remix=) opens as a new draft. The author is
 // the address this browser keeps, else the account Adena already shares with
 // the site (read without a popup). Loaded only by gate.tsx: never on a phone.
@@ -107,8 +108,6 @@ export default function Builder() {
     setHints(false);
   }, []);
 
-  if (failed) return <main className="builder-off" role="alert"><h2>The Builder could not load.</h2><p>{failed}</p><Button onClick={() => window.location.reload()}>Try again</Button></main>;
-  if (!host) return <main className="builder-off" aria-busy="true"><p>Loading the Builder…</p></main>;
   const d = open && drafts.find((k) => k.key === open.at)?.draft;
   // the open draft changed or deleted in another tab: open it as kept there (gone: back to the holes), or keep this tab's
   const theirs = () => {
@@ -128,6 +127,9 @@ export default function Builder() {
     </>
   );
   if (open && d) {
+    // the editor and Publish run the realm's own checks: builder.wasm
+    if (failed) return <main className="builder-off" role="alert"><h2>The Builder could not load.</h2><p>{failed}</p><Button onClick={() => window.location.reload()}>Try again</Button></main>;
+    if (!host) return <main className="builder-off" aria-busy="true"><p className="wait">Loading the Builder…</p></main>;
     const edit = (play = false, readdress = false) => setOpen({ ...open, n: open.n + 1, step: "edit", play, readdress });
     if (open.step === "publish" && author) {
       return (
@@ -152,7 +154,7 @@ export default function Builder() {
     );
   }
   return (
-    <Start host={host} author={author} drafts={drafts} said={said}
+    <Start author={author} drafts={drafts} said={said}
       onOpen={openAt}
       onAdd={(d, broken = "") => { add(d); setOpened(broken); }}
       onDelete={(key) => { dropDraft(key); setDrafts((list) => list.filter((k) => k.key !== key)); }} />

@@ -224,112 +224,110 @@ button.issue__why:hover { text-decoration-style: solid; }
 /* no 3D here: the preview's box kept (nothing shifts), its sentence ink on paper */
 .preview.preview--off { display: grid; place-items: center; margin: 0; padding: var(--sp-4); background: var(--paper); border-style: dashed; color: var(--ink); font-size: 15px; line-height: 1.4; text-align: center; }
 
-/* your holes (the computer's start): the workshop, a new hole, the drafts */
-/* the screen's column, centred, as wide as the menu's cards; compact enough that the starters stand above the fold of a laptop */
-.screen.bholes { padding-top: clamp(28px, 6vh, 64px); }
+/* the computer's start: the workshop's sign and its Build, the templates, your holes */
+/* the screen's column, centred, as wide as the menu's cards; making a hole above the fold of a laptop */
 /* a window too narrow for the column beside the corner's Back: the column starts under it */
 @media (max-width: 1240px) { .screen.bholes { padding-top: 76px; } }
-.bholes__in { width: min(1040px, 100%); margin: 0 auto; justify-items: stretch; gap: var(--sp-5); padding: 0 var(--sp-5) var(--sp-5); text-align: left; }
+.bholes__in { width: min(var(--front-w), 100%); margin: 0 auto; justify-items: stretch; gap: var(--sp-5); padding: 0 var(--sp-5); text-align: left; }
 /* a section's title (.h-section), its count in an ink pill beside it */
 .bholes__h { display: flex; align-items: center; gap: var(--sp-2); }
 .bholes__h small { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: var(--pill); background: var(--ink); color: var(--paper); font-size: 12px; }
 
-/* the workshop's sign: a blueprint (the build emblem's), the Miner out of his disc on its left, its words, its three steps */
-/* the blueprint (the build emblem's): the sign's paper, and from scratch's picture */
+/* the workshop's sign: a blueprint (the build emblem's), the Miner out of his disc on its left, its words; under them
+   the one call to build, a plain green in the world chosen beside it */
+/* the blueprint (the build emblem's): the sign's paper */
 .bholes {
   --blueprint: linear-gradient(rgba(255, 255, 255, .13) 1.5px, transparent 1.5px) 0 0 / 24px 24px, linear-gradient(90deg, rgba(255, 255, 255, .13) 1.5px, transparent 1.5px) 0 0 / 24px 24px,
     linear-gradient(rgba(255, 255, 255, .06) 1px, transparent 1px) 0 0 / 6px 6px, linear-gradient(90deg, rgba(255, 255, 255, .06) 1px, transparent 1px) 0 0 / 6px 6px, #2f6db3;
 }
 .bholes__sign {
-  position: relative; display: grid; grid-template-columns: 148px minmax(0, 1fr); align-items: center; gap: var(--sp-5);
-  margin-top: 28px; padding: var(--sp-4) var(--sp-5); border: var(--edge-bold); border-radius: var(--r-panel); color: var(--paper);
+  position: relative; display: grid; grid-template-columns: 148px minmax(0, 1fr); align-items: center; gap: var(--sp-4) var(--sp-5);
+  margin-top: 28px; padding: var(--sp-4) var(--sp-5) var(--sp-5); border: var(--edge-bold); border-radius: var(--r-panel); color: var(--paper);
   background: var(--blueprint); box-shadow: var(--deep-card);
 }
-/* a section's gap under the sign (its deep shadow eats some): the world tabs never right under it */
-.bholes__sign + .bholes__new { margin-top: var(--sp-2); }
 /* the Miner stands out over the sign's top edge, as a menu panel's gnome does */
 .bholes__gnome { position: relative; display: block; width: 210px; height: 210px; margin: -78px -31px -26px; }
 .bholes__gnome > svg { position: absolute; left: 50%; bottom: 36px; width: 124px; height: 124px; transform: translateX(-50%); filter: drop-shadow(0 4px 0 var(--ink)); }
-.bholes__gnome > .pick__canvas { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; }
 /* the screen's head (the game's: its pill and outlined title) at the sign's start, what the Builder is for under it */
 .bholes__say { display: grid; justify-items: start; gap: 6px; min-width: 0; }
 .bholes__say .front__head { justify-items: start; margin: 0; }
 .bholes__say p { margin: 2px 0 0; font-size: 17px; font-weight: 700; line-height: 1.3; }
-
-/* a new hole: its world as the game's choices (Segmented, each its emblem), its starters as cards */
-.bholes__new { display: grid; gap: var(--sp-4); }
-/* your holes and a new one apart: the dashed rule of a sheet's parts */
-:is(.bholes__mine, .bholes__new) + :is(.bholes__mine, .bholes__new) { padding-top: var(--sp-5); border-top: var(--rule); }
-.bholes__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+/* its world as the game's choices (Segmented, each its emblem), then Build: the screen's one gold button */
+.bholes__bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3) var(--sp-5); }
 .bholes__worlds button { flex: none; display: inline-flex; align-items: center; gap: var(--sp-2); min-height: 44px; padding: 4px var(--sp-4) 4px var(--sp-2); white-space: nowrap; }
 .bholes__worlds svg { width: 32px; height: 32px; }
-/* the starts: the templates under their label (from scratch the last), four cards a row */
-.bholes__starts { display: grid; gap: var(--sp-3); }
-.bholes__starts ul { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-5); margin: 0; padding: 0; list-style: none; }
+.btn.bholes__build { margin: 0 0 0 auto; }
+.bholes__build i { font-style: normal; transition: transform .2s; }
+.bholes__build:hover i { transform: translateX(4px); }
+
+/* the templates: three cards a row, each its map beside its words (a card a line tall: your holes stay in sight) */
+.bholes__starts { display: grid; gap: var(--sp-3); margin-top: var(--sp-2); } /* (the sign's deep shadow eats some of the gap) */
+.bholes__starts ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); margin: 0; padding: 0; list-style: none; }
 .bholes__start {
-  display: grid; grid-template-rows: auto auto 1fr auto; justify-items: start; gap: 4px; width: 100%; height: 100%; padding: 0 0 var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card);
+  display: grid; grid-template: auto 1fr auto / 104px minmax(0, 1fr); column-gap: var(--sp-3); justify-items: start; width: 100%; height: 100%; padding: 0 var(--sp-3) 0 0; border: var(--edge-bold); border-radius: var(--r-card);
   background: var(--white); font: inherit; color: var(--ink); text-align: left; overflow: hidden; box-shadow: var(--shadow-btn);
 } /* (its lift, press and ring: a card that is a button, title.css) */
-.bholes__start > b { margin: 2px var(--sp-3) 0; font-size: 18px; line-height: 1.15; }
-.bholes__line { margin: 0 var(--sp-3); font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--ink-soft); }
+.bholes__start > b { margin-top: var(--sp-3); font-size: 17px; line-height: 1.15; }
+.bholes__line { font-size: 14px; font-weight: 600; line-height: 1.3; color: var(--ink-soft); }
 /* the map on the world's panel colour, its dots: the hole as the game draws one */
-.bholes__map { display: grid; place-items: center; width: 100%; padding: var(--sp-3) 0; border-bottom: var(--edge); background: var(--panel-dots), var(--c1); }
-/* from scratch: on the blueprint (the workshop sign's), a green still to draw */
-.bholes__start--scratch .bholes__map { background: var(--blueprint); }
-.bholes__svg { width: min(136px, 100%); aspect-ratio: 1; filter: drop-shadow(0 3px 0 var(--ink)); }
-.bholes__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); width: 100%; padding: var(--sp-1) var(--sp-3) 0; }
+.bholes__map { display: grid; place-items: center; background: var(--panel-dots), var(--c1); }
+.bholes__start > .bholes__map { grid-row: 1 / -1; width: 100%; height: 100%; padding: var(--sp-2); border-right: var(--edge); }
+.bholes__svg { width: 84px; aspect-ratio: 1; filter: drop-shadow(0 3px 0 var(--ink)); }
+.bholes__foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); width: 100%; padding: var(--sp-2) 0 var(--sp-3); }
 .bholes__par { padding: 2px 10px; border: 2px solid var(--ink); border-radius: var(--pill); font-size: 13px; font-weight: 800; }
-/* Start, a small gold button's look (the whole card is the button) */
-.bholes__go i { font-style: normal; transition: transform .2s; }
+/* Start, said plainly: the whole card is the button, the sign's Build the only gold one */
+.bholes__go { font-size: 14px; font-weight: 800; }
+.bholes__go i { display: inline-block; font-style: normal; transition: transform .2s; }
 .bholes__start:hover .bholes__go i { transform: translateX(3px); }
 
-/* the drafts: cards on one grid, the map, the name, the facts, the state, Open */
-.bholes__mine { display: grid; gap: var(--sp-4); }
+/* your holes, apart from making one: the dashed rule of a sheet's parts */
+.bholes__mine { display: grid; gap: var(--sp-3); padding-top: var(--sp-5); border-top: var(--rule); }
+/* the drafts: short cards on one grid, the map, the name, its facts on a line, what to do with it */
 .bholes__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--sp-4); width: 100%; text-align: left; }
 .bholes__draft--open { position: relative; }
-.bholes__pick { display: block; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; max-width: 100%; min-width: 0; }
+.bholes__pick { display: block; flex-basis: 100%; padding: 0; border: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; max-width: 100%; min-width: 0; }
 .bholes__pick::after { content: ""; position: absolute; inset: 0; border-radius: var(--r-card); }
 .bholes__pick:focus-visible { outline: none; }
 .bholes__pick:focus-visible::after { box-shadow: var(--ring-shadow); }
 .bholes__draft--open:hover { border-color: var(--green); }
 .bholes__draft--open :is(a, .bholes__acts button, .bsave) { position: relative; z-index: 1; }
-.bholes__draft { display: grid; grid-template-columns: 76px minmax(0, 1fr); grid-template-rows: auto auto; column-gap: var(--sp-4); row-gap: var(--sp-2); padding: var(--sp-4); border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); box-shadow: var(--shadow-btn); }
-.bholes__map--s { grid-row: 1 / 3; align-self: start; padding: 6px; border: var(--edge); border-radius: 14px; }
-.bholes__map--s .bholes__svg { width: 60px; }
-.bholes__name { display: grid; justify-items: start; gap: 2px; min-width: 0; line-height: 1.2; }
-.bholes__name b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+.bholes__draft { display: grid; grid-template-columns: 56px minmax(0, 1fr); align-content: start; gap: var(--sp-1) var(--sp-3); padding: var(--sp-3); border: var(--edge-bold); border-radius: var(--r-card); background: var(--white); box-shadow: var(--shadow-btn); }
+.bholes__draft.wait { min-height: 108px; } /* (a hole the chain listed last time, read again: its card's room) */
+.bholes__map--s { grid-row: 1 / 3; align-self: start; padding: 4px; border: var(--edge); border-radius: 12px; }
+.bholes__map--s .bholes__svg { width: 44px; }
+/* its name on a line, then its facts and its state side by side */
+.bholes__name { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--sp-2); min-width: 0; line-height: 1.2; }
+.bholes__name b { display: block; flex-basis: 100%; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
 .bholes__name small { font-size: 13px; font-weight: 600; color: var(--ink-soft); }
-.bholes__state { margin-top: 2px; padding: 1px 10px; border-radius: var(--pill); border: 2px dashed rgba(var(--ink-rgb), .45); font-size: 12px; font-weight: 800; }
+.bholes__state { padding: 1px 10px; border-radius: var(--pill); border: 2px dashed rgba(var(--ink-rgb), .45); font-size: 12px; font-weight: 800; }
 .bholes__state--testing { border-style: solid; border-color: var(--sunny); background: var(--lamp); }
 .bholes__state--ready { border-style: solid; border-color: var(--green); background: var(--mint); color: var(--green); }
 .bholes__state > span { color: var(--ink-soft); }
 .bholes__state > span.on { color: var(--green); }
 /* a hole on the chain (Rewards.tsx): its pill (its dot: phone.css), who played it */
 .bholes__state--live { border-style: solid; border-color: var(--ink); background: var(--green-light); }
-.bholes__name .bholes__stats { font-size: 13px; font-weight: 700; color: var(--ink); }
+.bholes__name .bholes__stats { flex-basis: 100%; font-size: 13px; font-weight: 700; color: var(--ink); }
 /* the author's test round, saved: one button and its line */
-.bsave { display: grid; justify-items: start; gap: 2px; margin-top: var(--sp-1); }
+.bsave { display: grid; flex-basis: 100%; justify-items: start; gap: 2px; margin-top: var(--sp-1); }
 .bsave .btn { margin: 0; }
 .bsave small { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .pub__doneform .bsave { justify-items: center; }
 .bsave--done { margin: var(--sp-1) 0 0; font-size: 13px; font-weight: 800; color: var(--green); }
-/* the Builder's badges: the game's medals in a row, each named, what earns it under one not earned yet */
+/* the Builder's badges: the game's medals in a row, each named, what earns it under one not earned yet; every card from its top */
 .bbadges { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
-.bbadges li { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; padding: 4px var(--sp-3) 4px 4px; border: var(--edge); border-radius: 14px; background: var(--paper); }
+.bbadges li { display: flex; align-items: flex-start; gap: var(--sp-2); min-width: 0; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2); border: var(--edge); border-radius: 14px; background: var(--paper); }
 .bbadges svg { flex: none; width: 30px; height: 34px; }
 .bbadges span { display: grid; min-width: 0; line-height: 1.15; }
-.bbadges b { font-size: 14px; }
+.bbadges b { font-size: 14px; line-height: 17px; }
 .bbadges small { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
 .bbadges__off { background: rgba(var(--paper-rgb), .7); border-style: dashed; }
-.bholes__acts { display: flex; align-items: center; gap: var(--sp-3); }
-.bholes__acts .btn { margin: 0; }
-/* a short window (a 700 px laptop's): the sign and the maps a size under, the starters still above the fold */
+/* what to do with a hole: its links on one baseline */
+.bholes__acts { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-4); }
+.bholes__acts .linkish { min-height: 24px; padding: 0; font-size: 14px; line-height: 24px; }
+/* a short window (a 700 px laptop's): the sign a size under */
 @media (max-height: 780px) {
   .bholes__in { gap: var(--sp-4); }
-  .bholes__sign { padding: var(--sp-4); }
-  .bholes__sign + .bholes__new { margin-top: var(--sp-4); }
-  .bholes__svg { width: min(108px, 100%); }
-  .bholes__map { padding: var(--sp-2) 0; }
+  .bholes__sign { padding: var(--sp-3) var(--sp-4) var(--sp-4); }
 }
 .bholes__none { margin: 0; padding: var(--sp-4); border: 2px dashed rgba(var(--ink-rgb), .3); border-radius: var(--r-card); background: rgba(var(--paper-rgb), .7); font-size: 15px; font-weight: 600; text-align: center; }
 .bholes__more { width: 100%; text-align: left; }

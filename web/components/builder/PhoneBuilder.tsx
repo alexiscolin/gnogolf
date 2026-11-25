@@ -81,6 +81,7 @@ export default function PhoneBuilder() {
           {community.length > shown && <Button className="btn--wide" onClick={() => setShown((n) => n + PAGE)}>More community holes</Button>}
           {!failed && <a className={buttonClass({}, "btn--wide")} href={cupsLink(keep)}>Every community hole, in the game</a>}
         </section>
+        <i className="front__veil" aria-hidden="true" />
       </div>
     </div>
   );

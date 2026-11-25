@@ -12,11 +12,11 @@ import { landed, RULES, type Chain } from "@/lib/chain";
 import { replayed, type Proof } from "@/lib/builder/proof";
 import { BUILDER_BADGES, earnedBadges, nextRound, roundNow, testRounds, type BuilderFacts } from "@/lib/builder/rewards";
 
-/** The Builder's badges, each a medal (the game's, in its on-chain colour) earned or not, with its name, and what earns it until it is. */
-export function BuilderBadges({ facts }: { facts: BuilderFacts }) {
-  const had = earnedBadges(facts);
+/** The Builder's badges, each a medal (the game's, in its on-chain colour) earned or not, with its name, and what earns it until it is. No facts: still read, none lit. */
+export function BuilderBadges({ facts }: { facts?: BuilderFacts }) {
+  const had = facts ? earnedBadges(facts) : [];
   return (
-    <ul className="bbadges" aria-label={`Builder badges: ${had.length} of ${BUILDER_BADGES.length}`}>
+    <ul className={facts ? "bbadges" : "bbadges wait"} aria-busy={!facts || undefined} aria-label={`Builder badges: ${had.length} of ${BUILDER_BADGES.length}`}>
       {BUILDER_BADGES.map((b) => {
         const on = had.includes(b.id);
         return (
