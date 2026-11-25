@@ -76,6 +76,9 @@ export function pickOne<R extends { player: string }>(rows: readonly R[], not: r
   return ok[Math.floor(r * ok.length)] || null;
 }
 
+/** Parts on a line, a "·" between them: each part whole, the first two one piece, a break only before the last "·" (none left hanging at a line's end). */
+export const dotLine = (parts: readonly string[]) => parts.map((p, i) => (i > 1 ? " ·\u00a0" : i ? "\u00a0·\u00a0" : "") + p.replace(/ /g, "\u00a0")).join("");
+
 /** A surprise from a pool: never the player drawn last, unless he is alone in it. */
 export const surpriseOf = <R extends { player: string }>(pool: readonly R[], last: string, r: number) => pickOne(pool, [last], r) || pickOne(pool, [], r);
 

@@ -1,7 +1,7 @@
 // Ghost duels: the best raced, the ghost's pace, and the result in words.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { raceLeft, duelResult, duelShare, skyWord, ghostSpeed, pickGhost, shotsOf, levelFrom, levelPick, pickOne, bestOf, showcases, inTurn, keptRead, surpriseOf, mapView, mapFit, mapZone, vsBest, pathD, railRuns, type Duel } from "../lib/duel.ts";
+import { raceLeft, duelResult, duelShare, skyWord, ghostSpeed, pickGhost, shotsOf, levelFrom, levelPick, pickOne, bestOf, showcases, inTurn, keptRead, surpriseOf, dotLine, mapView, mapFit, mapZone, vsBest, pathD, railRuns, type Duel } from "../lib/duel.ts";
 import type { Ghost, Vec2 } from "../lib/types.ts";
 
 const ghost = (strokes: number, mode: Ghost["mode"] = "assisted"): Ghost => ({ version: 1, hole: "garden/1/v1", mode, player: "g1x", strokes, period: 7, shots: "0.0000,1.0000,0;12.5000,6.2000,3" });
@@ -198,4 +198,12 @@ void test("surpriseOf: never the player drawn last, unless he is alone", () => {
   for (const r of [0, 0.49, 0.99]) assert.equal(surpriseOf(pool, "a", r)?.player, "b");
   assert.equal(surpriseOf([{ player: "a" }], "a", 0.5)?.player, "a");
   assert.equal(surpriseOf([], "a", 0.5), null);
+});
+
+void test("dotLine: each part whole, the first two one piece; the one break is before the last dot", () => {
+  const line = dotLine(["18 holes", "+3", "2 ghosts"]);
+  assert.equal(line, "18\u00a0holes\u00a0·\u00a0+3 ·\u00a02\u00a0ghosts");
+  assert.deepEqual(line.split(" "), ["18\u00a0holes\u00a0·\u00a0+3", "·\u00a02\u00a0ghosts"], "no line ends on a dot");
+  assert.equal(dotLine(["0 holes", "1 ghost"]), "0\u00a0holes\u00a0·\u00a01\u00a0ghost");
+  assert.equal(dotLine([]), "");
 });

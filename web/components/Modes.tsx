@@ -17,7 +17,7 @@ import { FullBoard, Sticker, rivalPicks, surpriseTaken, useRivalPicks, useWho, t
 import { countWord, ghostsWord, holesWord, plural } from "@/lib/words";
 import { isAddress, type Chain } from "@/lib/chain";
 import { CLASSIC, cupOf, parOf, scoreOf, vsPar, courseCount, golfTerm, holeNumber, standingVs, type Card } from "@/lib/card";
-import { bestOf, inTurn, showcases, shotsOf, vsBest } from "@/lib/duel";
+import { bestOf, dotLine, inTurn, showcases, shotsOf, vsBest } from "@/lib/duel";
 import { track, type RivalKind } from "@/lib/analytics";
 import { motion } from "@/lib/scene/materials";
 import { mapNow } from "@/lib/maps";
@@ -259,8 +259,7 @@ function Pick({ kind, label, tint, first, row, reading, failed, chain, me, gnome
   // yourself: not connected, or no ghost of yours yet (a round to save first)
   const none = self && (!me || (!!show && show.bests.size === 0)), open = !!row && !none;
   const connect = self && !me && onConnect; // (a tap connects: then it is yours)
-  // (each part whole: the narrow line breaks only at a " · ", never inside "18 ghosts")
-  const line = self && !me ? (onConnect ? "Beat your own best" : "Connect Adena to race it") : none ? "Save a round first" : row ? [holesWord(row.holes || 0), !!row.holes && vsPar(standingVs(row)), show && ghostsWord(show.bests.size)].filter(Boolean).map((p) => String(p).replace(/ /g, "\u00a0")).join(" · ") : "";
+  const line = self && !me ? (onConnect ? "Beat your own best" : "Connect Adena to race it") : none ? "Save a round first" : row ? dotLine([holesWord(row.holes || 0), !!row.holes && vsPar(standingVs(row)), show && ghostsWord(show.bests.size)].filter((p) => typeof p === "string")) : "";
   // what the chain still owes this card: the board's row, then their bests, then the hole's lanes
   const coming = reading || (open && (!show || (!!mapped && !lane)));
   return (
