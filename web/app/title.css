@@ -357,9 +357,12 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
 .mode--shop { --c1: #d9c4ff; --c2: #6a4fc2; } /* the Epic's amethyst: the gnome shop */
 /* what stands behind a panel's gnome in its disc (the Builder's sketch, the shop's awning): under his picture */
 .mode__stage > svg { z-index: 0; }
+/* a collection gnome's thumbnail: the panel's disc is its window */
+.mode__stage .portrait--thumb { top: 58%; height: 48%; }
 /* a duel's pair: he a step to the left, the ghost a step back on his right */
 .mode--duel .portrait { top: 16%; height: 84%; translate: -68% 0; }
 .mode--duel .portrait--ghost { top: 26%; height: 70%; translate: -18% 0; }
+.mode--duel .portrait--thumb { top: 58%; height: 42%; translate: -72% -50%; }
 /* the panel under the pointer: its gnome hops (no motion asked: globals.css' switch holds him still) */
 .mode:is(:hover, :focus-visible):not([disabled]) .portrait:not(.portrait--ghost) { animation: hop .4s ease-in-out infinite alternate; }
 /* the shop's awning across the disc's top, behind its gnome: the panel's colours, inked */
@@ -402,6 +405,8 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
     background: radial-gradient(circle at 23% 50%, var(--c1) 0 50px, var(--ink) 50px 52.5px, transparent 53px), var(--panel-dots), var(--c2); }
   .mode__stage { grid-row: 1 / 3; margin-top: -10px; }
   .mode__stage svg { inset: 0; width: 78%; }
+  .mode__stage .portrait--thumb { top: 50%; height: 100px; }
+  .mode--duel .portrait--thumb { height: 88px; translate: -62% -50%; }
   .mode__stage > .mode__awning { inset: 10% 0 auto; width: 62%; }
   .mode__stage > .mode__sketch { inset: 4% 0 auto; width: 76%; }
   .mode__name { align-self: end; margin: 0 14px 0 4px; font-size: 32px; --ink-w: 5px; }
@@ -694,12 +699,12 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
    edges at every size */
 .screen--pick { --pick-w: min(380px, 60vw, 40vh); align-content: safe center; } /* taller than the window: from its top, never cut above it */
 .screen--pick:has(.dare) { --pick-w: min(380px, 60vw, 34vh); } /* a dare's lines above: the button still in view */
-.screen--pick:has(.gcollect) { --pick-w: min(380px, 60vw, 30vh); } /* the collection's section above: the same */
+.screen--pick:has(.gcollect) { --pick-w: min(380px, 60vw, 25vh); --gap-l: 12px; --gap-xl: 16px; } /* the collection's section above: the same */
 .screen--pick:has(.gcollect):has(.dare) { --pick-w: min(340px, 60vw, 22vh); }
 @media (max-height: 820px) {
   .screen--pick { --pick-w: min(340px, 60vw, 36vh); }
   .screen--pick:has(.dare) { --pick-w: min(340px, 60vw, 25vh); }
-  .screen--pick:has(.gcollect) { --pick-w: min(340px, 60vw, 26vh); }
+  .screen--pick:has(.gcollect) { --pick-w: min(340px, 60vw, 21vh); }
 }
 @media (max-height: 760px) {
   .screen--pick:has(.gcollect) { --pick-w: min(300px, 60vw, 22vh); }
