@@ -445,7 +445,7 @@ body:has(.sheet) .modetag { visibility: hidden; }
 .screen.front--fit { display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding-inline: clamp(28px, 4vw, 64px); } /* (clear of the frame at the sides too; the block as tall as it needs, in the middle: its last frame gives up height, and scrolls, only when the window is short) */
 .worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window; the screen's room inside its padding: 100vw would scroll sideways) */
 .rival .front__head { margin: 0; }
-@media (max-height: 820px) { .front--fit .front__head > .eyebrow { display: none; } }
+@media (max-height: 820px) { .shop .front__head > .eyebrow { display: none; } }
 /* where the cups' screen scrolls from its top (globals.css): the head under the
    corner row as there */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) {
@@ -597,8 +597,8 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
   :is(.podium, .rival__board) .sticker__sub { font-size: 11px; }
 }
 @media (max-width: 600px) {
-  /* a phone: the head under the corner row, its title alone; the friend's bar one row, its heading said to a reader only */
-  .front--fit .front__head > .eyebrow { display: none; }
+  /* a phone: the head under the corner row; the friend's bar one row, its heading said to a reader only */
+  .shop .front__head > .eyebrow { display: none; }
   .rival__friend { flex-wrap: wrap; gap: 6px; padding: 6px; }
   .rival__friend > .rival__h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .rival__friend .friends__add { flex: 1 1 0; min-width: 0; gap: 6px; }
