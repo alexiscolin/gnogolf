@@ -44,7 +44,7 @@ import { clipName } from "@/lib/clip";
 import { Boards, FullBoard, Podium, NameForm, useRankNudge, useSavedPlace } from "@/components/Leaderboard";
 import { FAUCET, GNOT_URL, networkOf } from "@/lib/network";
 import { register, track, trackLeaving, trackError, once, failure, cardHoles, gnomeWord, type Events, type Play, type ShareKind, type WalletFrom } from "@/lib/analytics";
-import { savedCam, hadGnome, savedGnome, saveGnome, earned, remember, badgesEarned, forgetBadges, rememberBadges, seeWeather, weathersSeen, minesHinted, minesHintSaid, linkedGnome, lockedNote } from "@/lib/prefs";
+import { savedCam, hadGnome, savedGnome, saveGnome, earned, remember, badgesEarned, forgetBadges, rememberBadges, seeWeather, weathersSeen, minesHinted, minesHintSaid, linkedGnome, lockedNote, leanLink } from "@/lib/prefs";
 import { darkGallery, minesOrder } from "@/lib/scene/data";
 import { BACK, type Screen } from "@/lib/screens";
 import { SHOP, SHOP_LINE, pick } from "@/lib/gnomes/door";
@@ -588,15 +588,12 @@ export default function Golf() {
   // whose ghost is raced, under the cups' title and the community's
   const racingNote = dare && !solo && <p className="dare">Racing {rivalName}</p>;
 
-  // what the next screens show at once, fetched beside the game: the course's maps and the menu's three pictures (the
-  // player's gnome, the ghost, the Miner; the other gnomes' behind them). The title's loader holds for them only
-  // while they are not in, WARM_MS past the game at most (then they go on behind it)
+  // the menu's three pictures (the player's gnome, the ghost, the Miner), fetched beside the game: the title's loader
+  // holds for them only while they are not in, WARM_MS past the game at most (then they go on behind it)
   const [warm, setWarm] = useState(false);
   useEffect(() => {
     let live = true;
-    void Promise.all([loadCourse(), warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")])]).then(() => live && setWarm(true));
-    // (the Builder's wasm, in an idle moment and on a computer alone: a phone has no Builder)
-    if (builderComputer()) whenIdle([() => import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
+    void warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")]).then(() => live && setWarm(true));
     return () => void (live = false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- (the gnome kept as the page opens)
   const started = !!s;
@@ -605,6 +602,13 @@ export default function Golf() {
     const t = setTimeout(() => setWarm(true), WARM_MS);
     return () => clearTimeout(t);
   }, [started, warm]);
+  // what a later screen shows is fetched ahead in idle moments, never in a round (the hole's own files first) nor on a data saver or a slow link
+  const ahead = screen !== "play" && !leanLink();
+  // past the title's hold: the course's maps, the other gnomes' pictures and, on a computer alone (a phone has no Builder), its wasm
+  useEffect(() => {
+    if (!started || !warm || !ahead) return;
+    return whenIdle([loadCourse, warmPortraits, () => builderComputer() && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
+  }, [started, warm, ahead]);
   // the chain's list in: the course's current versions (their maps are the site's own), and the community's first maps read ahead
   const course = s ? s.allHoles : null, community = s ? s.community : null;
   useEffect(() => {
@@ -612,20 +616,20 @@ export default function Golf() {
     if (!course || !chain) return;
     knowCourse(chain, course);
     // (the community screen's first holes: its most played, its newest)
-    if (chain && community && community.length) whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
-  }, [course, community]);
+    if (ahead && community && community.length) return whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
+  }, [course, community, ahead]);
 
   // on the menu, in idle moments: the rival's screen read ahead (a Duel opens with its picks there), and on a computer the
   // Builder's page and its screens' code, once (never at the title: they would take the link from the game's own start)
   const builderAhead = useRef(false);
   useEffect(() => {
-    if (screen !== "modes") return;
     const chain = game.current && game.current.chain;
-    if (chain && course) whenIdle([() => warmRival(chain, me, aim, course)]);
-    if (builderAhead.current || !builderComputer()) return;
-    builderAhead.current = true;
-    whenIdle([() => (router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {}))]);
-  }, [screen, me, aim, course]); // eslint-disable-line react-hooks/exhaustive-deps -- (the router: the app's own, the same all along)
+    if (screen !== "modes" || !ahead || !chain || !course) return;
+    return whenIdle([
+      () => warmRival(chain, me, aim, course),
+      () => builderAhead.current || !builderComputer() || ((builderAhead.current = true), router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {})),
+    ]);
+  }, [screen, ahead, me, aim, course]); // eslint-disable-line react-hooks/exhaustive-deps -- (the router: the app's own, the same all along)
 
   // an "add me as a friend" link: the address joins this browser's friends
   useEffect(() => {
