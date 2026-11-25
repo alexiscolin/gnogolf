@@ -9,7 +9,7 @@ import { CAMS, CamButton } from "@/components/CamButton";
 import { createGame, type Game, type GameOptions, type Snapshot } from "@/lib/engine";
 import { camlog } from "@/lib/testhooks";
 import { GNOMES, gnomeById, knowGnome, setRivalGnome, loadWardrobe, type Skin } from "@/lib/scene/gnome";
-import { NOT_BUILDER, NOT_HOLED } from "@/lib/community";
+import { NOT_BUILDER, NOT_HOLED, sortHoles } from "@/lib/community";
 import { isAddress, errorKind, REALM_PATH, RULES, suggestName, shortAddr, within, type Chain } from "@/lib/chain";
 import type { ErrorKind, GfxMode } from "@/lib/engine/types";
 import { savedGfx, saveGfx } from "@/lib/engine/pace";
@@ -50,7 +50,10 @@ import { BACK, type Screen } from "@/lib/screens";
 import { SHOP, SHOP_LINE, pick } from "@/lib/gnomes/door";
 import { authorOf, buildLink, endpoints } from "@/lib/builder/holes";
 import { CollectionSection, Collector, Owned, PromoLine, ShopScreen as Shop, shopPart } from "@/components/gnomes/Door";
-import { builderOn } from "@/lib/builder/route";
+import { builderOn, onComputer } from "@/lib/builder/route";
+import { whenIdle } from "@/lib/idle";
+import { knowCourse, loadCourse, warmMaps } from "@/lib/maps";
+import { warmPortraits } from "@/components/Stage";
 import type { skinOfTraits } from "@/lib/gnomes/skin";
 import { makeHot, sameCold, AimBar, CauseNote, LiveWeather, Toast, NetBanner, AimSetting, type Hot } from "@/components/game/Hud";
 import { SaveClock, RecordState, PendingSave, GetGnot, RealPlay } from "@/components/game/Save";
@@ -580,6 +583,22 @@ export default function Golf() {
     useDuel({ game, s, holeId, holeReady, fresh0, me, aim, allList, setLinkNote, setBoard, setScreen });
   // whose ghost is raced, under the cups' title and the community's
   const racingNote = dare && !solo && <p className="dare">Racing {rivalName}</p>;
+
+  // the title's wait put to use, in idle moments: the files the first screens show (the Builder's wasm on a computer alone: a phone has no Builder)
+  useEffect(() => whenIdle([
+    loadCourse,
+    warmPortraits,
+    () => builderOn() && onComputer((q) => window.matchMedia(q).matches) && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {}),
+  ]), []);
+  // the chain's list in: the course's current versions (their maps are the site's own), and the community's first maps read ahead
+  const course = s ? s.allHoles : null, community = s ? s.community : null;
+  useEffect(() => {
+    if (!course) return;
+    knowCourse(course);
+    const chain = game.current && game.current.chain;
+    // (the community screen's first holes: its most played, its newest)
+    if (chain && community && community.length) whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
+  }, [course, community]);
 
   // an "add me as a friend" link: the address joins this browser's friends
   useEffect(() => {
