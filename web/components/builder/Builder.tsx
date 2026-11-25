@@ -79,7 +79,10 @@ export default function Builder() {
         if (typeof d === "string") return setSaid(d);
         add(d);
       });
-    }, (e: Error) => setFailed(e.message));
+    }, (e: Error) => {
+      setFailed(e.message);
+      if (remix) setSaid("The hole to remix could not open: the Builder's checker did not load. Try again in a moment.");
+    });
   }, [add]);
   const at = open?.at;
   const update = useCallback((f: (d: Draft) => Draft) => {

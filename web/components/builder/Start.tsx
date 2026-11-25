@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton, FrontHead } from "@/components/About";
-import { HoleMap, MapSlot, NoMap, useHoleMaps } from "@/components/HoleMap";
+import { HoleMap, MapSlot, NoMap, mapComing, useHoleMaps } from "@/components/HoleMap";
 import { Portrait } from "@/components/Stage";
 import { Emblem } from "@/components/Worlds";
 import { Button, Segmented, Sheet } from "@/components/ui";
@@ -87,7 +87,10 @@ export default function Start({ author, drafts, said = "", onOpen, onAdd, onDele
   const openHole = (id = hole.trim()) => {
     if (!isHoleId(id)) return setWhy("A hole's address is like g1…/its-name, or g1…/its-name/v2.");
     setBusy(true);
-    void loadBuilder().then((host) => openPublished(chain, host, census, id, author)).then(take, () => setWhy("The Builder could not load. Try again in a moment.")).finally(() => setBusy(false));
+    void loadBuilder().then(
+      (host) => openPublished(chain, host, census, id, author).then(take, () => setWhy("That hole could not be read from the chain. Try again in a moment.")),
+      () => setWhy("The Builder could not load. Try again in a moment."),
+    ).finally(() => setBusy(false));
   };
   const count = drafts.length + elsewhere.length, any = count + coming.length > 0;
   const wiped = drafts.find((k) => k.key === wipe);
@@ -154,7 +157,7 @@ export default function Start({ author, drafts, said = "", onOpen, onAdd, onDele
             const m = maps.get(h.id);
             return (
               <li key={h.id} className="bholes__draft">
-                <span className="bholes__map bholes__map--s"><MapSlot hole={m} className="bholes__svg" wait /></span>
+                <span className="bholes__map bholes__map--s"><MapSlot hole={m} className="bholes__svg" wait={mapComing(h.id)} /></span>
                 <span className="bholes__name">
                   <b>{h.name || h.slot}</b>
                   <small>{worldName(h.world)} · par {h.par}</small>
