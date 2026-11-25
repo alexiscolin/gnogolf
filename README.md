@@ -5,11 +5,15 @@
 <h3 align="center">3D mini-golf on the blockchain, where the chain itself rolls the ball.</h3>
 
 <p align="center">
-  <a href="https://gnogolf.xyz"><b>Play at gnogolf.xyz</b></a> · free, no wallet needed
+  You pull back, you let go, and a smart contract on <a href="https://gno.land">gno.land</a>
+  plays the shot with its own physics.<br>
+  Every score is a replay anyone can check: no game server, no way to cheat.
 </p>
 
 <p align="center">
-  <a href="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml"><img src="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg" alt="check"></a>
+  <a href="https://gnogolf.xyz"><img src="https://img.shields.io/badge/Play_now-gnogolf.xyz-226c57?style=for-the-badge&labelColor=144134" alt="Play now at gnogolf.xyz"></a>
+  <br>
+  <sub>Free, no wallet needed</sub>
 </p>
 
 <p align="center">
@@ -18,9 +22,9 @@
   <img src="docs/img/town.gif" width="32%" alt="A hole in one in Mushroom Town">
 </p>
 
-You pull back, you let go, and a smart contract on [gno.land](https://gno.land)
-plays the shot with its own physics. Every score is a replay anyone can check:
-no game server, no way to cheat.
+<p align="center">
+  <a href="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml"><img src="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg" alt="check"></a>
+</p>
 
 ## What's in it
 
@@ -109,7 +113,7 @@ Each of these folders has a README that says where to start.
 - [The golf realm on gnoweb](https://onyx.testnets.gno.land/r/nym-alexiscolin000/gnogolf/golf/v2):
   the course, the boards and the source, live on chain.
 - [docs/development.md](docs/development.md): running it by hand, the dev
-  mode, the checks, writing a hole, who can change what.
+  mode, the checks, writing a hole, deploying the site, who can change what.
 - [docs/try-local.md](docs/try-local.md): the whole game on your machine,
   wallets and shop included.
 - [CLIENT.md](CLIENT.md): how to write your own client.
