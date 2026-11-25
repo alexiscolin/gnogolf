@@ -379,11 +379,10 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
       Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
     void Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null])
       .then(async ([top, mine]) => {
-        // (a page that fails: the first one's players stand in)
-        const near = await page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top);
+        // (a page that fails: the first one's players stand in; the two asked together, one wait)
+        const [near, any] = await Promise.all([page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top), page(Math.floor(Math.random() * top.players), 5).catch(() => top)]);
         const level = levelPick(near.rows, me);
         const today = coursePicks(top.rows.filter((r) => !level || r.player !== level.player), top.holes, me, null, null, undefined, 1)[0]?.row || null;
-        const any = await page(Math.floor(Math.random() * top.players), 5).catch(() => top);
         const surprise = pickOne([...any.rows, ...top.rows], [me, today && today.player, level && level.player], Math.random());
         // (your row on the first page, else your rank read apart; unranked in this mode: at 0, your ghosts still read)
         const self: Placed | null = !me ? null : top.rows.find((r) => r.player === me) || { player: me, at: mine && mine.rank > 0 ? mine.rank : 0, holes: mine ? mine.holes : 0, strokes: mine ? mine.strokes : 0, par: mine ? mine.par : 0 };
