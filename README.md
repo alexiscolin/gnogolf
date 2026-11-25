@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/img/garden.gif" width="32%" alt="A shot between the bumpers of the Garden">
-  <img src="docs/img/mountain.gif" width="32%" alt="The ball sliding down the Mountain's ice">
+  <img src="docs/img/garden.gif" width="32%" alt="The ball sliding across the Garden's ice">
+  <img src="docs/img/mountain.gif" width="32%" alt="A rebound off a post on the Mountain">
   <img src="docs/img/town.gif" width="32%" alt="A hole in one in Mushroom Town">
 </p>
 
