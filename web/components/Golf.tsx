@@ -586,16 +586,17 @@ export default function Golf() {
   // whose ghost is raced, under the cups' title and the community's
   const racingNote = dare && !solo && <p className="dare">Racing {rivalName}</p>;
 
-  // what the next screens show at once (the course's maps, the gnomes' pictures), fetched beside the game: the title's
-  // loader holds for them only while they are not in, WARM_MS past the game at most (then they go on behind it)
+  // what the next screens show at once, fetched beside the game: the course's maps and the menu's three pictures (the
+  // player's gnome, the ghost, the Miner; the other gnomes' behind them). The title's loader holds for them only
+  // while they are not in, WARM_MS past the game at most (then they go on behind it)
   const [warm, setWarm] = useState(false);
   useEffect(() => {
     let live = true;
-    void Promise.all([loadCourse(), warmPortraits()]).then(() => live && setWarm(true));
+    void Promise.all([loadCourse(), warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")])]).then(() => live && setWarm(true));
     // (the Builder's wasm, in an idle moment and on a computer alone: a phone has no Builder)
     whenIdle([() => builderOn() && onComputer((q) => window.matchMedia(q).matches) && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
     return () => void (live = false);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- (the gnome kept as the page opens)
   const started = !!s;
   useEffect(() => {
     if (!started || warm) return;

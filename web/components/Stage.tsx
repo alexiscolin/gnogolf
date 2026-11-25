@@ -3,9 +3,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { GNOMES, makePreview, portraitOf, type Skin } from "@/lib/scene/gnome";
 
+const srcOf = (skin: Skin | "ghost") => (skin === "ghost" ? "/portraits/ghost.webp" : portraitOf(skin));
+
 /** A gnome's picture, there at once: no WebGL, a card can show as many as it needs. ghost: a duel's, whoever he is. */
 export function Portrait({ skin, className = "" }: { skin: Skin | "ghost"; className?: string }) {
-  const src = skin === "ghost" ? "/portraits/ghost.webp" : portraitOf(skin);
+  const src = srcOf(skin);
   // not fetched yet (a link straight past the title): his stage pulses, then he fades in
   const [at, setAt] = useState<"" | "wait" | "late">("");
   const img = useRef<HTMLImageElement>(null);
@@ -15,16 +17,16 @@ export function Portrait({ skin, className = "" }: { skin: Skin | "ghost"; class
     onLoad={() => setAt((was) => (was === "wait" ? "late" : was))} onError={() => setAt("")} />;
 }
 
-const warm: HTMLImageElement[] = []; // (kept: a decoded picture stays decoded)
-/** The game's gnomes' pictures fetched ahead, once: a card's are there as its screen opens. Resolves once they are in (one that fails too). */
-export function warmPortraits() {
-  if (!warm.length)
-    for (const src of ["/portraits/ghost.webp", ...GNOMES.map(portraitOf)]) {
-      const im = new Image();
-      im.src = src;
-      warm.push(im);
-    }
-  return Promise.all(warm.map((im) => im.decode().catch(() => {})));
+const warm = new Map<string, HTMLImageElement>(); // (kept: a decoded picture stays decoded)
+/** The game's gnomes' pictures fetched ahead, first's first: a card's are there as its screen opens. Resolves once first's are in (one that fails too). */
+export function warmPortraits(first: readonly (Skin | "ghost")[]) {
+  for (const src of [...first, "ghost" as const, ...GNOMES].map(srcOf)) {
+    if (warm.has(src)) continue;
+    const im = new Image();
+    im.src = src;
+    warm.set(src, im);
+  }
+  return Promise.all(first.map((s) => warm.get(srcOf(s))!.decode().catch(() => {})));
 }
 
 /** A gnome hopping in its own WebGL canvas, over his Portrait if the box holds one. Returns the ref of the box to draw it in. */
