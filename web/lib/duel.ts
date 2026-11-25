@@ -76,6 +76,9 @@ export function pickOne<R extends { player: string }>(rows: readonly R[], not: r
   return ok[Math.floor(r * ok.length)] || null;
 }
 
+/** A surprise from a pool: never the player drawn last, unless he is alone in it. */
+export const surpriseOf = <R extends { player: string }>(pool: readonly R[], last: string, r: number) => pickOne(pool, [last], r) || pickOne(pool, [], r);
+
 /** The best of a rival's raced on a hole: the aim mode's, else their other one, or null. */
 export function bestOf(b: Readonly<Record<Mode, number>> | undefined, mode: Mode) {
   const m = b && b[mode] ? mode : other(mode);
@@ -158,6 +161,23 @@ export function railRuns(walls: readonly { a: Vec2; b: Vec2 }[]) {
     runs.push(run);
   }
   return runs;
+}
+
+/** A read kept ms under its key: asked once in that time, again for another key or after one that failed. now: what it gave, once in. */
+export function keptRead<T>(ms: number, clock: () => number = Date.now) {
+  let last: { key: string; at: number; read: Promise<T>; got?: T } | null = null;
+  const fresh = (key: string) => (last && last.key === key && clock() - last.at < ms ? last : null);
+  return {
+    now: (key: string): T | null => fresh(key)?.got ?? null,
+    read(key: string, ask: () => Promise<T>): Promise<T> {
+      const was = fresh(key);
+      if (was) return was.read;
+      const kept: NonNullable<typeof last> = { key, at: clock(), read: ask() };
+      last = kept;
+      kept.read.then((got) => (kept.got = got), () => last === kept && (last = null));
+      return kept.read;
+    },
+  };
 }
 
 /** Calls run n at a time, the others waiting their turn in order. */

@@ -1,7 +1,7 @@
 // Ghost duels: the best raced, the ghost's pace, and the result in words.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { raceLeft, duelResult, duelShare, skyWord, ghostSpeed, pickGhost, shotsOf, levelFrom, levelPick, pickOne, bestOf, showcases, inTurn, mapView, mapFit, mapZone, vsBest, pathD, railRuns, type Duel } from "../lib/duel.ts";
+import { raceLeft, duelResult, duelShare, skyWord, ghostSpeed, pickGhost, shotsOf, levelFrom, levelPick, pickOne, bestOf, showcases, inTurn, keptRead, surpriseOf, mapView, mapFit, mapZone, vsBest, pathD, railRuns, type Duel } from "../lib/duel.ts";
 import type { Ghost, Vec2 } from "../lib/types.ts";
 
 const ghost = (strokes: number, mode: Ghost["mode"] = "assisted"): Ghost => ({ version: 1, hole: "garden/1/v1", mode, player: "g1x", strokes, period: 7, shots: "0.0000,1.0000,0;12.5000,6.2000,3" });
@@ -174,4 +174,28 @@ test("calls in turn: n at once, the rest in order, a failed one handing its plac
 test("a duel's next stroke called out: strokes left to win, the last one, the tie, out of reach", () => {
   assert.deepEqual([1, 2, 3, 4, 5].map((n) => raceLeft(n, 4)), ["3 strokes left to win", "2 strokes left to win", "Last one to win!", "Hole it to tie", "Out of reach"]);
   assert.equal(raceLeft(1, 1), "Hole it to tie", "an ace: tie it at best");
+});
+
+void test("keptRead: a key asked once in its time, there at once when in; another key, a stale read or one that failed asks again", async () => {
+  let at = 0, asks = 0;
+  const kept = keptRead<number>(60_000, () => at), ask = () => Promise.resolve(++asks);
+  const first = kept.read("a", ask);
+  assert.equal(kept.now("a"), null, "not in yet");
+  assert.equal(kept.read("a", ask), first);
+  assert.deepEqual([await first, kept.now("a"), kept.now("b"), asks], [1, 1, null, 1]);
+  at = 59_999;
+  assert.equal(await kept.read("a", ask), 1);
+  at = 60_000;
+  assert.equal(kept.now("a"), null, "stale");
+  assert.equal(await kept.read("a", ask), 2);
+  assert.equal(await kept.read("b", ask), 3, "another player, another mode");
+  await assert.rejects(kept.read("c", () => Promise.reject(new Error("down"))));
+  assert.equal(await kept.read("c", ask), 4, "a failed read is not kept");
+});
+
+void test("surpriseOf: never the player drawn last, unless he is alone", () => {
+  const pool = [{ player: "a" }, { player: "b" }, { player: "a" }];
+  for (const r of [0, 0.49, 0.99]) assert.equal(surpriseOf(pool, "a", r)?.player, "b");
+  assert.equal(surpriseOf([{ player: "a" }], "a", 0.5)?.player, "a");
+  assert.equal(surpriseOf([], "a", 0.5), null);
 });

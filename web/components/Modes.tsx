@@ -13,7 +13,7 @@ import { gnomeById, rivalSkin, type Skin } from "@/lib/scene/gnome";
 import type { Snapshot } from "@/lib/engine";
 import { FrontScreen } from "@/components/About";
 import { Button, Dice, InfoTip } from "@/components/ui";
-import { FullBoard, Sticker, rivalPicks, useRivalPicks, useWho, type Placed } from "@/components/Leaderboard";
+import { FullBoard, Sticker, rivalPicks, surpriseTaken, useRivalPicks, useWho, type Placed } from "@/components/Leaderboard";
 import { countWord, ghostsWord, holesWord, plural } from "@/lib/words";
 import { isAddress, type Chain } from "@/lib/chain";
 import { CLASSIC, cupOf, parOf, scoreOf, vsPar, courseCount, golfTerm, holeNumber, standingVs, type Card } from "@/lib/card";
@@ -147,7 +147,7 @@ export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, o
           <h3 className="h-section rival__h">Or anyone who played</h3>
           <span className="rival__links">
             {/* (there, not pressable, while the board is read or has nobody: the links beside it do not move) */}
-            {(!picks || !picks.rows[0] || picks.surprise) && <button className="linkish rival__all rival__surprise" disabled={!picks?.surprise} onClick={() => picks?.surprise && (sound("select"), onPick(picks.surprise.player, undefined, "surprise"))}><Dice /> Surprise me</button>}
+            {(!picks || !picks.rows[0] || picks.surprise) && <button className="linkish rival__all rival__surprise" disabled={!picks?.surprise} onClick={() => { const to = picks?.surprise; if (to) (sound("select"), surpriseTaken(picks), onPick(to.player, undefined, "surprise")); }}><Dice /> Surprise me</button>}
             <button className="linkish rival__all" onClick={() => (sound("blip"), onBoard())}>All players →</button>
           </span>
         </div>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type
 import type { Snapshot } from "@/lib/engine";
 import { isAddress, wait, shortAddr, nameHint, nameRefusal, type Chain } from "@/lib/chain";
 import type { Bests, HoleRow, Mode, StandingRow, StrokesRow } from "@/lib/types";
-import { levelFrom, levelPick, pickOne, skyWord } from "@/lib/duel";
+import { keptRead, levelFrom, levelPick, skyWord, surpriseOf } from "@/lib/duel";
 import { ISSUES, SHARE_TAGS, siteURL } from "@/lib/site";
 import { readFlags, stale, hidden, whyHidden, screen, type Flag, type Flags } from "@/lib/flags";
 import { skyOf } from "@/lib/sky";
@@ -367,35 +367,34 @@ export type Placed = StrokesRow & { holes?: number; par?: number; at: number };
  * without one) and yourself (null while no one is connected); and a surprise
  * (the board's Surprise me). A pick nobody fills, null.
  */
-interface Picks { rows: readonly (Placed | null)[]; surprise: Placed | null }
+interface Picks { rows: readonly (Placed | null)[]; surprise: Placed | null; /** who a surprise is drawn from */ pool: readonly Placed[] }
 // the picks last read, kept a minute: the menu reads them ahead, the rival's screen opens on them
-const PICKS_MS = 60_000;
-let lastPicks: { key: string; at: number; read: Promise<Picks>; got?: Picks } | null = null;
+const kept = keptRead<Picks>(60_000);
+let lastSurprise = ""; // (the surprise last raced: not drawn twice running)
 const picksKey = (chain: Chain, me: string | null | undefined, mode: Mode) => `${chain.rpc}|${chain.realm}|${me || ""}|${mode}`;
-const picksNow = (chain: Chain | null, me: string | null | undefined, mode: Mode) =>
-  (chain && lastPicks && lastPicks.key === picksKey(chain, me, mode) && Date.now() - lastPicks.at < PICKS_MS && lastPicks.got) || null;
+const picksNow = (chain: Chain | null, me: string | null | undefined, mode: Mode) => (chain && kept.now(picksKey(chain, me, mode))) || null;
+/** A surprise raced: the picks kept draw another one for the next look. */
+export function surpriseTaken(p: Picks) {
+  lastSurprise = p.surprise ? p.surprise.player : "";
+  p.surprise = surpriseOf(p.pool, lastSurprise, Math.random());
+}
 /** The picks of a chain, a player and a mode, read once a minute (a read that failed is asked again). */
 export function rivalPicks(chain: Chain, me: string | null | undefined, mode: Mode): Promise<Picks> {
-  const key = picksKey(chain, me, mode);
-  if (lastPicks && lastPicks.key === key && Date.now() - lastPicks.at < PICKS_MS) return lastPicks.read;
   // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
   const page = (at: number, n: number) =>
     Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
-  const read = Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null]).then(async ([top, mine]): Promise<Picks> => {
+  return kept.read(picksKey(chain, me, mode), () => Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null]).then(async ([top, mine]): Promise<Picks> => {
     // (a page that fails: the first one's players stand in; the two asked together, one wait)
     const [near, any] = await Promise.all([page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top), page(Math.floor(Math.random() * top.players), 5).catch(() => top)]);
     const level = levelPick(near.rows, me);
     const today = coursePicks(top.rows.filter((r) => !level || r.player !== level.player), top.holes, me, null, null, undefined, 1)[0]?.row || null;
-    const surprise = pickOne([...any.rows, ...top.rows], [me, today && today.player, level && level.player], Math.random());
+    const pool = [...any.rows, ...top.rows].filter((r) => ![me, today && today.player, level && level.player].includes(r.player));
+    const surprise = surpriseOf(pool, lastSurprise, Math.random());
     // (your row on the first page, else your rank read apart; unranked in this mode: at 0, your ghosts still read)
     const self: Placed | null = !me ? null : top.rows.find((r) => r.player === me) || { player: me, at: mine && mine.rank > 0 ? mine.rank : 0, holes: mine ? mine.holes : 0, strokes: mine ? mine.strokes : 0, par: mine ? mine.par : 0 };
     primeNames(chain, [today, level, surprise].flatMap((r) => (r ? [r] : [])));
-    return { rows: [today, level, self], surprise };
-  });
-  const kept: NonNullable<typeof lastPicks> = { key, at: Date.now(), read };
-  lastPicks = kept;
-  read.then((got) => (kept.got = got), () => lastPicks === kept && (lastPicks = null));
-  return read;
+    return { rows: [today, level, self], surprise, pool };
+  }));
 }
 /** The rival screen's picks (rivalPicks): there at once if read ahead, null while read; a board that could not be read: retry, to read it again. */
 export function useRivalPicks(chain: Chain | null, me: string | null | undefined, mode: Mode) {
@@ -404,7 +403,7 @@ export function useRivalPicks(chain: Chain | null, me: string | null | undefined
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    rivalPicks(chain, me, mode).then((p) => live && setPicks(p), () => live && setPicks({ rows: [null, null, null], surprise: null, retry: () => (setPicks(null), setTick((n) => n + 1)) }));
+    rivalPicks(chain, me, mode).then((p) => live && setPicks(p), () => live && setPicks({ rows: [null, null, null], surprise: null, pool: [], retry: () => (setPicks(null), setTick((n) => n + 1)) }));
     return () => void (live = false);
   }, [chain, me, mode, tick]);
   return picks;
