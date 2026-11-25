@@ -26,3 +26,16 @@ void test("the community's holes, a screen of the game's: its title focused as i
 void test("a link to the author's own hole not holed yet opens once their account is known, only while they are on the cups it landed on", () => {
   assert.ok(/if \(screen !== "worlds"\) unheldLink\.current = "";\s*\}, \[screen\]\);\s*useEffect\(\(\) => \{\s*const link = unheldLink\.current/.test(golf), "forgotten as they leave, before the account's answer is looked at");
 });
+
+void test("what is fetched ahead: the Builder's code on a computer alone, nothing in a round or on a data saver, the title held for its three pictures only", () => {
+  const builder = golf.split("\n").filter((l) => /import\("@\/(lib|components)\/builder\/|router\.prefetch\(buildLink/.test(l));
+  assert.equal(builder.length, 2, "its wasm, and its page with its screens' code");
+  for (const l of builder) assert.ok(/builderComputer\(\) (&&|\|\|)/.test(l), l.trim().slice(0, 90));
+  assert.ok(golf.includes("const builderComputer = () => builderOn() && onComputer("), "the flag, and no phone (lib/builder/route.ts)");
+  assert.ok(golf.includes(`const ahead = screen !== "play" && !leanLink();`));
+  const idle = golf.split("\n").filter((l) => l.includes("whenIdle(["));
+  assert.equal(idle.length, 3);
+  for (const l of idle) assert.ok(/^\s*((if \(ahead && .*\) )?return|const stop =) whenIdle\(\[/.test(l), "each stopped as its effect is left: " + l.trim().slice(0, 60));
+  assert.ok(golf.includes("return () => ((on = false), stop());"), "the rival's warm-up stopped, its started reads told to stop too");
+  assert.ok(golf.includes(`void warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")]).then(() => live && setWarm(true));`), "no other file holds the title");
+});

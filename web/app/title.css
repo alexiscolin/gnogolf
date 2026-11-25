@@ -82,16 +82,14 @@
    under it; the corner buttons (2), the mode's tag and the network banner (after the screen) over it */
 .front::after { z-index: 1; box-shadow: 0 0 0 40px var(--s0); }
 @media (max-width: 600px) { .front::after, .victory::after, .screen--title::after { inset: 8px; border-width: 2.5px; } }
-/* what scrolls under the fixed corners, veiled in the backdrop (its dots and sky, fixed, so they meet it): at the
-   foot the network's chips (their row and --chip-room, the last row's room, the same) sit on it, never on a
-   card's Buy or a band's words; on a phone the head's row too (Back, the mode, About). Over the screen's parts,
-   under its head (the shop's, in that row on a phone), its frame and its corner buttons */
+/* what scrolls under a screen's edges fades into the backdrop (its dots and sky, fixed, so they meet it), the one
+   treatment everywhere: at the foot above the frame's edge (19 in); on a phone under the head's row too (Back, the
+   mode, About). Over the screen's parts, under its head (the shop's, in that row on a phone), its frame and its
+   corner buttons */
 .front__veil::before, .front__veil::after { content: ""; position: fixed; z-index: 5; left: 0; right: 0; pointer-events: none; background: var(--dots), var(--s0); background-attachment: fixed; }
-.front__veil::after { display: none; bottom: 0; height: calc(var(--chip-room) + 12px); mask-image: linear-gradient(transparent, #000 20px); }
-body:has(.netbanner) .front__veil::after { display: block; }
+.front__veil::after { bottom: 0; height: 44px; mask-image: linear-gradient(transparent, #000 24px); }
 .front__veil::before { display: none; top: 0; height: 96px; mask-image: linear-gradient(#000 calc(100% - 14px), transparent); }
 @media (max-width: 600px) { .front__veil::before { display: block; } .front { scroll-padding-top: 96px; } }
-body:has(.netbanner) .front { scroll-padding-bottom: calc(var(--chip-room) + 12px); } /* (what is scrolled to, a focus, a band asked for: clear of them) */
 .front .front__head { z-index: 6; } /* (over the veil: 5, over a card's ribbon and badges, 3 and 4) */
 body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front__head { z-index: auto; } /* (a sheet open in the screen, 5: both under its dim) */
 /* the title's film and live scene stay as they are: the frame is its still's only */
@@ -123,8 +121,6 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
   cursor: default;
 }
 .screen--title.screen--ready { cursor: pointer; }
-/* in the middle of what the network banner's row leaves (34px + its 48) */
-body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 /* the sky: the front's own, per world (the scene's is clear) */
 .title__sky, .title__still, .title__stage { position: absolute; inset: 0; }
 .title__still img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -198,16 +194,6 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 /* on a wide screen the facts sit on the foot of it */
 @media (min-aspect-ratio: 1/1) {
   .screen--title .title__facts { position: fixed; left: 50%; bottom: clamp(14px, 3vh, 28px); transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); }
-  /* with a network banner there, under the button as upright, unless wide
-     enough for the banner beside them (the facts are 1086px, the local
-     banner 291, the testnet's 459): then on its row, the same middle line */
-  body:has(.netbanner) .screen--title .title__facts { position: static; transform: none; }
-}
-@media (min-aspect-ratio: 1/1) and (min-width: 1784px) {
-  body:has(.netbanner--local) .screen--title .title__facts { position: fixed; transform: translateX(-50%); bottom: max(33px, env(safe-area-inset-bottom)); }
-}
-@media (min-aspect-ratio: 1/1) and (min-width: 2120px) {
-  body:has(.netbanner--testnet) .screen--title .title__facts { position: fixed; transform: translateX(-50%); bottom: max(33px, env(safe-area-inset-bottom)); }
 }
 @media (max-height: 720px) {
   .screen--title .title__facts { display: none; }
@@ -317,7 +303,7 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 /* the community's holes: a long band under the cups, a card of another kind (paper and a blueprint, not a
    cup's colour and diorama), leaping as a cup does; a tap opens their screen */
 .cband {
-  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-4); width: 100%; margin: var(--gap-grid) 0 76px; /* (clear of the corner's chips below) */
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-4); width: 100%; margin: var(--gap-grid) 0 0;
   padding: 10px 26px 10px 12px; border: var(--edge-bold); border-radius: var(--r-panel); background: var(--panel-dots), var(--paper);
   box-shadow: var(--deep-card); font: inherit; color: var(--ink); text-align: left; cursor: pointer;
   transition: transform var(--t-pop) var(--spring), box-shadow .2s;
@@ -338,7 +324,7 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
   .cband__go { grid-column: 1 / -1; justify-self: stretch; text-align: center; }
 }
 /* the cup's diorama in a round inked window, as a game's panel shows its gnome */
-/* sized by the window's height too, so a laptop's cards end clear of the network banner */
+/* sized by the window's height too, so a laptop's cards fit its window */
 .worlds--v2 .world__art { width: min(80%, 20vh); margin: 4px auto 0; aspect-ratio: 1 / 1; border-radius: 50%; }
 .worlds--v2 .world[disabled] .world__art img { filter: grayscale(.85) opacity(.75); }
 /* a cup with no still baked yet: its emblem is the window */
@@ -369,9 +355,18 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 .mode--duel { --c1: #f6a79b; --c2: var(--hat); } /* the hat: the rival */
 .mode--build { --c1: var(--lamp); --c2: var(--sunny); } /* the sun */
 .mode--shop { --c1: #d9c4ff; --c2: #6a4fc2; } /* the Epic's amethyst: the gnome shop */
-/* what stands behind a panel's gnome in its disc (the Builder's sketch, the shop's awning): under his canvas */
+/* what stands behind a panel's gnome in its disc (the Builder's sketch, the shop's awning): under his picture */
 .mode__stage > svg { z-index: 0; }
-.mode__stage > .pick__canvas { z-index: 1; }
+/* a collection gnome's thumbnail: the panel's disc is its window */
+.mode__stage .portrait--thumb { top: 58%; height: 48%; }
+/* a duel's pair: he a step to the left, the ghost a step back on his right */
+.mode--duel .portrait { top: 16%; height: 84%; translate: -68% 0; }
+.mode--duel .portrait--ghost { top: 26%; height: 70%; translate: -18% 0; }
+.mode--duel .portrait--thumb { top: 58%; height: 42%; translate: -72% -50%; }
+/* the panel under the pointer: its gnome hops (no motion asked: globals.css' switch holds him still) */
+.mode:is(:hover, :focus-visible):not([disabled]) .portrait:not(.portrait--ghost) { transform-origin: 50% 88%; animation: gnome-hop .4s ease-in-out infinite alternate; }
+/* squashed as he lands, stretched in the air, from his feet */
+@keyframes gnome-hop { from { transform: scale(1.03, .94); } to { transform: translateY(-10px) rotate(-6deg) scale(.98, 1.04); } }
 /* the shop's awning across the disc's top, behind its gnome: the panel's colours, inked */
 .mode__stage > .mode__awning { inset: 27% 0 auto; width: 74%; } /* (inside the disc's top, under the gnome's head) */
 .mode__awning-band { fill: var(--c2); }
@@ -399,7 +394,6 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 }
 /* the gnomes stand out over the panel's top edge */
 .mode__stage { position: relative; display: block; min-height: 0; margin-top: -26%; }
-.mode__stage .pick__canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mode__stage svg { position: absolute; inset: 26% 0 0; margin: auto; width: 56%; height: auto; }
 .mode__name { margin: 0 20px; font-size: clamp(34px, 4.2vw, 56px); font-weight: 700; line-height: 1; --ink-w: 6px; --ink-drop: 4px; transform: rotate(-3deg); transform-origin: left; }
 /* a panel's line: inked as its name, thinner, read on any panel */
@@ -409,16 +403,18 @@ body:has(.netbanner) .screen--title { padding-bottom: var(--chip-room); }
 @media (max-width: 700px) {
   /* a phone: the panels stacked, wide, the gnomes on the left */
   .modes__list { grid-template-columns: 1fr; gap: 12px; padding-top: 12px; }
-  .mode { aspect-ratio: auto; min-height: 150px; grid-template-columns: 46% 1fr; grid-template-rows: 1fr auto; align-content: center; padding: 12px 0;
+  .mode { aspect-ratio: auto; min-height: clamp(150px, 22dvh, 200px); grid-template-columns: 46% 1fr; grid-template-rows: 1fr auto; align-content: center; padding: 12px 0;
     background: radial-gradient(circle at 23% 50%, var(--c1) 0 50px, var(--ink) 50px 52.5px, transparent 53px), var(--panel-dots), var(--c2); }
   .mode__stage { grid-row: 1 / 3; margin-top: -10px; }
   .mode__stage svg { inset: 0; width: 78%; }
+  .mode__stage .portrait--thumb { top: 50%; height: 100px; }
+  .mode--duel .portrait--thumb { height: 88px; translate: -62% -50%; }
   .mode__stage > .mode__awning { inset: 10% 0 auto; width: 62%; }
   .mode__stage > .mode__sketch { inset: 4% 0 auto; width: 76%; }
   .mode__name { align-self: end; margin: 0 14px 0 4px; font-size: 32px; --ink-w: 5px; }
   .mode__line { margin: 6px 14px 0 4px; font-size: 13px; }
   .modes__list--four { grid-template-columns: 1fr; }
-  .modes__list--four .mode { aspect-ratio: auto; min-height: 124px; }
+  .modes__list--four .mode { aspect-ratio: auto; min-height: clamp(124px, 16dvh, 150px); }
   .modes__list--four .mode__name { font-size: 28px; }
 }
 /* where the screen scrolls from its top (globals.css: its column 16 in, on the frame's line), the cards 12 in from it,
@@ -443,20 +439,25 @@ body:has(.sheet) .modetag { visibility: hidden; }
 /* a duel's rival and their ghosts: the screen fits the window, a column;
    its last frame (the board, the holes) takes what is left and scrolls in
    itself, the page never does (a window too short for that frame's floor:
-   then it does). The head in the corner buttons' row, room over it and under
-   the frame (clear of the network banner's row, 34px + its 48, by as much
-   again): the frame gives up its height, never that room. */
-.screen.front--fit { display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding: clamp(28px, 5vh, 48px) clamp(28px, 4vw, 64px) 48px; } /* (clear of the frame at the sides too; the block as tall as it needs, in the middle: its last frame gives up height, and scrolls, only when the window is short) */
-body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) + 16px); }
-@media (min-height: 880px) { body:has(.netbanner) .screen.front--fit { padding-top: calc(var(--chip-room) + 16px); } } /* (room to spare: the block in the page's middle, not just above the banner) */
+   then it does). The head in the corner buttons' row, a menu screen's room
+   over it and under the frame (globals.css --front-pad): the frame gives up
+   its height, never that room. */
+.screen.front--fit { display: flex; flex-direction: column; align-items: center; justify-content: safe center; padding-inline: clamp(28px, 4vw, 64px); } /* (clear of the frame at the sides too; the block as tall as it needs, in the middle: its last frame gives up height, and scrolls, only when the window is short) */
 .worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window; the screen's room inside its padding: 100vw would scroll sideways) */
 .rival .front__head { margin: 0; }
-@media (max-height: 720px) { .front--fit .front__head > .eyebrow { display: none; } }
+@media (max-height: 820px) { .shop .front__head > .eyebrow { display: none; } }
+/* a menu screen's head in one place whatever stands under it: the column as tall as the screen's room, the head at
+   its top, the rest in the middle of what is left (a column taller than that room: from its top, and the screen scrolls) */
+.screen.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick):not(.front--fit) { align-content: stretch; align-items: stretch; }
+.screen.front--fit > .worlds__in.rival { flex-grow: 1; }
+.front:is(.modes, .worlds--v2:has(.worlds__list)) > .worlds__in, .screen--pick > .pick { display: flex; flex-direction: column; align-items: center; }
+.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick) :is(.front__head, .pick__name) + * { margin-top: auto; }
+.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick) .front__veil { margin-bottom: auto; }
 /* where the cups' screen scrolls from its top (globals.css): the head under the
-   corner row as there, the network banner's room the screen's own (90px) */
+   corner row as there */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) {
   .screen.front--fit { padding-top: 0; }
-  .front--fit .worlds__in { padding-bottom: 16px; }
+  .front--fit .worlds__in { padding-bottom: var(--sp-6); }
 }
 .rival .lb { margin-top: 8px; text-align: left; }
 /* the heading says what the board is; players with no name have no Race here */
@@ -477,7 +478,7 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 .rival__picks { flex: none; list-style: none; margin: 0; padding: 4px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-grid); width: 100%; }
 .mode.rival__pick {
   aspect-ratio: auto; grid-template: auto minmax(0, 1fr) auto auto / 1fr 1fr; grid-template-areas: "tag tag" "stage show" "name name" "line go";
-  align-items: center; height: clamp(200px, 30vh, 260px); padding: 12px 18px 14px;
+  align-items: center; height: clamp(200px, 29vh, 260px); padding: 12px 18px 14px;
   background: var(--panel-dots), var(--c2);
 }
 .rival__you svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; } /* yourself: your ghost where the others have their place */
@@ -486,9 +487,10 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 .rival__dice { width: 24px; height: 24px; fill: var(--paper); stroke: var(--ink); stroke-width: 2; }
 .rival__dice circle { fill: var(--ink); stroke: none; }
 /* the gnome on his flat disc (the panel's light colour, inked), hopping out of it */
-.rival__stage { grid-area: stage; position: relative; align-self: stretch; container-type: size; }
-.rival__stage::before { content: ""; position: absolute; inset: 0; margin: auto; width: min(100cqw, 100cqh, 140px); aspect-ratio: 1; border-radius: 50%; background: var(--c1); border: var(--edge-bold); } /* (the stage's smaller side: round at any size) */
-.rival__stage .pick__canvas { position: absolute; inset: -22% -12% -4%; width: 124%; height: 126%; }
+.rival__stage { grid-area: stage; position: relative; align-self: stretch; container-type: size; --disc: min(100cqw, 100cqh, 140px); }
+.rival__stage::before { content: ""; position: absolute; inset: 0; margin: auto; width: var(--disc); aspect-ratio: 1; border-radius: 50%; background: var(--c1); border: var(--edge-bold); } /* (the stage's smaller side: round at any size) */
+.rival__stage .portrait { top: calc(50% - var(--disc) * .72); height: calc(var(--disc) * 1.26); }
+.rival__stage .portrait--thumb { top: 50%; height: var(--disc); }
 /* a hole of theirs, in a round window as a cup's diorama, a ribbon over the window's foot (their best on it, its par) */
 .rival__show { display: grid; justify-items: center; align-self: stretch; align-content: center; min-height: 0; }
 .rival__map { width: 100%; aspect-ratio: 1; filter: drop-shadow(0 4px 0 var(--ink)); }
@@ -505,6 +507,14 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
 /* a board row's, small (globals.css .lb li) */
 .lb__race { display: inline-flex; align-items: center; justify-content: center; min-width: 8.5em; min-height: 32px; padding: 2px 14px; font-size: 13px; white-space: nowrap; } /* one width, "Race here" or "Their holes": the rows' columns kept in line */
 .rival__pick .rival__go { grid-area: go; justify-self: end; }
+/* yourself: a card of its own, your gnome big down its left, the words beside him (no hole shown: nothing empty) */
+.mode.rival__pick.rival__pick--self { grid-template: auto minmax(0, 1fr) auto auto minmax(0, 1fr) / minmax(0, 52%) minmax(0, 1fr); grid-template-areas: "tag tag" "stage name" "stage line" "stage best" "stage go"; column-gap: 12px; }
+.rival__pick--self .rival__stage { --disc: min(100cqw, 100cqh, 160px); }
+.rival__pick--self .portrait:not(.portrait--thumb) { top: calc(50% - var(--disc) * .86); height: calc(var(--disc) * 1.5); }
+.rival__pick--self .rival__name { align-self: end; padding: 0; white-space: normal; }
+.rival__pick--self .rival__line, .rival__pick--self:disabled .rival__line { grid-column: auto; align-self: start; padding: 4px 0 0; white-space: normal; }
+.rival__pick--self .rival__best { grid-area: best; justify-self: start; margin: 8px 0 0; }
+.rival__pick--self .rival__go { align-self: end; margin-top: 0; }
 /* the map, in its cup's colours (its tint): the ground round the rails, the
    lane's felt in them, what the ball meets flat on it; the rails inked; the
    path in ink on a paper edge, the ball on it */
@@ -535,21 +545,16 @@ body:has(.netbanner) .screen.front--fit { padding-bottom: calc(var(--chip-room) 
    whole board (All players →), then its frame (the board's own list,
    globals.css .lb--full ol): stickers, four a row, in equal columns, centred
    (the scrollbar's gutter kept on both sides) */
-.rival__board { flex: 0 1 auto; min-height: 160px; display: flex; flex-direction: column; width: 100%; margin-top: clamp(0px, 1.2vh, 12px); }
+.worlds__in.rival:has(.rival__board) { flex: none; gap: clamp(14px, 3vh, 36px); } /* (nothing in it scrolls: the screen does, when the window is short) */
+.rival__board { flex: none; width: 100%; }
 .rival__boardhead { flex: none; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 12px; } /* (a phone: the link under the heading) */
 .rival__boardhead .rival__h { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .rival__all { flex: none; white-space: nowrap; }
 .rival__links { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; }
 .rival__all .rival__dice { width: 15px; height: 15px; vertical-align: -2px; }
-.rival__board .lb--full ol { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; padding: 14px 12px 22px; scrollbar-gutter: stable both-edges; }
+.rival__board .lb--full > ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px var(--gap-grid); max-height: none; padding: 12px 0 0; overflow: visible; scrollbar-gutter: auto; mask-image: none; animation: none; }
 .rival__board .lb ol > li { display: block; padding: 0; border: 0; background: none; }
 .rival__board .lb li.lb__more { grid-column: 1 / -1; }
-/* its blank places (still read, or nobody yet): one row of them, short (their place, no face: the room a short window
-   leaves the board), the board's own height, never a box cut through them that scrolls */
-.rival__board .lb--full > ol.lb__blank { flex: none; max-height: none; overflow: visible; mask-image: none; animation: none; padding: 8px 12px 4px; }
-.rival__board ol.lb__blank .sticker { min-height: 40px; padding: 6px 14px 6px 22px; }
-.rival__board ol.lb__blank .sticker__face { display: none; }
-.rival__board ol.lb__blank > li:nth-child(n+5) { display: none; }
 /* a player as a sticker (the rival board's, the records to beat): their face, why it is there over its corner, name, a line */
 .sticker {
   position: relative; display: grid; grid-template: auto auto / auto minmax(0, 1fr); column-gap: 12px; align-items: center; width: 100%; min-height: 72px; padding: 8px 14px 8px 8px;
@@ -571,16 +576,14 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
 .podium__ghost .podium__medal { --m: 26px; position: absolute; top: -8px; left: -8px; opacity: .45; }
 .podium__ghost .rival__map { opacity: .45; }
 .podium__ghost i { width: 60%; }
-/* the cups' records to beat: the stickers, smaller */
-.podium .sticker { padding: 6px 12px 6px 6px; }
-.podium :is(.sticker, .podium__ghost) { min-height: 84px; } /* (a card with its Race line: one height filled or blank, the cups below never move) */
-.podium .sticker__face { width: 44px; height: 44px; }
+/* the cups' records to beat and the rival's board: the same tiles, smaller, on a front screen's three columns */
+:is(.podium, .rival__board) .sticker { padding: 6px 12px 6px 6px; }
+:is(.podium, .rival__board) :is(.sticker, .podium__ghost) { min-height: 84px; } /* (a card with its Race line: one height filled or blank, what is below never moves) */
+:is(.podium, .rival__board) .sticker__face { width: 44px; height: 44px; }
 @media (max-width: 900px) {
   /* three narrow panels: Race on a row of its own */
   .mode.rival__pick { grid-template-rows: auto minmax(0, 1fr) auto auto auto; grid-template-areas: "tag tag" "stage show" "name name" "line line" "go go"; }
   .rival__pick .rival__go { justify-self: stretch; margin-top: 8px; text-align: center; }
-  .rival__board .lb--full ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .rival__board ol.lb__blank > li:nth-child(n+4) { display: none; }
 }
 @media (max-width: 700px) {
   /* a phone: the picks side by side in a row of their own, swiped, the next one peeking in */
@@ -591,19 +594,18 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
   .rival__line { font-size: 12.5px; }
   .rival__pick .rival__go { justify-self: end; margin-top: 0; padding: 4px 16px 5px; font-size: 16px; }
   .rival__best { font-size: 11.5px; }
-  .rival__board .lb--full ol { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-  .rival__board ol.lb__blank > li:nth-child(n+3) { display: none; }
+  .rival__board .lb--full > ol { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   .sticker { grid-template: auto auto auto / minmax(0, 1fr); justify-items: center; padding: 10px 8px; text-align: center; }
   .sticker__face { grid-row: auto; }
   .sticker__who, .sticker__sub { max-width: 100%; }
   .podium__row { gap: 8px; padding-left: 8px; } /* (the first medal clear of the page's frame) */
-  .podium .sticker { padding: 8px 4px 6px; }
-  .podium :is(.sticker, .podium__ghost) { min-height: 114px; }
-  .podium .sticker__sub { font-size: 11px; }
+  :is(.podium, .rival__board) .sticker { padding: 8px 4px 6px; }
+  :is(.podium, .rival__board) :is(.sticker, .podium__ghost) { min-height: 114px; }
+  :is(.podium, .rival__board) .sticker__sub { font-size: 11px; }
 }
 @media (max-width: 600px) {
-  /* a phone: the head under the corner row, its title alone; the friend's bar one row, its heading said to a reader only */
-  .front--fit .front__head > .eyebrow { display: none; }
+  /* a phone: the head under the corner row; the friend's bar one row, its heading said to a reader only */
+  .shop .front__head > .eyebrow { display: none; }
   .rival__friend { flex-wrap: wrap; gap: 6px; padding: 6px; }
   .rival__friend > .rival__h { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .rival__friend .friends__add { flex: 1 1 0; min-width: 0; gap: 6px; }
@@ -706,12 +708,12 @@ button.sticker:focus-visible, .ghost:focus-visible, .gcard:focus-visible, .gcoll
    edges at every size */
 .screen--pick { --pick-w: min(380px, 60vw, 40vh); align-content: safe center; } /* taller than the window: from its top, never cut above it */
 .screen--pick:has(.dare) { --pick-w: min(380px, 60vw, 34vh); } /* a dare's lines above: the button still in view */
-.screen--pick:has(.gcollect) { --pick-w: min(380px, 60vw, 30vh); } /* the collection's section above: the same */
+.screen--pick:has(.gcollect) { --pick-w: min(380px, 60vw, 25vh); --gap-l: 12px; --gap-xl: 16px; } /* the collection's section above: the same */
 .screen--pick:has(.gcollect):has(.dare) { --pick-w: min(340px, 60vw, 22vh); }
 @media (max-height: 820px) {
   .screen--pick { --pick-w: min(340px, 60vw, 36vh); }
   .screen--pick:has(.dare) { --pick-w: min(340px, 60vw, 25vh); }
-  .screen--pick:has(.gcollect) { --pick-w: min(340px, 60vw, 26vh); }
+  .screen--pick:has(.gcollect) { --pick-w: min(340px, 60vw, 21vh); }
 }
 @media (max-height: 760px) {
   .screen--pick:has(.gcollect) { --pick-w: min(300px, 60vw, 22vh); }

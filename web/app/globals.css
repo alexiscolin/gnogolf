@@ -46,6 +46,7 @@
   --r-panel: 26px; --r-card: 20px;
   /* the game's spacing scale: the gaps, paddings and margins of its pieces (the shop's first, the community's) */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 40px;
+  --front-pad: clamp(40px, 7vh, 88px); /* a menu screen's room over and under its content, inside its frame */
   --rule: 2px dashed rgba(var(--ink-rgb), .25); /* a dashed rule between a sheet's parts */
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   --font: Fredoka, ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
@@ -623,6 +624,10 @@ kbd { display: inline-grid; place-items: center; min-width: 22px; height: 22px; 
   padding: clamp(40px, 9vh, 110px) 28px 28px;
   background: var(--paper);
 }
+
+/* a menu screen: its content in the middle of its frame, the same room over it and under it (shorter than its
+   content: from its top, and it scrolls; a phone's, a short window's: below) */
+.screen.front { padding-block: var(--front-pad); }
 
 @keyframes fade { from { opacity: 0 } }
 /* what arrives after its sheet or screen (a chain's answer): faded in, not snapped */
@@ -1461,6 +1466,19 @@ h3 small {
   height: 100%;
   display: block;
 }
+/* a gnome's picture where a canvas would stand him (Stage.tsx Portrait): as tall as its box, centred, never squeezed */
+.portrait { position: absolute; top: 0; left: 50%; z-index: 1; width: auto; max-width: none; height: 100%; aspect-ratio: 1; translate: -50% 0; pointer-events: none; user-select: none; }
+/* a collection gnome's thumbnail, on its own ground: a round window, inked */
+.portrait--thumb { top: 50%; height: 64%; translate: -50% -50%; border: var(--edge-bold); border-radius: 50%; }
+/* the picker's canvas takes his picture's place with its first frame */
+.pick__canvas:has(> .portrait) { position: relative; }
+[data-live] > .portrait { visibility: hidden; }
+/* what still waits on the network: there at its final size, a soft pulse in its own colours (what arrives: .late) */
+.wait, :has(> .portrait--wait):not([data-live]) { animation: wait 1.4s ease-in-out infinite; } /* (the picker's canvas, live over his picture: never) */
+@keyframes wait { 50% { opacity: .5; } }
+/* side by side, each a beat after the one before: a wave, not a blink */
+li:nth-child(3n + 2) :is(.wait, :has(> .portrait--wait)), li.wait:nth-child(3n + 2) { animation-delay: .18s; }
+li:nth-child(3n) :is(.wait, :has(> .portrait--wait)), li.wait:nth-child(3n) { animation-delay: .36s; }
 
 @media (max-width: 520px) {
   .hud--bottom { gap: 10px; padding-left: 12px; padding-right: 12px; }
@@ -1791,7 +1809,6 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 .sky--night.sky--w-mountain { background: linear-gradient(178deg, #141c3a 0%, #253255 60%, #3a4a72 100%); }
 /* the cup screen scrolls when its cards do not fit (a phone), never cut at the top */
 .screen.worlds { overflow-y: auto; }
-body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the banner, bottom left, never over a card's foot */
 
 /* the forecast as a HUD card, next to the strokes */
 .card--weather { display: flex; align-items: center; gap: 8px; padding: 8px 12px; position: relative; font: inherit; color: inherit; cursor: pointer; }
@@ -2017,11 +2034,11 @@ body:has(.netbanner) .screen.worlds { padding-bottom: var(--chip-room); } /* the
 /* a front section's heading: the records to beat' */
 .podium__head h3 { margin: 0; } /* (.h-section: a section's title, as the rival's) */
 /* the course's records to beat: a slim strip under the cups' title, seen without scrolling */
-.podium { margin: 4px auto 32px; width: 100%; max-width: 980px; text-align: left; }
+.podium { margin: 4px auto 32px; width: 100%; max-width: var(--front-w); text-align: left; }
 .podium__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .podium__links { display: flex; gap: 16px; }
 /* the records to beat as the rival board's stickers (title.css .sticker), three across at any width */
-.podium__row { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.podium__row { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px var(--gap-grid); }
 /* a place: a disc (--m across), in its metal for the first three, paper for the others */
 .podium__medal { --m: 24px; display: inline-grid; place-items: center; min-width: var(--m); height: var(--m); padding: 0 4px; border: var(--edge); border-radius: var(--pill); background: var(--paper); font-size: 13px; font-weight: 800; color: var(--ink); }
 .podium__medal--1 { background: var(--gold); } .podium__medal--2 { background: var(--silver); } .podium__medal--3 { background: var(--bronze); }
@@ -2246,12 +2263,10 @@ body:has(.sheet) .screen__about, body:has(.sheet) .screen__back { visibility: hi
 .btn--save-rank:not([disabled]) { animation: save-pulse 1.8s ease-in-out 2; }
 @keyframes save-pulse { 50% { transform: scale(1.04); } }
 
-/* which chain this is (under the sheets and banners, z 5–9, like the Players chip), bottom left on every screen but mainnet's: coloured,
-   so no one takes a practice score for a real one, with the way to mainnet */
-/* its footprint over a screen: its height and its height off the bottom (a phone's: below), and the room every screen
-   that scrolls under it leaves at its foot (--chip-room: those, and a gap), so its last row scrolls clear of it */
-:root { --chip-h: 48px; --chip-low: 34px; --chip-room: 0px; }
-body:has(.netbanner) { --chip-room: calc(max(var(--chip-low), env(safe-area-inset-bottom)) + var(--chip-h) + 8px); }
+/* which chain this is (under the sheets and banners, z 5–9, like the Players chip), bottom left in a round, but on mainnet: coloured,
+   so no one takes a practice score for a real one, with the way to mainnet; Feedback in it, Support beside it */
+/* its footprint: its height and its height off the bottom (a phone's: below) */
+:root { --chip-h: 48px; --chip-low: 34px; }
 .netbanner { position: fixed; left: 16px; bottom: max(18px, env(safe-area-inset-bottom)); z-index: var(--z-chip); display: flex; align-items: center; gap: 10px; } /* the band, then the Support chip (not on a phone) */
 .netbanner__band { display: flex; align-items: center; gap: 10px; height: var(--chip-h); margin: 0; padding: 0 6px 0 16px; border: var(--edge); border-radius: 16px; background: var(--gold); color: var(--ink); font-size: 14px; } /* the bottom buttons' height and edge, flat: it says, it is not pressed */
 .netbanner--local { background: var(--hat); color: var(--paper); } /* a node on this machine in the hat's red; the testnet keeps the gold */
@@ -2343,9 +2358,7 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
      (the picker's head is a full-width pill: the screen's own 28px and 60 more
      put it under their foot, 30px + 52) */
   .screen--title .title { padding-top: 52px; }
-  .screen--pick .pick { padding-top: 60px; }
-  /* and the picker's button clear of the network banner's row, as the title's */
-  body:has(.netbanner) .screen--pick { padding-bottom: var(--chip-room); }
+  .screen--pick .pick { padding-top: calc(96px - var(--front-pad)); } /* (96 down, as every menu screen's) */
   /* on a phone it joins the bottom row, left of the play buttons: a short word, no link (About has it) */
   :root { --chip-h: 44px; --chip-low: 30px; }
   .netbanner__band { padding: 0 8px; font-size: 11px; border-radius: 12px; }
@@ -2410,10 +2423,10 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
 
 /* narrow, short (a phone on its side) or upright (a tablet): the cups screen
    scrolls from its top instead of spilling over it, clear of the corner
-   buttons, and of the network banner at the end */
+   buttons */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) {
   .screen.worlds { place-items: start center; align-content: start; padding: 0; }
-  .worlds__in { padding: 96px 16px 72px; } /* (16 in: clear of a phone's frame, on a wider one's line, which the modes' cards keep off: title.css; a screen that fits its window pads itself: title.css .front--fit) */
+  .worlds__in { padding: 96px 16px var(--sp-6); } /* (16 in: clear of a phone's frame, on a wider one's line, which the modes' cards keep off: title.css; a screen that fits its window pads itself: title.css .front--fit) */
   .front--fit .worlds__in { padding-inline: 0; }
   .worlds--v2 .worlds__in { width: 100%; }
 }

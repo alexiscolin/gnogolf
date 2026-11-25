@@ -162,8 +162,8 @@ for (const [w, h] of [[1440, 900], [1280, 800], [1024, 700]] as const) {
   c.kill();
 }
 
-// the start screen (a player back, hinted): it never scrolls sideways, sits clear of the corner's Back, and its starters stand above the fold;
-// its world tabs show the one chosen gold
+// the start screen (a player back, hinted): it never scrolls sideways, sits clear of the corner's Back, its one gold Build and its
+// templates stand above the fold; its world tabs show the one chosen gold
 for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   const c = await launch({ width: w, height: h });
   await c.send("Page.addScriptToEvaluateOnNewDocument", { source: `try { localStorage.setItem("gnogolf.builder.hinted", "1"); } catch {}` });
@@ -173,16 +173,19 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   const at = `start ${w}×${h}`;
   assert.equal(await c.js(`document.documentElement.scrollWidth > innerWidth || document.querySelector(".bholes").scrollWidth > innerWidth`), false, `${at}: the window scrolls sideways`);
   const cards = await c.js<Box[]>(`[...document.querySelectorAll(".bholes__start")].map((e) => { const r = e.getBoundingClientRect(); return { l: r.left, t: r.top, r: r.right, b: r.bottom }; })`);
-  assert.equal(cards.length, 4, `${at}: three starters and from scratch`);
+  assert.equal(cards.length, 3, `${at}: the world's three templates`);
+  // one call to build: the sign's gold button (a plain green in the world chosen), the only gold one on the screen
+  assert.deepEqual(await c.js<string[]>(`[...document.querySelectorAll(".bholes .btn--gold")].map((e) => e.textContent.trim())`), ["Build a new hole →"], `${at}: the screen's one gold button`);
   for (const b of cards) assert.ok(b.b <= h - 16 && b.l >= 0 && b.r <= w, `${at}: a starter's card below the fold or out of the window (${JSON.stringify(b)})`);
   const back = (await box(c, ".screen__back"))!;
   for (const sel of [".bholes__sign", ".bholes__bar", ".bholes__starts"]) assert.ok(!overlap(back, (await box(c, sel))!), `${at}: ${sel} under the corner's Back`);
   const sign = (await box(c, ".bholes__sign"))!, starts = (await box(c, ".bholes__starts"))!;
   assert.ok(Math.abs(sign.l + sign.r - w) <= 2 && Math.abs(starts.l + starts.r - w) <= 2, `${at}: the column is not centred`);
-  // room: no diagram of the steps (the editor's stepper says them), the world tabs a section's gap under the sign
+  // room: no diagram of the steps (the editor's stepper says them), the world tabs and Build in the sign, the templates a section's gap under it
   const bar = (await box(c, ".bholes__bar"))!;
   assert.equal(await c.js(`!!document.querySelector(".bholes__steps")`), false, `${at}: the steps drawn again on the start`);
-  assert.ok(bar.t - sign.b >= 32, `${at}: the world tabs sit right under the sign (${bar.t - sign.b}px)`);
+  assert.ok(bar.t >= sign.t && bar.b <= sign.b, `${at}: the world tabs and Build out of the sign`);
+  assert.ok(starts.t - sign.b >= 24, `${at}: the templates sit right under the sign (${starts.t - sign.b}px)`);
   // at 1440 × 900, all of it in the window's frame: the last line ("Open a file, or a published hole") too
   if (w === 1440) {
     const more = (await box(c, ".bholes__more summary"))!;
@@ -203,8 +206,8 @@ for (const [w, h] of [[1440, 900], [1280, 720], [1024, 700]] as const) {
   assert.deepEqual(await c.js(`[...document.querySelectorAll(".bholes__sign .front__head > *")].map((e) => e.tagName + " " + e.className + " " + e.textContent)`), ["SPAN eyebrow The Builder", "H2 worlds__title Hard hats on!"], `${at}: the head is not a front screen's`);
   // one h1, the page's name off screen (build/gate.tsx), as the game's pages
   assert.deepEqual(await c.js(`[...document.querySelectorAll("h1")].map((e) => e.className + " " + e.textContent)`), ["sr-only The Builder"], `${at}: the page's h1`);
-  // the starters as templates, under their label, each card as big as the others
-  assert.deepEqual(await c.js<string[]>(`[...document.querySelectorAll(".bholes__group")].map((e) => e.textContent)`), ["Start from a template"], `${at}: the start's groups`);
+  // the starters as templates, under their heading, each card as big as the others
+  assert.deepEqual(await c.js<string[]>(`[...document.querySelectorAll(".bholes__starts h3")].map((e) => e.textContent)`), ["Or start from a template"], `${at}: the templates' heading`);
   assert.ok(cards.every((b) => Math.abs(b.r - b.l - (cards[0].r - cards[0].l)) <= 1 && Math.abs(b.b - b.t - (cards[0].b - cards[0].t)) <= 1), `${at}: the starters' cards not one size`);
   console.log(`${at}: ok`);
   c.kill();

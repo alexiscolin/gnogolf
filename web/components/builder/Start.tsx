@@ -1,18 +1,19 @@
 "use client";
 
-// The Builder's start on a computer, "Your holes": the workshop's sign, a new
-// hole from a world's starters, the drafts this browser keeps (the whole card
-// opens one), the author's holes on the chain with who played them and the
-// Builder's badges, and a file or a published hole opened. A new player never
-// lands here first: the first run opens the Garden's dogleg.
+// The Builder's start on a computer: the workshop's sign with the one call to
+// build (a plain green in the world chosen), that world's templates, then
+// "Your holes": the drafts this browser keeps (the whole card opens one), the
+// author's holes on the chain with who played them and the Builder's badges,
+// and a file or a published hole opened. Shown at once: builder.wasm loads
+// behind it, awaited only by what runs it. A new player never lands here
+// first: the first run opens the Garden's dogleg.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton, FrontHead } from "@/components/About";
-import { HoleMap, NoMap, useHoleMaps } from "@/components/HoleMap";
-import { useGnomeStage } from "@/components/Stage";
+import { HoleMap, MapSlot, NoMap, mapComing, useHoleMaps } from "@/components/HoleMap";
+import { Portrait } from "@/components/Stage";
 import { Emblem } from "@/components/Worlds";
 import { Button, Segmented, Sheet } from "@/components/ui";
-import { buttonClass } from "@/components/button";
 import { gnomeById } from "@/lib/scene/gnome";
 import { exportDraft, type Draft, type Kept } from "@/lib/builder/draft";
 import { draftMap, draftState } from "@/lib/builder/cards";
@@ -25,8 +26,8 @@ import { goToMenu } from "@/lib/menu";
 import { proofKey } from "@/lib/builder/proof";
 import { versionOf } from "@/lib/builder/testmode";
 import { FIELD, weatherName, worldName } from "@/lib/builder/rules";
-import { factsOf, isFresh, statsLine, statsOf, versusLine, type HoleStats } from "@/lib/builder/rewards";
-import type { BuilderHost } from "@/lib/builder/wasm";
+import { factsOf, isFresh, loadSeen, statsLine, statsOf, versusLine, type HoleStats } from "@/lib/builder/rewards";
+import { loadBuilder } from "@/lib/builder/load";
 import type { HoleRow } from "@/lib/types";
 import { BuilderBadges, SaveTestRound } from "./Rewards";
 import { useRewards } from "./useRewards";
@@ -38,8 +39,7 @@ const MAX_FILE = 1 << 20;
 
 const download = (d: Draft) => saveFile(new Blob([exportDraft(d)], { type: "application/json" }), draftFile(d));
 
-export default function Start({ host, author, drafts, said = "", onOpen, onAdd, onDelete }: {
-  host: BuilderHost;
+export default function Start({ author, drafts, said = "", onOpen, onAdd, onDelete }: {
   author: string | null;
   drafts: readonly Kept[];
   /** why something asked of the Builder on arrival (a remix) did not open */
@@ -57,8 +57,10 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
   const [wipe, setWipe] = useState<string | null>(null); // the draft asked to be deleted, before the sheet's yes
   const file = useRef<HTMLInputElement>(null);
   const router = useRouter(); // (the game's menu without a reload: the app's own navigation)
+  // the world's templates, and its plain green: the sign's Build
   const starts = useMemo(() => startsIn(world).map((s) => ({ ...s, map: draftMap(s.draft) })), [world]);
-  const keys = useKeys(drafts, host);
+  const scratch = starts.find((s) => s.name === "scratch"), templates = starts.filter((s) => s !== scratch);
+  const { keys, down, retry } = useKeys(drafts);
   const { chain, keep } = useMemo(() => {
     const { rpc, web, keep } = endpoints(window.location.search);
     return { chain: makeChain({ rpc, web }), keep };
@@ -68,6 +70,9 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
   const rowOf = (d: Draft) => (author && d.slug && got?.rows.find((h) => h.slot === `${author}/${d.slug}`)) || null;
   const elsewhere = got?.rows.filter((h) => !drafts.some((k) => rowOf(k.draft) === h)) ?? [];
   const maps = useHoleMaps(chain, elsewhere.map((h) => h.id));
+  // while the chain is read: the room of the holes it listed at the last look (those with no draft here), so nothing moves
+  const seen = useMemo(() => Object.keys(loadSeen()), []);
+  const coming = author && !got ? seen.filter((id) => id.startsWith(`${author}/`) && !drafts.some((k) => k.draft.slug && id.startsWith(`${author}/${k.draft.slug}/`))) : [];
   const live = (h: HoleRow) => {
     if (!got || !author) return null;
     const s = statsOf(h, got.saved, author);
@@ -77,52 +82,50 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
   const openFile = (f: File | undefined) => {
     if (!f) return;
     if (f.size > MAX_FILE) return setWhy("That file is too big to be a draft.");
-    void f.text().then((t) => fromFile(t, host, census)).then(take, () => setWhy("That file could not be read."));
+    void f.text().then(async (t) => fromFile(t, await loadBuilder(), census)).then(take, () => setWhy("That file could not be read."));
   };
   const openHole = (id = hole.trim()) => {
     if (!isHoleId(id)) return setWhy("A hole's address is like g1…/its-name, or g1…/its-name/v2.");
     setBusy(true);
-    void openPublished(chain, host, census, id, author).then(take).finally(() => setBusy(false));
+    void loadBuilder().then(
+      (host) => openPublished(chain, host, census, id, author).then(take, () => setWhy("That hole could not be read from the chain. Try again in a moment.")),
+      () => setWhy("The Builder could not load. Try again in a moment."),
+    ).finally(() => setBusy(false));
   };
-  const count = drafts.length + elsewhere.length, any = count > 0;
+  const count = drafts.length + elsewhere.length, any = count + coming.length > 0;
   const wiped = drafts.find((k) => k.key === wipe);
   const fresh = (
-    <section className="bholes__new" aria-labelledby="bholes-new">
-      <div className="bholes__bar">
-        <h3 id="bholes-new" className="h-section">Start a new hole</h3>
-        {/* the worlds as the game's choices side by side, each with its emblem (the cups' own) */}
-        <Segmented label="Its world" className="bholes__worlds" options={WORLDS.map((w) => [w, <><Emblem id={w} />{worldName(w)}</>] as const)} value={world} onChange={setWorld} />
-      </div>
-      {/* the starters are templates, ready-made holes to change (their green painted bigger or smaller at once), from scratch the last */}
-      <section className="bholes__starts" aria-label="Start from a template">
-        <h4 className="h-sub bholes__group">Start from a template</h4>
-        <ul>
-          {starts.map((s) => (
-            <li key={s.name}>
-              <button type="button" className={`bholes__start${s.name === "scratch" ? " bholes__start--scratch" : ""}`} aria-label={`${s.title}: ${s.line}, par ${s.draft.par}. Start it`} onClick={() => onAdd(s.draft)}>
-                <span className="bholes__map"><HoleMap hole={s.map} className="bholes__svg" /></span>
-                <b>{s.title}</b>
-                <span className="bholes__line">{s.line}</span>
-                <span className="bholes__foot" aria-hidden="true">
-                  <span className="bholes__par">Par {s.draft.par}</span>
-                  <span className={buttonClass({ variant: "gold", size: "s" }, "bholes__go")}>Start <i>→</i></span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+    <section className="bholes__starts" aria-labelledby="bholes-new">
+      {/* the templates: ready-made holes to change (their green painted bigger or smaller at once), quieter than the sign's Build */}
+      <h3 id="bholes-new" className="h-section">Or start from a template</h3>
+      <ul>
+        {templates.map((s) => (
+          <li key={s.name}>
+            <button type="button" className="bholes__start" aria-label={`${s.title}: ${s.line}, par ${s.draft.par}. Start it`} onClick={() => onAdd(s.draft)}>
+              <span className="bholes__map"><HoleMap hole={s.map} className="bholes__svg" /></span>
+              <b>{s.title}</b>
+              <span className="bholes__line">{s.line}</span>
+              <span className="bholes__foot" aria-hidden="true">
+                <span className="bholes__par">Par {s.draft.par}</span>
+                <span className="bholes__go">Start <i>→</i></span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
   const mine = (
     <section className="bholes__mine" aria-labelledby="bholes-mine">
       <h3 id="bholes-mine" className="h-section bholes__h">Your holes {any && <small>{count}</small>}</h3>
-      {got && author && got.rows.length > 0 && <BuilderBadges facts={factsOf(got.rows, got.saved, author)} />}
+      {got && author && got.rows.length > 0 ? <BuilderBadges facts={factsOf(got.rows, got.saved, author)} /> : coming.length > 0 && <BuilderBadges />}
+      {down && <p className="bholes__why" role="alert">The Builder&apos;s checker did not load: the weathers holed are not shown. <button type="button" className="linkish" onClick={retry}>Try again</button></p>}
       {any ? (
         <ul className="bholes__list">
           {drafts.map(({ key, draft: d }) => {
             // (under the id its Publish would go by: the version after the one on the chain, else its first; the author unknown, the best of its ids)
             const h = rowOf(d), st = draftState(d, keys.get(key) ?? null, author && d.slug ? `${author}/${d.slug}/v${(h ? versionOf(h.id) : 0) + 1}` : null);
+            const checking = d.proofs.length > 0 && !keys.has(key) && !down; // (its rounds read against the hole as it is: builder.wasm, loading)
             return (
               <li key={key} className="bholes__draft bholes__draft--open">
                 <span className="bholes__map bholes__map--s"><HoleMap hole={draftMap(d)} className="bholes__svg" /></span>
@@ -133,7 +136,7 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
                   {/* its weathers, ticked as holed (published and none holed here since: its line on the chain says it all, unless its
                       rounds were of the version before: played again for the next) */}
                   {!(h && st.stage === "new" && !st.again) && (
-                    <span className={`bholes__state bholes__state--${st.stage}`} aria-label={`Weathers holed: ${st.word}`} title={st.stage === "ready" ? "Sunk in every weather: ready to publish" : st.again ? `Play it again for ${st.again}: each version has weather of its own` : "Each weather marked ○ is still to sink before it can be published"}>
+                    <span className={`bholes__state bholes__state--${st.stage}${checking ? " wait" : ""}`} aria-busy={checking || undefined} aria-label={`Weathers holed: ${st.word}`} title={st.stage === "ready" ? "Sunk in every weather: ready to publish" : st.again ? `Play it again for ${st.again}: each version has weather of its own` : "Each weather marked ○ is still to sink before it can be published"}>
                       {st.ticks.map((t, k) => <span key={t.kind} className={t.done ? "on" : undefined}>{k ? " · " : ""}{weatherName(t.kind)}{t.done ? " ✓" : " ○"}</span>)}
                     </span>
                   )}
@@ -154,22 +157,23 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
             const m = maps.get(h.id);
             return (
               <li key={h.id} className="bholes__draft">
-                <span className="bholes__map bholes__map--s">{m ? <HoleMap hole={m} className="bholes__svg" /> : <NoMap className="bholes__svg" />}</span>
+                <span className="bholes__map bholes__map--s"><MapSlot hole={m} className="bholes__svg" wait={mapComing(h.id)} /></span>
                 <span className="bholes__name">
                   <b>{h.name || h.slot}</b>
                   <small>{worldName(h.world)} · par {h.par}</small>
                   {live(h)}
                 </span>
                 <span className="bholes__acts">
-                  <a className={buttonClass({ size: "s" })} href={playLink(h, keep)}>Play</a>
+                  <a className="linkish" href={playLink(h, keep)}>Play</a>
                   <button type="button" className="linkish" disabled={busy} onClick={() => openHole(h.id)}>Open its next version</button>
                 </span>
               </li>
             );
           })}
+          {coming.map((id) => <li key={id} className="bholes__draft wait" aria-hidden="true"><span className="bholes__map bholes__map--s"><NoMap className="bholes__svg" /></span></li>)}
         </ul>
       ) : (
-        <p className="bholes__none">No hole of yours yet: pick a starter above, it opens ready to play.</p>
+        <p className="bholes__none">No hole of yours yet: build one above, it opens ready to play.</p>
       )}
     </section>
   );
@@ -177,9 +181,21 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
     <div className={`screen worlds front bholes tint--${world}`}>
       <BackButton label="Back to the game" onClick={() => goToMenu(router, keep)} />
       <div className="worlds__in bholes__in">
-        <Workshop />
-        {/* a returning builder's holes first, above the fold; none yet, the starters first and the empty list's line after */}
-        {any ? <>{mine}{fresh}</> : <>{fresh}{mine}</>}
+        {/* making a hole first, whoever comes: the sign's Build, the templates; then the holes made */}
+        <header className="bholes__sign">
+          <span className="bholes__gnome"><Emblem id="build" /><Portrait skin={gnomeById("miner")} /></span>
+          <div className="bholes__say">
+            <FrontHead eyebrow="The Builder" title="Hard hats on!" />
+            <p>Build your own hole, sink it in every weather, put your name on it.</p>
+          </div>
+          <div className="bholes__bar">
+            {/* the worlds as the game's choices side by side, each with its emblem (the cups' own) */}
+            <Segmented label="Its world" className="bholes__worlds" options={WORLDS.map((w) => [w, <><Emblem id={w} />{worldName(w)}</>] as const)} value={world} onChange={setWorld} />
+            {scratch && <Button variant="gold" className="btn--play btn--cta bholes__build" onClick={() => onAdd(scratch.draft)}>Build a new hole <i aria-hidden="true">→</i></Button>}
+          </div>
+        </header>
+        {fresh}
+        {mine}
         {wiped && (
           // the game's own sheet (focus in, Tab kept, Escape, focus back to the row's Delete)
           <Sheet className="confirm" role="alertdialog" label="Delete this hole" onClose={() => setWipe(null)}>
@@ -203,6 +219,7 @@ export default function Start({ host, author, drafts, said = "", onOpen, onAdd, 
           </div>
         </details>
         {why && <p className="bholes__why" role="alert">{why}</p>}
+        <i className="front__veil" aria-hidden="true" />
       </div>
     </div>
   );
@@ -220,28 +237,16 @@ function Live({ s, fresh }: { s: HoleStats; fresh: boolean }) {
   );
 }
 
-/** Each draft's proof key by its own key (proof.ts proofKey: the hole as it is now), for its state; null with no proofs, or one fit refuses. */
-function useKeys(drafts: readonly Kept[], host: BuilderHost) {
+/** Each proved draft's proof key by its own key (proof.ts proofKey: the hole as it is now), for its state, once builder.wasm is in; null when a fit refuses. down: it did not load, retry asks again. */
+function useKeys(drafts: readonly Kept[]) {
   const [keys, setKeys] = useState<ReadonlyMap<string, string | null>>(new Map());
+  const [down, setDown] = useState(false), [tries, setTries] = useState(0);
   useEffect(() => {
+    const proved = drafts.filter((k) => k.draft.proofs.length);
+    if (!proved.length) return;
     let live = true;
-    void Promise.all(drafts.map(({ draft: d }) => (d.proofs.length ? proofKey(d, host) : Promise.resolve(null)))).then((found) => live && setKeys(new Map(drafts.map((k, i) => [k.key, found[i]]))));
+    void loadBuilder().then((host) => Promise.all(proved.map((k) => proofKey(k.draft, host)))).then((found) => live && setKeys(new Map(proved.map((k, i) => [k.key, found[i]]))), () => live && setDown(true));
     return () => void (live = false);
-  }, [drafts, host]);
-  return keys;
-}
-
-/** The workshop's sign: the game's Miner in his hard hat, out of a blueprint's disc (the menu's Builder panel's), hopping under the pointer; what the Builder is for, in a line. */
-function Workshop() {
-  const [hot, setHot] = useState(false);
-  const stage = useGnomeStage<HTMLSpanElement>(gnomeById("miner"), { act: "hop", playing: hot });
-  return (
-    <header className="bholes__sign" onPointerEnter={() => setHot(true)} onPointerLeave={() => setHot(false)}>
-      <span ref={stage} className="bholes__gnome"><Emblem id="build" /></span>
-      <div className="bholes__say">
-        <FrontHead eyebrow="The Builder" title="Hard hats on!" />
-        <p>Build your own hole, sink it in every weather, put your name on it.</p>
-      </div>
-    </header>
-  );
+  }, [drafts, tries]);
+  return { keys, down, retry: () => (setDown(false), setTries((n) => n + 1)) };
 }

@@ -14,7 +14,7 @@ import { badgesAt } from "@/lib/prefs";
 import { WORLDS, Emblem, worldOf } from "@/components/Worlds";
 import Share from "@/components/Share";
 import { CardStamps, ChainSeal, EarnedBadges } from "@/components/Badges";
-import { useGnomeStage } from "@/components/Stage";
+import { Portrait, useGnomeStage } from "@/components/Stage";
 import { Button, Dialog, Nil, VsPar } from "@/components/ui";
 import { NONE } from "@/components/hooks";
 import type { BoardProps } from "@/components/Leaderboard";
@@ -102,7 +102,7 @@ function NewGnome({ skin, also, where, onPlay }: { skin: Skin; also: readonly Sk
   const earned = skin.unlock ? UNLOCKS[skin.unlock].need : "";
   return (
     <div className="newgnome">
-      <div ref={stage} className="pick__canvas newgnome__stage" />
+      <div ref={stage} className="pick__canvas newgnome__stage"><Portrait skin={skin} /></div>
       <div className="newgnome__say">
         <span className="eyebrow">New gnome!</span>
         <b className="newgnome__name">{skin.name}</b>

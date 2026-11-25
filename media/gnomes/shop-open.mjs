@@ -2,13 +2,13 @@
 // The gnome shop as a player gets it, checked in headless Chrome against APP: the
 // title screen fetching none of it, the shop opened on a slow link and a phone's
 // CPU, its toolbar, search and picker in line, never wider than the window,
-// offline, and clear of the network chip. Prints PASS or FAIL a check; exits
+// offline, and with no network chip (a round's alone). Prints PASS or FAIL a check; exits
 // non-zero on a FAIL. With OUT, a frame every 100 ms of the opening and a strip of them.
 //   APP=https://… node media/gnomes/shop-open.mjs   (OUT=<dir> for the frames)
 import fs from "node:fs";
 import path from "node:path";
 import { launch, offline, sleep } from "../lib/cdp.mjs";
-import { footprint, gold, misaligned, underChip } from "../lib/rows.mjs";
+import { footprint, gold, misaligned } from "../lib/rows.mjs";
 const APP = process.env.APP || "http://127.0.0.1:5175", OUT = process.env.OUT || "", TAG = process.env.TAG || "open";
 const results = [];
 for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440, 900, false], [1024, 768, false], [390, 844, true]])) {
@@ -214,19 +214,16 @@ for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440,
   console.log(`${ok ? "PASS" : "FAIL"} the shop's part not fetched: Back ${off && off.back}, About ${off && off.about}, Try again ${off && off.retry}; then the shelf ${back}; Escape leaves the shop ${left}`);
   b.kill();
 }
-// the network chip (bottom left, fixed) never over the last row: the shop's gallery (every gnome shown), the cups
-// (the community's list at their foot) and the menu, each scrolled to its foot, no control under the chip
+// the network chip (bottom left, fixed) is a round's alone: none on the shop's gallery, the cups or the menu
 for (const [w, h, mobile] of /** @type {[number, number, boolean][]} */ ([[1440, 900, false], [1024, 768, false], [390, 844, true]]))
   for (const [at, ready] of [["/g/", ".gshelf li"], ["/?screen=cups", ".world"], ["/?screen=modes", ".mode"]]) {
     const b = await launch({ width: w, height: h, mobile, touch: mobile });
     await b.send("Page.navigate", { url: APP + at });
     for (let i = 0; i < 90 && !(await b.ev(`!!document.querySelector(${JSON.stringify(ready)})`)); i++) await sleep(500);
     await sleep(1500);
-    for (let k = 0; k < 40 && (await b.ev(`!!document.querySelector(".gshelf__more")`)); k++) await b.js(`document.querySelector(".gshelf__more").click(); true`), await sleep(300);
-    const under = await b.ev(underChip());
-    const ok = (await b.ev(`!!document.querySelector(".netbanner")`)) && Array.isArray(under) && under.length === 0;
+    const ok = (await b.ev(`!document.querySelector(".netbanner")`)) === true;
     results.push({ w: `${at} ${w}`, ok });
-    console.log(`${ok ? "PASS" : "FAIL"} ${at} at ${w}×${h}: scrolled to its foot, nothing under the network chip`, ok ? "" : JSON.stringify(under));
+    console.log(`${ok ? "PASS" : "FAIL"} ${at} at ${w}×${h}: no network chip on a menu screen`);
     b.kill();
   }
 // the gallery's cards, a row one height (the shop's, and a player's gnomes, found from a gnome that found a player)

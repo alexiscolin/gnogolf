@@ -133,14 +133,14 @@ declare global {
     connection?: { saveData?: boolean; effectiveType?: string };
   }
 }
-/** Stills and no clips on the cup cards: reduced motion, a data saver, a slow link or the Low graphics tier. */
-export function stillsOnly() {
+/** A data saver or a slow link, as the browser says it (one that says nothing: neither): nothing is fetched ahead of its screen. */
+export function leanLink() {
   try {
-    if (reducedMotion()) return true;
     const c = navigator.connection;
-    if (c && (c.saveData || /2g/.test(c.effectiveType || ""))) return true;
+    return !!c && (!!c.saveData || /2g/.test(c.effectiveType || ""));
   } catch {
     return true;
   }
-  return lowGfx(true); // storage blocked: stills, as with the rest unknown
 }
+/** Stills and no clips on the cup cards: reduced motion, a data saver, a slow link or the Low graphics tier. */
+export const stillsOnly = () => reducedMotion() || leanLink() || lowGfx(true); // (storage blocked: stills, as with the rest unknown)

@@ -133,7 +133,7 @@ export const BUILDER_BADGES: readonly BuilderBadge[] = [
   { id: "players1", name: "First player", glyph: "player", need: "A player saves a round on one of your holes", ok: (f) => f.players >= 1 },
   { id: "players10", name: "10 players", glyph: "players", need: "10 players save a round on your holes", ok: (f) => f.players >= 10 },
   { id: "players50", name: "50 players", glyph: "players", need: "50 players save a round on your holes", ok: (f) => f.players >= 50 },
-  { id: "weathers", name: "Holed in every weather", glyph: "weathers", need: "Players hole one of your holes in each of its weathers, on the chain", ok: (f) => f.weathers },
+  { id: "weathers", name: "Holed in every weather", glyph: "weathers", need: "Players sink a hole of yours in each weather", ok: (f) => f.weathers },
 ];
 /** The badges these facts earn, in the list's order. */
 export const earnedBadges = (f: BuilderFacts) => BUILDER_BADGES.filter((b) => b.ok(f)).map((b) => b.id);

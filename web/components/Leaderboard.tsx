@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent, type
 import type { Snapshot } from "@/lib/engine";
 import { isAddress, wait, shortAddr, nameHint, nameRefusal, type Chain } from "@/lib/chain";
 import type { Bests, HoleRow, Mode, StandingRow, StrokesRow } from "@/lib/types";
-import { levelFrom, levelPick, pickOne, skyWord } from "@/lib/duel";
+import { keptRead, levelFrom, levelPick, skyWord, surpriseOf } from "@/lib/duel";
 import { ISSUES, SHARE_TAGS, siteURL } from "@/lib/site";
 import { readFlags, stale, hidden, whyHidden, screen, type Flag, type Flags } from "@/lib/flags";
 import { skyOf } from "@/lib/sky";
@@ -365,32 +365,45 @@ export type Placed = StrokesRow & { holes?: number; par?: number; at: number };
  * boards: today's rival (featured.ts: never the first three, drawn by the day),
  * a player at the player's level (next to their place; the board's middle
  * without one) and yourself (null while no one is connected); and a surprise
- * drawn again on each visit (the board's Surprise me). null while read; a pick
- * nobody fills, null; a board that could not be read: retry, to read it again.
+ * (the board's Surprise me). A pick nobody fills, null.
  */
+interface Picks { rows: readonly (Placed | null)[]; surprise: Placed | null; /** who a surprise is drawn from */ pool: readonly Placed[] }
+// the picks last read, kept a minute: the menu reads them ahead, the rival's screen opens on them
+const kept = keptRead<Picks>(60_000);
+let lastSurprise = ""; // (the surprise last raced: not drawn twice running)
+const picksKey = (chain: Chain, me: string | null | undefined, mode: Mode) => `${chain.rpc}|${chain.realm}|${me || ""}|${mode}`;
+const picksNow = (chain: Chain | null, me: string | null | undefined, mode: Mode) => (chain && kept.now(picksKey(chain, me, mode))) || null;
+/** A surprise raced: the picks kept draw another one for the next look. */
+export function surpriseTaken(p: Picks) {
+  lastSurprise = p.surprise ? p.surprise.player : "";
+  p.surprise = surpriseOf(p.pool, lastSurprise, Math.random());
+}
+/** The picks of a chain, a player and a mode, read once a minute (a read that failed is asked again). */
+export function rivalPicks(chain: Chain, me: string | null | undefined, mode: Mode): Promise<Picks> {
+  // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
+  const page = (at: number, n: number) =>
+    Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
+  return kept.read(picksKey(chain, me, mode), () => Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null]).then(async ([top, mine]): Promise<Picks> => {
+    // (a page that fails: the first one's players stand in; the two asked together, one wait)
+    const [near, any] = await Promise.all([page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top), page(Math.floor(Math.random() * top.players), 5).catch(() => top)]);
+    const level = levelPick(near.rows, me);
+    const today = coursePicks(top.rows.filter((r) => !level || r.player !== level.player), top.holes, me, null, null, undefined, 1)[0]?.row || null;
+    const pool = [...any.rows, ...top.rows].filter((r) => ![me, today && today.player, level && level.player].includes(r.player));
+    const surprise = surpriseOf(pool, lastSurprise, Math.random());
+    // (your row on the first page, else your rank read apart; unranked in this mode: at 0, your ghosts still read)
+    const self: Placed | null = !me ? null : top.rows.find((r) => r.player === me) || { player: me, at: mine && mine.rank > 0 ? mine.rank : 0, holes: mine ? mine.holes : 0, strokes: mine ? mine.strokes : 0, par: mine ? mine.par : 0 };
+    primeNames(chain, [today, level, surprise].flatMap((r) => (r ? [r] : [])));
+    return { rows: [today, level, self], surprise, pool };
+  }));
+}
+/** The rival screen's picks (rivalPicks): there at once if read ahead, null while read; a board that could not be read: retry, to read it again. */
 export function useRivalPicks(chain: Chain | null, me: string | null | undefined, mode: Mode) {
-  const [picks, setPicks] = useState<{ rows: readonly (Placed | null)[]; surprise: Placed | null; retry?: () => void } | null>(null);
+  const [picks, setPicks] = useState<(Picks & { retry?: () => void }) | null>(() => picksNow(chain, me, mode));
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
-    const page = (at: number, n: number) =>
-      Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
-    void Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null])
-      .then(async ([top, mine]) => {
-        // (a page that fails: the first one's players stand in)
-        const near = await page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top);
-        const level = levelPick(near.rows, me);
-        const today = coursePicks(top.rows.filter((r) => !level || r.player !== level.player), top.holes, me, null, null, undefined, 1)[0]?.row || null;
-        const any = await page(Math.floor(Math.random() * top.players), 5).catch(() => top);
-        const surprise = pickOne([...any.rows, ...top.rows], [me, today && today.player, level && level.player], Math.random());
-        // (your row on the first page, else your rank read apart; unranked in this mode: at 0, your ghosts still read)
-        const self: Placed | null = !me ? null : top.rows.find((r) => r.player === me) || { player: me, at: mine && mine.rank > 0 ? mine.rank : 0, holes: mine ? mine.holes : 0, strokes: mine ? mine.strokes : 0, par: mine ? mine.par : 0 };
-        primeNames(chain, [today, level, surprise].flatMap((r) => (r ? [r] : [])));
-        if (live) setPicks({ rows: [today, level, self], surprise });
-      })
-      .catch(() => live && setPicks({ rows: [null, null, null], surprise: null, retry: () => (setPicks(null), setTick((n) => n + 1)) }));
+    rivalPicks(chain, me, mode).then((p) => live && setPicks(p), () => live && setPicks({ rows: [null, null, null], surprise: null, pool: [], retry: () => (setPicks(null), setTick((n) => n + 1)) }));
     return () => void (live = false);
   }, [chain, me, mode, tick]);
   return picks;
@@ -559,7 +572,7 @@ export function FullBoard({ kind, s, chain, me, mode = "pro", onConnect, onRace,
   const myBest = myRow || mine, myScore = !myBest ? "" : kind === "hole" ? strokesWord(myBest.strokes) : `${holesWord(myBest.holes || 0)} at ${vsPar(standingVs(myBest))}`;
   // the rows to come, blank: drawn as the rows will be (the rival's stickers, as many as it shows)
   // (read, nobody: free, the places with no bars; the rival's, one row of them, never a box that scrolls)
-  const ghosts = (free?: string) => row ? <ol className="lb__blank" aria-hidden="true">{Array.from({ length: max || 3 }, (_, i) => <li key={i}><StickerGhost at={i + 1} free={free} /></li>)}</ol> : <Ghosts free={free} />;
+  const ghosts = (free?: string) => row ? <ol className="lb__blank" aria-hidden="true">{Array.from({ length: free === undefined ? max || 3 : 3 }, (_, i) => <li key={i}><StickerGhost at={i + 1} free={free} /></li>)}</ol> : <Ghosts free={free} />;
   const title = kind === "hole" ? s.name : "The course";
   const own = !max && !row; // (a board of its own, not the rival's stickers)
   const listedRows = shown ? (whole || !own ? shown.rows.slice(0, max) : shown.rows.slice(0, TOP)) : [];
@@ -1059,7 +1072,7 @@ const Place = ({ at, plain = false }: { at: number; plain?: boolean }) =>
 /** A place nobody holds yet, or not yet read: a sticker drawn blank (its bar while read; free: read, nobody, the
  *  first place's words in its place). */
 const StickerGhost = ({ at = 0, free }: { at?: number; free?: string }) =>
-  <div className="sticker podium__ghost"><Frame className="sticker__face" />{at > 0 && <Place at={at} />}{free === undefined ? <i /> : at <= 1 && free && <b className="podium__free">{free}</b>}</div>;
+  <div className={`sticker podium__ghost${free === undefined ? " wait" : ""}`}><Frame className="sticker__face" />{at > 0 && <Place at={at} />}{free === undefined ? <i /> : at <= 1 && free && <b className="podium__free">{free}</b>}</div>;
 /** A board's player as a sticker: their gnome flat (in their ghost's skin;
  *  yours, your gnome), their name and a line under it (sub); a tap
  *  races them (onClick), else it only shows. */

@@ -9,7 +9,7 @@ import { CAMS, CamButton } from "@/components/CamButton";
 import { createGame, type Game, type GameOptions, type Snapshot } from "@/lib/engine";
 import { camlog } from "@/lib/testhooks";
 import { GNOMES, gnomeById, knowGnome, setRivalGnome, loadWardrobe, type Skin } from "@/lib/scene/gnome";
-import { NOT_BUILDER, NOT_HOLED } from "@/lib/community";
+import { NOT_BUILDER, NOT_HOLED, sortHoles } from "@/lib/community";
 import { isAddress, errorKind, REALM_PATH, RULES, suggestName, shortAddr, within, type Chain } from "@/lib/chain";
 import type { ErrorKind, GfxMode } from "@/lib/engine/types";
 import { savedGfx, saveGfx } from "@/lib/engine/pace";
@@ -30,7 +30,7 @@ import About, { InfoIcon, Rules } from "@/components/About";
 import Feedback from "@/components/Feedback";
 import { Badges, NewBadges } from "@/components/Badges";
 import Tip, { readOwner } from "@/components/Tip";
-import Modes, { Ghosts, ModeTag, Rival } from "@/components/Modes";
+import Modes, { Ghosts, ModeTag, Rival, warmRival } from "@/components/Modes";
 import { Button, Segmented, Toggle, Sheet, SheetClose, Dialog, Nil } from "@/components/ui";
 import { CUPS, loadCard, recordScore, clearCard, clearCup, totals, cupTotals, parOf, UNLOCKS, cupOf, cardKey, scoreOf, vsPar, badgesFor, byRarity, BADGES, loadOnChain, guessCup, HARD, parHere, vsParWords, holeNumber, nextCup, golfTerm, nextHole, strokeFor } from "@/lib/card";
 import { feel, setFeel, sound, hush } from "@/lib/feel";
@@ -44,13 +44,16 @@ import { clipName } from "@/lib/clip";
 import { Boards, FullBoard, Podium, NameForm, useRankNudge, useSavedPlace } from "@/components/Leaderboard";
 import { FAUCET, GNOT_URL, networkOf } from "@/lib/network";
 import { register, track, trackLeaving, trackError, once, failure, cardHoles, gnomeWord, type Events, type Play, type ShareKind, type WalletFrom } from "@/lib/analytics";
-import { savedCam, hadGnome, savedGnome, saveGnome, earned, remember, badgesEarned, forgetBadges, rememberBadges, seeWeather, weathersSeen, minesHinted, minesHintSaid, linkedGnome, lockedNote } from "@/lib/prefs";
+import { savedCam, hadGnome, savedGnome, saveGnome, earned, remember, badgesEarned, forgetBadges, rememberBadges, seeWeather, weathersSeen, minesHinted, minesHintSaid, linkedGnome, lockedNote, leanLink } from "@/lib/prefs";
 import { darkGallery, minesOrder } from "@/lib/scene/data";
 import { BACK, type Screen } from "@/lib/screens";
 import { SHOP, SHOP_LINE, pick } from "@/lib/gnomes/door";
 import { authorOf, buildLink, endpoints } from "@/lib/builder/holes";
 import { CollectionSection, Collector, Owned, PromoLine, ShopScreen as Shop, shopPart } from "@/components/gnomes/Door";
-import { builderOn } from "@/lib/builder/route";
+import { builderOn, onComputer } from "@/lib/builder/route";
+import { whenIdle } from "@/lib/idle";
+import { knowCourse, loadCourse, warmMaps } from "@/lib/maps";
+import { warmPortraits } from "@/components/Stage";
 import type { skinOfTraits } from "@/lib/gnomes/skin";
 import { makeHot, sameCold, AimBar, CauseNote, LiveWeather, Toast, NetBanner, AimSetting, type Hot } from "@/components/game/Hud";
 import { SaveClock, RecordState, PendingSave, GetGnot, RealPlay } from "@/components/game/Save";
@@ -84,6 +87,10 @@ function fatalKind(err: unknown): FatalKind {
   if (errorKind(err) === "down" || /fetch|network|timed? ?out|timeout|abort|rpc|abci|http|connect|load failed|did not answer/i.test(m)) return "down";
   return "bug";
 }
+/** Whether the Builder opens here: out on this build, and on a computer (a phone has its one screen, none of its code). */
+const builderComputer = () => builderOn() && onComputer((q) => window.matchMedia(q).matches);
+/** The longest the title's loader holds for the next screens' files once the game is in (ms). */
+const WARM_MS = 2000;
 // what the error banner says, per kind: its title and its sentence
 const BANNER = {
   down: ["The course is not reachable right now", "The chain the game plays on did not answer. It may be restarting."],
@@ -581,6 +588,52 @@ export default function Golf() {
   // whose ghost is raced, under the cups' title and the community's
   const racingNote = dare && !solo && <p className="dare">Racing {rivalName}</p>;
 
+  // the menu's three pictures (the player's gnome, the ghost, the Miner), fetched beside the game: the title's loader
+  // holds for them only while they are not in, WARM_MS past the game at most (then they go on behind it)
+  const [warm, setWarm] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")]).then(() => live && setWarm(true));
+    return () => void (live = false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- (the gnome kept as the page opens)
+  const started = !!s;
+  useEffect(() => {
+    if (!started || warm) return;
+    const t = setTimeout(() => setWarm(true), WARM_MS);
+    return () => clearTimeout(t);
+  }, [started, warm]);
+  // what a later screen shows is fetched ahead in idle moments, never in a round (the hole's own files first) nor on a data saver or a slow link
+  const ahead = screen !== "play" && !leanLink();
+  // past the title's hold: the course's maps, the other gnomes' pictures and, on a computer alone (a phone has no Builder), its wasm
+  useEffect(() => {
+    if (!started || !warm || !ahead) return;
+    return whenIdle([loadCourse, warmPortraits, () => builderComputer() && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
+  }, [started, warm, ahead]);
+  // the chain's list in: the course's current versions (their maps are the site's own), and the community's first maps read ahead
+  const course = s ? s.allHoles : null, community = s ? s.community : null;
+  useEffect(() => {
+    const chain = game.current && game.current.chain;
+    if (!course || !chain) return;
+    knowCourse(chain, course);
+    // (the community screen's first holes: its most played, its newest)
+    // one job a map, so a round that starts drops the ones not asked yet
+    if (ahead && community && community.length) return whenIdle([...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))].map((id) => () => warmMaps(chain, [id])));
+  }, [course, community, ahead]);
+
+  // on the menu, in idle moments: the rival's screen read ahead (a Duel opens with its picks there), and on a computer the
+  // Builder's page and its screens' code, once (never at the title: they would take the link from the game's own start)
+  const builderAhead = useRef(false);
+  useEffect(() => {
+    const chain = game.current && game.current.chain;
+    if (screen !== "modes" || !ahead || !chain || !course) return;
+    let on = true;
+    const stop = whenIdle([
+      () => warmRival(chain, me, aim, course, () => on),
+      () => builderAhead.current || !builderComputer() || ((builderAhead.current = true), router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {})),
+    ]);
+    return () => ((on = false), stop());
+  }, [screen, ahead, me, aim, course]); // eslint-disable-line react-hooks/exhaustive-deps -- (the router: the app's own, the same all along)
+
   // an "add me as a friend" link: the address joins this browser's friends
   useEffect(() => {
     const f = new URLSearchParams(window.location.search).get("friend");
@@ -823,7 +876,7 @@ export default function Golf() {
       {/* rain and storm darken and wet the whole scene a little */}
       {playing && wx && (wx.rain || wx.storm) && <div className={"wet" + (wx.storm ? " wet--storm" : "")} aria-hidden="true" />}
 
-      {screen === "title" && <Title loading={!s} world={s ? s.world : undefined} gnome={SHOP ? gnomeById(gnome) : undefined} onStart={() => (setScreen(dare && !solo && dare === linkDare.current ? "ghosts" : "modes"), (linkDare.current = ""))} onAbout={() => setAbout(true)} />}
+      {screen === "title" && <Title loading={!s || !warm} world={s ? s.world : undefined} gnome={SHOP ? gnomeById(gnome) : undefined} onStart={() => (setScreen(dare && !solo && dare === linkDare.current ? "ghosts" : "modes"), (linkDare.current = ""))} onAbout={() => setAbout(true)} />}
       {screen === "modes" && (
         <Modes gnome={gnome} counts={s ? s.worlds : undefined} onBack={() => setScreen(BACK.modes)} onAbout={() => setAbout(true)}
           onSolo={() => (dropDuel(null), setScreen("worlds"))} onDuel={() => setScreen("rival")}
@@ -1310,6 +1363,7 @@ export default function Golf() {
 
       {about && (
         <About web={cfg ? cfg.web : ""} counts={s ? s.worlds : undefined} onClose={() => setAbout(false)} onRules={() => (setAbout(false), setRules(true))}
+          onFeedback={cfg && networkOf(cfg.rpc) !== "mainnet" ? () => (setAbout(false), setFeedbackOpen(true)) : undefined}
           support={game.current && <Tip chain={game.current.chain} me={me} chainId={chainId} price={gasPrice} onConnect={() => (setAbout(false), setReal("about"))} />} />
       )}
       {support && game.current && (
@@ -1323,7 +1377,8 @@ export default function Golf() {
       {badgesOpen && <Badges fresh={freshBadges} onClose={() => setBadgesOpen(false)} />}
       {(screen === "rival" || screen === "ghosts" || screen === "worlds" || screen === "community" || screen === "pick") && <ModeTag kind={screen === "rival" || (dare && !solo) ? "duel" : "solo"} />}
       {/* every screen but the title's (its film is the page) */}
-      {cfg && screen !== "title" && <NetBanner rpc={cfg.rpc} onSupport={() => setSupport(true)} onFeedback={() => (sound("blip"), setFeedbackOpen(true))} />}
+      {/* in a round only: a menu screen keeps its foot clear (Feedback and Support are in About, a tap on the corner's (i)) */}
+      {cfg && screen === "play" && <NetBanner rpc={cfg.rpc} onSupport={() => setSupport(true)} onFeedback={() => (sound("blip"), setFeedbackOpen(true))} />}
       {feedbackOpen && <Feedback where={{ screen, aim, network: cfg ? networkOf(cfg.rpc) : null, adena: hasAdena(), connected: !!account, card_holes: holesNow, saved_any: savedAny, ...(screen === "play" && s ? { hole: s.id, cup: s.world, cam: s.cam } : {}) }} onClose={() => setFeedbackOpen(false)} />}
 
       {pending && !(holed && s && s.id === pending.id) && (

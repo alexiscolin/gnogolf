@@ -37,8 +37,8 @@
 /* the gallery: its width the cups', within the screen's room (never 100vw: a sideways scroll), its pieces on one
    column; a front screen's head (the rival's: title.css .front--fit) but the screen scrolling from its top, the
    head in the corner buttons' row, the gutters slim (the banner's room at the end, as the cups') */
-.screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { justify-content: flex-start; padding: 0 40px 48px; } /* (24 inside the page's frame, 16 in) */
-@media (max-width: 600px) { .screen.front--fit.shop, body:has(.netbanner) .screen.front--fit.shop { padding-inline: 16px; } } /* (the page's frame closer: title.css) */
+.screen.front--fit.shop { justify-content: flex-start; padding: 0 40px 48px; } /* (24 inside the page's frame, 16 in) */
+@media (max-width: 600px) { .screen.front--fit.shop { padding-inline: 16px; } } /* (the page's frame closer: title.css) */
 .shop .worlds__in { width: min(1160px, 100%); display: grid; justify-items: stretch; }
 .shop .front__head { justify-self: center; }
 /* a player's page's Race: centred at its own width, as every call to action of the game (the column stretches the rest) */
@@ -66,9 +66,6 @@
 .shop .worlds__in { padding-top: calc(var(--sp-7) + var(--sp-2)); gap: var(--sp-6); }
 /* (a computer: its pill, its title and its line each with room round it) */
 @media (min-width: 701px) { .shop .front__head > .eyebrow { margin-bottom: var(--sp-2); } }
-/* the foot: room for the fixed chips (the network's, Feedback, Support: --chip-room) and a row's gap under the last
-   row, so its names and prices scroll clear of them */
-body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-room) + var(--sp-5)); }
 @media (max-width: 700px) { .shop .worlds__in { gap: var(--sp-5); } }
 .shop .front__head { margin: 0; }
 /* a phone: the title alone (title.css), between the corner buttons, a line clear of them */
@@ -214,9 +211,6 @@ body:has(.netbanner) .screen.front--fit.shop { padding-bottom: calc(var(--chip-r
 
 /* a gnome's sheet: the game's sheet, a little wider, its parts on one column, its action pinned */
 .gsheet.sheet__in { max-width: 520px; width: 100%; display: grid; gap: var(--sp-5); max-height: calc(100dvh - 40px); overflow: auto; overscroll-behavior: contain; }
-/* the shop's sheets open inside its screen (its stacking context, under the network banner, a later sibling): the
-   banner goes while one is open, as the corner buttons do (globals.css), never a chip over the sheet's Buy */
-body:has(.shop .sheet) .netbanner { visibility: hidden; }
 .gsheet > * { margin: 0 !important; }
 /* a gnome's sheet on one axis, centred: his picture, the look switch 16 under it, who he is (his tier and number on one
    line, his name 8 under); then 24 between each group: his line, his price block, his traits, the share; then his
