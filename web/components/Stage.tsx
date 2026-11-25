@@ -13,7 +13,7 @@ export function Portrait({ skin, className = "" }: { skin: Skin | "ghost"; class
   const img = useRef<HTMLImageElement>(null);
   useLayoutEffect(() => setAt(img.current!.complete ? "" : "wait"), [src]);
   // (said by the card he is on: the picture adds nothing for a reader)
-  return <img ref={img} className={`portrait${src.startsWith("/gnomes/") ? " portrait--thumb" : ""}${at && (at === "wait" ? " portrait--wait" : " late")} ${className}`.trim()} src={src} alt="" width="512" height="512" draggable={false}
+  return <img ref={img} className={`portrait${src.startsWith("/gnomes/") ? " portrait--thumb" : ""}${at && (at === "wait" ? " portrait--wait" : " late")} ${className}`.trim()} src={src} alt="" width="1024" height="1024" draggable={false}
     onLoad={() => setAt((was) => (was === "wait" ? "late" : was))} onError={() => setAt("")} />;
 }
 

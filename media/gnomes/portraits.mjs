@@ -11,8 +11,8 @@ import fs from "node:fs";
 import { bundledPage, SEEDED, webpUnder } from "../lib/page.mjs";
 
 const ROOT = new URL("../../", import.meta.url), OUT = new URL("web/public/portraits/", ROOT);
-/** The picture's side (a menu panel shows it some 350 CSS pixels tall), drawn at RENDER first; its bytes at most. */
-const PX = 512, RENDER = 1024, MAX_BYTES = 30_000;
+/** The picture's side (a menu panel shows it some 350 CSS pixels tall: sharp on a 2x screen), drawn at RENDER first; its bytes at most. */
+const PX = 1024, RENDER = 2048, MAX_BYTES = 30_000;
 
 const ENTRY = `import { makePortraits } from "./web/lib/scene/gnome-portrait";
 ${SEEDED}

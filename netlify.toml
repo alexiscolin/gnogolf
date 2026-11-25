@@ -168,6 +168,12 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+# the gnomes' pictures, redrawn only with the game: kept a day, then shown while checked again
+[[headers]]
+  for = "/portraits/*"
+  [headers.values]
+    Cache-Control = "public, max-age=86400, stale-while-revalidate=604800"
+
 [[headers]]
   for = "/*"
   [headers.values]
