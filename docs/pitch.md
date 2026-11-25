@@ -43,7 +43,7 @@ your gno.land name on the board.
 ## Why it matters for gno.land
 
 It's the whole Gno pitch in a form anyone gets in ten seconds: a realm as a
-game server, with physics, rules, weather and anti-cheat in code anyone can
+game server, with physics, rules and weather in code anyone can
 read, and the same result on every node, forever. People come for mini-golf
 and leave having met Adena, gno.land names and gnoweb. And it's open source, a
 real example of a full app on Gno.

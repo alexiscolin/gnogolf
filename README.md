@@ -7,7 +7,7 @@
 <p align="center">
   You pull back, you let go, and a smart contract on <a href="https://gno.land">gno.land</a>
   plays the shot with its own physics.<br>
-  Every score is a replay anyone can check: no game server, no way to cheat.
+  Every score is the chain's own replay of your shots: nobody can forge one, anyone can check it.
 </p>
 
 <p align="center">
@@ -24,8 +24,7 @@
 
 ## What's in it
 
-- **Five cups, 90 holes**, from the Garden to the Crystal Mines: windmills,
-  trams, a volcano, and pieces you have to time.
+- **Five cups, 90 holes**, from the Garden to the Crystal Mines: windmills, trams, a volcano, timed pieces.
 - **Weather** that turns every five minutes, the same for everyone.
 - **Ghost duels**: race anyone's best round, stroke for stroke. The chain kept
   it, so it can't be faked.
