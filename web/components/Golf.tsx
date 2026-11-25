@@ -1360,6 +1360,7 @@ export default function Golf() {
 
       {about && (
         <About web={cfg ? cfg.web : ""} counts={s ? s.worlds : undefined} onClose={() => setAbout(false)} onRules={() => (setAbout(false), setRules(true))}
+          onFeedback={cfg && networkOf(cfg.rpc) !== "mainnet" ? () => (setAbout(false), setFeedbackOpen(true)) : undefined}
           support={game.current && <Tip chain={game.current.chain} me={me} chainId={chainId} price={gasPrice} onConnect={() => (setAbout(false), setReal("about"))} />} />
       )}
       {support && game.current && (
@@ -1373,7 +1374,7 @@ export default function Golf() {
       {badgesOpen && <Badges fresh={freshBadges} onClose={() => setBadgesOpen(false)} />}
       {(screen === "rival" || screen === "ghosts" || screen === "worlds" || screen === "community" || screen === "pick") && <ModeTag kind={screen === "rival" || (dare && !solo) ? "duel" : "solo"} />}
       {/* every screen but the title's (its film is the page) */}
-      {/* in a round only: a menu screen keeps its foot clear (Support is in About, a tap on the corner's (i)) */}
+      {/* in a round only: a menu screen keeps its foot clear (Feedback and Support are in About, a tap on the corner's (i)) */}
       {cfg && screen === "play" && <NetBanner rpc={cfg.rpc} onSupport={() => setSupport(true)} onFeedback={() => (sound("blip"), setFeedbackOpen(true))} />}
       {feedbackOpen && <Feedback where={{ screen, aim, network: cfg ? networkOf(cfg.rpc) : null, adena: hasAdena(), connected: !!account, card_holes: holesNow, saved_any: savedAny, ...(screen === "play" && s ? { hole: s.id, cup: s.world, cam: s.cam } : {}) }} onClose={() => setFeedbackOpen(false)} />}
 
