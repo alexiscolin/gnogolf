@@ -1474,7 +1474,7 @@ h3 small {
 .pick__canvas:has(> .portrait) { position: relative; }
 [data-live] > .portrait { visibility: hidden; }
 /* what still waits on the network: there at its final size, a soft pulse in its own colours (what arrives: .late) */
-.wait, :has(> .portrait--wait) { animation: wait 1.4s ease-in-out infinite; }
+.wait, :has(> .portrait--wait):not([data-live]) { animation: wait 1.4s ease-in-out infinite; } /* (the picker's canvas, live over his picture: never) */
 @keyframes wait { 50% { opacity: .5; } }
 
 @media (max-width: 520px) {
