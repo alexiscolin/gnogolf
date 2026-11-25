@@ -1323,7 +1323,8 @@ export default function Golf() {
       {badgesOpen && <Badges fresh={freshBadges} onClose={() => setBadgesOpen(false)} />}
       {(screen === "rival" || screen === "ghosts" || screen === "worlds" || screen === "community" || screen === "pick") && <ModeTag kind={screen === "rival" || (dare && !solo) ? "duel" : "solo"} />}
       {/* every screen but the title's (its film is the page) */}
-      {cfg && screen !== "title" && <NetBanner rpc={cfg.rpc} onSupport={() => setSupport(true)} onFeedback={() => (sound("blip"), setFeedbackOpen(true))} />}
+      {/* in a round only: a menu screen keeps its foot clear (Support is in About, a tap on the corner's (i)) */}
+      {cfg && screen === "play" && <NetBanner rpc={cfg.rpc} onSupport={() => setSupport(true)} onFeedback={() => (sound("blip"), setFeedbackOpen(true))} />}
       {feedbackOpen && <Feedback where={{ screen, aim, network: cfg ? networkOf(cfg.rpc) : null, adena: hasAdena(), connected: !!account, card_holes: holesNow, saved_any: savedAny, ...(screen === "play" && s ? { hole: s.id, cup: s.world, cam: s.cam } : {}) }} onClose={() => setFeedbackOpen(false)} />}
 
       {pending && !(holed && s && s.id === pending.id) && (
