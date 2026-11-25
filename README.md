@@ -22,10 +22,6 @@
   <img src="docs/img/town.gif" width="32%" alt="A hole in one in Mushroom Town">
 </p>
 
-<p align="center">
-  <a href="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml"><img src="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg" alt="check"></a>
-</p>
-
 ## What's in it
 
 - **Five cups, 90 holes**, from the Garden to the Crystal Mines: windmills,
@@ -82,6 +78,8 @@ scripts/try-local.sh     # a local chain with the 90 holes, two wallets, the sit
 It prints the link to open and the wallets to import in Adena.
 
 ## Commands
+
+[![check](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg)](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml)
 
 ```sh
 cd web
