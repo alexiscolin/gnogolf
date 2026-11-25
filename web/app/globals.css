@@ -2083,6 +2083,7 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 @media (max-width: 1000px) { .podium--more .podium__row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) {
   .podium--more .podium__row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .podium--more .podium__row { row-gap: 20px; } /* (its tag clear of the records' drop, as theirs of the heading) */
   .podium--more .podium__row > li:last-child { grid-column: 1 / -1; }
   .podium .sticker.sticker--community { min-height: 72px; padding: 8px 14px 8px 8px; }
   .podium__head { flex-wrap: wrap; row-gap: 6px; padding: 0 8px; margin-bottom: 16px; }
