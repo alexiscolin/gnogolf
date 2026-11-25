@@ -401,7 +401,7 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
 @media (max-width: 700px) {
   /* a phone: the panels stacked, wide, the gnomes on the left */
   .modes__list { grid-template-columns: 1fr; gap: 12px; padding-top: 12px; }
-  .mode { aspect-ratio: auto; min-height: 150px; grid-template-columns: 46% 1fr; grid-template-rows: 1fr auto; align-content: center; padding: 12px 0;
+  .mode { aspect-ratio: auto; min-height: clamp(150px, 22dvh, 200px); grid-template-columns: 46% 1fr; grid-template-rows: 1fr auto; align-content: center; padding: 12px 0;
     background: radial-gradient(circle at 23% 50%, var(--c1) 0 50px, var(--ink) 50px 52.5px, transparent 53px), var(--panel-dots), var(--c2); }
   .mode__stage { grid-row: 1 / 3; margin-top: -10px; }
   .mode__stage svg { inset: 0; width: 78%; }
@@ -412,7 +412,7 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
   .mode__name { align-self: end; margin: 0 14px 0 4px; font-size: 32px; --ink-w: 5px; }
   .mode__line { margin: 6px 14px 0 4px; font-size: 13px; }
   .modes__list--four { grid-template-columns: 1fr; }
-  .modes__list--four .mode { aspect-ratio: auto; min-height: 124px; }
+  .modes__list--four .mode { aspect-ratio: auto; min-height: clamp(124px, 16dvh, 150px); }
   .modes__list--four .mode__name { font-size: 28px; }
 }
 /* where the screen scrolls from its top (globals.css: its column 16 in, on the frame's line), the cards 12 in from it,
