@@ -13,7 +13,7 @@ import { gnomeById, rivalSkin, type Skin } from "@/lib/scene/gnome";
 import type { Snapshot } from "@/lib/engine";
 import { FrontScreen } from "@/components/About";
 import { Button, Dice, InfoTip } from "@/components/ui";
-import { FullBoard, Sticker, useRivalPicks, useWho, type Placed } from "@/components/Leaderboard";
+import { FullBoard, Sticker, rivalPicks, useRivalPicks, useWho, type Placed } from "@/components/Leaderboard";
 import { countWord, ghostsWord, holesWord, plural } from "@/lib/words";
 import { isAddress, type Chain } from "@/lib/chain";
 import { CLASSIC, cupOf, parOf, scoreOf, vsPar, courseCount, golfTerm, holeNumber, standingVs, type Card } from "@/lib/card";
@@ -99,8 +99,7 @@ const Awning = () => {
 export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, onBack, onAbout }: { s: Snapshot; chain: Chain | null; me: string | null; mode: Mode; gnome: string; onPick: (addr: string, bests?: Bests, from?: RivalKind) => void; onBoard: () => void; onConnect?: () => void; onBack: () => void; onAbout: () => void }) {
   const [typed, setTyped] = useState("");
   const [note, setNote] = useState("");
-  // the course's holes, where a ghost can be
-  const holes = useMemo(() => (s.allHoles || []).filter((h) => h.official).map((h) => ({ id: h.id, name: h.name, par: parOf(h) })), [s.allHoles]);
+  const holes = useMemo(() => ghostHoles(s.allHoles || []), [s.allHoles]);
   const picks = useRivalPicks(chain, me, mode);
   const asking = useRef(false); // (a Race pressed again while the chain answers the first: one at a time)
   const go = async (e: FormEvent) => {
@@ -161,6 +160,11 @@ export function Rival({ s, chain, me, mode, gnome, onPick, onBoard, onConnect, o
 
 type Bests = ReadonlyMap<string, Readonly<Record<Mode, number>>>;
 type Hole = { id: string; name: string; par: number };
+/** The course's holes, where a ghost can be. */
+const ghostHoles = (all: readonly HoleRow[]): Hole[] => all.filter((h) => h.official).map((h) => ({ id: h.id, name: h.name, par: parOf(h) }));
+/** The rival's screen read ahead (from the menu): its picks, then their bests, so it opens with its gnomes and its holes' lanes. */
+export const warmRival = (chain: Chain, me: string | null, mode: Mode, all: readonly HoleRow[]) =>
+  void rivalPicks(chain, me, mode).then((p) => p.rows.forEach((r) => r && void showOf(chain, r.player, ghostHoles(all), mode).catch(() => {})), () => {});
 const MAP_MS = 3200; // a map's drawing of the path, as its CSS animation (title.css map-ink): the next hole then
 // each in a colour of the game's own: today's rival the sun's, your level the fairway's, yourself the mountain's
 const PICKS = [

@@ -365,31 +365,46 @@ export type Placed = StrokesRow & { holes?: number; par?: number; at: number };
  * boards: today's rival (featured.ts: never the first three, drawn by the day),
  * a player at the player's level (next to their place; the board's middle
  * without one) and yourself (null while no one is connected); and a surprise
- * drawn again on each visit (the board's Surprise me). null while read; a pick
- * nobody fills, null; a board that could not be read: retry, to read it again.
+ * (the board's Surprise me). A pick nobody fills, null.
  */
+interface Picks { rows: readonly (Placed | null)[]; surprise: Placed | null }
+// the picks last read, kept a minute: the menu reads them ahead, the rival's screen opens on them
+const PICKS_MS = 60_000;
+let lastPicks: { key: string; at: number; read: Promise<Picks>; got?: Picks } | null = null;
+const picksKey = (chain: Chain, me: string | null | undefined, mode: Mode) => `${chain.rpc}|${chain.realm}|${me || ""}|${mode}`;
+const picksNow = (chain: Chain | null, me: string | null | undefined, mode: Mode) =>
+  (chain && lastPicks && lastPicks.key === picksKey(chain, me, mode) && Date.now() - lastPicks.at < PICKS_MS && lastPicks.got) || null;
+/** The picks of a chain, a player and a mode, read once a minute (a read that failed is asked again). */
+export function rivalPicks(chain: Chain, me: string | null | undefined, mode: Mode): Promise<Picks> {
+  const key = picksKey(chain, me, mode);
+  if (lastPicks && lastPicks.key === key && Date.now() - lastPicks.at < PICKS_MS) return lastPicks.read;
+  // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
+  const page = (at: number, n: number) =>
+    Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
+  const read = Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null]).then(async ([top, mine]): Promise<Picks> => {
+    // (a page that fails: the first one's players stand in; the two asked together, one wait)
+    const [near, any] = await Promise.all([page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top), page(Math.floor(Math.random() * top.players), 5).catch(() => top)]);
+    const level = levelPick(near.rows, me);
+    const today = coursePicks(top.rows.filter((r) => !level || r.player !== level.player), top.holes, me, null, null, undefined, 1)[0]?.row || null;
+    const surprise = pickOne([...any.rows, ...top.rows], [me, today && today.player, level && level.player], Math.random());
+    // (your row on the first page, else your rank read apart; unranked in this mode: at 0, your ghosts still read)
+    const self: Placed | null = !me ? null : top.rows.find((r) => r.player === me) || { player: me, at: mine && mine.rank > 0 ? mine.rank : 0, holes: mine ? mine.holes : 0, strokes: mine ? mine.strokes : 0, par: mine ? mine.par : 0 };
+    primeNames(chain, [today, level, surprise].flatMap((r) => (r ? [r] : [])));
+    return { rows: [today, level, self], surprise };
+  });
+  const kept: NonNullable<typeof lastPicks> = { key, at: Date.now(), read };
+  lastPicks = kept;
+  read.then((got) => (kept.got = got), () => lastPicks === kept && (lastPicks = null));
+  return read;
+}
+/** The rival screen's picks (rivalPicks): there at once if read ahead, null while read; a board that could not be read: retry, to read it again. */
 export function useRivalPicks(chain: Chain | null, me: string | null | undefined, mode: Mode) {
-  const [picks, setPicks] = useState<{ rows: readonly (Placed | null)[]; surprise: Placed | null; retry?: () => void } | null>(null);
+  const [picks, setPicks] = useState<(Picks & { retry?: () => void }) | null>(() => picksNow(chain, me, mode));
   const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    // a page of the course's board, the flagged out, the rest placed from 1 (the first page's: the board's places)
-    const page = (at: number, n: number) =>
-      Promise.all([chain.courseLeaderboard(at, n, mode), flagsOf(chain)]).then(([b, f]) => ({ players: b.players, holes: b.holes, rows: placed(b.rows, f.flags) }));
-    void Promise.all([page(0, 30), me ? chain.rank(mode, me).catch(() => null) : null])
-      .then(async ([top, mine]) => {
-        // (a page that fails: the first one's players stand in; the two asked together, one wait)
-        const [near, any] = await Promise.all([page(levelFrom(mine ? mine.rank : 0, top.players), 5).catch(() => top), page(Math.floor(Math.random() * top.players), 5).catch(() => top)]);
-        const level = levelPick(near.rows, me);
-        const today = coursePicks(top.rows.filter((r) => !level || r.player !== level.player), top.holes, me, null, null, undefined, 1)[0]?.row || null;
-        const surprise = pickOne([...any.rows, ...top.rows], [me, today && today.player, level && level.player], Math.random());
-        // (your row on the first page, else your rank read apart; unranked in this mode: at 0, your ghosts still read)
-        const self: Placed | null = !me ? null : top.rows.find((r) => r.player === me) || { player: me, at: mine && mine.rank > 0 ? mine.rank : 0, holes: mine ? mine.holes : 0, strokes: mine ? mine.strokes : 0, par: mine ? mine.par : 0 };
-        primeNames(chain, [today, level, surprise].flatMap((r) => (r ? [r] : [])));
-        if (live) setPicks({ rows: [today, level, self], surprise });
-      })
-      .catch(() => live && setPicks({ rows: [null, null, null], surprise: null, retry: () => (setPicks(null), setTick((n) => n + 1)) }));
+    rivalPicks(chain, me, mode).then((p) => live && setPicks(p), () => live && setPicks({ rows: [null, null, null], surprise: null, retry: () => (setPicks(null), setTick((n) => n + 1)) }));
     return () => void (live = false);
   }, [chain, me, mode, tick]);
   return picks;

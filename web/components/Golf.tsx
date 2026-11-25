@@ -30,7 +30,7 @@ import About, { InfoIcon, Rules } from "@/components/About";
 import Feedback from "@/components/Feedback";
 import { Badges, NewBadges } from "@/components/Badges";
 import Tip, { readOwner } from "@/components/Tip";
-import Modes, { Ghosts, ModeTag, Rival } from "@/components/Modes";
+import Modes, { Ghosts, ModeTag, Rival, warmRival } from "@/components/Modes";
 import { Button, Segmented, Toggle, Sheet, SheetClose, Dialog, Nil } from "@/components/ui";
 import { CUPS, loadCard, recordScore, clearCard, clearCup, totals, cupTotals, parOf, UNLOCKS, cupOf, cardKey, scoreOf, vsPar, badgesFor, byRarity, BADGES, loadOnChain, guessCup, HARD, parHere, vsParWords, holeNumber, nextCup, golfTerm, nextHole, strokeFor } from "@/lib/card";
 import { feel, setFeel, sound, hush } from "@/lib/feel";
@@ -593,8 +593,12 @@ export default function Golf() {
   useEffect(() => {
     let live = true;
     void Promise.all([loadCourse(), warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")])]).then(() => live && setWarm(true));
-    // (the Builder's wasm, in an idle moment and on a computer alone: a phone has no Builder)
-    whenIdle([() => builderOn() && onComputer((q) => window.matchMedia(q).matches) && import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {})]);
+    // (the Builder, in idle moments and on a computer alone, a phone has none: its wasm, then its page and its screens' code)
+    if (builderOn() && onComputer((q) => window.matchMedia(q).matches))
+      whenIdle([
+        () => import("@/lib/builder/load").then((m) => m.loadModule()).catch(() => {}),
+        () => (router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {})),
+      ]);
     return () => void (live = false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps -- (the gnome kept as the page opens)
   const started = !!s;
@@ -612,6 +616,12 @@ export default function Golf() {
     // (the community screen's first holes: its most played, its newest)
     if (chain && community && community.length) whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
   }, [course, community]);
+
+  // on the menu, the rival's screen read ahead in an idle moment: a Duel opens with its picks there
+  useEffect(() => {
+    const chain = game.current && game.current.chain;
+    if (screen === "modes" && chain && course) whenIdle([() => warmRival(chain, me, aim, course)]);
+  }, [screen, me, aim, course]);
 
   // an "add me as a friend" link: the address joins this browser's friends
   useEffect(() => {
