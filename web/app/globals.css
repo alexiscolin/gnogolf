@@ -2358,7 +2358,7 @@ body:has(.screen) .pending { top: 60px; transform: translate(-50%, -50%); }
      (the picker's head is a full-width pill: the screen's own 28px and 60 more
      put it under their foot, 30px + 52) */
   .screen--title .title { padding-top: 52px; }
-  .screen--pick .pick { padding-top: 60px; }
+  .screen--pick .pick { padding-top: calc(96px - var(--front-pad)); } /* (96 down, as every menu screen's) */
   /* on a phone it joins the bottom row, left of the play buttons: a short word, no link (About has it) */
   :root { --chip-h: 44px; --chip-low: 30px; }
   .netbanner__band { padding: 0 8px; font-size: 11px; border-radius: 12px; }

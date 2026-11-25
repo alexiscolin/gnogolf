@@ -446,6 +446,13 @@ body:has(.sheet) .modetag { visibility: hidden; }
 .worlds__in.rival { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; gap: clamp(14px, 3.4vh, 40px); width: min(var(--front-w), 100%); } /* (the parts apart, less so on a short window; the screen's room inside its padding: 100vw would scroll sideways) */
 .rival .front__head { margin: 0; }
 @media (max-height: 820px) { .shop .front__head > .eyebrow { display: none; } }
+/* a menu screen's head in one place whatever stands under it: the column as tall as the screen's room, the head at
+   its top, the rest in the middle of what is left (a column taller than that room: from its top, and the screen scrolls) */
+.screen.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick):not(.front--fit) { align-content: stretch; align-items: stretch; }
+.screen.front--fit > .worlds__in.rival { flex-grow: 1; }
+.front:is(.modes, .worlds--v2:has(.worlds__list)) > .worlds__in, .screen--pick > .pick { display: flex; flex-direction: column; align-items: center; }
+.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick) :is(.front__head, .pick__name) + * { margin-top: auto; }
+.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick) .front__veil { margin-bottom: auto; }
 /* where the cups' screen scrolls from its top (globals.css): the head under the
    corner row as there */
 @media (max-width: 700px), (max-height: 640px), (max-aspect-ratio: 1/1) {
