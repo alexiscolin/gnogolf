@@ -228,6 +228,8 @@ button.issue__why:hover { text-decoration-style: solid; }
 /* the screen's column, centred, as wide as the menu's cards; making a hole above the fold of a laptop */
 /* a window too narrow for the column beside the corner's Back: the column starts under it */
 @media (max-width: 1240px) { .screen.bholes { padding-top: 76px; } }
+/* what scrolls under the frame's top fades as at its foot (title.css .front__veil: a phone's own there) */
+@media (min-width: 601px) { .bholes .front__veil::before { display: block; height: 44px; mask-image: linear-gradient(#000 20px, transparent); } }
 .bholes__in { width: min(var(--front-w), 100%); margin: 0 auto; justify-items: stretch; gap: var(--sp-5); padding: 0 var(--sp-5); text-align: left; }
 /* a section's title (.h-section), its count in an ink pill beside it */
 .bholes__h { display: flex; align-items: center; gap: var(--sp-2); }
