@@ -7,7 +7,7 @@ any folder; the `.ts` and `.mjs` ones run with Node, most through an
 | | |
 |---|---|
 | the checks | `check.sh` (all of them, before a commit), `selfcheck.ts`, `scenelooks.ts`, `gnomelooks.ts`, `wasmparity.ts`, `smoke.ts` |
-| the course | `holedata.sh` (the holes' sources into `data/holes.txt`), `paritydata.sh`, `publishdata.sh` (onto a chain) |
+| the course | `holedata.sh` (the holes' sources into `data/holes.txt`), `paritydata.sh`, `publishdata.sh` (onto a chain), `coursemaps.ts` (the holes' maps the site serves) |
 | a deploy | `stage.sh` (the packages under their owner's name), `importv1.sh` (onyx's v1 records into v2) |
 | the wasm | `wasm.sh` and `wasm/`: the realm's own Gno built with TinyGo, into `web/lib/sim/` |
 | a local chain | `try-local.sh` (the whole game, to try by hand) and its `playground-server.mjs`, `e2e-builder.sh`, `e2e-gnomes.sh`, `lib/e2e.sh` (what they share) |
