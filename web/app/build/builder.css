@@ -315,11 +315,11 @@ button.issue__why:hover { text-decoration-style: solid; }
 .bsave--done { margin: var(--sp-1) 0 0; font-size: 13px; font-weight: 800; color: var(--green); }
 /* the Builder's badges: the game's medals in a row, each named, what earns it under one not earned yet; every card from its top */
 .bbadges { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--sp-2); margin: 0; padding: 0; list-style: none; }
-.bbadges li { display: flex; align-items: flex-start; gap: var(--sp-2); min-width: 0; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2); border: var(--edge); border-radius: 14px; background: var(--paper); }
+.bbadges li { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; padding: var(--sp-2) var(--sp-3) var(--sp-2) var(--sp-2); border: var(--edge); border-radius: 14px; background: var(--paper); }
 .bbadges svg { flex: none; width: 30px; height: 34px; }
 .bbadges span { display: grid; min-width: 0; line-height: 1.15; }
 .bbadges b { font-size: 14px; line-height: 17px; }
-.bbadges small { font-size: 12px; font-weight: 600; color: var(--ink-soft); }
+.bbadges small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; font-size: 12px; font-weight: 600; color: var(--ink-soft); } /* (two lines: no card sets the row's height alone) */
 .bbadges__off { background: rgba(var(--paper-rgb), .7); border-style: dashed; }
 /* what to do with a hole: its links on one baseline */
 .bholes__acts { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sp-1) var(--sp-4); }
