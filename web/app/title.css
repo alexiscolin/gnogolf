@@ -438,6 +438,8 @@ body:has(.sheet) .modetag { visibility: hidden; }
    its top, the rest in the middle of what is left (a column taller than that room: from its top, and the screen scrolls) */
 .screen.front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick):not(.front--fit) { align-content: stretch; align-items: stretch; }
 .screen.front--fit > .worlds__in.rival { flex-grow: 1; }
+/* a screen whose last frame scrolls in itself: that frame runs down to the screen's foot, its own fade the edge */
+.screen.front--fit:has(.ghosts__list, .lb--full) { padding-bottom: var(--sp-4); }
 .front:is(.modes, .worlds--v2:has(.worlds__list)) > .worlds__in, .screen--pick > .pick { display: flex; flex-direction: column; align-items: center; }
 .front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick) :is(.front__head, .pick__name) + * { margin-top: auto; }
 .front:is(.modes, .worlds--v2:has(.worlds__list), .screen--pick) .front__veil { margin-bottom: auto; }

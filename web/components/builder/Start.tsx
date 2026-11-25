@@ -22,7 +22,8 @@ import { census } from "@/lib/builder/drawn";
 import { isHoleId, makeChain } from "@/lib/chain";
 import { startsIn } from "@/lib/builder/templates";
 import { endpoints, playLink } from "@/lib/builder/holes";
-import { goToMenu } from "@/lib/menu";
+import { goToMenu, menuLink } from "@/lib/menu";
+import { whenIdle } from "@/lib/idle";
 import { proofKey } from "@/lib/builder/proof";
 import { versionOf } from "@/lib/builder/testmode";
 import { FIELD, weatherName, worldName } from "@/lib/builder/rules";
@@ -65,6 +66,8 @@ export default function Start({ author, drafts, said = "", onOpen, onAdd, onDele
     const { rpc, web, keep } = endpoints(window.location.search);
     return { chain: makeChain({ rpc, web }), keep };
   }, []);
+  // the game's code and its menu fetched in idle moments, so Back to the game opens it with no loader
+  useEffect(() => whenIdle([() => router.prefetch(menuLink(keep)), () => import("@/components/Golf").catch(() => {})]), [keep]); // eslint-disable-line react-hooks/exhaustive-deps -- (the router: the app's own)
   // the author's holes on the chain: each draft's own (its alias), and those this browser has no draft of
   const { got, reload } = useRewards(chain, author);
   const rowOf = (d: Draft) => (author && d.slug && got?.rows.find((h) => h.slot === `${author}/${d.slug}`)) || null;
