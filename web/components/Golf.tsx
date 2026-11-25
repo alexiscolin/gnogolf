@@ -22,7 +22,7 @@ import type { Card, Cup } from "@/lib/card";
 import type { Feel } from "@/lib/feel";
 import { hasAdena, connect, current, onWalletChange, type Account } from "@/lib/adena";
 import Title, { Hat, choresOf } from "@/components/Title";
-import Worlds, { WORLDS, Emblem, worldOf } from "@/components/Worlds";
+import Worlds, { CommunityTile, WORLDS, Emblem, worldOf } from "@/components/Worlds";
 import Community from "@/components/Community";
 import Share, { ShareClip, type Clip } from "@/components/Share";
 import Gnokey from "@/components/Gnokey";
@@ -902,16 +902,16 @@ export default function Golf() {
           current={s.world}
           onBack={() => setScreen(BACK.worlds)}
           onAbout={() => setAbout(true)}
-          community={s.community}
           racing={racingNote}
           next={(c) => toPlay[c][0]?.name}
           podium={<Podium chain={game.current && game.current.chain} me={me} mode={aim} gnome={gnome} onOpen={() => setBoard(true)}
             holes={toPlay[guessCup(s.world || "")].slice(0, 6)} onRace={(p, id) => (raceWith(p), openHole(id))}
+            // anyone can register a hole: those outside the course are playable from here, in no cup and on no ranking
+            more={s.community.length > 0 && <CommunityTile community={s.community} onOpen={() => (sound("select"), setScreen("community"))} />}
             extra={<>
               <button className="linkish" onClick={() => (sound("blip"), setBadgesOpen(true))}>Badges {badgesEarned().length}/{BADGES.length} →</button>
               {shopOn && <button className="linkish" onClick={() => (sound("blip"), openShop())}>Gnomes →</button>}
             </>} />}
-          onCommunity={() => setScreen("community")}
           onPick={enterCup}
         />
       )}
