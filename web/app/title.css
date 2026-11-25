@@ -464,7 +464,7 @@ body:has(.sheet) .modetag { visibility: hidden; }
 .rival__picks { flex: none; list-style: none; margin: 0; padding: 4px 0 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap-grid); width: 100%; }
 .mode.rival__pick {
   aspect-ratio: auto; grid-template: auto minmax(0, 1fr) auto auto / 1fr 1fr; grid-template-areas: "tag tag" "stage show" "name name" "line go";
-  align-items: center; height: clamp(200px, 30vh, 260px); padding: 12px 18px 14px;
+  align-items: center; height: clamp(200px, 29vh, 260px); padding: 12px 18px 14px;
   background: var(--panel-dots), var(--c2);
 }
 .rival__you svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; } /* yourself: your ghost where the others have their place */
