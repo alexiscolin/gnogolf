@@ -364,7 +364,9 @@ body:has(.sheet) .front__veil { display: none; } body:has(.sheet) .front .front_
 .mode--duel .portrait--ghost { top: 26%; height: 70%; translate: -18% 0; }
 .mode--duel .portrait--thumb { top: 58%; height: 42%; translate: -72% -50%; }
 /* the panel under the pointer: its gnome hops (no motion asked: globals.css' switch holds him still) */
-.mode:is(:hover, :focus-visible):not([disabled]) .portrait:not(.portrait--ghost) { animation: hop .4s ease-in-out infinite alternate; }
+.mode:is(:hover, :focus-visible):not([disabled]) .portrait:not(.portrait--ghost) { transform-origin: 50% 88%; animation: gnome-hop .4s ease-in-out infinite alternate; }
+/* squashed as he lands, stretched in the air, from his feet */
+@keyframes gnome-hop { from { transform: scale(1.03, .94); } to { transform: translateY(-10px) rotate(-6deg) scale(.98, 1.04); } }
 /* the shop's awning across the disc's top, behind its gnome: the panel's colours, inked */
 .mode__stage > .mode__awning { inset: 27% 0 auto; width: 74%; } /* (inside the disc's top, under the gnome's head) */
 .mode__awning-band { fill: var(--c2); }
