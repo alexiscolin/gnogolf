@@ -66,6 +66,26 @@ A build for a public host needs `NEXT_PUBLIC_REALM`, `NEXT_PUBLIC_RPC`,
 `NEXT_PUBLIC_WEB` and `NEXT_PUBLIC_NETWORK` (`netlify.toml` lists them).
 Without them the site plays a chain on the visitor's own machine.
 
+## Deploying the site
+
+gnogolf.xyz is a Netlify site built from this repo: `netlify.toml` holds the
+build (`web/`, `npm ci && npm run build`, publishes `web/out`), the redirects
+and the headers. The `NEXT_PUBLIC_*` variables live in the site's settings
+on Netlify, never in the repo; a build without them fails on purpose.
+
+- With the repo linked (Site configuration → Build & deploy → Link
+  repository), every push to `main` deploys and every pull request gets a
+  preview link.
+- Without it, from the repo's root, with the Netlify CLI logged in and the
+  folder linked to the site once (`npx netlify-cli link`):
+
+  ```sh
+  npx netlify-cli deploy --build          # a draft URL, to try first
+  npx netlify-cli deploy --build --prod   # gnogolf.xyz
+  ```
+
+Play a hole on the draft before going live: it runs against the real chain.
+
 ## Dev mode
 
 What the URL opens. `npm run dev` answers to all of it; a row says when
