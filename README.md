@@ -1,16 +1,26 @@
-![Gnogolf: 3D mini-golf on gno.land](docs/img/banner.png)
+<p align="center">
+  <img src="docs/img/banner.png" alt="Gnogolf: 3D mini-golf on gno.land">
+</p>
 
-# Gnogolf
+<h3 align="center">3D mini-golf on the blockchain, where the chain itself rolls the ball.</h3>
 
-[![check](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg)](https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml)
+<p align="center">
+  <a href="https://gnogolf.xyz"><b>Play at gnogolf.xyz</b></a> · free, no wallet needed
+</p>
 
-3D mini-golf where the chain rolls the ball. You pull back, you let go, and a
-realm on [gno.land](https://gno.land) plays the shot. No game server, and no
-way to fake a score.
+<p align="center">
+  <a href="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml"><img src="https://github.com/alexiscolin/gnogolf/actions/workflows/check.yml/badge.svg" alt="check"></a>
+</p>
 
-**[Play at gnogolf.xyz](https://gnogolf.xyz).** Free, no wallet needed.
+<p align="center">
+  <img src="docs/img/garden.gif" width="32%" alt="A shot between the bumpers of the Garden">
+  <img src="docs/img/mountain.gif" width="32%" alt="The ball sliding down the Mountain's ice">
+  <img src="docs/img/town.gif" width="32%" alt="A hole in one in Mushroom Town">
+</p>
 
-![A tour of the worlds, as the title screen plays it](docs/img/play.gif)
+You pull back, you let go, and a smart contract on [gno.land](https://gno.land)
+plays the shot with its own physics. Every score is a replay anyone can check:
+no game server, no way to cheat.
 
 ## What's in it
 
@@ -34,7 +44,7 @@ check it. Playing is free; keeping a score is one transaction, signed with
 
 ## The stack
 
-| | |
+| Part | Built with |
 |---|---|
 | **On chain** | [Gno](https://gno.land) realms and packages: the physics, the hole format, the rules, the records, the gnome collection |
 | **In the browser** | [three.js](https://threejs.org) for the 3D (cel shading, no textures), plain TypeScript for the engine, React 19 for the interface on top |
@@ -87,15 +97,27 @@ gno.land/p/gnogolf/   the physics and the hole format, reusable by any Gno game
 gno.land/r/gnogolf/   the realms: golf (the rules), store (the records), gnomes, and the 90 holes
 web/lib/              the game: engine, 3D scene, Builder, chain client; no React
 web/components/       the interface
+data/                 the 90 holes as published, and the gnome catalogue
 scripts/              checks, deploys, the local playground, end-to-end runs
-media/                the trailer, the share pictures, the gnomes' portraits
+adr/                  why it is built this way, one decision a file
 ```
+
+Each of these folders has a README that says where to start.
 
 ## Learn more
 
+- [The golf realm on gnoweb](https://onyx.testnets.gno.land/r/nym-alexiscolin000/gnogolf/golf/v2):
+  the course, the boards and the source, live on chain.
 - [docs/development.md](docs/development.md): running it by hand, the dev
   mode, the checks, writing a hole, who can change what.
+- [docs/try-local.md](docs/try-local.md): the whole game on your machine,
+  wallets and shop included.
 - [CLIENT.md](CLIENT.md): how to write your own client.
 - [docs/golf.md](docs/golf.md), [physics](docs/physics.md),
   [course](docs/course.md): the realm's API, the physics, the hole format.
+- [adr/](adr/README.md): the decisions behind the game, from the architecture
+  to the gnomes.
 - [docs/pitch.md](docs/pitch.md): the game in one page, to share.
+- [gno.land](https://gno.land) and [its docs](https://docs.gno.land): the
+  chain Gnogolf runs on.
+- [Report a bug or an idea](https://github.com/alexiscolin/gnogolf/issues/new).
