@@ -35,6 +35,7 @@ void test("what is fetched ahead: the Builder's code on a computer alone, nothin
   assert.ok(golf.includes(`const ahead = screen !== "play" && !leanLink();`));
   const idle = golf.split("\n").filter((l) => l.includes("whenIdle(["));
   assert.equal(idle.length, 3);
-  for (const l of idle) assert.ok(/^\s*(if \(ahead && .*\) )?return whenIdle\(\[/.test(l), "each stopped as its effect is left: " + l.trim().slice(0, 60));
+  for (const l of idle) assert.ok(/^\s*((if \(ahead && .*\) )?return|const stop =) whenIdle\(\[/.test(l), "each stopped as its effect is left: " + l.trim().slice(0, 60));
+  assert.ok(golf.includes("return () => ((on = false), stop());"), "the rival's warm-up stopped, its started reads told to stop too");
   assert.ok(golf.includes(`void warmPortraits([gnomeById(gnome), "ghost", gnomeById("miner")]).then(() => live && setWarm(true));`), "no other file holds the title");
 });

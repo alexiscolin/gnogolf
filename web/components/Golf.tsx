@@ -616,7 +616,8 @@ export default function Golf() {
     if (!course || !chain) return;
     knowCourse(chain, course);
     // (the community screen's first holes: its most played, its newest)
-    if (ahead && community && community.length) return whenIdle([() => warmMaps(chain, [...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))])]);
+    // one job a map, so a round that starts drops the ones not asked yet
+    if (ahead && community && community.length) return whenIdle([...new Set([...sortHoles(community, "played", new Map()).slice(0, 3), ...community.slice(0, 9)].map((h) => h.id))].map((id) => () => warmMaps(chain, [id])));
   }, [course, community, ahead]);
 
   // on the menu, in idle moments: the rival's screen read ahead (a Duel opens with its picks there), and on a computer the
@@ -625,10 +626,12 @@ export default function Golf() {
   useEffect(() => {
     const chain = game.current && game.current.chain;
     if (screen !== "modes" || !ahead || !chain || !course) return;
-    return whenIdle([
-      () => warmRival(chain, me, aim, course),
+    let on = true;
+    const stop = whenIdle([
+      () => warmRival(chain, me, aim, course, () => on),
       () => builderAhead.current || !builderComputer() || ((builderAhead.current = true), router.prefetch(buildLink(endpoints(window.location.search).keep)), import("@/components/builder/Builder").catch(() => {})),
     ]);
+    return () => ((on = false), stop());
   }, [screen, ahead, me, aim, course]); // eslint-disable-line react-hooks/exhaustive-deps -- (the router: the app's own, the same all along)
 
   // an "add me as a friend" link: the address joins this browser's friends

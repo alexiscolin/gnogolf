@@ -61,13 +61,22 @@ function ZoneShape({ z, kind, at }: { z: Zone; kind: MapKind; at: (p: Vec2) => V
 }
 
 /** The maps of the holes asked for, by id: those already here at once, the others as each read comes in. */
+// maps whose read failed this visit: their window stops pulsing (asked again on the next mount)
+const failed = new Set<string>();
+/** Whether a map is still on its way: not here and not failed. */
+export const mapComing = (id: string) => !mapNow(id) && !failed.has(id);
+
 export function useHoleMaps(chain: MapChain | null, ids: readonly string[]): ReadonlyMap<string, MapHole> {
   const [, drawn] = useState(0);
   const key = ids.join(" ");
   useEffect(() => {
     if (!chain) return;
     let live = true;
-    for (const id of key.split(" ").filter(Boolean)) if (!mapNow(id)) void mapOf(chain, id).then(() => live && drawn((n) => n + 1), () => {});
+    for (const id of key.split(" ").filter(Boolean)) {
+      if (mapNow(id)) continue;
+      failed.delete(id);
+      void mapOf(chain, id).then(() => live && drawn((n) => n + 1), () => { failed.add(id); if (live) drawn((n) => n + 1); });
+    }
     return () => void (live = false);
   }, [chain, key]);
   return new Map(ids.flatMap((id) => { const m = mapNow(id); return m ? [[id, m] as const] : []; }));

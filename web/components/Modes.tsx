@@ -6,7 +6,7 @@
 // (Ghosts), in place of the cups. Panels of their own, a kart game's modes.
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Emblem, WORLDS } from "@/components/Worlds";
-import { MapSlot, NoMap, useHoleMaps } from "@/components/HoleMap";
+import { MapSlot, NoMap, mapComing, useHoleMaps } from "@/components/HoleMap";
 import { Portrait } from "@/components/Stage";
 import { NONE } from "@/components/hooks";
 import { gnomeById, rivalSkin, type Skin } from "@/lib/scene/gnome";
@@ -163,8 +163,8 @@ type Hole = { id: string; name: string; par: number };
 /** The course's holes, where a ghost can be. */
 const ghostHoles = (all: readonly HoleRow[]): Hole[] => all.filter((h) => h.official).map((h) => ({ id: h.id, name: h.name, par: parOf(h) }));
 /** The rival's screen read ahead (from the menu): its picks, then their bests, so it opens with its gnomes and its holes' lanes. */
-export const warmRival = (chain: Chain, me: string | null, mode: Mode, all: readonly HoleRow[]) =>
-  void rivalPicks(chain, me, mode).then((p) => p.rows.forEach((r) => r && void showOf(chain, r.player, ghostHoles(all), mode).catch(() => {})), () => {});
+export const warmRival = (chain: Chain, me: string | null, mode: Mode, all: readonly HoleRow[], live: () => boolean = () => true) =>
+  void rivalPicks(chain, me, mode).then((p) => p.rows.forEach((r) => r && live() && void showOf(chain, r.player, ghostHoles(all), mode).catch(() => {})), () => {});
 const MAP_MS = 3200; // a map's drawing of the path, as its CSS animation (title.css map-ink): the next hole then
 // each in a colour of the game's own: today's rival the sun's, your level the fairway's, yourself the mountain's
 const PICKS = [
@@ -367,7 +367,7 @@ function HoleCard({ id, name, num, par, best, mine, chain, player, onRace }: { i
       onClick={() => (sound("select"), onRace(id))}>
       <span className="ghost__head"><span className="tile__num">{num}</span><span className="ghost__name">{name}</span></span>
       <span className="rival__show">
-        <MapSlot hole={lane} path={path ? path.path : undefined} wait />
+        <MapSlot hole={lane} path={path ? path.path : undefined} wait={mapComing(id)} />
         <span className="rival__best">Par {par}</span>
       </span>
       <span className="ghost__label">Their best</span>
