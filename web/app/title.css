@@ -509,7 +509,7 @@ body:has(.sheet) .modetag { visibility: hidden; }
 .rival__pick .rival__go { grid-area: go; justify-self: end; }
 /* yourself: a card of its own, your gnome big down its left, the words beside him (no hole shown: nothing empty) */
 .mode.rival__pick.rival__pick--self { grid-template: auto minmax(0, 1fr) auto auto minmax(0, 1fr) / minmax(0, 52%) minmax(0, 1fr); grid-template-areas: "tag tag" "stage name" "stage line" "stage best" "stage go"; column-gap: 12px; }
-.rival__pick--self .rival__stage { --disc: min(100cqw, 100cqh, 190px); }
+.rival__pick--self .rival__stage { --disc: min(100cqw, 100cqh, 160px); }
 .rival__pick--self .portrait:not(.portrait--thumb) { top: calc(50% - var(--disc) * .86); height: calc(var(--disc) * 1.5); }
 .rival__pick--self .rival__name { align-self: end; padding: 0; white-space: normal; }
 .rival__pick--self .rival__line, .rival__pick--self:disabled .rival__line { grid-column: auto; align-self: start; padding: 4px 0 0; white-space: normal; }
