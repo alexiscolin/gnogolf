@@ -1000,7 +1000,8 @@ function Who({ chain, addr, me, link, title = "See this round on gno.land" }: { 
  *  (holePicks, as its board picks them, none you beat already), a tap racing it there (onRace); none:
  *  the course's (coursePicks, never its top three), a tap opening the board. A read again keeps the
  *  cards there until it lands: the cups below never move. */
-export function Podium({ chain, me, mode = "pro", gnome, onOpen, extra, holes = [], onRace }: { chain: Chain | null; me?: string | null; mode?: Mode; gnome: string; onOpen: () => void; extra?: ReactNode; holes?: readonly HoleRow[]; onRace?: (player: string, hole: string) => void }) {
+// more: a fourth tile after the records (the community's holes), the row then as wide as the cups'
+export function Podium({ chain, me, mode = "pro", gnome, onOpen, extra, more, holes = [], onRace }: { chain: Chain | null; me?: string | null; mode?: Mode; gnome: string; onOpen: () => void; extra?: ReactNode; more?: ReactNode; holes?: readonly HoleRow[]; onRace?: (player: string, hole: string) => void }) {
   const [top, setTop] = useState<{ cards: { player: string; name?: string; tag: string; sub: string; hole?: string }[]; flagged: boolean } | null>(null);
   const next = holes.map((h) => h.id).join(" ");
   useEffect(() => {
@@ -1035,7 +1036,7 @@ export function Podium({ chain, me, mode = "pro", gnome, onOpen, extra, holes = 
   if (!chain) return null;
   const empty = !!top && !top.cards.length;
   return (
-    <section className="podium" aria-label="Records to beat today">
+    <section className={more ? "podium podium--more" : "podium"} aria-label="Records to beat today">
       <header className="podium__head">
         <h3 className="h-section">Records to beat <small>{AIM_NAMES[mode]} · today</small></h3>
         <span className="podium__links">
@@ -1057,9 +1058,10 @@ export function Podium({ chain, me, mode = "pro", gnome, onOpen, extra, holes = 
             </li>
           );
         })}
+        {more && <li>{more}</li>}
       </ol>
-      {/* (its line kept, unseen, while the board is read or has players: the cards below never move) */}
-      <p className="real__fine podium__empty" style={empty ? undefined : { visibility: "hidden" }} aria-hidden={!empty}>{top && top.flagged ? "Every record here is flagged: All players lists them." : "Nobody yet: save a round on-chain and be the first record here."}</p>
+      {/* (said in the gap under the row, when nobody is there: the cups below never move) */}
+      <p className="real__fine podium__empty" hidden={!empty}>{top && top.flagged ? "Every record here is flagged: All players lists them." : "Nobody yet: save a round on-chain and be the first record here."}</p>
     </section>
   );
 }
@@ -1082,16 +1084,21 @@ const StickerGhost = ({ at = 0, free }: { at?: number; free?: string }) =>
 export function Sticker({ player, tag, sub, chain, me, gnome, onClick, say, go = "Race" }: { player: string; tag?: string; sub: string; chain: Chain | null; me?: string | null; gnome: string; onClick?: () => void; say?: string; go?: string }) {
   const { label } = useWho(chain, player, me), mine = player === me;
   useWorn(chain, mine ? "" : player);
+  return <Tile face={<Face skin={mine ? gnomeById(gnome) : rivalSkin(player, gnome)} />} tag={tag} name={<><Collector chain={chain} player={player} />{label}</>} sub={sub} go={tag && onClick && !say ? `${go} ▸` : undefined}
+    label={`${say ? `${label}: ${say}` : mine ? "Race your best" : go === "Race" ? `Race ${label}'s ghost` : `${label}: ${go.toLowerCase()}`}: ${tag ? `${tag}, ` : ""}${sub}`} onClick={onClick} />;
+}
+/** A sticker's card, whoever it shows: a face, why it is there over its corner (tag), a name, a line under it (sub),
+ *  what a tap starts (go); with a tap it is a button, label said to a reader. */
+export function Tile({ face, tag, name, sub, go, label, onClick, className = "" }: { face: ReactNode; tag?: string; name: ReactNode; sub: string; go?: string; label: string; onClick?: () => void; className?: string }) {
   const body = (<>
-    <Face skin={mine ? gnomeById(gnome) : rivalSkin(player, gnome)} />
+    {face}
     {tag && <span className="sticker__tag">{tag}</span>}
-    <span className="sticker__who"><Collector chain={chain} player={player} />{label}</span>
+    <span className="sticker__who">{name}</span>
     <span className="sticker__sub">{sub}</span>
-    {tag && onClick && !say && <span className="sticker__go" aria-hidden="true">{go} ▸</span>}
+    {go && <span className="sticker__go" aria-hidden="true">{go}</span>}
   </>);
-  return onClick
-    ? <button className="sticker" aria-label={`${say ? `${label}: ${say}` : mine ? "Race your best" : go === "Race" ? `Race ${label}'s ghost` : `${label}: ${go.toLowerCase()}`}: ${tag ? `${tag}, ` : ""}${sub}`} onClick={onClick}>{body}</button>
-    : <div className="sticker">{body}</div>;
+  const cls = `sticker ${className}`.trim();
+  return onClick ? <button className={cls} aria-label={label} onClick={onClick}>{body}</button> : <div className={cls}>{body}</div>;
 }
 /** A board's face wears the gnome its player wears for everyone (SHOP): asked with the page's other faces in
  *  one read (wear.ts askWorn), drawn again once it is known. */

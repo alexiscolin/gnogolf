@@ -2034,7 +2034,10 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 /* a front section's heading: the records to beat' */
 .podium__head h3 { margin: 0; } /* (.h-section: a section's title, as the rival's) */
 /* the course's records to beat: a slim strip under the cups' title, seen without scrolling */
-.podium { margin: 4px auto 32px; width: 100%; max-width: var(--front-w); text-align: left; }
+.podium { position: relative; margin: 4px auto 32px; width: 100%; max-width: var(--front-w); text-align: left; }
+/* with the community's tile: four across, the row as wide as the cups' under it, their edges in line */
+.podium--more { max-width: none; }
+.podium--more .podium__row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .podium__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .podium__links { display: flex; gap: 16px; }
 /* the records to beat as the rival board's stickers (title.css .sticker), three across at any width */
@@ -2042,7 +2045,7 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 /* a place: a disc (--m across), in its metal for the first three, paper for the others */
 .podium__medal { --m: 24px; display: inline-grid; place-items: center; min-width: var(--m); height: var(--m); padding: 0 4px; border: var(--edge); border-radius: var(--pill); background: var(--paper); font-size: 13px; font-weight: 800; color: var(--ink); }
 .podium__medal--1 { background: var(--gold); } .podium__medal--2 { background: var(--silver); } .podium__medal--3 { background: var(--bronze); }
-.podium__empty { margin: 6px 0 0; }
+.podium__empty { position: absolute; top: 100%; left: 0; right: 0; margin: 4px 0 0; } /* (in the gap over the cups: no room of its own) */
 /* a full board: name over address, the first three's metal discs, your pinned place */
 .who { display: grid; line-height: 1.15; }
 .who small { font-size: 11px; opacity: .6; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -2076,7 +2079,12 @@ body .toast.toast--center { top: max(14px, env(safe-area-inset-top)); width: max
 @media (max-width: 700px) { .podium .sticker__tag { left: 50%; translate: -50% 0; max-width: calc(100% + 6px); padding: 1px 5px; } }
 .podium__head small, .podium__links .linkish { white-space: nowrap; }
 /* a phone: the title on its line (its mode beside it), the links on the next, both in line with the cards */
+/* a narrow window: two tiles a row; a phone: the three records as they are, the community's tile across under them */
+@media (max-width: 1000px) { .podium--more .podium__row { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) {
+  .podium--more .podium__row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .podium--more .podium__row > li:last-child { grid-column: 1 / -1; }
+  .podium .sticker.sticker--community { min-height: 72px; padding: 8px 14px 8px 8px; }
   .podium__head { flex-wrap: wrap; row-gap: 6px; padding: 0 8px; margin-bottom: 16px; }
   .podium__head h3 { flex: 1 0 100%; }
   .podium__links { gap: 20px; }

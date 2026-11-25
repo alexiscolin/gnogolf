@@ -8,6 +8,7 @@ import { stillsOnly } from "@/lib/prefs";
 import { CLIP, Green, canHover, cupStill, stillsReady, warmClips } from "@/components/Title";
 import { FrontScreen } from "@/components/About";
 import { Button, Frame, VsPar } from "@/components/ui";
+import { Tile } from "@/components/Leaderboard";
 import { plural } from "@/lib/words";
 import { Sketch } from "@/components/Sketch";
 import { authorOf } from "@/lib/builder/holes";
@@ -201,10 +202,7 @@ interface WorldsProps {
   /** the connected wallet's saved holes back on the card (none: no wallet), and while it reads */
   onRestore?: () => void;
   restoring?: boolean;
-  community?: readonly HoleRow[];
-  /** the community's holes on their own screen (the band under the cups) */
-  onCommunity?: () => void;
-  /** the course's records to beat, under the cups */
+  /** the course's records to beat, over the cups (the community's holes their last tile) */
   podium?: ReactNode;
   /** a cup's next hole to play, said on its card once begun */
   next?: (cup: Cup) => string | undefined;
@@ -214,7 +212,7 @@ interface WorldsProps {
 const NOT_PLAYED: Pick<CupTotal, "done" | "strokes" | "par" | "clean"> = { done: 0, strokes: 0, par: 0, clean: false };
 let shownOnce = false;
 
-export default function Worlds({ counts = {}, stats, current, onPick, onBack, onAbout, onReset, onResetAll, onRestore, restoring = false, community = [], onCommunity = () => {}, podium, racing, next = () => undefined }: WorldsProps) {
+export default function Worlds({ counts = {}, stats, current, onPick, onBack, onAbout, onReset, onResetAll, onRestore, restoring = false, podium, racing, next = () => undefined }: WorldsProps) {
   const [wipe, setWipe] = useState<string | null>(null); // what was asked to be cleared, before the second tap
   const [resets, setResets] = useState(false); // the little reset menu at the top
   const [hot, setHot] = useState<string | null>(null); // the cup under the pointer or the focus: the backdrop takes its colours
@@ -315,28 +313,16 @@ export default function Worlds({ counts = {}, stats, current, onPick, onBack, on
           );
         })}
       </ul>
-      {/* anyone can register a hole: those outside the course are playable here, in no cup and on no ranking */}
-      {community.length > 0 && <CommunityBand community={community} onOpen={() => (sound("select"), onCommunity())} />}
     </FrontScreen>
   );
 }
 
-/** The community's holes as a long band under the cups, a card of another kind (a blueprint, not a diorama; not
- *  ranked): how many holes, by how many makers, in how many worlds; a tap opens their screen. */
-function CommunityBand({ community, onOpen }: { community: readonly HoleRow[]; onOpen: () => void }) {
-  const makers = new Set(community.map((h) => authorOf(h.id)).filter(Boolean)).size, worlds = new Set(community.map((h) => h.world)).size;
-  return (
-    <button className="cband" onClick={onOpen} aria-label={`Community holes: ${community.length} ${plural("hole", community.length)} by ${makers} ${plural("maker", makers)}, not ranked. See them all`}>
-      <span className="cband__art"><Sketch /></span>
-      <span className="cband__text">
-        <span className="cband__name">Community holes <span className="tag">Not ranked</span></span>
-        <span className="cband__stats">
-          <span><b>{community.length}</b> {plural("hole", community.length)} published</span>
-          <span><b>{makers}</b> {plural("maker", makers)}</span>
-          <span><b>{worlds}</b> {plural("world", worlds)}</span>
-        </span>
-      </span>
-      <span className="cband__go" aria-hidden="true">See them all ▸</span>
-    </button>
-  );
+/** The community's holes as the records row's last tile: a sticker as a player's (Leaderboard.tsx Tile), in the
+ *  blueprint's blue (a way in, not a record; not ranked), its sketch where a face is: how many holes, by how many
+ *  makers; a tap opens their screen. */
+export function CommunityTile({ community, onOpen }: { community: readonly HoleRow[]; onOpen: () => void }) {
+  const n = community.length, makers = new Set(community.map((h) => authorOf(h.id)).filter(Boolean)).size;
+  const sub = `${n} ${plural("hole", n)} · ${makers} ${plural("maker", makers)}`;
+  return <Tile className="sticker--community" face={<span className="sticker__face"><Sketch /></span>} tag="Not ranked" name="Community holes" sub={sub} go="→"
+    label={`Community holes: ${sub.replace(" · ", " by ")}, not ranked. See them all`} onClick={onOpen} />;
 }

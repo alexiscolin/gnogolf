@@ -18,7 +18,7 @@ void test("finished_shown waits for this round's best: the hole played again in 
 
 void test("the community's holes, a screen of the game's: its title focused as it comes, Escape and Back to the cups, its own address", () => {
   assert.ok(/const SCREENS = \[[^\]]*"community"/.test(golf) && golf.includes(`community: "worlds"`), "a screen, the cups before it");
-  assert.ok(golf.includes(`onCommunity={() => setScreen("community")}`), "the band under the cups opens it");
+  assert.ok(golf.includes(`<CommunityTile community={s.community} onOpen={() => (sound("select"), setScreen("community"))} />`), "the records row's last tile opens it");
   assert.ok(/\|\| screen === "community"\) q\.set\("screen", screen\)/.test(golf) && golf.includes(`p.get("screen") === "community" ? "community"`), "?screen=community: a step Back returns to it, a reload lands on it");
   assert.ok(title.includes("screen=(cups|rival|community)\\b"), "its address a link past the title, as the cups': the loader alone, no scene built behind it");
 });
