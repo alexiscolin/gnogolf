@@ -1,4 +1,4 @@
-# ADR-006: The hole builder's checks, in the browser
+# Decision 006: The hole builder's checks, in the browser
 
 ## Status
 
@@ -16,7 +16,7 @@ them place what the client draws and what the physics can play. The chain
 checks the format, its limits and the gas; it says nothing about how a hole
 looks, and accepts a cup inside a wall.
 
-The browser already runs the realm's own physics (`golf.wasm`, ADR-001's aim
+The browser already runs the realm's own physics (`golf.wasm`, decision 001's aim
 preview, built from the deployed `.gno` files by `scripts/wasm.sh` and held to
 the realm byte for byte by `scripts/wasmparity.ts`). Every player loads it.
 

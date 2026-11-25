@@ -1,15 +1,15 @@
-# ADR-013: One sale a series, no waves
+# Decision 013: One sale a series, no waves
 
 ## Status
 
-Accepted, 2026-10-18. Supersedes ADR-007's waves (and
-ADR-008's ids "run by wave"). Built in `gno.land/r/gnogolf/gnomes`
+Accepted, 2026-10-18. Supersedes decision 007's waves (and
+decision 008's ids "run by wave"). Built in `gno.land/r/gnogolf/gnomes`
 (`sale.gno`), the client (`web/lib/gnomes/shop.ts`), the catalogue's data
 and the scripts. Nothing is deployed, so the realm's API changes in place.
 
 ## Context
 
-ADR-007 sold the genesis in waves, `AddWave(first, last, start,
+decision 007 sold the genesis in waves, `AddWave(first, last, start,
 playerHours)`, a range of ids at a time, one world a wave, the research
 brief's advice. The launch already opened every gnome at once in one wave
 of all 720; the waves left were words on the screens ("Wave 1 · Garden",
@@ -25,7 +25,7 @@ of all 720; the waves left were words on the screens ("Wave 1 · Garden",
   gnome of it sold; the series may then open again. Events `SaleOpened`,
   `SaleCancelled`.
 - **Every guard stays.** The genesis's sale is refused, once a closing
-  date is set (optional since 2026-10-19, ADR-007), from a start at or
+  date is set (optional since 2026-10-19, decision 007), from a start at or
   after it, and once it has closed;
   `SetCloseAt` never comes at or before a sale yet to start. Exact payment,
   direct user calls, five ids a Buy, the lifetime caps, one Legendary a

@@ -1,4 +1,4 @@
-# ADR-007: The gnomes realm, its catalogue as data, a sale a series
+# Decision 007: The gnomes realm, its catalogue as data, a sale a series
 
 ## Status
 
@@ -14,9 +14,9 @@ not change. Nothing is deployed. One point stays open:
 `Renounce`. The portrait drawn from the traits is built (`svg.gno`,
 `art.gno`).
 
-Amended by ADR-012 (2026-10-07): after a change of rules, the earned
+Amended by decision 012 (2026-10-07): after a change of rules, the earned
 gnomes' proof waits for the owner to accept the new rules (`AcceptRules`).
-Amended by ADR-013 (2026-10-18): the research brief's waves (a range of ids
+Amended by decision 013 (2026-10-18): the research brief's waves (a range of ids
 opened at a time) are gone; a series is sold in one sale, every gnome of it
 at once. The passages below say the sale as it now is.
 
@@ -63,7 +63,7 @@ to the realm: the client reads them, the realm keeps and returns them. A token's
 its record: no copy is made per token. Which ids were ever sold is a bitmap
 (a bit an id), so a burned gnome is never sold again.
 
-**A series is sold in one sale** (ADR-013). `OpenSale(series, start,
+**A series is sold in one sale** (decision 013). `OpenSale(series, start,
 playerHours)`, owner only and once a series, puts every id of the series on
 sale from a start, at the prices of the day, frozen into the sale; the start is
 from a day before now to a year after, in unix seconds (a
@@ -164,7 +164,7 @@ Whether the role may be renounced is not decided: there is no `Renounce`.
 multisig, as the treasury's): one key holds every setting and the catalogue
 (not built: a deploy matter, no code).
 
-**New rules are the owner's to accept for the proof (ADR-012).** The
+**New rules are the owner's to accept for the proof (decision 012).** The
 earned gnomes' proof reads store's rows only while store's writer is the
 rules it reads (golf/v2 at deploy): after a rules change every proof
 refuses ("rules changed"), until the owner, having checked that the new
@@ -261,7 +261,7 @@ a caller's country.
 `Collection`, `Gnome` (`{"version":1,"id":""}` for none), `Sold` (a bit per
 id), `GnomesOf(owner, offset)` (100 rows a page, each id, tier and traits:
 enough to draw a collection with no call per token; `total`, `next`;
-a player's album and collector rank are read from it: ADR-011),
+a player's album and collector rank are read from it: decision 011),
 `Equipped`, `Worn` and `WornMany` (the first 50 players of a list: below),
 `Proof`; `CanBuy(buyer, ids)`, the mint page's answer before any
 signature: `ok`, a `reason` code (`ids`, `paused`, `unknown`,
@@ -344,7 +344,7 @@ setters' events are the spec's names (`CloseAtSet`, `SiteURLSet`, …),
 - Store's layout is now read by a second realm: `totals` for the player
   window, `slots`, `bests`, `copies` and `holes` for the proof. After a
   rules change the proof refuses until the owner accepts the new rules
-  (`AcceptRules`, ADR-012), which they do only once those rows keep the
+  (`AcceptRules`, decision 012), which they do only once those rows keep the
   same answers; rules that change them need a proof of their own, not an
   acceptance.
 - `scripts/stage.sh` stages `r/gnogolf/gnomes` beside store; the proof's

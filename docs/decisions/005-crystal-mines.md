@@ -1,4 +1,4 @@
-# ADR-005: The Crystal Mines, an expert cup
+# Decision 005: The Crystal Mines, an expert cup
 
 ## Status
 
@@ -99,7 +99,7 @@ have a robust plan of 3 strokes. The mountain's hardest are Avalanche
 finished all four at par has seen every mechanic the engine offers used once or
 twice, one at a time. An expert cup is what keeps them.
 
-**A hole is data (ADR-002).** A course hole is a GG1 string that the owner
+**A hole is data (decision 002).** A course hole is a GG1 string that the owner
 publishes into a slot (`mines/7`). The slot's world is the hole's world, and a
 new world needs nothing on chain:
 
@@ -124,7 +124,7 @@ new world needs nothing on chain:
   is a choice: the underground weather is still air, a draught,
   dripping and lights out (no storm, no snow), the 18 pars were calibrated
   over it, and a row now would re-pin the 18 frozen holes' data. After the
-  deploy a mines climate means a new `course` and a new `golf` (ADR-002,
+  deploy a mines climate means a new `course` and a new `golf` (decision 002,
   Consequences).
 - **The physics.** Pieces don't move and carry nothing. A timed bar comes and
   goes, and pushes a ball out of it without giving it any speed. A zone moves
@@ -1246,7 +1246,7 @@ Estimates are for one developer, on the pace of the four cups.
   snow or a storm. The cup's difficulty comes from the holes'
   own vents, clocks and void, not from the sky. It is always visible, and so
   learnable.
-- **Each hole's weather follows its version id** (ADR-002). Fixing a hole
+- **Each hole's weather follows its version id** (decision 002). Fixing a hole
   after launch archives its board, as for every cup.
 - **The client grows by one world module.** `mines.ts` is lazy-loaded like
   island, town and mountain (`worlds.ts`), so players who never unlock it
@@ -1272,7 +1272,7 @@ Estimates are for one developer, on the pace of the four cups.
   cup is course holes, with the owner's slots, the ranking, and the pars
   solved.
 - **Ranking the mines apart.** It needs golf's page table or a new ranking
-  on chain, so a redeploy. It is deferred to a golf v2 (with ADR-004's duel
+  on chain, so a redeploy. It is deferred to a golf v2 (with decision 004's duel
   records). The client can show a Mines-only board meanwhile.
 
 ## Risks

@@ -1,11 +1,11 @@
-# ADR-011: The collection as status: an album and a collector rank
+# Decision 011: The collection as status: an album and a collector rank
 
 ## Status
 
 Accepted, 2026-10-07. Built: `web/lib/gnomes/collection.ts` (the one
 module), `web/components/gnomes/Album.tsx`, `Rank.tsx`; read by the gallery,
 My gnomes, a player's gnomes, the boards, a duel and the picker. The realm
-(`r/gnogolf/gnomes`, ADR-007) does not change. Not built, by
+(`r/gnogolf/gnomes`, decision 007) does not change. Not built, by
 decision: early access for holders, rewards for a completed set.
 
 ## Context
@@ -19,8 +19,8 @@ rare) and no hurry.
 
 Two constraints shape it. The realm has no read of a collection's summary:
 `GnomesOf(owner, offset)` lists a wallet, 100 rows a page, best first
-(ADR-007); `WornMany` says what a board's page wears, 50 players a read.
-And the shop is not offered in some regions (ADR-007, "Where the shop
+(decision 007); `WornMany` says what a board's page wears, 50 players a read.
+And the shop is not offered in some regions (decision 007, "Where the shop
 opens"), while the tokens, and the gnome each player wears, exist on the
 chain wherever the viewer is.
 
@@ -85,7 +85,7 @@ it; **the ranks still show on the boards, a duel and the picker**, every
 region alike. Why:
 
 - A rank is a fact of the chain, as the gnome a player wears, which the
-  boards' faces and the ghosts already show in every region (ADR-007,
+  boards' faces and the ghosts already show in every region (decision 007,
   "Wearing is free"): hiding one and not the other would say two things
   about the same player.
 - A board must read the same to everyone on it: a duel between a player in

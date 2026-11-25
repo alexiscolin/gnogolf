@@ -3,7 +3,7 @@
 ## Status
 
 Proposed, 2026-10-06; revised the same day (see "Revisions" at the end).
-Built since: [ADR-006](../../adr/adr-006-hole-builder.md) says what shipped.
+Built since: [decision 006](../decisions/006-hole-builder.md) says what shipped.
 Nothing on chain changes: the contract side (`PublishMine`, `SetPublishing`, `Hide`, GG1) is
 deployed and stays as it is. This spec covers the web client, a second wasm
 build, and the tests and scripts around them.
@@ -315,7 +315,7 @@ the checks, the text filters, `physics/build` and the `decode` writer: about
    vouch for.
 9. **No server.** Drafts live in the browser (and in a file the author can
    export); proofs are re-checked in the browser at publish; sharing is a
-   link and an image made in the page (ADR-003). The one file the site
+   link and an image made in the page (decision 003). The one file the site
    serves for this, the takedown list, is static (see "Security and abuse").
 
 ## The palette model
@@ -443,7 +443,7 @@ selects the piece.
 | E8 | The counts against GG1's limits: walls /160, posts /32, zones /32, polygon points /64 each and /512 in all, pulses /16, skins /64, shown as gauges | error at the limit |
 | E9 | The data's size against 32 KB | error |
 | E10 | A piece outside the lane (no ball can reach it) | error (amended: the Builder limits, it does not warn) |
-| E11 | A fixed wall count high enough to eat the rain's room: each untimed wall costs 6,150 units of a commit's room in its dearest weather (ADR-005); shown as the room gauge from `check` | gauge from 80%; error when L2 refuses |
+| E11 | A fixed wall count high enough to eat the rain's room: each untimed wall costs 6,150 units of a commit's room in its dearest weather (decision 005); shown as the room gauge from `check` | gauge from 80%; error when L2 refuses |
 | E12 | The render census: every placed piece was drawn by its entry's path (below) | error |
 | E13 | No two solid pieces overlap or interpenetrate where the renderer draws them badly: a post inside or across a wall or a bar, two posts overlapping, a bar crossing a bar or a rail, a zone over a zone of another kind (z-fighting), a zone's mouth under a post. A pairing the palette entry allows (`overlaps` in its binding: a bridge over water, sand round a post) is fine | error |
 | E14 | Every passage the ball must use is wide enough: between two solid pieces (walls, bars, posts, fixed), every gap a ball could pass but only just (below the ball's diameter and 0.25, 1.25) is either shut (below the ball's diameter: no passage) or widened; the reachability of E4 runs at that clearance, so a gap that only a perfect ball threads does not count as a way | error |
@@ -837,7 +837,7 @@ is what turns on the dare link and the "holed by its author" mark below.
 ### Sharing
 
 - **The link** is `?hole=<id>`, and once the author has a best,
-  `?hole=<id>&by=<address>`: the ghost dare of ADR-004. `holeLink` in
+  `?hole=<id>&by=<address>`: the ghost dare of decision 004. `holeLink` in
   `web/lib/links.ts` needs a game `Snapshot`, which the Builder does
   not have, so `web/components/builder/share.ts` adds a helper that makes the same
   link from an id and an address (new work).
@@ -846,7 +846,7 @@ is what turns on the dare link and the "holed by its author" mark below.
   goes to the system share sheet through `Share.tsx`'s `snapshot` path. On a
   computer nothing downloads an image today (`Share.tsx` copies the
   clip only), so `share.ts` adds the download (new work). No static
-  page per community hole (ADR-003's `/h/<slot>/` are built from the
+  page per community hole (decision 003's `/h/<slot>/` are built from the
   course's slots): the link card stays the site's generic one. Zero server
   cost.
 
@@ -1003,7 +1003,7 @@ playable and listed.
 - A static page and link card per community hole. They would need a build
   per publish, or a server.
 - Any change to the realms or to GG1, an exported `Hidden()` query included.
-  A mechanic GG1 cannot express waits for a GG2 (ADR-002).
+  A mechanic GG1 cannot express waits for a GG2 (decision 002).
 
 ## Alternatives considered
 

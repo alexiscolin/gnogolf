@@ -1,13 +1,13 @@
-# ADR-002: Holes as data
+# Decision 002: Holes as data
 
 ## Status
 
-Accepted. Amends ADR-001 §3 ("a course is a realm implementing an interface")
+Accepted. Amends decision 001 §3 ("a course is a realm implementing an interface")
 for the course's own holes.
 
 ## Context
 
-Under ADR-001 every hole was its own realm: 74 hole packages next to
+Under decision 001 every hole was its own realm: 74 hole packages next to
 `physics`, `course` and `golf`, each holding its geometry as a decoded Go
 value. That has three costs on a live chain:
 

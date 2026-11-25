@@ -22,7 +22,7 @@
 #                         the cups, their own screen; off until the builder is out)
 #   NEXT_PUBLIC_BUILDER   optional: 1 opens the hole Builder at /build (off: a
 #                         page that says it is not open yet)
-#   NEXT_PUBLIC_CLIPS     optional: 1 offers a clip of the holing shot (ADR-003)
+#   NEXT_PUBLIC_CLIPS     optional: 1 offers a clip of the holing shot (decision 003)
 #   NEXT_PUBLIC_GNOMES    optional: 1 opens the gnome shop (lib/gnomes/shop.ts);
 #                         with it, a production deploy fails without who sells
 #                         and the pages the order links (lib/gnomes/legal.ts):
@@ -110,7 +110,7 @@
   force = true
   query = { cup = ":cup", gnome = ":gnome" }
 
-# The gnome shop's region gate (web/lib/gnomes/geo.ts, ADR-007 "Where the shop
+# The gnome shop's region gate (web/lib/gnomes/geo.ts, decision 007 "Where the shop
 # opens"): not offered in mainland China nor under the comprehensive
 # sanctions. The list is geo.ts's BLOCKED, the same on both rules (the tests
 # hold them to it): CN, CU, IR, KP, SY, RU, BY. /geo.json, read once when the

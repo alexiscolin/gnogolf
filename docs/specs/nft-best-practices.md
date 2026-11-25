@@ -11,7 +11,7 @@ now follows where they differ from its first recommendations:
 - prices Common 36, Rare 72, Epic 336, Legendary 1,296 GNOT (golf's numbers,
   section 2), the owner's to change before a sale opens, never lower on
   what is on sale;
-- **one sale a series, no waves** (decided 2026-10-18, ADR-013): every
+- **one sale a series, no waves** (decided 2026-10-18, decision 013): every
   gnome of the genesis on sale at once, its 48-hour player window first.
   The world waves this brief recommends below (sections 2 and 3) were
   built, then removed; the brief keeps them as the research said them;
@@ -194,7 +194,7 @@ risks a visible "612 left" counter that never moves.
 
 **Sell-out psychology.** "Sold out" is social proof. A counter that stalls
 is anti-proof. Sell in small waves that do sell out, rather than one big
-pool that does not. (Not followed: one sale of the whole genesis, ADR-013.)
+pool that does not. (Not followed: one sale of the whole genesis, decision 013.)
 
 **Auctions for 1/1s** (researched, not applied: see below). Use a public reserve, 24 to 48 hours, a soft close
 of 10 to 15 minutes, a minimum increment, and one auction at a time.
@@ -214,11 +214,11 @@ honours `grc721/royalty` is *unverified*.
 except where it says *decided*.
 
 - **Do not open all 720 at once.** (*Later decided otherwise*: waves
-  removed, one sale per series, all 720 at once, ADR-013.) Open in **world waves**. 504 Commons is
+  removed, one sale per series, all 720 at once, decision 013.) Open in **world waves**. 504 Commons is
   exactly 72 for each of the 7 worlds. Each wave opens one world's
   Commons, about 20 Rares and about 9 Epics, plus that world's Legendary at
   its fixed price. Ids stay fixed in the table; the realm only opens id
-  ranges, not whole tiers (was in the spec until ADR-013). Wave 1 is the Garden, ids
+  ranges, not whole tiers (was in the spec until decision 013). Wave 1 is the Garden, ids
   1 to 104 (Commons 1–72, Rares 73–93, Epics 94–103, Legendary 104); wave 2
   the Island Cup, ids 105 to 208.
 - **Player window first.** In each sale (each wave, as first advised), the first 48 hours are open only to
@@ -233,9 +233,9 @@ except where it says *decided*.
   when the previous one passes about 70% sold. If demand stalls, pause the
   waves: unopened gnomes are not a "dead collection", they simply have not
   been released. (The no-discount rule stands; the waves went with
-  ADR-013.)
+  decision 013.)
 - **Legendaries** (*decided*): all seven in the sale (one per wave until
-  ADR-013 removed the waves), sold at a fixed 1,296 GNOT by
+  decision 013 removed the waves), sold at a fixed 1,296 GNOT by
   the same buy flow, one per wallet. This brief first recommended an
   auction (48 hours, a soft close, a minimum increment, a reserve); it was
   dropped for simplicity (no escrowed bids, refunds or settlement) and
@@ -272,8 +272,8 @@ and never lower on what is already on sale.
 |---|---|---|
 | 0. Onyx dress rehearsal | 2 weeks before | the full flow with faucet GNOT; invite players to "buy" and file bugs; publish the realm and its table |
 | 1. Teasers | T-14 to T-1 | one Legendary revealed a day (7 days), a lore card for each world, the gallery live with every gnome browsable and *not yet for sale* |
-| 2. Launch and wave 1 (the Garden, ids 1–104) | T | the closing date set and shown; 48h player window, then public; its Legendary (The Miller, id 104) on sale with the rest at its fixed price. *Later: waves removed, ADR-013; the launch opens the one sale of all 720, its seven Legendaries with it* |
-| 3. Wave 2 (the Island Cup, ids 105–208), then waves 3 to 7 | weekly | one world a week; open only if the previous wave is over about 70% sold, otherwise slow down. *Dropped with the waves (ADR-013)* |
+| 2. Launch and wave 1 (the Garden, ids 1–104) | T | the closing date set and shown; 48h player window, then public; its Legendary (The Miller, id 104) on sale with the rest at its fixed price. *Later: waves removed, decision 013; the launch opens the one sale of all 720, its seven Legendaries with it* |
+| 3. Wave 2 (the Island Cup, ids 105–208), then waves 3 to 7 | weekly | one world a week; open only if the previous wave is over about 70% sold, otherwise slow down. *Dropped with the waves (decision 013)* |
 | 4. Close | the closing date | the sale ends; unsold gnomes, Legendaries included, are never minted. No free "Founding Gnome" for buyers: this brief first proposed one, but a gift tied to a purchase is a premium (景品類) under Japan's 景品表示法, so it is not done |
 | Always on | from day 0 | earned gnomes free, proven by play, so nobody has to pay to look good |
 
@@ -346,7 +346,7 @@ and never lower on what is already on sale.
   seeing a ghost → "which gnome is that?" → token page.
 - **Share cards** after a good round show the player's gnome; a Legendary
   owner's name pill on the boards; a "The Genesis is on sale" card (a "Wave N
-  is open" card before ADR-013 removed the waves).
+  is open" card before decision 013 removed the waves).
 - **Creators:** give the 2 or 3 gno.land streamers and builders an *earned*
   gnome or early access to the onyx rehearsal, not free paid gnomes (the
   spec forbids team mints anyway). Ask for clips, not shilling.
@@ -398,7 +398,7 @@ is our own conservative reading.
   - Also offer a copy-paste `gnokey` command, as gnofly does.
 - **Counters**
   - Show "Genesis: 61 of 720 found a player" (first advised per wave; one
-    sale since ADR-013). Count up, never down for the whole collection.
+    sale since decision 013). Count up, never down for the whole collection.
   - Show a "sold out" stamp once the sale sells out.
   - Do not show a fake countdown or a "3 people are looking at this" line.
 - **Social proof:** a recent-buys ticker (read from on-chain events when the

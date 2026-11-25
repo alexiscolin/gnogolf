@@ -1,4 +1,4 @@
-# ADR-003: Sharing a hole and a round
+# Decision 003: Sharing a hole and a round
 
 ## Status
 
@@ -105,7 +105,7 @@ Sharing is how the game spreads, and today it undersells it:
   "Mini-golf on-chain", and "Every shot computed by the chain · play free on
   gno.land", over a soft, blurred island.
 
-- **The gnomes' cards** (the shop, ADR-007). `media/gnomes/cards.mjs`
+- **The gnomes' cards** (the shop, decision 007). `media/gnomes/cards.mjs`
   (`npm run gnomes:cards -- --world garden`) lays out one 1200×630 card per
   gnome the same way, in the same headless Chrome: his thumbnail on his
   tier's stage, his tier, name, line, world and address, under

@@ -230,4 +230,4 @@ On a chain the packages sit under their owner's name: `p/<ns>/gnogolf/…` and
 - [analytics.md](analytics.md): the anonymous audience measurement.
 - [try-local.md](try-local.md): the whole game on this machine.
 - [specs/](specs/): the Builder's, the gnomes' and the interface's specs.
-- [adr/](../adr/): the architecture decisions.
+- [decisions/](decisions/): why it is built this way, one decision a file.

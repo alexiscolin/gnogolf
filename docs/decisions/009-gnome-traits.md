@@ -1,4 +1,4 @@
-# ADR-009: A gnome's traits, encoded
+# Decision 009: A gnome's traits, encoded
 
 ## Status
 
@@ -41,7 +41,7 @@ an Epic's prop) and more than 16 small things worn.
 - 58 bytes a token: about 42 KB of traits for 720 (the rows with ids, tiers
   and names, `data/gnomes/rows/genesis.txt`, are 60 KB), against the spec's
   18 × 777. Not paid at deploy: the owner publishes a series' rows after it
-  (the realm's `AddSeries`, ADR-007), and pays that storage then.
+  (the realm's `AddSeries`, decision 007), and pays that storage then.
 - The realm's portrait code must read the same tables and the same
   fallbacks; `data/gnomes.json` carries them for it.
 - An Epic's prop is a code, its shape data in `props.ts`: the realm's

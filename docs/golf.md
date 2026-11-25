@@ -756,7 +756,7 @@ and `Players'`.
 #### `Ghost(hole, mode string, player address) string`
 
 A player's best on a hole in a mode with the round that made it, named or
-not, or `null`: what a duel races ([ADR-004](../adr/adr-004-duels.md)). A best
+not, or `null`: what a duel races ([decision 004](decisions/004-duels.md)). A best
 keeps its period and shots from the save that set it; a worse round or a tie
 leaves them. It replays in its own weather however old: its first stroke with
 `SimulateRoundIn`, each later one with `SimulateFrom` from the `rest` before.
@@ -1014,7 +1014,7 @@ score honest through it.
   on from where it is. The earned gnomes' proof (r/<ns>/gnogolf/gnomes)
   pauses at the switch, until its owner checks that the new rules keep
   `bests`, `copies` and `holes` as golf/v2 writes them and calls
-  `AcceptRules` with their path (ADR-012).
+  `AcceptRules` with their path (decision 012).
 - **v1's records come over to v2 (onyx),** read on chain from v1 itself (its
   `HoleData`, `Versions`, `Ghost`, `Records`) in the transaction that writes
   them, so nobody can change one: `ImportHole` (the owner: a course hole keeps

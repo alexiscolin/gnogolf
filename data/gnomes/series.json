@@ -12,7 +12,7 @@
       "seed": "gnogolf/genesis/1",
       "released": false,
       "sale": {
-        "note": "The realm's starting settings, in GNOT, golf numbers (ADR-008): the series is sold in one sale (OpenSale, ADR-013), all its ids at once, its player window first, at the prices of the day it opens, never changed after.",
+        "note": "The realm's starting settings, in GNOT, golf numbers (decision 008): the series is sold in one sale (OpenSale, decision 013), all its ids at once, its player window first, at the prices of the day it opens, never changed after.",
         "prices": { "common": 36, "rare": 72, "epic": 336, "legendary": 1296 },
         "playerWindowHours": 48,
         "playerWindowCaps": { "common": 3, "rare": 2, "epic": 1, "legendary": 1 },

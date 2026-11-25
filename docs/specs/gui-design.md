@@ -4,7 +4,7 @@
 
 Proposed, 2026-10-06, revised the same day. The screens of two
 features as the player sees them: **A**, the collectible
-gnomes; **B**, the no-code hole Builder. Both are built since; the ADRs
+gnomes; **B**, the no-code hole Builder. Both are built since; the decisions
 say what shipped. The `*.html` names below are the mockups the screens
 were drawn in, which are not kept in the repo.
 
@@ -28,7 +28,7 @@ The mechanics are other documents'; this one draws them:
   before a sale opens, never lower on what is on sale. The first buyer of a gnome
   has him. All are bought the same way (`Buy(ids)`). The gallery says the
   golf meaning once, in "How the gnomes work".
-- **One sale** opens the whole series at once (ADR-013): the genesis, ids 1
+- **One sale** opens the whole series at once (decision 013): the genesis, ids 1
   to 720, laid out a world at a time (the Garden 1 to 104: Commons 1-72,
   Rares 73-93, Epics 94-103, the Legendary The Miller 104; the Island 105
   to 208; and on). The sale's first window is for wallets with a record in

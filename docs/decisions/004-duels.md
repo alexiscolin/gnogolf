@@ -1,4 +1,4 @@
-# ADR-004: Ghost duels
+# Decision 004: Ghost duels
 
 ## Status
 
@@ -730,7 +730,7 @@ player who never saves still gets the full duel and can pass the dare on.
 
 **The link card and the clip.**
 
-- The link card stays the hole's own (ADR-003). A card per dare needs a
+- The link card stays the hole's own (decision 003). A card per dare needs a
   server and is not worth one.
 - In V1 the clip hides the ghost, and the share image shows it where it
   stands (section 9). The clip with both balls, after V1, is the clearest
@@ -746,7 +746,7 @@ player who never saves still gets the full duel and can pass the dare on.
 - Post the realm's gnoweb page of a best next to its replay. It shows,
   without a claim, that the shots are public.
 
-**What to measure.** No analytics by default, and none is added by this ADR.
+**What to measure.** No analytics by default, and none is added by this decision.
 If one is chosen later, it counts events, not people: no cookie, no address,
 no IP kept. The events worth counting:
 

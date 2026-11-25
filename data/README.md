@@ -21,4 +21,4 @@ cd web && npm run gnomes -- --check && npm run gnomes:rows -- --check && npm run
 
 The formats: GG1 in [docs/course.md](../docs/course.md#holes-as-data-gg1), a
 gnome's traits in [docs/gnomes/design.md](../docs/gnomes/design.md). Why data:
-[ADR-002](../adr/adr-002-holes-as-data.md), [ADR-008](../adr/adr-008-gnome-catalogue.md).
+[decision 002](../docs/decisions/002-holes-as-data.md), [decision 008](../docs/decisions/008-gnome-catalogue.md).

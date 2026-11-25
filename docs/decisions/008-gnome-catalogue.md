@@ -1,13 +1,13 @@
-# ADR-008: The gnome catalogue as data, in series and worlds
+# Decision 008: The gnome catalogue as data, in series and worlds
 
 ## Status
 
 Accepted, 2026-10-06. Built: `data/gnomes/`, `data/gnomes.json`,
 `web/lib/gnomes/`, `scripts/gnomes.ts`. The realm that sells them
-(`r/gnogolf/gnomes`, ADR-007) reads the catalogue and is not part
+(`r/gnogolf/gnomes`, decision 007) reads the catalogue and is not part
 of this. The rules themselves: `docs/gnomes/design.md`.
 
-Amended by ADR-013 (2026-10-18): a series is sold in one sale, so its ids
+Amended by decision 013 (2026-10-18): a series is sold in one sale, so its ids
 no longer run by wave; the body says the catalogue as it now is.
 
 ## Context
@@ -19,7 +19,7 @@ once, and read by three readers that must agree: the realm (its table and
 portraits), the client (the ball, the ghost, the boards) and the screens
 (gallery, token page, mint, locker). A series is sold in one sale, all its
 ids at once, at the prices and with the window the owner sets as it opens
-(ADR-013).
+(decision 013).
 
 Writing 720 gnomes by hand would make them inconsistent; generating them at
 random would make them noise and could not be reviewed. The Epics and
@@ -43,7 +43,7 @@ designing as a system.
 - **The catalogue is made, never edited.** `scripts/gnomes.ts` (`npm run
   gnomes`) writes `data/gnomes.json`: every series with its plan, every
   token's id, series, tier, home, archetype, name, line, traits
-  (ADR-009) and skin, the code tables, and the nine earned gnomes' traits.
+  (decision 009) and skin, the code tables, and the nine earned gnomes' traits.
   The generator is deterministic from the seed; `--check` (in
   `scripts/check.sh`) fails if the file is not what the data makes.
 - **The Commons and Rares are a system**: each an archetype (a look that

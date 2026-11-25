@@ -12,7 +12,7 @@ What Gnogolf keeps on chain, and the source of each of the 90 course holes.
 
 A hole is not deployed: `scripts/holedata.sh` encodes the 90 into
 [data/holes.txt](../../../data/holes.txt), which the owner publishes
-([ADR-002](../../../adr/adr-002-holes-as-data.md)). A realm is deployed with
+([decision 002](../../../docs/decisions/002-holes-as-data.md)). A realm is deployed with
 every file of its folder but its tests: keep a README out of it.
 
 Start with `golf/v2/golf.gno`, from its package comment down. A realm's

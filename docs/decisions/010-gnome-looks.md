@@ -1,4 +1,4 @@
-# ADR-010: How a collectible gnome looks, and what he costs
+# Decision 010: How a collectible gnome looks, and what he costs
 
 ## Status
 

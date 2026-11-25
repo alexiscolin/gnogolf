@@ -2,8 +2,8 @@
 
 ## Status
 
-Proposed, 2026-10-06; built since, as [ADR-007](../../adr/adr-007-gnomes.md)
-and the ADRs after it record. The product decisions
+Proposed, 2026-10-06; built since, as [decision 007](../decisions/007-gnomes.md)
+and the decisions after it record. The product decisions
 (cosmetic only, no random draw, the tiers, the earned gnomes staying
 earned, golf and store untouched) came before this
 spec; everything else below is decided here, with its reason.
@@ -25,7 +25,7 @@ the first draft's numbers and sale wherever they differ:
   before a sale opens, never during one, and never lower on what is on sale;
 - a series is sold in one sale, every id of it at once, opening with 48
   hours kept for wallets with a record in store (was: each tier opened
-  whole, then a wave a world; waves removed, ADR-013);
+  whole, then a wave a world; waves removed, decision 013);
 - **no auction**: the seven Legendaries are sold at their fixed price by
   the same `Buy` as the other tiers, one Legendary a wallet. The auction
   of the first drafts (48 hours, a reserve, escrowed bids, a soft close)
@@ -126,7 +126,7 @@ legal questions.
   (`<id> <mode> <address>` → `bestOf`, `"<strokes> <height> <period> <shots>"`).
 - **The chain's price of storage**: `params/vm:p:storage_price` answers
   `"100ugnot"` on gnoland-1 and onyx-1 alike: 0.1 GNOT a kilobyte.
-- **Sharing** (ADR-003): a static export on Netlify, a page and a 1200×630
+- **Sharing** (decision 003): a static export on Netlify, a page and a 1200×630
   card per hole built once (`web/app/h/[slot]/page.tsx`, `media/og/og.mjs`),
   a picture of the course to the phone's share sheet (`snapshot` in
   `web/components/Share.tsx`), the holing shot as an MP4 clip
@@ -281,7 +281,7 @@ world; 144 and 65 are shared over the seven worlds as evenly as they go,
 the first worlds taking what is left over.
 
 **The sale and the worlds.** The genesis is sold in one sale: every id of
-it on sale from the same start (`OpenSale`, ADR-013). The catalogue lays
+it on sale from the same start (`OpenSale`, decision 013). The catalogue lays
 the ids out a world at a time, in this order (`series.json`'s `worlds`): a
 world is one run of ids, its Commons, then its Rares, its Epics, and its
 Legendary. Ids are fixed by the catalogue; the sale only opens them.
@@ -467,7 +467,7 @@ func SetSiteURL(cur realm, url string)                 // https://, at most 128 
 func SetTreasury(cur realm, to address)                // offers the treasury to a valid address, not the realm's; it takes it with AcceptTreasury
 func SetRoyaltyBps(cur realm, bps int64)               // 0 to 1,000
 func Sweep(cur realm)                                  // sends the realm's ugnot, coins sent to it by mistake, to the treasury
-func AcceptRules(cur realm, path string)               // the rules the earned gnomes' proof reads: store's current writer only, a realm (ADR-012)
+func AcceptRules(cur realm, path string)               // the rules the earned gnomes' proof reads: store's current writer only, a realm (decision 012)
 func Transfer(cur realm, to address)
 func Accept(cur realm)
 func Renounce(cur realm)
@@ -591,7 +591,7 @@ page with their tokens and worn gnome.
   for others). A Legendary unsold at the close is never minted, like any
   other id.
 - **The sale.** `OpenSale` opens every id of a series from a start time
-  (ADR-013; the waves of the first drafts, a world at a time, are gone).
+  (decision 013; the waves of the first drafts, a world at a time, are gone).
   For its first 48 hours (the genesis's setting; the call takes the hours)
   it sells only to a wallet with a record in store, a standing in either
   mode in golf's `totals` (v1's records were copied in), and at most 3
@@ -603,7 +603,7 @@ page with their tokens and worn gnome.
   can open more wallets. The caps are constants of the realm, kept with
   the supply in one config file.
 - **The close.** The genesis's closing date, `SetCloseAt`, is optional
-  (decided 2026-10-19, ADR-007): unset at deploy, the
+  (decided 2026-10-19, decision 007): unset at deploy, the
   genesis may open with none (`closeAt` 0: it never closes, and sells until
   sold out), and the owner may set one, before the sale or later, at least
   7 days ahead (a buyer is never surprised) and after the genesis's sale
@@ -688,7 +688,7 @@ format. It fails closed in three places:
   `"ok":false` with that reason, until the owner, having checked that the
   new rules keep `bests`, `copies` and `holes` as golf/v2 writes them,
   calls `AcceptRules` with their path: store's current writer only, never
-  another realm nor a paused store's `""` (ADR-012).
+  another realm nor a paused store's `""` (decision 012).
 
 So a later format can refuse a mint, never prove a false one. A script
 compares the proof with golf/v2's `BestOf` on onyx's real rows before each
@@ -765,7 +765,7 @@ typical one:
 
 | what | bytes | deposit, paid by |
 |---|---|---|
-| the genesis published, with one wave (measured before ADR-013; now its one sale) | 46,230 | 4.6 GNOT, the owner |
+| the genesis published, with one wave (measured before decision 013; now its one sale) | 46,230 | 4.6 GNOT, the owner |
 | a buyer's first gnome | 3,535 | 0.35 GNOT, the buyer, on top of the price, returned on `Burn` |
 | a buy, on average over the first 11 buyers | about 5,300 | about 0.53 GNOT |
 
@@ -913,7 +913,7 @@ offset 0 when the picker opens, then the next pages while `next` is not -1; `Sol
 
 ### 12. Sharing at zero server cost
 
-ADR-003 holds: a static export, no server, nothing that needs one.
+decision 003 holds: a static export, no server, nothing that needs one.
 
 - **A page and a picture per gnome.** `/g/<id>/` for each gnome of the
   catalogue and `/g/<kind>/` for the nine earned kinds (729 pages for the
@@ -924,7 +924,7 @@ ADR-003 holds: a static export, no server, nothing that needs one.
   drawn by `makeBall` in headless Chrome (`media/gnomes/render.mjs`,
   `npm run gnomes:thumbs`), a three-quarter view on its tier's plinth, a
   256-pixel WebP of under 10 KB, committed under `media/gnomes/thumbs/`
-  (about 5.7 MB for the 720), as ADR-003 makes and commits the hole cards.
+  (about 5.7 MB for the 720), as decision 003 makes and commits the hole cards.
   The pages use it as a square `og:image` (`twitter:card` `summary`). The
   seven Legendaries also get a turntable (an animated WebP, its piece
   moving, `media/gnomes/turntables/`) and a 1200×630 card made once the
@@ -1224,8 +1224,8 @@ them, closed for CN, CU, IR, KP, SY, RU and BY.
      Unsold ids stay on sale at the sale's price until sold, or the close.
    - At a closing date, if one is set, the sale ends; whatever is unsold, a
      Legendary included, is never minted.
-5. Docs: an API page for the gnomes like `docs/golf.md`, the ADR from this
-   spec (ADR-007), the README's "Support" line and
+5. Docs: an API page for the gnomes like `docs/golf.md`, the decision from this
+   spec (decision 007), the README's "Support" line and
    `Tip.tsx`'s "Tips open once GNOT can be sent on mainnet" corrected.
 
 ## Reference facts
@@ -1279,7 +1279,7 @@ the gno sources (master 87f0357, and the tags `chain/onyx` and
 | the renderer has no `preserveDrawingBuffer` and uses `alpha: true` | `web/lib/scene/studio.ts` |
 | `DROP_MS` is 320; `CLIP.tail` is 1800 | `web/lib/engine/recorder.ts`, `web/lib/clip.ts` |
 | `send` puts every message in one `DoContract`; the `Call` type's `send` field is unused; `CLAIM_GAS` cites 70.2M with 3 bests | `web/lib/adena.ts, 414-433, 451-456` |
-| ADR-003's cards are made by headless Chrome and committed, with no image library | `adr/adr-003-sharing.md`, "The images" |
+| Decision 003's cards are made by headless Chrome and committed, with no image library | `docs/decisions/003-sharing.md`, "The images" |
 | the README's Support line and `Tip.tsx`'s text are out of date | `README.md`, `web/components/Tip.tsx` |
 
 Physics, GG1 and the TinyGo wasm are untouched by this design.
@@ -1295,7 +1295,7 @@ Physics, GG1 and the TinyGo wasm are untouched by this design.
   and never as a discount on what is on sale.
 - A fungible token, airdrops or perks promised to holders.
 - Off-chain metadata or images, an indexer, a server of any kind.
-- Dynamic cards per score or per sale (ADR-003 rejected them for the same
+- Dynamic cards per score or per sale (decision 003 rejected them for the same
   reason: they need a server).
 - Owning holes as tokens ("build a hole, own it forever"), which is its own
   design.

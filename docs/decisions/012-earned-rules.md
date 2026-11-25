@@ -1,16 +1,16 @@
-# ADR-012: The rules the earned gnomes' proof reads: accepted, not compiled in
+# Decision 012: The rules the earned gnomes' proof reads: accepted, not compiled in
 
 ## Status
 
 Accepted, 2026-10-07: option 3, built
 (`earned.gno`'s `rules` and `AcceptRules`). It replaces the constant `rules` of
-`gno.land/r/gnogolf/gnomes/earned.gno` and corrects ADR-007's Consequences ("the proof refuses until gnomes is
+`gno.land/r/gnogolf/gnomes/earned.gno` and corrects decision 007's Consequences ("the proof refuses until gnomes is
 updated", which cannot happen).
 
 ## Context
 
 `MintEarned` and `Proof` read a player's results from store's rows
-(`bests`, `copies`, `holes`, ADR-007). Store's rows have no format
+(`bests`, `copies`, `holes`, decision 007). Store's rows have no format
 version, so the proof trusts them only while store's writer is the rules it
 was written against:
 
@@ -31,7 +31,7 @@ refuses ("rules changed"), and nothing can lift it:
   new gnomes realm would be a new collection.
 
 The nine earned gnomes could then never be minted again. Failing closed is
-right (no false proof), but failing closed for good is not what ADR-007
+right (no false proof), but failing closed for good is not what decision 007
 meant.
 
 ## Options
@@ -49,7 +49,7 @@ meant.
    never point the proof at another realm. Between store's switch and the
    owner's call, proofs refuse, as today. The owner calls it once they have
    checked that the new rules keep `bests`, `copies` and `holes` as golf/v2
-   writes them, which is ADR-007's own condition.
+   writes them, which is decision 007's own condition.
 
 ## Decision
 
@@ -73,7 +73,7 @@ Option 3:
     but the owner;
   - once accepted, the same player's proof passes again;
   - an earned gnome already minted is never minted twice.
-- ADR-007's Consequences point here, with the release step.
+- Decision 007's Consequences point here, with the release step.
 
 ## Consequences
 

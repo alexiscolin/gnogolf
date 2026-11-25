@@ -1,15 +1,15 @@
-# ADR-001: On-chain mini-golf: engine, courses, and what the chain is for
+# Decision 001: On-chain mini-golf: engine, courses, and what the chain is for
 
 ## Status
 
 Accepted, as the first design: the body is kept as written, and the game
-went another way since. Holes are data, not realms (§3, ADR-002); a round's
+went another way since. Holes are data, not realms (§3, decision 002); a round's
 shots go to the chain together, as `PlayRoundAt` commits (§1); play varies
 with the weather, and the wear grid, which never decays, only shows where
 balls stopped (§4, §5); scores are ranked, on the boards and in ghost duels
-(§6, `docs/leaderboards.md`, ADR-004); a player signs with Adena or gnokey,
+(§6, `docs/leaderboards.md`, decision 004); a player signs with Adena or gnokey,
 with no web2 login (§7); the course maker is built, the Builder (§9,
-ADR-006); the client draws in three.js.
+decision 006); the client draws in three.js.
 
 ## Context
 
@@ -20,7 +20,7 @@ mobile-first.
 
 A game like that does not need a blockchain. Single-player golf has no
 counterparty, no trust problem, and nothing to prove to anyone; putting it
-on-chain would pay the entire cost of consensus for nothing. This ADR answers
+on-chain would pay the entire cost of consensus for nothing. This decision answers
 one question: **what does the chain buy here?**
 
 There are three answers, and the architecture below is built around them:
@@ -148,7 +148,7 @@ teleporter, a surface that inverts bounces) is possible without a release on
 our side.
 
 The rest of this document depends on the interface, which is specified
-separately (ADR-002). Two failure modes bound it: too narrow and creators
+separately (decision 002). Two failure modes bound it: too narrow and creators
 cannot invent anything, which breaks answer 1; too wide and we cannot
 guarantee a hole is completable or bound its compute cost.
 
@@ -270,7 +270,7 @@ terrain that no longer exists. Cheap to implement, expensive to retrofit.
    a sponsored-transaction mechanism. No sponsorship/feegrant design was found in
    the gno docs. **This is a hard prerequisite and must be
    settled before committing to the web2 onboarding story.**
-2. **The course interface**: ADR-002, the real design work.
+2. **The course interface**: decision 002, the real design work.
 3. **Wear decay tuning**: needs play data; ship with a conservative default.
 4. **Per-shot compute budget**: must be measured on a real hole early, since it
    bounds how expressive a course can be.
@@ -308,7 +308,7 @@ interesting? Nothing about graphics.
 ### Milestone 1: the course interface
 
 Extract the hard-coded hole into the interface of decision 3, then prove it by
-writing a *second* hole that does something the first could not. See ADR-002.
+writing a *second* hole that does something the first could not. See decision 002.
 
 **Question answered:** can someone else invent a mechanic without touching the
 engine?

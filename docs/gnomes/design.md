@@ -27,10 +27,10 @@ What is where:
 | how far apart the gnomes are | `npm run gnomes:stats` (`scripts/gnomestats.ts`) |
 | thumbnails and turntables | `npm run gnomes:thumbs` (`media/gnomes/render.mjs`) → `media/gnomes/thumbs/<id>.webp`, `media/gnomes/turntables/<id>.webp` |
 
-Decisions: ADR-008 (the catalogue as data, in series and worlds), ADR-009 (the
-trait encoding), ADR-010 (the look: style, materials, props as data, budgets,
-permanence), ADR-011 (the collection as status: the album and the collector
-rank). ADR-007 is the realm's (`r/gnogolf/gnomes`), ADR-013 its one sale a
+Decisions: decision 008 (the catalogue as data, in series and worlds), decision 009 (the
+trait encoding), decision 010 (the look: style, materials, props as data, budgets,
+permanence), decision 011 (the collection as status: the album and the collector
+rank). Decision 007 is the realm's (`r/gnogolf/gnomes`), decision 013 its one sale a
 series.
 
 ## 1. The style
@@ -498,10 +498,10 @@ Summit 7).
   opens): from then its looks are final (section 10).
 - **`sale` is the realm's starting settings**, from the research brief
   (`docs/specs/nft-best-practices.md`) and the decisions since: prices in
-  GNOT, every tier at a fixed price (golf's numbers, ADR-007; no auction),
+  GNOT, every tier at a fixed price (golf's numbers, decision 007; no auction),
   the player window (wallets with a record in `store` first), its caps, the
   lifetime caps.
-  A series is sold in one sale (ADR-013, 2026-10-18):
+  A series is sold in one sale (decision 013, 2026-10-18):
   `OpenSale genesis <start> <hours>`, every gnome at once, its player
   window first. The worlds above are the catalogue's layout (each world's
   run of ids, its art), not the sale's. The realm's owner sets the prices

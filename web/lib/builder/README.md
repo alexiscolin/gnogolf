@@ -17,7 +17,7 @@ each weather before it is published.
 
 Read `draft.ts`, then `pipeline.ts`, then `proof.ts`. The design:
 [hole-builder.md](../../../docs/specs/hole-builder.md); the checks in the
-browser: [ADR-006](../../../adr/adr-006-hole-builder.md).
+browser: [decision 006](../../../docs/decisions/006-hole-builder.md).
 ```sh
 NEXT_PUBLIC_BUILDER=1 npm run dev   # from web/: the Builder, at /build
 npm test                            # from web/: test/builder-*.test.ts
